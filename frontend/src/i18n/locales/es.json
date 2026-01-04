@@ -63,6 +63,8 @@
         "images": "imágenes",
         "lastModified": "Última modificación",
         "confirmRemove": "¿Estás seguro de quitar esta carpeta de la lista?",
+        "clearAll": "Borrar Todo",
+        "confirmClear": "¿Estás seguro de quitar todas las carpetas de la librería?",
         "noFolders": "No hay carpetas agregadas",
         "dragDrop": "Arrastra o haz clic para seleccionar"
     },
@@ -70,6 +72,8 @@
         "title": "Series",
         "addSeries": "Añadir Serie",
         "removeSeries": "Quitar Serie",
+        "clearAll": "Borrar Todo",
+        "confirmClear": "¿Estás seguro de quitar todas las series de la librería?",
         "chapters": "capítulos",
         "noSeries": "No hay series agregadas",
         "openSeries": "Ver Capítulos",

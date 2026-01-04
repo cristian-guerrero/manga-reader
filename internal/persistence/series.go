@@ -122,6 +122,15 @@ func (sm *SeriesManager) Remove(path string) error {
 	return nil
 }
 
+// Clear removes all series entries
+func (sm *SeriesManager) Clear() error {
+	sm.mu.Lock()
+	defer sm.mu.Unlock()
+
+	sm.series.Entries = []SeriesEntry{}
+	return saveJSON(seriesFile, sm.series)
+}
+
 // Load loads series from disk
 func (sm *SeriesManager) Load() error {
 	sm.mu.Lock()

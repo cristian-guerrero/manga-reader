@@ -63,6 +63,8 @@
         "images": "images",
         "lastModified": "Last modified",
         "confirmRemove": "Are you sure you want to remove this folder from the list?",
+        "clearAll": "Clear All",
+        "confirmClear": "Are you sure you want to remove all folders from the library?",
         "noFolders": "No folders added yet",
         "dragDrop": "Drag and drop or click to select"
     },
@@ -70,6 +72,8 @@
         "title": "Series",
         "addSeries": "Add Series",
         "removeSeries": "Remove Series",
+        "clearAll": "Clear All",
+        "confirmClear": "Are you sure you want to remove all series from the library?",
         "chapters": "chapters",
         "noSeries": "No series added yet",
         "openSeries": "View Chapters",

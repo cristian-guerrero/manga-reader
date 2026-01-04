@@ -120,6 +120,15 @@ func (lm *LibraryManager) Remove(folderPath string) error {
 	return nil
 }
 
+// Clear removes all library entries
+func (lm *LibraryManager) Clear() error {
+	lm.mu.Lock()
+	defer lm.mu.Unlock()
+
+	lm.library.Entries = []LibraryEntry{}
+	return saveJSON(libraryFile, lm.library)
+}
+
 // Load loads library from disk
 func (lm *LibraryManager) Load() error {
 	lm.mu.Lock()

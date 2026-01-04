@@ -105,10 +105,10 @@ export const useNavigationStore = create<NavigationStoreState>((set, get) => ({
     triggerPanic: () => {
         set({
             isPanicMode: true,
-            currentPage: 'home',
+            currentPage: 'settings',
             previousPage: null,
             params: {},
-            history: [{ page: 'home', params: {} }],
+            history: [{ page: 'settings', params: {} }],
         });
     },
 

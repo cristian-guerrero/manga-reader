@@ -478,7 +478,29 @@ func (a *App) GetLibrary() []persistence.LibraryEntry {
 
 // RemoveLibraryEntry removes a library entry
 func (a *App) RemoveLibraryEntry(folderPath string) error {
-	return a.library.Remove(folderPath)
+	err := a.library.Remove(folderPath)
+	if err == nil {
+		runtime.EventsEmit(a.ctx, "library_updated")
+	}
+	return err
+}
+
+// ClearLibrary removes all library entries
+func (a *App) ClearLibrary() error {
+	err := a.library.Clear()
+	if err == nil {
+		runtime.EventsEmit(a.ctx, "library_updated")
+	}
+	return err
+}
+
+// ClearSeries removes all series entries
+func (a *App) ClearSeries() error {
+	err := a.series.Clear()
+	if err == nil {
+		runtime.EventsEmit(a.ctx, "series_updated")
+	}
+	return err
 }
 
 // =============================================================================

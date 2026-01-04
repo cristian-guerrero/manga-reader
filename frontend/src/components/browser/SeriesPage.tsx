@@ -123,6 +123,17 @@ export function SeriesPage() {
         }
     };
 
+    const handleClearAll = async () => {
+        if (!window.confirm(t('series.confirmClear'))) return;
+        try {
+            // @ts-ignore
+            await window.go?.main?.App?.ClearSeries();
+            setSeries([]);
+        } catch (error) {
+            console.error('Failed to clear series:', error);
+        }
+    };
+
     // Animation variants
     const containerVariants = {
         hidden: { opacity: 0 },
@@ -150,15 +161,28 @@ export function SeriesPage() {
                 >
                     {t('series.title')}
                 </h1>
-                <motion.button
-                    onClick={handleSelectFolder}
-                    className="btn-primary flex items-center gap-2"
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                >
-                    <PlusIcon />
-                    {t('series.addSeries')}
-                </motion.button>
+                <div className="flex items-center gap-2">
+                    {series.length > 0 && (
+                        <motion.button
+                            onClick={handleClearAll}
+                            className="btn-ghost text-red-500 flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-red-500/10 transition-colors"
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                        >
+                            <TrashIcon />
+                            {t('series.clearAll')}
+                        </motion.button>
+                    )}
+                    <motion.button
+                        onClick={handleSelectFolder}
+                        className="btn-primary flex items-center gap-2"
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                    >
+                        <PlusIcon />
+                        {t('series.addSeries')}
+                    </motion.button>
+                </div>
             </div>
 
             {/* Series grid */}

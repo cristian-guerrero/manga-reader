@@ -62,6 +62,8 @@ careristicas adicionales 3: [DONE]
 cambios adicionales:
 - el boton de panico lleva a la pantalla de configuracion
 - cada una de las secciones tien un boton de borrar todo como el de clear history
+- si se agrega una carpeta con subcarpetas (serie) y despues se agrega una de sus subcarpetas
+    esta subcarpeta se debe agregar a la lista de carpetas (sin modificar el comportamiento de seriees)
 
 dependecias para linux:   
 - libgtk-3: sudo apt install libgtk-3-dev

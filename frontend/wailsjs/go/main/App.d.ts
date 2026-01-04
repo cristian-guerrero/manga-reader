@@ -11,6 +11,10 @@ export function AddSeries(arg1:string,arg2:Array<main.FolderInfo>):Promise<void>
 
 export function ClearHistory():Promise<void>;
 
+export function ClearLibrary():Promise<void>;
+
+export function ClearSeries():Promise<void>;
+
 export function ClearThumbnailCache():Promise<void>;
 
 export function GetFolderInfo(arg1:string):Promise<main.FolderInfo>;

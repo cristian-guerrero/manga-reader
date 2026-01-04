@@ -18,6 +18,14 @@ export function ClearHistory() {
   return window['go']['main']['App']['ClearHistory']();
 }
 
+export function ClearLibrary() {
+  return window['go']['main']['App']['ClearLibrary']();
+}
+
+export function ClearSeries() {
+  return window['go']['main']['App']['ClearSeries']();
+}
+
 export function ClearThumbnailCache() {
   return window['go']['main']['App']['ClearThumbnailCache']();
 }

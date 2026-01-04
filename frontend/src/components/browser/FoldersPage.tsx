@@ -156,6 +156,17 @@ export function FoldersPage() {
         }
     };
 
+    const handleClearAll = async () => {
+        if (!window.confirm(t('folders.confirmClear'))) return;
+        try {
+            // @ts-ignore
+            await window.go?.main?.App?.ClearLibrary();
+            setFolders([]);
+        } catch (error) {
+            console.error('Failed to clear library:', error);
+        }
+    };
+
     // Animation variants
     const containerVariants = {
         hidden: { opacity: 0 },
@@ -183,15 +194,28 @@ export function FoldersPage() {
                 >
                     {t('folders.title')}
                 </h1>
-                <motion.button
-                    onClick={handleSelectFolder}
-                    className="btn-primary flex items-center gap-2"
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                >
-                    <PlusIcon />
-                    {t('folders.addFolder')}
-                </motion.button>
+                <div className="flex items-center gap-2">
+                    {folders.length > 0 && (
+                        <motion.button
+                            onClick={handleClearAll}
+                            className="btn-ghost text-red-500 flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-red-500/10 transition-colors"
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                        >
+                            <TrashIcon />
+                            {t('folders.clearAll')}
+                        </motion.button>
+                    )}
+                    <motion.button
+                        onClick={handleSelectFolder}
+                        className="btn-primary flex items-center gap-2"
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                    >
+                        <PlusIcon />
+                        {t('folders.addFolder')}
+                    </motion.button>
+                </div>
             </div>
 
             {/* Folders grid */}
