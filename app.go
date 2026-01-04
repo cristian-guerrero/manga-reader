@@ -439,6 +439,10 @@ func (a *App) AddFolder(path string) (*AddFolderResult, error) {
 		}
 		actualPath = a.unwrapArchiveRoot(dest)
 		isTemp = true
+	} else {
+		// Even for normal folders, unwrap to find the real content root
+		// E.g. Root -> Subfolder -> images
+		actualPath = a.unwrapArchiveRoot(path)
 	}
 
 	folderPath := a.resolveToFolder(actualPath)

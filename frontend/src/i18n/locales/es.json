@@ -69,7 +69,9 @@
         "clearAll": "Borrar Todo",
         "confirmClear": "¿Estás seguro de quitar todas las carpetas de la librería?",
         "noFolders": "No hay carpetas agregadas",
-        "dragDrop": "Arrastra o haz clic para seleccionar"
+        "dragDrop": "Arrastra o haz clic para seleccionar",
+        "addFailed": "Error al añadir carpeta",
+        "foldersAdded": "{{count}} carpetas añadidas a la librería"
     },
     "series": {
         "title": "Series",

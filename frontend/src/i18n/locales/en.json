@@ -67,7 +67,9 @@
         "clearAll": "Clear All",
         "confirmClear": "Are you sure you want to remove all folders from the library?",
         "noFolders": "No folders added yet",
-        "dragDrop": "Drag and drop or click to select"
+        "dragDrop": "Drag and drop or click to select",
+        "addFailed": "Failed to add folder",
+        "foldersAdded": "{{count}} folders added to library"
     },
     "series": {
         "title": "Series",

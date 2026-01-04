@@ -70,7 +70,7 @@ export function MainLayout({ children }: MainLayoutProps) {
                                 }
                             } catch (error) {
                                 console.error('Failed to add folder:', error);
-                                showToast("Failed to process archive", "error");
+                                showToast(t('folders.addFailed'), 'error');
                             }
                         } else {
                             // @ts-ignore
