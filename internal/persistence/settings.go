@@ -207,18 +207,26 @@ func (sm *SettingsManager) Update(updates map[string]interface{}) error {
 		case "windowWidth":
 			if v, ok := value.(float64); ok {
 				sm.settings.WindowWidth = int(v)
+			} else if v, ok := value.(int); ok {
+				sm.settings.WindowWidth = v
 			}
 		case "windowHeight":
 			if v, ok := value.(float64); ok {
 				sm.settings.WindowHeight = int(v)
+			} else if v, ok := value.(int); ok {
+				sm.settings.WindowHeight = v
 			}
 		case "windowX":
 			if v, ok := value.(float64); ok {
 				sm.settings.WindowX = int(v)
+			} else if v, ok := value.(int); ok {
+				sm.settings.WindowX = v
 			}
 		case "windowY":
 			if v, ok := value.(float64); ok {
 				sm.settings.WindowY = int(v)
+			} else if v, ok := value.(int); ok {
+				sm.settings.WindowY = v
 			}
 		case "windowMaximized":
 			if v, ok := value.(bool); ok {
