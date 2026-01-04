@@ -6,6 +6,10 @@ import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { useNavigationStore } from '../../stores/navigationStore';
+import { useSettingsStore } from '../../stores/settingsStore';
+import { EventsOn, EventsOff } from '../../../wailsjs/runtime';
+
+
 
 // Icons
 const ClockIcon = () => (
@@ -45,10 +49,26 @@ export function HistoryPage() {
     const [history, setHistory] = useState<HistoryEntry[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [thumbnails, setThumbnails] = useState<Record<string, string>>({});
+    const { enableHistory } = useSettingsStore();
 
     useEffect(() => {
-        loadHistory();
-    }, []);
+        if (enableHistory) {
+            loadHistory();
+
+            const cleanup = EventsOn('history_updated', () => {
+                loadHistory();
+            });
+
+            return () => {
+                EventsOff('history_updated');
+            };
+        } else {
+            setIsLoading(false);
+            setHistory([]);
+        }
+    }, [enableHistory]);
+
+
 
     const loadHistory = async () => {
         setIsLoading(true);
@@ -146,7 +166,7 @@ export function HistoryPage() {
                 >
                     {t('history.title')}
                 </h1>
-                {history.length > 0 && (
+                {enableHistory && history.length > 0 && (
                     <motion.button
                         onClick={handleClearAll}
                         className="btn-ghost text-sm flex items-center gap-2"
@@ -161,7 +181,32 @@ export function HistoryPage() {
             </div>
 
             {/* History list */}
-            {isLoading ? (
+            {!enableHistory ? (
+                <motion.div
+                    className="flex flex-col items-center justify-center py-20"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                >
+                    <motion.div
+                        className="mb-4 text-4xl"
+                        style={{ color: 'var(--color-text-muted)' }}
+                    >
+                        🚫
+                    </motion.div>
+                    <p
+                        className="text-lg font-medium"
+                        style={{ color: 'var(--color-text-secondary)' }}
+                    >
+                        {t('history.disabled')}
+                    </p>
+                    <p
+                        className="text-sm mt-2"
+                        style={{ color: 'var(--color-text-muted)' }}
+                    >
+                        {t('history.disabledDesc')}
+                    </p>
+                </motion.div>
+            ) : isLoading ? (
                 <div className="flex items-center justify-center py-20">
                     <motion.div
                         className="w-12 h-12 border-4 rounded-full"

@@ -15,7 +15,10 @@
         "previous": "Previous",
         "search": "Search",
         "noResults": "No results found",
-        "reset": "Reset"
+        "search": "Search",
+        "noResults": "No results found",
+        "reset": "Reset",
+        "off": "Off"
     },
     "navigation": {
         "home": "Home",
@@ -69,7 +72,9 @@
         "noHistory": "No reading history",
         "progress": "Progress",
         "lastRead": "Last read",
-        "continueFrom": "Continue from page"
+        "continueFrom": "Continue from page",
+        "disabled": "History is disabled",
+        "disabledDesc": "Enable history in settings to track your reading progress."
     },
     "thumbnails": {
         "title": "Thumbnails",
@@ -97,6 +102,9 @@
         "advanced": "Advanced",
         "preloadImages": "Preload Images",
         "preloadCount": "Images to Preload",
+        "enableHistory": "Enable History",
+        "minImageSize": "Minimum Image Size (KB)",
+        "minImageSizeDesc": "Filter out images smaller than this size (useful for removing covers/logos)",
         "showImageInfo": "Show Image Info",
         "resetSettings": "Reset to Defaults",
         "confirmReset": "Reset all settings to default values?"

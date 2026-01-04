@@ -73,25 +73,62 @@ export function ViewerPage({ folderPath }: ViewerPageProps) {
 
     const [showControls, setShowControls] = useState(true);
     const [showWidthSlider, setShowWidthSlider] = useState(false);
+    const [initialScrollPos, setInitialScrollPos] = useState(0);
 
     // Load folder and images
     useEffect(() => {
         if (!folderPath) return;
 
         const loadFolder = async () => {
+            // Avoid double loading
+            // if (isLoading) return; 
+
             setIsLoading(true);
             try {
-                // @ts-ignore - Wails generated bindings
+                // @ts-ignore
                 const folderInfo = await window.go?.main?.App?.GetFolderInfo(folderPath);
-                // @ts-ignore - Wails generated bindings
+                // @ts-ignore
                 const imageList = await window.go?.main?.App?.GetImages(folderPath);
+
+                // Fetch history for this folder
+                // @ts-ignore
+                const historyEntry = await window.go?.main?.App?.GetHistoryEntry(folderPath);
 
                 if (folderInfo) {
                     setCurrentFolder(folderInfo as FolderInfo);
                 }
                 if (imageList) {
-                    setImages(imageList as ImageInfo[]);
+                    // Update images
+                    // Important: setImages resets index to 0 usually, so we need to override if history exists
+                    // We need a way to set images AND index atomically or sequentially without trigger saveProgress(0)
+
+                    const imgs = imageList as ImageInfo[];
+                    let targetIndex = 0;
+                    let targetScroll = 0;
+
+                    if (historyEntry) {
+                        if (historyEntry.lastImageIndex < imgs.length) {
+                            targetIndex = historyEntry.lastImageIndex;
+                            console.log("Resuming from history index:", targetIndex);
+                        }
+                        if (historyEntry.scrollPosition > 0) {
+                            targetScroll = historyEntry.scrollPosition;
+                            setInitialScrollPos(targetScroll);
+                            console.log("Resuming from scroll position:", targetScroll);
+                        }
+                    }
+
+                    // We update the store. We might need to update useViewerStore to allow setting both
+                    // For now we rely on the fact that we can set them.
+                    useViewerStore.setState({
+                        images: imgs,
+                        currentIndex: targetIndex,
+                        currentFolder: folderInfo as FolderInfo,
+                        isLoading: false // manual override
+                    });
+                    // setIsLoading(false) moved here implicitly by store update? No, local state.
                 }
+
             } catch (error) {
                 console.error('Failed to load folder:', error);
             } finally {
@@ -100,7 +137,19 @@ export function ViewerPage({ folderPath }: ViewerPageProps) {
         };
 
         loadFolder();
-    }, [folderPath, setCurrentFolder, setImages, setIsLoading]);
+        // loadFolder(); // Removed duplicate call
+    }, [folderPath]); // Removed other dependencies to avoid re-triggering loops
+
+
+    // Initial history save when folder is loaded
+    // Initial history save removed to prevent overwriting resume index
+    // useEffect(() => {
+    //     if (currentFolder && images.length > 0) {
+    //         saveProgress();
+    //     }
+    // }, [currentFolder, images.length]);
+
+
 
     // Sync viewer mode with settings
     useEffect(() => {
@@ -230,6 +279,8 @@ export function ViewerPage({ folderPath }: ViewerPageProps) {
                         <VerticalViewer
                             images={images}
                             onScrollPositionChange={saveProgress}
+                            initialIndex={currentIndex}
+                            initialScrollPosition={initialScrollPos}
                         />
                     </motion.div>
                 ) : (

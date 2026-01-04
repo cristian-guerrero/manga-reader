@@ -2,22 +2,27 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"manga-visor/internal/fileloader"
 	"manga-visor/internal/persistence"
 	"manga-visor/internal/thumbnails"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 // App struct - Main application structure
 type App struct {
-	ctx        context.Context
-	settings   *persistence.SettingsManager
-	history    *persistence.HistoryManager
-	orders     *persistence.OrdersManager
+	ctx      context.Context
+	settings *persistence.SettingsManager
+	history  *persistence.HistoryManager
+	library  *persistence.LibraryManager
+	orders   *persistence.OrdersManager
+
 	fileLoader *fileloader.FileLoader
 	thumbGen   *thumbnails.Generator
 }
@@ -25,9 +30,12 @@ type App struct {
 // NewApp creates a new App application struct
 func NewApp() *App {
 	return &App{
-		settings:   persistence.NewSettingsManager(),
-		history:    persistence.NewHistoryManager(),
-		orders:     persistence.NewOrdersManager(),
+		settings: persistence.NewSettingsManager(),
+
+		history: persistence.NewHistoryManager(),
+		library: persistence.NewLibraryManager(),
+		orders:  persistence.NewOrdersManager(),
+
 		fileLoader: fileloader.NewFileLoader(),
 		thumbGen:   thumbnails.NewGenerator(),
 	}
@@ -112,7 +120,16 @@ func (a *App) GetHistoryEntry(folderPath string) *persistence.HistoryEntry {
 
 // AddHistory adds or updates a history entry
 func (a *App) AddHistory(entry persistence.HistoryEntry) error {
-	return a.history.Add(entry)
+	// Check if history is enabled
+	settings := a.settings.Get()
+	if !settings.EnableHistory {
+		return nil
+	}
+	if err := a.history.Add(entry); err != nil {
+		return err
+	}
+	runtime.EventsEmit(a.ctx, "history_updated")
+	return nil
 }
 
 // RemoveHistory removes a history entry
@@ -183,6 +200,27 @@ func (a *App) GetImages(folderPath string) ([]ImageInfo, error) {
 	images, err := a.fileLoader.GetImages(folderPath)
 	if err != nil {
 		return nil, err
+	}
+
+	// Filter by min size
+	settings := a.settings.Get()
+	if settings.MinImageSize > 0 {
+		var filtered []fileloader.ImageInfo
+		minBytes := settings.MinImageSize * 1024 // KB to Bytes
+		fmt.Printf("Filtering images: MinSize=%d KB (%d bytes)\n", settings.MinImageSize, minBytes)
+		for _, img := range images {
+			if img.Size >= minBytes {
+				filtered = append(filtered, img)
+			} else {
+				fmt.Printf("Skipping image %s: %d bytes\n", img.Name, img.Size)
+			}
+		}
+
+		// Re-index
+		for i := range filtered {
+			filtered[i].Index = i
+		}
+		images = filtered
 	}
 
 	// Convert to our type
@@ -295,6 +333,54 @@ func (a *App) GetSubfolders(folderPath string) ([]FolderInfo, error) {
 	})
 
 	return folders, nil
+}
+
+// AddFolder adds a folder to the LIBRARY
+func (a *App) AddFolder(path string) error {
+	// Check if it's a file or directory
+	info, err := os.Stat(path)
+	if err != nil {
+		return err
+	}
+
+	folderPath := path
+	if !info.IsDir() {
+		folderPath = filepath.Dir(path)
+	}
+
+	folderInfo, err := a.GetFolderInfo(folderPath)
+	if err != nil {
+		return err
+	}
+
+	if folderInfo.ImageCount == 0 {
+		return fmt.Errorf("no images found in folder")
+	}
+
+	entry := persistence.LibraryEntry{
+		FolderPath:  folderInfo.Path,
+		FolderName:  folderInfo.Name,
+		TotalImages: folderInfo.ImageCount,
+		CoverImage:  folderInfo.CoverImage,
+		AddedAt:     time.Now().Format(time.RFC3339),
+	}
+
+	if err := a.library.Add(entry); err != nil {
+		return err
+	}
+
+	runtime.EventsEmit(a.ctx, "library_updated")
+	return nil
+}
+
+// GetLibrary returns all library entries
+func (a *App) GetLibrary() []persistence.LibraryEntry {
+	return a.library.GetAll()
+}
+
+// RemoveLibraryEntry removes a library entry
+func (a *App) RemoveLibraryEntry(folderPath string) error {
+	return a.library.Remove(folderPath)
 }
 
 // =============================================================================

@@ -71,6 +71,28 @@ export namespace persistence {
 	        this.lastRead = source["lastRead"];
 	    }
 	}
+	export class LibraryEntry {
+	    id: string;
+	    folderPath: string;
+	    folderName: string;
+	    totalImages: number;
+	    addedAt: string;
+	    coverImage?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new LibraryEntry(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.folderPath = source["folderPath"];
+	        this.folderName = source["folderName"];
+	        this.totalImages = source["totalImages"];
+	        this.addedAt = source["addedAt"];
+	        this.coverImage = source["coverImage"];
+	    }
+	}
 	export class Settings {
 	    language: string;
 	    theme: string;
@@ -84,6 +106,8 @@ export namespace persistence {
 	    showImageInfo: boolean;
 	    preloadImages: boolean;
 	    preloadCount: number;
+	    enableHistory: boolean;
+	    minImageSize: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new Settings(source);
@@ -103,6 +127,8 @@ export namespace persistence {
 	        this.showImageInfo = source["showImageInfo"];
 	        this.preloadImages = source["preloadImages"];
 	        this.preloadCount = source["preloadCount"];
+	        this.enableHistory = source["enableHistory"];
+	        this.minImageSize = source["minImageSize"];
 	    }
 	}
 

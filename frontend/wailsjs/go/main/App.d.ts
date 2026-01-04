@@ -3,6 +3,8 @@
 import {persistence} from '../models';
 import {main} from '../models';
 
+export function AddFolder(arg1:string):Promise<void>;
+
 export function AddHistory(arg1:persistence.HistoryEntry):Promise<void>;
 
 export function ClearHistory():Promise<void>;
@@ -19,6 +21,8 @@ export function GetImageOrder(arg1:string):Promise<Array<string>>;
 
 export function GetImages(arg1:string):Promise<Array<main.ImageInfo>>;
 
+export function GetLibrary():Promise<Array<persistence.LibraryEntry>>;
+
 export function GetOriginalOrder(arg1:string):Promise<Array<string>>;
 
 export function GetSettings():Promise<persistence.Settings>;
@@ -34,6 +38,8 @@ export function LoadImage(arg1:string):Promise<string>;
 export function PreloadThumbnails(arg1:Array<string>):Promise<void>;
 
 export function RemoveHistory(arg1:string):Promise<void>;
+
+export function RemoveLibraryEntry(arg1:string):Promise<void>;
 
 export function ResetImageOrder(arg1:string):Promise<void>;
 

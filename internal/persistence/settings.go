@@ -1,6 +1,7 @@
 package persistence
 
 import (
+	"fmt"
 	"sync"
 )
 
@@ -32,6 +33,10 @@ type Settings struct {
 	PreloadImages bool `json:"preloadImages"`
 	// Number of images to preload
 	PreloadCount int `json:"preloadCount"`
+	// Enable/Disable history tracking
+	EnableHistory bool `json:"enableHistory"`
+	// Minimum image size in KB to display
+	MinImageSize int64 `json:"minImageSize"`
 }
 
 // DefaultSettings returns the default settings
@@ -49,7 +54,11 @@ func DefaultSettings() *Settings {
 		ShowImageInfo:    false,
 		PreloadImages:    true,
 		PreloadCount:     3,
+
+		EnableHistory: true,
+		MinImageSize:  0,
 	}
+
 }
 
 // SettingsManager handles settings persistence
@@ -96,7 +105,8 @@ func (sm *SettingsManager) Load() error {
 		return saveJSON(settingsFile, sm.settings)
 	}
 
-	settings := &Settings{}
+	settings := DefaultSettings()
+
 	if err := loadJSON(settingsFile, settings); err != nil {
 		return err
 	}
@@ -161,7 +171,24 @@ func (sm *SettingsManager) Update(updates map[string]interface{}) error {
 			if v, ok := value.(float64); ok {
 				sm.settings.PreloadCount = int(v)
 			}
+		case "enableHistory":
+			if v, ok := value.(bool); ok {
+				sm.settings.EnableHistory = v
+			}
+		case "minImageSize":
+			// fmt.Printf("Updating minImageSize: %v (%T)\n", value, value)
+			if v, ok := value.(float64); ok {
+				sm.settings.MinImageSize = int64(v)
+			} else if v, ok := value.(int); ok {
+				sm.settings.MinImageSize = int64(v)
+			} else if v, ok := value.(int64); ok {
+				sm.settings.MinImageSize = v
+			} else {
+				fmt.Printf("Failed to update minImageSize: invalid type %v (%T)\n", value, value)
+			}
+
 		}
+
 	}
 
 	return saveJSON(settingsFile, sm.settings)

@@ -100,7 +100,10 @@ export function TitleBar({ title }: TitleBarProps) {
                 backgroundColor: 'var(--color-titlebar-bg)',
                 color: 'var(--color-titlebar-text)',
                 borderBottom: '1px solid var(--color-border)',
+                // @ts-ignore
+                '--wails-draggable': 'drag',
             }}
+
         >
             {/* App Logo and Title - Draggable */}
             <div className="flex items-center gap-2 flex-1 drag h-full">

@@ -87,8 +87,16 @@ export interface Settings {
     /** Preload adjacent images */
     preloadImages: boolean;
     /** Number of images to preload */
+    /** Number of images to preload */
     preloadCount: number;
+    /** Enable/Disable history tracking */
+    /** Enable/Disable history tracking */
+    enableHistory: boolean;
+    /** Minimum image size in KB */
+    minImageSize: number;
 }
+
+
 
 export const DEFAULT_SETTINGS: Settings = {
     language: 'en',
@@ -102,8 +110,14 @@ export const DEFAULT_SETTINGS: Settings = {
     sidebarCollapsed: false,
     showImageInfo: false,
     preloadImages: true,
+
     preloadCount: 3,
+
+    enableHistory: true,
+    minImageSize: 0,
 };
+
+
 
 // ============================================================================
 // Image Order Types

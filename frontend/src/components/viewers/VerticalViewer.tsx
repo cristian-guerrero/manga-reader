@@ -5,9 +5,10 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
+
 import { useViewerStore } from '../../stores/viewerStore';
 import { useSettingsStore } from '../../stores/settingsStore';
+
 
 interface VerticalViewerProps {
     images: Array<{
@@ -17,19 +18,24 @@ interface VerticalViewerProps {
     }>;
     onScrollPositionChange?: (position: number) => void;
     initialScrollPosition?: number;
+    initialIndex?: number;
 }
 
 export function VerticalViewer({
     images,
     onScrollPositionChange,
     initialScrollPosition = 0,
+    initialIndex = 0,
 }: VerticalViewerProps) {
     const parentRef = useRef<HTMLDivElement>(null);
     const [parentWidth, setParentWidth] = useState(0);
     const [loadedImages, setLoadedImages] = useState<Record<number, string>>({});
     const [imageHeights, setImageHeights] = useState<Record<number, number>>({});
-    const { verticalWidth } = useSettingsStore();
+    const { verticalWidth } = useSettingsStore(); // Removed unused setters
     const { setScrollPosition, setCurrentIndex } = useViewerStore();
+
+    // State to track if initial scroll has been applied
+    const [hasAppliedInitialScroll, setHasAppliedInitialScroll] = useState(false);
 
     // Default height for images before they're loaded
     const defaultHeight = 800;
@@ -40,7 +46,29 @@ export function VerticalViewer({
         getScrollElement: () => parentRef.current,
         estimateSize: (index) => imageHeights[index] || defaultHeight,
         overscan: 3, // Preload 3 images above and below
+        initialOffset: initialScrollPosition > 0 ? undefined : undefined, // rely on scrollToIndex
     });
+
+    // Handle initial index scroll
+    // Handle initial scroll
+    useEffect(() => {
+        if (!parentRef.current || hasAppliedInitialScroll || images.length === 0) return;
+
+        if (initialIndex >= 0) {
+            // Check if the target image is already loaded and measured
+            if (imageHeights[initialIndex]) {
+                virtualizer.scrollToIndex(initialIndex, { align: 'start' });
+                setHasAppliedInitialScroll(true);
+            } else {
+                // If not measured, do a preliminary scroll anyway
+                virtualizer.scrollToIndex(initialIndex, { align: 'start' });
+                // But don't set hasAppliedInitialScroll yet, let the loadImage re-trigger it
+            }
+        } else {
+            setHasAppliedInitialScroll(true);
+        }
+    }, [initialIndex, hasAppliedInitialScroll, images.length, imageHeights]);
+
 
     // Load image and get its dimensions
     const loadImage = useCallback(async (index: number, path: string) => {
@@ -105,13 +133,14 @@ export function VerticalViewer({
     }, [virtualizer, setScrollPosition, setCurrentIndex, onScrollPositionChange]);
 
     // Restore scroll position on mount
-    useEffect(() => {
-        if (parentRef.current && initialScrollPosition > 0) {
-            const { scrollHeight, clientHeight } = parentRef.current;
-            const scrollTop = initialScrollPosition * (scrollHeight - clientHeight);
-            parentRef.current.scrollTop = scrollTop;
-        }
-    }, [initialScrollPosition]);
+    // Legacy effect removed in favor of unified one above
+    // useEffect(() => {
+    //     if (parentRef.current && initialScrollPosition > 0) {
+    //         const { scrollHeight, clientHeight } = parentRef.current;
+    //         const scrollTop = initialScrollPosition * (scrollHeight - clientHeight);
+    //         parentRef.current.scrollTop = scrollTop;
+    //     }
+    // }, [initialScrollPosition]);
 
     // Handle resize to update measurements
     useEffect(() => {
@@ -145,11 +174,31 @@ export function VerticalViewer({
     // Calculate item width in pixels
     const itemWidth = parentWidth * (verticalWidth / 100);
 
+    // Handle wheel zoom (Pinch to zoom usually maps to Ctrl+Wheel)
+    const handleWheel = useCallback((e: React.WheelEvent) => {
+        if (e.ctrlKey) {
+            e.preventDefault();
+            // Determine direction
+            const delta = e.deltaY * -0.05;
+            const newWidth = Math.min(Math.max(verticalWidth + delta, 10), 100);
+
+            // Only update if changed significantly
+            if (Math.abs(newWidth - verticalWidth) > 0.5) {
+                // We need to access setVerticalWidth inside callback, but it comes from hook
+                // The hook value might be stale if not in dep array, but useCallback handles it.
+                // Better to use current state to avoid flickering?
+                // Actually settingsStore updates are fast.
+                useSettingsStore.getState().setVerticalWidth(Math.round(newWidth));
+            }
+        }
+    }, [verticalWidth]);
+
     return (
         <div
             ref={parentRef}
             className="h-full w-full overflow-y-auto scrollbar-hide"
             onScroll={handleScroll}
+            onWheel={handleWheel} // Add wheel handler
             style={{
                 backgroundColor: 'var(--color-surface-primary)',
                 overflowX: 'hidden'
@@ -160,7 +209,7 @@ export function VerticalViewer({
                     height: `${virtualizer.getTotalSize()}px`,
                     width: '100%',
                     position: 'relative',
-                    overflow: 'hidden', // Contain all virtual items
+                    overflow: 'hidden',
                 }}
             >
                 {virtualizer.getVirtualItems().map((virtualItem) => {
@@ -177,79 +226,49 @@ export function VerticalViewer({
                                 transform: `translateY(${virtualItem.start}px)`,
                                 width: '100%',
                                 height: `${virtualItem.size}px`,
-                                zIndex: 1, // Base index
+                                zIndex: 1,
                                 display: 'flex',
                                 justifyContent: 'center',
-                                overflow: 'hidden' // Prevent item from overflowing
+                                overflow: 'hidden'
                             }}
-                            className="hover:z-10" // Bring to front on hover/interaction
                         >
-                            <div style={{ width: `${itemWidth}px`, height: '100%' }}>
-                                <TransformWrapper
-                                    initialScale={1}
-                                    minScale={0.5}
-                                    maxScale={5}
-                                    doubleClick={{ mode: 'reset' }}
-                                    wheel={{ step: 0.1, activationKeys: ['Control', 'Meta'] }}
-                                    centerOnInit={true}
-                                    alignmentAnimation={{ sizeX: 0, sizeY: 0 }}
-                                >
-                                    <TransformComponent
-                                        wrapperStyle={{
-                                            width: '100%',
-                                            height: '100%',
-                                            overflow: 'hidden'
-                                        }}
-                                        contentStyle={{
-                                            width: '100%',
-                                            height: '100%',
-                                            display: 'flex',
-                                            justifyContent: 'center',
-                                            alignItems: 'center'
-                                        }}
-                                    >
-                                        <AnimatePresence mode="wait">
-                                            {loadedSrc ? (
-                                                <motion.img
-                                                    key={`img-${virtualItem.index}`}
-                                                    src={loadedSrc}
-                                                    alt={image.name}
-                                                    className="w-full h-auto object-contain"
-                                                    initial={{ opacity: 0 }}
-                                                    animate={{ opacity: 1 }}
-                                                    transition={{ duration: 0.3 }}
-                                                    loading="lazy"
+                            <div style={{ width: `${itemWidth}px`, height: '100%', transition: 'width 0.1s ease-out' }}>
+                                <AnimatePresence>
+                                    {loadedSrc ? (
+                                        <motion.img
+                                            key={`img-${virtualItem.index}`}
+                                            src={loadedSrc}
+                                            alt={image.name}
+                                            initial={{ opacity: 0 }}
+                                            animate={{ opacity: 1 }}
+                                            transition={{ duration: 0.2 }}
+                                            className="w-full h-auto object-contain"
+                                            loading="lazy"
+                                        />
+                                    ) : (
+                                        <div
+                                            key={`placeholder-${virtualItem.index}`}
+                                            className="w-full h-full flex items-center justify-center shimmer"
+                                            style={{
+                                                backgroundColor: 'var(--color-surface-secondary)',
+                                                minHeight: defaultHeight,
+                                            }}
+                                        >
+                                            <div className="flex flex-col items-center gap-2">
+                                                <div
+                                                    className="w-12 h-12 rounded-full"
+                                                    style={{ backgroundColor: 'var(--color-surface-tertiary)' }}
                                                 />
-                                            ) : (
-                                                <motion.div
-                                                    key={`placeholder-${virtualItem.index}`}
-                                                    className="w-full h-full flex items-center justify-center shimmer"
-                                                    style={{
-                                                        backgroundColor: 'var(--color-surface-secondary)',
-                                                        minHeight: defaultHeight,
-                                                    }}
-                                                    initial={{ opacity: 0 }}
-                                                    animate={{ opacity: 1 }}
+                                                <span
+                                                    className="text-sm"
+                                                    style={{ color: 'var(--color-text-muted)' }}
                                                 >
-                                                    <div className="flex flex-col items-center gap-2">
-                                                        <motion.div
-                                                            className="w-12 h-12 rounded-full"
-                                                            style={{ backgroundColor: 'var(--color-surface-tertiary)' }}
-                                                            animate={{ scale: [1, 1.1, 1] }}
-                                                            transition={{ duration: 1, repeat: Infinity }}
-                                                        />
-                                                        <span
-                                                            className="text-sm"
-                                                            style={{ color: 'var(--color-text-muted)' }}
-                                                        >
-                                                            Loading...
-                                                        </span>
-                                                    </div>
-                                                </motion.div>
-                                            )}
-                                        </AnimatePresence>
-                                    </TransformComponent>
-                                </TransformWrapper>
+                                                    Loading...
+                                                </span>
+                                            </div>
+                                        </div>
+                                    )}
+                                </AnimatePresence>
                             </div>
                         </div>
                     );
@@ -258,7 +277,7 @@ export function VerticalViewer({
 
             {/* Image counter */}
             <motion.div
-                className="fixed bottom-4 right-4 px-4 py-2 rounded-full text-sm font-medium"
+                className="fixed bottom-4 right-4 px-4 py-2 rounded-full text-sm font-medium z-50 pointer-events-none"
                 style={{
                     backgroundColor: 'var(--color-surface-overlay)',
                     color: 'var(--color-text-primary)',
@@ -273,5 +292,6 @@ export function VerticalViewer({
         </div >
     );
 }
+
 
 export default VerticalViewer;

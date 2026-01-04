@@ -21,6 +21,9 @@ interface SettingsState extends Settings {
     setShowImageInfo: (show: boolean) => void;
     setPreloadImages: (preload: boolean) => void;
     setPreloadCount: (count: number) => void;
+    setEnableHistory: (enable: boolean) => void;
+    setMinImageSize: (kb: number) => void;
+
 
     // Persistence
     loadSettings: () => Promise<void>;
@@ -101,16 +104,29 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         get().saveSettings();
     },
 
+    setEnableHistory: (enableHistory) => {
+        set({ enableHistory });
+        get().saveSettings();
+    },
+
+    setMinImageSize: (minImageSize) => {
+        set({ minImageSize });
+        get().saveSettings();
+    },
+
+
     // Persistence - Will be connected to Go backend
     loadSettings: async () => {
         try {
-            // TODO: Load from Go backend
-            // const settings = await GetSettings();
-            // set(settings);
+            // @ts-ignore
+            const settings = await window.go?.main?.App?.GetSettings();
+            if (settings) {
+                set(settings);
 
-            // For now, apply default theme
-            const theme = getThemeById(get().theme) || darkTheme;
-            applyTheme(theme);
+                // Apply theme
+                const theme = getThemeById(settings.theme) || darkTheme;
+                applyTheme(theme);
+            }
         } catch (error) {
             console.error('Failed to load settings:', error);
         }
@@ -118,14 +134,22 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
 
     saveSettings: async () => {
         try {
-            // TODO: Save to Go backend
-            // const state = get();
-            // await SaveSettings(state);
-            console.log('Settings saved:', get());
+            const state = get();
+            // Create a clean object with only settings properties to avoid sending store functions
+            const filteredSettings: any = {};
+            const keys = Object.keys(DEFAULT_SETTINGS);
+
+            // @ts-ignore
+            keys.forEach(key => filteredSettings[key] = state[key]);
+
+            // @ts-ignore
+            await window.go?.main?.App?.SaveSettings(filteredSettings);
+            // console.log('Settings saved');
         } catch (error) {
             console.error('Failed to save settings:', error);
         }
     },
+
 
     resetSettings: () => {
         set(DEFAULT_SETTINGS);

@@ -6,6 +6,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { useNavigationStore } from '../../stores/navigationStore';
+import { EventsOn, EventsOff } from '../../../wailsjs/runtime';
 
 // Icons
 const FolderIcon = () => (
@@ -50,18 +51,32 @@ export function FoldersPage() {
     const [isLoading, setIsLoading] = useState(false);
     const [thumbnails, setThumbnails] = useState<Record<string, string>>({});
 
-    // Load folders from settings/history
+    // Load folders from settings/library
     useEffect(() => {
         loadFolders();
+
+        // Listen for updates (e.g. from drag and drop)
+        const cleanup = EventsOn('library_updated', () => {
+            loadFolders();
+        });
+
+        return () => {
+            // We need to unregister specifically, but Wails JS EventsOff creates a new listener if not passed specific ref?
+            // Actually EventsOn returns a cleanup function in some versions, but looking at runtime.js providing wrapper...
+            // runtime.js: export function EventsOn(...) { return window.runtime.EventsOnMultiple(...) }
+            // It returns the callback usually.
+            // Safe way:
+            EventsOff('library_updated');
+        };
     }, []);
 
     const loadFolders = async () => {
         setIsLoading(true);
         try {
             // @ts-ignore - Wails generated bindings
-            const history = await window.go?.main?.App?.GetHistory();
-            if (history && Array.isArray(history)) {
-                const folderData = history.map((entry: any) => ({
+            const library = await window.go?.main?.App?.GetLibrary();
+            if (library && Array.isArray(library)) {
+                const folderData = library.map((entry: any) => ({
                     path: entry.folderPath,
                     name: entry.folderName,
                     imageCount: entry.totalImages,
@@ -70,7 +85,7 @@ export function FoldersPage() {
                 setFolders(folderData);
 
                 // Load thumbnails for cover images
-                for (const entry of history) {
+                for (const entry of library) {
                     if (entry.folderPath) {
                         loadFolderThumbnail(entry.folderPath);
                     }
@@ -104,12 +119,19 @@ export function FoldersPage() {
             // @ts-ignore - Wails generated bindings
             const folderPath = await window.go?.main?.App?.SelectFolder();
             if (folderPath) {
+                try {
+                    // @ts-ignore
+                    await window.go?.main?.App?.AddFolder(folderPath);
+                } catch (e) {
+                    console.error("Failed to add to library", e);
+                }
                 navigate('viewer', { folder: folderPath });
             }
         } catch (error) {
             console.error('Failed to select folder:', error);
         }
     };
+
 
     const handleOpenFolder = (folder: FolderData) => {
         navigate('viewer', { folder: folder.path });
@@ -119,7 +141,7 @@ export function FoldersPage() {
         e.stopPropagation();
         try {
             // @ts-ignore - Wails generated bindings
-            await window.go?.main?.App?.RemoveHistory(folder.path);
+            await window.go?.main?.App?.RemoveLibraryEntry(folder.path);
             setFolders((prev) => prev.filter((f) => f.path !== folder.path));
         } catch (error) {
             console.error('Failed to remove folder:', error);

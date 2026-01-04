@@ -150,7 +150,7 @@ export function LateralViewer({
                 className="flex-1 h-full flex items-center justify-center cursor-pointer"
                 onClick={handleClick}
             >
-                <AnimatePresence mode="wait" custom={direction}>
+                <AnimatePresence custom={direction}>
                     <motion.div
                         key={currentIndex}
                         custom={direction}

@@ -32,3 +32,14 @@ Caracteristicas adicionales:
 
 - la estructura del proyecto debe quedar con buenas practivas de programacion
 -documentacion clara de desarrollo y build y documentacion de uso de la app 
+-------------------------------------------------------------------------------
+Caracteristicas adicionales 2:
+- permitir drag and drop en la app para agregar carpetas
+- tener la opcion de activar o desactivar el hisotiria
+- separar el historial de la lista de carpetas (si se elimina algo de la lista historia, la carpeta no se va)
+-si existen imagenes pequenas en la carpeta, tener un slider de configuracion (para ya sea por tamaño en kb o en pixeles poder filtrar las imagenes)
+- que el zoom en vertical se pueda hacer con pitch to zoom (ademas del slider)
+- que el home que tenemos ahora no esta hacienod nada, sea el visor, o sea que pueda
+     ir por a otra vista, pero continuar viendo en el home lo que se estaba viendo o se 
+    seleccione nuevo en la lista de carpetas o historial
+- 

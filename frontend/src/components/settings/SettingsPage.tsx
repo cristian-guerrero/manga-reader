@@ -30,8 +30,14 @@ export function SettingsPage() {
         setPreloadCount,
         showImageInfo,
         setShowImageInfo,
+        enableHistory,
+        setEnableHistory,
+        minImageSize,
+        setMinImageSize, // Not destructured before? Check if store update worked. Yes it will.
         resetSettings,
+
     } = useSettingsStore();
+
 
     const handleLanguageChange = (newLang: string) => {
         setLanguage(newLang);
@@ -260,6 +266,38 @@ export function SettingsPage() {
                             onChange={setShowImageInfo}
                         />
                     </SettingRow>
+
+                    <SettingRow label={t('settings.enableHistory')}>
+                        <Toggle
+                            checked={enableHistory}
+                            onChange={setEnableHistory}
+                        />
+                    </SettingRow>
+
+                    <SettingRow
+                        label={t('settings.minImageSize')}
+                        description={t('settings.minImageSizeDesc')}
+                    >
+                        <div className="flex items-center gap-4">
+                            <input
+                                type="range"
+                                min="0"
+                                max="500"
+                                step="10"
+                                value={minImageSize}
+                                onChange={(e) => setMinImageSize(Number(e.target.value))}
+                                className="flex-1 max-w-32"
+                            />
+                            <span
+                                className="text-sm font-medium w-16 text-right"
+                                style={{ color: 'var(--color-text-secondary)' }}
+                            >
+                                {minImageSize > 0 ? `${minImageSize} KB` : t('common.off')}
+                            </span>
+                        </div>
+                    </SettingRow>
+
+
                 </motion.section>
 
                 {/* Reset */}
