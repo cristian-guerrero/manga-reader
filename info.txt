@@ -43,3 +43,8 @@ Caracteristicas adicionales 2:
      ir por a otra vista, pero continuar viendo en el home lo que se estaba viendo o se 
     seleccione nuevo en la lista de carpetas o historial
 - 
+
+
+
+dependecias para linux:   - libgtk-3: sudo apt install libgtk-3-dev
+  - libwebkit: sudo apt install libwebkit2gtk-4.1-dev
