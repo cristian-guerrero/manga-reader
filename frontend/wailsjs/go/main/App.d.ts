@@ -61,6 +61,8 @@ export function SaveImageOrder(arg1:string,arg2:Array<string>,arg3:Array<string>
 
 export function SaveSettings(arg1:persistence.Settings):Promise<void>;
 
+export function SaveWindowState():Promise<void>;
+
 export function SelectFolder():Promise<string>;
 
 export function UpdateSettings(arg1:Record<string, any>):Promise<void>;

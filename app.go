@@ -54,6 +54,13 @@ func NewApp() *App {
 // startup is called when the app starts
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+
+	// Restore window position if saved
+	settings := a.settings.Get()
+	if settings.WindowX != -1 && settings.WindowY != -1 {
+		fmt.Printf("[App] Restoring window position: (%v, %v)\n", settings.WindowX, settings.WindowY)
+		runtime.WindowSetPosition(ctx, settings.WindowX, settings.WindowY)
+	}
 }
 
 // domReady is called after the frontend dom has been loaded
@@ -63,11 +70,11 @@ func (a *App) domReady(ctx context.Context) {
 
 // shutdown is called when the app is closing
 func (a *App) shutdown(ctx context.Context) {
-	a.saveWindowState()
+	a.SaveWindowState()
 }
 
-// saveWindowState captures and saves the current window dimensions and position
-func (a *App) saveWindowState() {
+// SaveWindowState captures and saves the current window dimensions and position
+func (a *App) SaveWindowState() {
 	if a.ctx == nil {
 		return
 	}

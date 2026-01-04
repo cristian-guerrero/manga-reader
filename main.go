@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"embed"
 
 	"github.com/wailsapp/wails/v2"
@@ -59,20 +60,16 @@ func main() {
 			WebviewBrowserPath:                "",
 			Theme:                             windows.Dark,
 		},
-		OnStartup:  app.startup,
-		OnDomReady: app.domReady,
-		OnShutdown: app.shutdown,
+		OnStartup:     app.startup,
+		OnDomReady:    app.domReady,
+		OnShutdown:    app.shutdown,
+		OnBeforeClose: func(ctx context.Context) bool { app.SaveWindowState(); return false },
 		DragAndDrop: &options.DragAndDrop{
 			EnableFileDrop: true,
 		},
 		Bind: []interface{}{
 			app,
 		},
-	}
-
-	if settings.WindowX != -1 && settings.WindowY != -1 {
-		opts.X = settings.WindowX
-		opts.Y = settings.WindowY
 	}
 
 	err := wails.Run(opts)

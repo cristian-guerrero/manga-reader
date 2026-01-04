@@ -118,6 +118,10 @@ export function SaveSettings(arg1) {
   return window['go']['main']['App']['SaveSettings'](arg1);
 }
 
+export function SaveWindowState() {
+  return window['go']['main']['App']['SaveWindowState']();
+}
+
 export function SelectFolder() {
   return window['go']['main']['App']['SelectFolder']();
 }
