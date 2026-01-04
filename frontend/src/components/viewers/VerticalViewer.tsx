@@ -196,7 +196,7 @@ export function VerticalViewer({
     return (
         <div
             ref={parentRef}
-            className="h-full w-full overflow-y-auto scrollbar-hide"
+            className="h-full w-full overflow-y-auto"
             onScroll={handleScroll}
             onWheel={handleWheel} // Add wheel handler
             style={{
