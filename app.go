@@ -340,6 +340,12 @@ func (a *App) GetSubfolders(folderPath string) ([]FolderInfo, error) {
 	}
 
 	for _, entry := range entries {
+		// Ensure it's a directory
+		stat, err := os.Stat(entry)
+		if err != nil || !stat.IsDir() {
+			continue
+		}
+
 		info, err := a.GetFolderInfo(entry)
 		if err != nil {
 			continue
