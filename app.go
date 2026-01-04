@@ -286,12 +286,9 @@ func (a *App) GetImages(path string) ([]ImageInfo, error) {
 	if settings.MinImageSize > 0 {
 		var filtered []fileloader.ImageInfo
 		minBytes := settings.MinImageSize * 1024 // KB to Bytes
-		fmt.Printf("Filtering images: MinSize=%d KB (%d bytes)\n", settings.MinImageSize, minBytes)
 		for _, img := range images {
 			if img.Size >= minBytes {
 				filtered = append(filtered, img)
-			} else {
-				fmt.Printf("Skipping image %s: %d bytes\n", img.Name, img.Size)
 			}
 		}
 

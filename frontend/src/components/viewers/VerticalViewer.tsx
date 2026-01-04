@@ -98,38 +98,60 @@ export function VerticalViewer({
         }
     }, [loadedImages, verticalWidth]);
 
-    // Load visible images
+    // Load visible images - use a ref to track requested images
+    const loadRequestedRef = useRef<Set<number>>(new Set());
+    const lastVirtualItemsRef = useRef<string>('');
+
     useEffect(() => {
         const items = virtualizer.getVirtualItems();
+        // Create a signature of current visible items to avoid unnecessary work
+        const signature = items.map(i => i.index).join(',');
+        if (signature === lastVirtualItemsRef.current) return;
+        lastVirtualItemsRef.current = signature;
+
         items.forEach((item) => {
             const image = images[item.index];
-            if (image && !loadedImages[item.index]) {
+            // Only load if not already loaded AND not already requested
+            if (image && !loadedImages[item.index] && !loadRequestedRef.current.has(item.index)) {
+                loadRequestedRef.current.add(item.index);
                 loadImage(item.index, image.path);
             }
         });
-    }, [virtualizer.getVirtualItems(), images, loadImage, loadedImages]);
+    }, [virtualizer, images, loadedImages, loadImage]);
 
-    // Handle scroll position tracking
+    // Handle scroll position tracking with throttle
+    const scrollThrottleRef = useRef<number | null>(null);
     const handleScroll = useCallback(() => {
         if (!parentRef.current) return;
 
-        const { scrollTop, scrollHeight, clientHeight } = parentRef.current;
-        const position = scrollTop / (scrollHeight - clientHeight);
-
-        setScrollPosition(position);
-        onScrollPositionChange?.(position);
-
-        // Update current index based on scroll position
-        const items = virtualizer.getVirtualItems();
-        if (items.length > 0) {
-            const middleY = scrollTop + clientHeight / 2;
-            const currentItem = items.find(
-                (item) => item.start <= middleY && item.end >= middleY
-            );
-            if (currentItem) {
-                setCurrentIndex(currentItem.index);
+        // Throttle to once every 100ms for better performance
+        if (scrollThrottleRef.current) return;
+        scrollThrottleRef.current = window.requestAnimationFrame(() => {
+            if (!parentRef.current) {
+                scrollThrottleRef.current = null;
+                return;
             }
-        }
+
+            const { scrollTop, scrollHeight, clientHeight } = parentRef.current;
+            const position = scrollTop / (scrollHeight - clientHeight);
+
+            setScrollPosition(position);
+            onScrollPositionChange?.(position);
+
+            // Update current index based on scroll position
+            const items = virtualizer.getVirtualItems();
+            if (items.length > 0) {
+                const middleY = scrollTop + clientHeight / 2;
+                const currentItem = items.find(
+                    (item) => item.start <= middleY && item.end >= middleY
+                );
+                if (currentItem) {
+                    setCurrentIndex(currentItem.index);
+                }
+            }
+
+            scrollThrottleRef.current = null;
+        });
     }, [virtualizer, setScrollPosition, setCurrentIndex, onScrollPositionChange]);
 
     // Restore scroll position on mount

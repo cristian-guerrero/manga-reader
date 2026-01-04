@@ -104,24 +104,10 @@ function LoadingScreen() {
 function PageRouter() {
     const { currentPage, params } = useNavigationStore();
 
-    // Page transition animation
-    const pageTransition = {
-        initial: { opacity: 0, y: 10 },
-        animate: { opacity: 1, y: 0 },
-        exit: { opacity: 0, y: -10 },
-        transition: { duration: 0.2, ease: 'easeOut' },
-    };
-
     return (
-        <AnimatePresence mode="wait">
-            <motion.div
-                key={currentPage}
-                {...pageTransition}
-                className="h-full w-full"
-            >
-                {renderPage(currentPage, params)}
-            </motion.div>
-        </AnimatePresence>
+        <div className="h-full w-full">
+            {renderPage(currentPage, params)}
+        </div>
     );
 }
 
@@ -156,14 +142,13 @@ function App() {
     // Initialize panic mode hook
     usePanicMode();
 
-    // Check window maximization state
-    const checkMaximized = useCallback(async () => {
-        try {
-            const maximized = await window.go?.main?.App?.WindowIsMaximised?.();
-            setIsMaximized(!!maximized);
-        } catch {
-            // Ignore errors
-        }
+    // Check window maximization state - use local detection instead of backend call
+    const checkMaximized = useCallback(() => {
+        // Consider maximized if window fills ~95% of screen
+        const isFullScreen =
+            window.outerWidth >= window.screen.availWidth * 0.95 &&
+            window.outerHeight >= window.screen.availHeight * 0.95;
+        setIsMaximized(isFullScreen);
     }, []);
 
     // Load settings on mount and set up window resize listener
@@ -171,10 +156,18 @@ function App() {
         loadSettings();
         checkMaximized();
 
-        // Check on resize
-        const handleResize = () => checkMaximized();
+        // Debounced resize handler to avoid excessive backend calls
+        let resizeTimeout: ReturnType<typeof setTimeout> | null = null;
+        const handleResize = () => {
+            if (resizeTimeout) clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(checkMaximized, 200);
+        };
+
         window.addEventListener('resize', handleResize);
-        return () => window.removeEventListener('resize', handleResize);
+        return () => {
+            window.removeEventListener('resize', handleResize);
+            if (resizeTimeout) clearTimeout(resizeTimeout);
+        };
     }, [loadSettings, checkMaximized]);
 
     // Apply rounded corners when not maximized
