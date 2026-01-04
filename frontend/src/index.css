@@ -39,7 +39,7 @@
   --color-surface-overlay: rgba(10, 10, 15, 0.95);
 
   /* Title bar */
-  --color-titlebar-bg: #0a0a0f;
+  --color-titlebar-bg: #12121a;
   --color-titlebar-text: #e5e7eb;
 
   /* Text colors */
@@ -84,6 +84,8 @@
   --radius-md: 10px;
   --radius-lg: 16px;
   --radius-xl: 24px;
+  --radius-2xl: 32px;
+  --radius-3xl: 40px;
 }
 
 /* Light Theme */

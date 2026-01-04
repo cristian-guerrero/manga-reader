@@ -58,7 +58,7 @@ export const darkTheme: Theme = {
         surfaceElevated: '#222233',
         surfaceOverlay: 'rgba(10, 10, 15, 0.95)',
 
-        titlebarBg: '#0a0a0f',
+        titlebarBg: '#12121a',
         titlebarText: '#e5e7eb',
 
         textPrimary: '#f9fafb',
@@ -116,7 +116,7 @@ export const midnightTheme: Theme = {
         surfaceElevated: '#293548',
         surfaceOverlay: 'rgba(12, 18, 34, 0.95)',
 
-        titlebarBg: '#0c1222',
+        titlebarBg: '#111827',
         titlebarText: '#e2e8f0',
 
         textPrimary: '#f1f5f9',
@@ -174,7 +174,7 @@ export const amoldedTheme: Theme = {
         surfaceElevated: '#1a1a1a',
         surfaceOverlay: 'rgba(0, 0, 0, 0.98)',
 
-        titlebarBg: '#000000',
+        titlebarBg: '#0a0a0a',
         titlebarText: '#e5e5e5',
 
         textPrimary: '#fafafa',

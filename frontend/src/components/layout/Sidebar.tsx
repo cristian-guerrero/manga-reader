@@ -94,8 +94,7 @@ export function Sidebar() {
             variants={sidebarVariants}
             className="flex flex-col h-full theme-transition"
             style={{
-                backgroundColor: 'var(--color-surface-secondary)',
-                borderRight: '1px solid var(--color-border)',
+                backgroundColor: 'transparent',
             }}
         >
             {/* Navigation Items */}

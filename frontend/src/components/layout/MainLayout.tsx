@@ -112,7 +112,7 @@ export function MainLayout({ children }: MainLayoutProps) {
     return (
         <div
             className="flex flex-col h-screen w-screen overflow-hidden theme-transition"
-            style={{ backgroundColor: 'var(--color-surface-primary)' }}
+            style={{ backgroundColor: 'var(--color-surface-secondary)' }}
         >
             {/* Title Bar */}
             <TitleBar />
@@ -122,8 +122,14 @@ export function MainLayout({ children }: MainLayoutProps) {
                 {/* Sidebar */}
                 <Sidebar />
 
-                {/* Content */}
-                <main className="flex-1 overflow-hidden relative">
+                {/* Content Area with Rounded Corner */}
+                <main
+                    className="flex-1 overflow-hidden relative theme-transition mr-3 mb-3 rounded-tl-[40px] shadow-2xl border"
+                    style={{
+                        backgroundColor: 'var(--color-surface-primary)',
+                        borderColor: 'var(--color-border)'
+                    }}
+                >
                     {/* Panic Mode Overlay */}
                     <AnimatePresence>
                         {isPanicMode && (
@@ -131,7 +137,7 @@ export function MainLayout({ children }: MainLayoutProps) {
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
                                 exit={{ opacity: 0 }}
-                                className="absolute inset-0 z-50"
+                                className="absolute inset-0 z-50 rounded-tl-[40px]"
                                 style={{ backgroundColor: 'var(--color-surface-primary)' }}
                             />
                         )}
