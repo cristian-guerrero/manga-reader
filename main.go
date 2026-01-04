@@ -16,13 +16,30 @@ func main() {
 	// Create an instance of the app structure
 	app := NewApp()
 
+	// Load settings to get window dimensions
+	settings := app.GetSettings()
+	width := settings.WindowWidth
+	height := settings.WindowHeight
+	if width < 800 {
+		width = 1280
+	}
+	if height < 600 {
+		height = 800
+	}
+
+	windowState := options.Normal
+	if settings.WindowMaximized {
+		windowState = options.Maximised
+	}
+
 	// Create application with options
-	err := wails.Run(&options.App{
-		Title:     "Manga Visor",
-		Width:     1280,
-		Height:    800,
-		MinWidth:  800,
-		MinHeight: 600,
+	opts := &options.App{
+		Title:             "Manga Visor",
+		Width:             width,
+		Height:            height,
+		MinWidth:          800,
+		MinHeight:         600,
+		WindowStartState:  windowState,
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 		},
@@ -30,7 +47,7 @@ func main() {
 		BackgroundColour: &options.RGBA{R: 10, G: 10, B: 15, A: 255},
 		// Frameless window for custom title bar
 		Frameless: true,
-		// Start centered
+		// Start hidden if we need to position it manually or just show
 		StartHidden: false,
 		// Windows specific options
 		Windows: &windows.Options{
@@ -51,7 +68,14 @@ func main() {
 		Bind: []interface{}{
 			app,
 		},
-	})
+	}
+
+	if settings.WindowX != -1 && settings.WindowY != -1 {
+		opts.X = settings.WindowX
+		opts.Y = settings.WindowY
+	}
+
+	err := wails.Run(opts)
 
 	if err != nil {
 		println("Error:", err.Error())

@@ -63,7 +63,29 @@ func (a *App) domReady(ctx context.Context) {
 
 // shutdown is called when the app is closing
 func (a *App) shutdown(ctx context.Context) {
-	// Cleanup code here
+	a.saveWindowState()
+}
+
+// saveWindowState captures and saves the current window dimensions and position
+func (a *App) saveWindowState() {
+	if a.ctx == nil {
+		return
+	}
+
+	isMaximized := runtime.WindowIsMaximised(a.ctx)
+	x, y := runtime.WindowGetPosition(a.ctx)
+	w, h := runtime.WindowGetSize(a.ctx)
+
+	updates := map[string]interface{}{
+		"windowWidth":     w,
+		"windowHeight":    h,
+		"windowX":         x,
+		"windowY":         y,
+		"windowMaximized": isMaximized,
+	}
+
+	fmt.Printf("[App] Saving window state: %vx%v at (%v,%v), maximized: %v\n", w, h, x, y, isMaximized)
+	a.settings.Update(updates)
 }
 
 // =============================================================================

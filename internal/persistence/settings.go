@@ -39,6 +39,12 @@ type Settings struct {
 	MinImageSize int64 `json:"minImageSize"`
 	// Process dropped folders (add to library and save history)
 	ProcessDroppedFolders bool `json:"processDroppedFolders"`
+	// Window dimensions
+	WindowWidth     int  `json:"windowWidth"`
+	WindowHeight    int  `json:"windowHeight"`
+	WindowX         int  `json:"windowX"`
+	WindowY         int  `json:"windowY"`
+	WindowMaximized bool `json:"windowMaximized"`
 }
 
 // DefaultSettings returns the default settings
@@ -60,6 +66,11 @@ func DefaultSettings() *Settings {
 		EnableHistory:         true,
 		MinImageSize:          0,
 		ProcessDroppedFolders: true,
+		WindowWidth:           1280,
+		WindowHeight:          800,
+		WindowX:               -1, // -1 means center
+		WindowY:               -1,
+		WindowMaximized:       false,
 	}
 }
 
@@ -192,6 +203,26 @@ func (sm *SettingsManager) Update(updates map[string]interface{}) error {
 		case "processDroppedFolders":
 			if v, ok := value.(bool); ok {
 				sm.settings.ProcessDroppedFolders = v
+			}
+		case "windowWidth":
+			if v, ok := value.(float64); ok {
+				sm.settings.WindowWidth = int(v)
+			}
+		case "windowHeight":
+			if v, ok := value.(float64); ok {
+				sm.settings.WindowHeight = int(v)
+			}
+		case "windowX":
+			if v, ok := value.(float64); ok {
+				sm.settings.WindowX = int(v)
+			}
+		case "windowY":
+			if v, ok := value.(float64); ok {
+				sm.settings.WindowY = int(v)
+			}
+		case "windowMaximized":
+			if v, ok := value.(bool); ok {
+				sm.settings.WindowMaximized = v
 			}
 		}
 

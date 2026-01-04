@@ -183,6 +183,11 @@ export namespace persistence {
 	    enableHistory: boolean;
 	    minImageSize: number;
 	    processDroppedFolders: boolean;
+	    windowWidth: number;
+	    windowHeight: number;
+	    windowX: number;
+	    windowY: number;
+	    windowMaximized: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new Settings(source);
@@ -205,6 +210,11 @@ export namespace persistence {
 	        this.enableHistory = source["enableHistory"];
 	        this.minImageSize = source["minImageSize"];
 	        this.processDroppedFolders = source["processDroppedFolders"];
+	        this.windowWidth = source["windowWidth"];
+	        this.windowHeight = source["windowHeight"];
+	        this.windowX = source["windowX"];
+	        this.windowY = source["windowY"];
+	        this.windowMaximized = source["windowMaximized"];
 	    }
 	}
 
