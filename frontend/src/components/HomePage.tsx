@@ -33,39 +33,50 @@ const ArrowRightIcon = () => (
 export function HomePage() {
     const { t } = useTranslation();
     const { navigate } = useNavigationStore();
-    const [lastHistory, setLastHistory] = useState<any>(null);
-    const [thumbnail, setThumbnail] = useState<string | null>(null);
+    const [historyEntries, setHistoryEntries] = useState<any[]>([]);
+    const [thumbnails, setThumbnails] = useState<Record<string, string>>({});
+    const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        loadLastHistory();
+        loadRecentHistory();
     }, []);
 
-    const loadLastHistory = async () => {
+    const loadRecentHistory = async () => {
+        setIsLoading(true);
         try {
             // @ts-ignore
             const entries = await window.go?.main?.App?.GetHistory();
             if (entries && Array.isArray(entries) && entries.length > 0) {
-                const last = entries[0]; // Assuming sorted by last read
-                setLastHistory(last);
+                // Show up to 4 recent items
+                const recent = entries.slice(0, 4);
+                setHistoryEntries(recent);
 
-                // Load thumbnail
-                // @ts-ignore
-                const images = await window.go?.main?.App?.GetImages(last.folderPath);
-                if (images && images.length > last.lastImageIndex) {
-                    // @ts-ignore
-                    const thumb = await window.go?.main?.App?.GetThumbnail(images[last.lastImageIndex].path);
-                    setThumbnail(thumb);
-                }
+                // Load thumbnails in parallel
+                recent.forEach(async (entry) => {
+                    try {
+                        // @ts-ignore
+                        const images = await window.go?.main?.App?.GetImages(entry.folderPath);
+                        if (images && images.length > entry.lastImageIndex) {
+                            // @ts-ignore
+                            const thumb = await window.go?.main?.App?.GetThumbnail(images[entry.lastImageIndex].path);
+                            if (thumb) {
+                                setThumbnails(prev => ({ ...prev, [entry.id]: thumb }));
+                            }
+                        }
+                    } catch (err) {
+                        console.error('Failed to load thumbnail for', entry.folderName, err);
+                    }
+                });
             }
         } catch (error) {
             console.error('Failed to load history', error);
+        } finally {
+            setIsLoading(false);
         }
     };
 
-    const handleContinue = () => {
-        if (lastHistory) {
-            navigate('viewer', { folder: lastHistory.folderPath });
-        }
+    const handleContinue = (path: string) => {
+        navigate('viewer', { folder: path });
     };
 
     const handleSelectFolder = async () => {
@@ -95,87 +106,145 @@ export function HomePage() {
 
     return (
         <motion.div
-            className="flex flex-col items-center justify-center min-h-full px-8 py-12"
+            className="flex flex-col items-center min-h-full px-8 py-12"
             variants={containerVariants}
             initial="hidden"
             animate="visible"
         >
-            {lastHistory ? (
-                // Continue Reading View
-                <motion.div variants={itemVariants} className="w-full max-w-4xl flex flex-col md:flex-row gap-8 items-center bg-surface-secondary p-8 rounded-2xl border border-white/5 shadow-2xl">
-                    {/* Thumbnail / Cover */}
-                    <motion.div
-                        className="w-48 h-72 rounded-lg overflow-hidden shadow-lg flex-shrink-0 bg-surface-tertiary relative group cursor-pointer"
-                        onClick={handleContinue}
-                        whileHover={{ scale: 1.02 }}
-                    >
-                        {thumbnail ? (
-                            <img src={thumbnail} alt="Cover" className="w-full h-full object-cover" />
-                        ) : (
-                            <div className="w-full h-full flex items-center justify-center text-text-muted">
-                                <BookOpenIcon />
+            {historyEntries.length > 0 ? (
+                <div className="w-full max-w-6xl space-y-12">
+                    {/* Featured Recent Item (The very last one read) */}
+                    <motion.div variants={itemVariants} className="w-full flex flex-col md:flex-row gap-8 items-center bg-surface-secondary p-8 rounded-2xl border border-white/5 shadow-2xl relative overflow-hidden">
+                        {/* Background Glow */}
+                        <div className="absolute -top-24 -right-24 w-64 h-64 bg-accent/10 blur-3xl rounded-full pointer-events-none" />
+
+                        {/* Thumbnail / Cover */}
+                        <motion.div
+                            className="w-48 h-72 rounded-lg overflow-hidden shadow-lg flex-shrink-0 bg-surface-tertiary relative group cursor-pointer border border-white/5"
+                            onClick={() => handleContinue(historyEntries[0].folderPath)}
+                            whileHover={{ scale: 1.02 }}
+                        >
+                            {thumbnails[historyEntries[0].id] ? (
+                                <img src={thumbnails[historyEntries[0].id]} alt="Cover" className="w-full h-full object-cover" />
+                            ) : (
+                                <div className="w-full h-full flex items-center justify-center text-text-muted">
+                                    <BookOpenIcon />
+                                </div>
+                            )}
+                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                <div className="bg-accent text-white p-3 rounded-full shadow-lg transform scale-90 group-hover:scale-100 transition-transform">
+                                    <BookOpenIcon />
+                                </div>
                             </div>
-                        )}
-                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                            <div className="bg-accent text-white p-3 rounded-full shadow-lg transform scale-90 group-hover:scale-100 transition-transform">
-                                <BookOpenIcon />
+                        </motion.div>
+
+                        {/* Info */}
+                        <div className="flex-1 flex flex-col items-start text-left">
+                            <motion.div
+                                initial={{ opacity: 0, x: -20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                className="bg-accent/10 text-accent px-3 py-1 rounded-full text-xs font-semibold mb-3 tracking-wider"
+                            >
+                                CONTINUE READING
+                            </motion.div>
+
+                            <h1 className="text-3xl font-bold text-text-primary mb-2 line-clamp-2">
+                                {historyEntries[0].folderName}
+                            </h1>
+
+                            <p className="text-text-secondary mb-6 line-clamp-1 opacity-60 text-sm">
+                                {historyEntries[0].folderPath}
+                            </p>
+
+                            <div className="w-full bg-surface-tertiary h-2 rounded-full mb-2 overflow-hidden">
+                                <motion.div
+                                    className="h-full bg-accent"
+                                    initial={{ width: 0 }}
+                                    animate={{ width: `${Math.round(((historyEntries[0].lastImageIndex + 1) / historyEntries[0].totalImages) * 100)}%` }}
+                                    transition={{ duration: 1, delay: 0.5 }}
+                                />
+                            </div>
+                            <div className="flex justify-between w-full text-sm text-text-muted mb-8">
+                                <span>Page {historyEntries[0].lastImageIndex + 1} of {historyEntries[0].totalImages}</span>
+                                <span>{Math.round(((historyEntries[0].lastImageIndex + 1) / historyEntries[0].totalImages) * 100)}% Complete</span>
+                            </div>
+
+                            <div className="flex gap-4 w-full">
+                                <motion.button
+                                    onClick={() => handleContinue(historyEntries[0].folderPath)}
+                                    className="flex-1 btn-primary py-3 text-lg shadow-lg shadow-accent/20"
+                                    whileHover={{ scale: 1.02 }}
+                                    whileTap={{ scale: 0.98 }}
+                                >
+                                    Continue Reading
+                                </motion.button>
                             </div>
                         </div>
                     </motion.div>
 
-                    {/* Info */}
-                    <div className="flex-1 flex flex-col items-start text-left">
-                        <motion.div
-                            initial={{ opacity: 0, x: -20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            className="bg-accent/10 text-accent px-3 py-1 rounded-full text-xs font-semibold mb-3"
-                        >
-                            CONTINUE READING
-                        </motion.div>
+                    {/* Other Recent Items Grid */}
+                    {historyEntries.length > 1 && (
+                        <div className="space-y-6">
+                            <h2 className="text-xl font-bold text-text-primary flex items-center gap-2">
+                                <span className="w-1 h-6 bg-accent rounded-full" />
+                                Recent History
+                            </h2>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                                {historyEntries.slice(1).map((entry) => (
+                                    <motion.div
+                                        key={entry.id}
+                                        variants={itemVariants}
+                                        className="bg-surface-secondary rounded-xl overflow-hidden border border-white/5 hover:border-accent/30 transition-all group flex flex-col"
+                                        whileHover={{ y: -4 }}
+                                        onClick={() => handleContinue(entry.folderPath)}
+                                    >
+                                        <div className="aspect-[3/4] relative overflow-hidden bg-surface-tertiary">
+                                            {thumbnails[entry.id] ? (
+                                                <img src={thumbnails[entry.id]} alt={entry.folderName} className="w-full h-full object-cover transition-transform group-hover:scale-105" />
+                                            ) : (
+                                                <div className="w-full h-full flex items-center justify-center text-text-muted">
+                                                    <BookOpenIcon />
+                                                </div>
+                                            )}
+                                            <div className="absolute bottom-0 left-0 right-0 h-1 bg-surface-tertiary">
+                                                <div
+                                                    className="h-full bg-accent"
+                                                    style={{ width: `${Math.round(((entry.lastImageIndex + 1) / entry.totalImages) * 100)}%` }}
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="p-4 flex-1 flex flex-col justify-between">
+                                            <div>
+                                                <h3 className="font-bold text-text-primary line-clamp-1 mb-1 group-hover:text-accent transition-colors">
+                                                    {entry.folderName}
+                                                </h3>
+                                                <p className="text-xs text-text-muted line-clamp-1 opacity-80">
+                                                    {entry.folderPath}
+                                                </p>
+                                            </div>
+                                            <div className="mt-4 text-xs font-semibold text-accent uppercase tracking-tighter">
+                                                Page {entry.lastImageIndex + 1} of {entry.totalImages}
+                                            </div>
+                                        </div>
+                                    </motion.div>
+                                ))}
 
-                        <h1 className="text-3xl font-bold text-text-primary mb-2 line-clamp-2">
-                            {lastHistory.folderName}
-                        </h1>
-
-                        <p className="text-text-secondary mb-6 line-clamp-1">
-                            {lastHistory.folderPath}
-                        </p>
-
-                        <div className="w-full bg-surface-tertiary h-2 rounded-full mb-2 overflow-hidden">
-                            <motion.div
-                                className="h-full bg-accent"
-                                initial={{ width: 0 }}
-                                animate={{ width: `${Math.round(((lastHistory.lastImageIndex + 1) / lastHistory.totalImages) * 100)}%` }}
-                                transition={{ duration: 1, delay: 0.5 }}
-                            />
+                                {/* Browse More Card */}
+                                <motion.div
+                                    variants={itemVariants}
+                                    className="bg-surface-secondary/50 rounded-xl border-2 border-dashed border-white/5 flex flex-col items-center justify-center cursor-pointer hover:border-accent/40 transition-colors py-12"
+                                    onClick={() => navigate('history')}
+                                    whileHover={{ scale: 0.98 }}
+                                >
+                                    <div className="w-12 h-12 rounded-full bg-surface-tertiary flex items-center justify-center mb-4 text-text-muted group-hover:text-accent transition-colors">
+                                        <ArrowRightIcon />
+                                    </div>
+                                    <span className="text-sm font-bold text-text-secondary">View Full History</span>
+                                </motion.div>
+                            </div>
                         </div>
-                        <div className="flex justify-between w-full text-sm text-text-muted mb-8">
-                            <span>Page {lastHistory.lastImageIndex + 1} of {lastHistory.totalImages}</span>
-                            <span>{Math.round(((lastHistory.lastImageIndex + 1) / lastHistory.totalImages) * 100)}% Complete</span>
-                        </div>
-
-                        <div className="flex gap-4 w-full">
-                            <motion.button
-                                onClick={handleContinue}
-                                className="flex-1 btn-primary py-3 text-lg shadow-lg shadow-accent/20"
-                                whileHover={{ scale: 1.02 }}
-                                whileTap={{ scale: 0.98 }}
-                            >
-                                Continue Reading
-                            </motion.button>
-
-                            <motion.button
-                                onClick={handleSelectFolder}
-                                className="px-4 btn-secondary"
-                                title="Open Library"
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
-                            >
-                                <FolderPlusIcon />
-                            </motion.button>
-                        </div>
-                    </div>
-                </motion.div>
+                    )}
+                </div>
             ) : (
                 // Welcome View (No History)
                 <motion.div

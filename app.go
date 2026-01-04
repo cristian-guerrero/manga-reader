@@ -118,6 +118,26 @@ func (a *App) GetHistoryEntry(folderPath string) *persistence.HistoryEntry {
 	return a.history.Get(folderPath)
 }
 
+// resolveToFolder returns the path itself if it's a directory, or the parent directory if it's a file.
+func (a *App) resolveToFolder(path string) string {
+	info, err := os.Stat(path)
+	if err != nil {
+		fmt.Printf("[App] Error stating path %s: %v\n", path, err)
+		return path
+	}
+	if info.IsDir() {
+		return path
+	}
+	parent := filepath.Dir(path)
+	fmt.Printf("[App] Resolved file path %s to folder %s\n", path, parent)
+	return parent
+}
+
+// ResolveFolder exposes path resolution to the frontend
+func (a *App) ResolveFolder(path string) string {
+	return a.resolveToFolder(path)
+}
+
 // AddHistory adds or updates a history entry
 func (a *App) AddHistory(entry persistence.HistoryEntry) error {
 	// Check if history is enabled
@@ -125,6 +145,7 @@ func (a *App) AddHistory(entry persistence.HistoryEntry) error {
 	if !settings.EnableHistory {
 		return nil
 	}
+
 	if err := a.history.Add(entry); err != nil {
 		return err
 	}
@@ -196,7 +217,8 @@ type ImageInfo struct {
 }
 
 // GetImages returns a list of images in the specified folder
-func (a *App) GetImages(folderPath string) ([]ImageInfo, error) {
+func (a *App) GetImages(path string) ([]ImageInfo, error) {
+	folderPath := a.resolveToFolder(path)
 	images, err := a.fileLoader.GetImages(folderPath)
 	if err != nil {
 		return nil, err
@@ -337,16 +359,7 @@ func (a *App) GetSubfolders(folderPath string) ([]FolderInfo, error) {
 
 // AddFolder adds a folder to the LIBRARY
 func (a *App) AddFolder(path string) error {
-	// Check if it's a file or directory
-	info, err := os.Stat(path)
-	if err != nil {
-		return err
-	}
-
-	folderPath := path
-	if !info.IsDir() {
-		folderPath = filepath.Dir(path)
-	}
+	folderPath := a.resolveToFolder(path)
 
 	folderInfo, err := a.GetFolderInfo(folderPath)
 	if err != nil {
@@ -366,10 +379,12 @@ func (a *App) AddFolder(path string) error {
 	}
 
 	if err := a.library.Add(entry); err != nil {
+		fmt.Printf("Error adding folder to library: %v\n", err)
 		return err
 	}
 
 	runtime.EventsEmit(a.ctx, "library_updated")
+	fmt.Printf("Folder added to library: %s\n", folderPath)
 	return nil
 }
 

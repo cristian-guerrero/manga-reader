@@ -14,6 +14,7 @@ import { SettingsPage } from './components/settings/SettingsPage';
 import { useNavigationStore } from './stores/navigationStore';
 import { useSettingsStore } from './stores/settingsStore';
 import { usePanicMode } from './hooks/usePanicMode';
+import { ToastProvider } from './components/common/Toast';
 import './i18n';
 
 // Loading component
@@ -142,9 +143,11 @@ function App() {
 
     return (
         <Suspense fallback={<LoadingScreen />}>
-            <MainLayout>
-                <PageRouter />
-            </MainLayout>
+            <ToastProvider>
+                <MainLayout>
+                    <PageRouter />
+                </MainLayout>
+            </ToastProvider>
         </Suspense>
     );
 }

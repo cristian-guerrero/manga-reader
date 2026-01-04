@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"image"
+	_ "image/gif" // GIF support
 	"image/jpeg"
 	"image/png"
 	"os"
@@ -13,7 +14,7 @@ import (
 	"strings"
 	"sync"
 
-	_ "image/gif" // GIF support
+	"golang.org/x/image/draw"
 
 	_ "golang.org/x/image/bmp"  // BMP support
 	_ "golang.org/x/image/tiff" // TIFF support
@@ -21,8 +22,8 @@ import (
 )
 
 const (
-	thumbnailWidth  = 200
-	thumbnailHeight = 300
+	thumbnailWidth  = 400
+	thumbnailHeight = 600
 	cacheDir        = "cache/thumbnails"
 )
 
@@ -138,20 +139,21 @@ func (g *Generator) generateThumbnail(imagePath string) (string, error) {
 
 	newWidth, newHeight := calculateThumbnailSize(origWidth, origHeight, thumbnailWidth, thumbnailHeight)
 
-	// Create thumbnail using simple nearest-neighbor scaling
-	// For better quality, you could use golang.org/x/image/draw
-	thumbnail := resizeImage(img, newWidth, newHeight)
+	// Create thumbnail using Catmull-Rom scaling for much better quality
+	thumbnail := image.NewRGBA(image.Rect(0, 0, newWidth, newHeight))
+	draw.CatmullRom.Scale(thumbnail, thumbnail.Bounds(), img, img.Bounds(), draw.Over, nil)
 
 	// Save to cache
 	cachePath := g.getCachePath(imagePath)
+	os.MkdirAll(filepath.Dir(cachePath), 0755)
 	cacheFile, err := os.Create(cachePath)
 	if err != nil {
 		return "", fmt.Errorf("failed to create cache file: %w", err)
 	}
 	defer cacheFile.Close()
 
-	// Encode as JPEG with good quality
-	err = jpeg.Encode(cacheFile, thumbnail, &jpeg.Options{Quality: 85})
+	// Encode as JPEG with very high quality
+	err = jpeg.Encode(cacheFile, thumbnail, &jpeg.Options{Quality: 90})
 	if err != nil {
 		return "", fmt.Errorf("failed to encode thumbnail: %w", err)
 	}
@@ -195,25 +197,6 @@ func calculateThumbnailSize(origWidth, origHeight, maxWidth, maxHeight int) (int
 	}
 
 	return newWidth, newHeight
-}
-
-// resizeImage performs simple image resizing
-func resizeImage(src image.Image, width, height int) image.Image {
-	bounds := src.Bounds()
-	srcWidth := bounds.Dx()
-	srcHeight := bounds.Dy()
-
-	dst := image.NewRGBA(image.Rect(0, 0, width, height))
-
-	for y := 0; y < height; y++ {
-		for x := 0; x < width; x++ {
-			srcX := x * srcWidth / width
-			srcY := y * srcHeight / height
-			dst.Set(x, y, src.At(bounds.Min.X+srcX, bounds.Min.Y+srcY))
-		}
-	}
-
-	return dst
 }
 
 // ClearCache clears the thumbnail cache
@@ -289,7 +272,8 @@ func (g *Generator) GenerateThumbnailPNG(imagePath string, outputPath string) er
 
 	bounds := img.Bounds()
 	newWidth, newHeight := calculateThumbnailSize(bounds.Dx(), bounds.Dy(), thumbnailWidth, thumbnailHeight)
-	thumbnail := resizeImage(img, newWidth, newHeight)
+	thumbnail := image.NewRGBA(image.Rect(0, 0, newWidth, newHeight))
+	draw.CatmullRom.Scale(thumbnail, thumbnail.Bounds(), img, img.Bounds(), draw.Over, nil)
 
 	out, err := os.Create(outputPath)
 	if err != nil {

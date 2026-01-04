@@ -108,6 +108,7 @@ export namespace persistence {
 	    preloadCount: number;
 	    enableHistory: boolean;
 	    minImageSize: number;
+	    processDroppedFolders: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new Settings(source);
@@ -129,6 +130,7 @@ export namespace persistence {
 	        this.preloadCount = source["preloadCount"];
 	        this.enableHistory = source["enableHistory"];
 	        this.minImageSize = source["minImageSize"];
+	        this.processDroppedFolders = source["processDroppedFolders"];
 	    }
 	}
 

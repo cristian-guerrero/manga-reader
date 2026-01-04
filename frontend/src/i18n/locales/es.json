@@ -47,6 +47,9 @@
         "of": "de",
         "width": "Ancho",
         "goToPage": "Ir a Página",
+        "enableHistory": "Habilitar Historial",
+        "minImageSize": "Tamaño Mín de Imagen (KB)",
+        "processDroppedFolders": "Añadir carpetas arrastradas a la librería y el historial",
         "thumbnails": "Miniaturas",
         "imageInfo": "Info de Imagen"
     },

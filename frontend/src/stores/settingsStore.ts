@@ -23,6 +23,7 @@ interface SettingsState extends Settings {
     setPreloadCount: (count: number) => void;
     setEnableHistory: (enable: boolean) => void;
     setMinImageSize: (kb: number) => void;
+    setProcessDroppedFolders: (process: boolean) => void;
 
 
     // Persistence
@@ -111,6 +112,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
 
     setMinImageSize: (minImageSize) => {
         set({ minImageSize });
+        get().saveSettings();
+    },
+
+    setProcessDroppedFolders: (processDroppedFolders) => {
+        set({ processDroppedFolders });
         get().saveSettings();
     },
 

@@ -74,14 +74,25 @@ export function ViewerPage({ folderPath }: ViewerPageProps) {
     const [showControls, setShowControls] = useState(true);
     const [showWidthSlider, setShowWidthSlider] = useState(false);
     const [initialScrollPos, setInitialScrollPos] = useState(0);
+    // Session flag state that can be updated during component reuse
+    const [isNoHistorySession, setIsNoHistorySession] = useState(useNavigationStore.getState().params.noHistory === 'true');
+
+    // Update session flag when navigation params change (handles component reuse)
+    useEffect(() => {
+        const noHistory = useNavigationStore.getState().params.noHistory === 'true';
+        console.log(`[ViewerPage] Updating isNoHistorySession for ${folderPath} to: ${noHistory}`);
+        setIsNoHistorySession(noHistory);
+    }, [folderPath]);
 
     // Load folder and images
     useEffect(() => {
         if (!folderPath) return;
 
         const loadFolder = async () => {
-            // Avoid double loading
-            // if (isLoading) return; 
+            // Save current progress before switching if not a no-history session
+            if (currentFolder && !isNoHistorySession) {
+                await saveProgress();
+            }
 
             setIsLoading(true);
             try {
@@ -160,6 +171,10 @@ export function ViewerPage({ folderPath }: ViewerPageProps) {
     const saveProgress = useCallback(async () => {
         if (!currentFolder || images.length === 0) return;
 
+        if (isNoHistorySession) {
+            return;
+        }
+
         try {
             // @ts-ignore - Wails generated bindings
             await window.go?.main?.App?.AddHistory({
@@ -182,7 +197,7 @@ export function ViewerPage({ folderPath }: ViewerPageProps) {
         return () => {
             saveProgress();
         };
-    }, [saveProgress]);
+    }, [saveProgress, isNoHistorySession]);
 
     // Auto-hide controls
     useEffect(() => {

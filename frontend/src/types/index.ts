@@ -94,6 +94,8 @@ export interface Settings {
     enableHistory: boolean;
     /** Minimum image size in KB */
     minImageSize: number;
+    /** Process dropped folders (add to library and save history) */
+    processDroppedFolders: boolean;
 }
 
 
@@ -115,6 +117,7 @@ export const DEFAULT_SETTINGS: Settings = {
 
     enableHistory: true,
     minImageSize: 0,
+    processDroppedFolders: true,
 };
 
 

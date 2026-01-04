@@ -10,8 +10,8 @@ import { useNavigationStore } from '../../stores/navigationStore';
 import { Sidebar } from './Sidebar';
 import { TitleBar } from './TitleBar';
 import { OnFileDrop, OnFileDropOff } from '../../../wailsjs/runtime';
-
-
+import { useToast } from '../common/Toast';
+import { useSettingsStore } from '../../stores/settingsStore';
 
 interface MainLayoutProps {
     children: React.ReactNode;
@@ -19,6 +19,9 @@ interface MainLayoutProps {
 
 export function MainLayout({ children }: MainLayoutProps) {
     const { isPanicMode } = useNavigationStore();
+    const { showToast } = useToast();
+    const { processDroppedFolders } = useSettingsStore();
+
 
     // Page transition variants
     const pageVariants = {
@@ -32,27 +35,59 @@ export function MainLayout({ children }: MainLayoutProps) {
         // Register drop listener
         OnFileDrop(async (x, y, paths) => {
             if (paths && paths.length > 0) {
-                // Determine if we need to navigate or just add
-                // Navigate to the first dragged folder immediately
-                if (paths.length === 1) {
-                    try {
-                        // @ts-ignore
-                        await window.go?.main?.App?.AddFolder(paths[0]);
-                        // @ts-ignore
-                        const navigate = useNavigationStore.getState().navigate;
-                        navigate('viewer', { folder: paths[0] });
-                    } catch (e) {
-                        console.error("Failed to open dropped folder", e);
-                    }
-                } else {
-                    for (const path of paths) {
-                        try {
+                // Get current settings from store to avoid closure capture issues
+                const currentSettings = useSettingsStore.getState();
+                const processDropped = currentSettings.processDroppedFolders;
+
+                try {
+                    // Resolve all paths to folders (e.g. if someone drags a .jpg)
+                    const resolvedPaths = (await Promise.all(
+                        paths.map(async (p) => {
+                            // @ts-ignore
+                            return await window.go?.main?.App?.ResolveFolder(p);
+                        })
+                    )) as string[];
+
+                    // Deduplicate folders (to avoid processing the same folder multiple times if several files are dragged)
+                    const uniqueFolders = Array.from(new Set(resolvedPaths));
+
+                    // Determine if we need to navigate or just add
+                    if (uniqueFolders.length === 1) {
+                        const path = uniqueFolders[0];
+                        if (processDropped) {
                             // @ts-ignore
                             await window.go?.main?.App?.AddFolder(path);
-                        } catch (error) {
-                            console.error('Failed to add folder:', error);
+                        }
+
+                        // @ts-ignore
+                        const navigate = useNavigationStore.getState().navigate;
+                        navigate('viewer', {
+                            folder: path,
+                            noHistory: !processDropped ? 'true' : 'false'
+                        });
+                        showToast(`Opening: ${path.split(/[\\/]/).pop()}`, 'success');
+                    } else {
+                        let addedCount = 0;
+                        for (const path of uniqueFolders) {
+                            try {
+                                if (processDropped) {
+                                    // @ts-ignore
+                                    await window.go?.main?.App?.AddFolder(path);
+                                    addedCount++;
+                                }
+                            } catch (error) {
+                                console.error('Failed to add folder:', error);
+                            }
+                        }
+                        if (addedCount > 0) {
+                            showToast(`Added ${addedCount} folders to library`, 'success');
+                        } else if (!processDropped) {
+                            showToast("Drag & Drop processing is disabled in settings", "info");
                         }
                     }
+                } catch (e) {
+                    console.error("Failed to process dropped items", e);
+                    showToast("Failed to process dropped items", "error");
                 }
             }
         }, false);

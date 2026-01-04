@@ -33,7 +33,9 @@ export function SettingsPage() {
         enableHistory,
         setEnableHistory,
         minImageSize,
-        setMinImageSize, // Not destructured before? Check if store update worked. Yes it will.
+        setMinImageSize,
+        processDroppedFolders,
+        setProcessDroppedFolders,
         resetSettings,
 
     } = useSettingsStore();
@@ -297,7 +299,12 @@ export function SettingsPage() {
                         </div>
                     </SettingRow>
 
-
+                    <SettingRow label={t('settings.processDroppedFolders')}>
+                        <Toggle
+                            checked={processDroppedFolders}
+                            onChange={setProcessDroppedFolders}
+                        />
+                    </SettingRow>
                 </motion.section>
 
                 {/* Reset */}
@@ -410,7 +417,9 @@ function Toggle({
 }) {
     return (
         <motion.button
-            onClick={() => onChange(!checked)}
+            onClick={() => {
+                onChange(!checked);
+            }}
             className="relative w-12 h-6 rounded-full transition-colors"
             style={{
                 backgroundColor: checked

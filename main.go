@@ -45,6 +45,9 @@ func main() {
 		OnStartup:  app.startup,
 		OnDomReady: app.domReady,
 		OnShutdown: app.shutdown,
+		DragAndDrop: &options.DragAndDrop{
+			EnableFileDrop: true,
+		},
 		Bind: []interface{}{
 			app,
 		},

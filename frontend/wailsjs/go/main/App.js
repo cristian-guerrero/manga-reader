@@ -82,6 +82,10 @@ export function ResetImageOrder(arg1) {
   return window['go']['main']['App']['ResetImageOrder'](arg1);
 }
 
+export function ResolveFolder(arg1) {
+  return window['go']['main']['App']['ResolveFolder'](arg1);
+}
+
 export function SaveImageOrder(arg1, arg2, arg3) {
   return window['go']['main']['App']['SaveImageOrder'](arg1, arg2, arg3);
 }
