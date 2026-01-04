@@ -152,6 +152,17 @@ body {
   flex-direction: column;
 }
 
+/* Rounded window corners when not maximized */
+body.window-rounded {
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+body.window-rounded #root {
+  border-radius: 10px;
+  overflow: hidden;
+}
+
 /* =============================================================================
    Scrollbar Styling
    ============================================================================= */

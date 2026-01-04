@@ -2,7 +2,7 @@
  * App - Main application component
  */
 
-import { useEffect, Suspense } from 'react';
+import { useEffect, Suspense, useState, useCallback } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { MainLayout } from './components/layout/MainLayout';
 import { HomePage } from './components/HomePage';
@@ -18,6 +18,19 @@ import { useSettingsStore } from './stores/settingsStore';
 import { usePanicMode } from './hooks/usePanicMode';
 import { ToastProvider } from './components/common/Toast';
 import './i18n';
+
+declare global {
+    interface Window {
+        go?: {
+            main?: {
+                App?: {
+                    WindowIsMaximised?: () => Promise<boolean>;
+                    [key: string]: any;
+                };
+            };
+        };
+    }
+}
 
 // Loading component
 function LoadingScreen() {
@@ -138,14 +151,40 @@ function renderPage(page: string, params: Record<string, string>): React.ReactNo
 
 function App() {
     const { loadSettings } = useSettingsStore();
+    const [isMaximized, setIsMaximized] = useState(false);
 
     // Initialize panic mode hook
     usePanicMode();
 
-    // Load settings on mount
+    // Check window maximization state
+    const checkMaximized = useCallback(async () => {
+        try {
+            const maximized = await window.go?.main?.App?.WindowIsMaximised?.();
+            setIsMaximized(!!maximized);
+        } catch {
+            // Ignore errors
+        }
+    }, []);
+
+    // Load settings on mount and set up window resize listener
     useEffect(() => {
         loadSettings();
-    }, [loadSettings]);
+        checkMaximized();
+
+        // Check on resize
+        const handleResize = () => checkMaximized();
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, [loadSettings, checkMaximized]);
+
+    // Apply rounded corners when not maximized
+    useEffect(() => {
+        if (isMaximized) {
+            document.body.classList.remove('window-rounded');
+        } else {
+            document.body.classList.add('window-rounded');
+        }
+    }, [isMaximized]);
 
     return (
         <Suspense fallback={<LoadingScreen />}>
