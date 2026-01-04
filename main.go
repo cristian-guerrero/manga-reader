@@ -9,6 +9,8 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 	"github.com/wailsapp/wails/v2/pkg/options/linux"
 	"github.com/wailsapp/wails/v2/pkg/options/windows"
+
+	"manga-visor/internal/fileloader"
 )
 
 //go:embed all:frontend/dist
@@ -43,7 +45,8 @@ func main() {
 		MinHeight:         600,
 		WindowStartState:  windowState,
 		AssetServer: &assetserver.Options{
-			Assets: assets,
+			Assets:  assets,
+			Handler: fileloader.NewImageServer(app.fileLoader),
 		},
 		// Dark theme background color
 		BackgroundColour: &options.RGBA{R: 10, G: 10, B: 15, A: 255},

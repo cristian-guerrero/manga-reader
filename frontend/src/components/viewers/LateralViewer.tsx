@@ -42,11 +42,9 @@ export function LateralViewer({
         if (loadedImages[index] || index < 0 || index >= images.length) return;
 
         try {
-            // @ts-ignore - Wails generated bindings
-            const dataUrl = await window.go?.main?.App?.LoadImage(path);
-            if (dataUrl) {
-                setLoadedImages((prev) => ({ ...prev, [index]: dataUrl }));
-            }
+            const encodedPath = encodeURIComponent(path);
+            const imageUrl = `/images?path=${encodedPath}`;
+            setLoadedImages((prev) => ({ ...prev, [index]: imageUrl }));
         } catch (error) {
             console.error(`Failed to load image ${path}:`, error);
         }

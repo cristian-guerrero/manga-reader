@@ -609,10 +609,7 @@ func (a *App) ClearSeries() error {
 // Image Loading Methods
 // =============================================================================
 
-// LoadImage loads an image as base64 data URL
-func (a *App) LoadImage(imagePath string) (string, error) {
-	return a.fileLoader.LoadImageAsBase64(imagePath)
-}
+
 
 // GetThumbnail generates or retrieves a thumbnail for an image
 func (a *App) GetThumbnail(imagePath string) (string, error) {

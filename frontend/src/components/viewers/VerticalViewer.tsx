@@ -75,24 +75,23 @@ export function VerticalViewer({
         if (loadedImages[index]) return;
 
         try {
-            // Call Wails backend to load image
-            // @ts-ignore - Wails generated bindings
-            const dataUrl = await window.go?.main?.App?.LoadImage(path);
-            if (dataUrl) {
-                setLoadedImages((prev) => ({ ...prev, [index]: dataUrl }));
+            // Use direct URL from our custom AssetHandler
+            const encodedPath = encodeURIComponent(path);
+            const imageUrl = `/images?path=${encodedPath}`;
 
-                // Get actual image dimensions
-                const img = new Image();
-                img.onload = () => {
-                    // Use updated width calculation
-                    const currentWidth = parentRef.current?.clientWidth || 800;
-                    const containerWidth = currentWidth * (verticalWidth / 100);
-                    const aspectRatio = img.height / img.width;
-                    const height = containerWidth * aspectRatio;
-                    setImageHeights((prev) => ({ ...prev, [index]: height }));
-                };
-                img.src = dataUrl;
-            }
+            setLoadedImages((prev) => ({ ...prev, [index]: imageUrl }));
+
+            // Get actual image dimensions
+            const img = new Image();
+            img.onload = () => {
+                // Use updated width calculation
+                const currentWidth = parentRef.current?.clientWidth || 800;
+                const containerWidth = currentWidth * (verticalWidth / 100);
+                const aspectRatio = img.height / img.width;
+                const height = containerWidth * aspectRatio;
+                setImageHeights((prev) => ({ ...prev, [index]: height }));
+            };
+            img.src = imageUrl;
         } catch (error) {
             console.error(`Failed to load image ${path}:`, error);
         }
@@ -255,42 +254,35 @@ export function VerticalViewer({
                             }}
                         >
                             <div style={{ width: `${itemWidth}px`, height: '100%', transition: 'width 0.1s ease-out' }}>
-                                <AnimatePresence>
-                                    {loadedSrc ? (
-                                        <motion.img
-                                            key={`img-${virtualItem.index}`}
-                                            src={loadedSrc}
-                                            alt={image.name}
-                                            initial={{ opacity: 0 }}
-                                            animate={{ opacity: 1 }}
-                                            transition={{ duration: 0.2 }}
-                                            className="w-full h-auto object-contain"
-                                            loading="lazy"
-                                        />
-                                    ) : (
-                                        <div
-                                            key={`placeholder-${virtualItem.index}`}
-                                            className="w-full h-full flex items-center justify-center shimmer"
-                                            style={{
-                                                backgroundColor: 'var(--color-surface-secondary)',
-                                                minHeight: defaultHeight,
-                                            }}
-                                        >
-                                            <div className="flex flex-col items-center gap-2">
-                                                <div
-                                                    className="w-12 h-12 rounded-full"
-                                                    style={{ backgroundColor: 'var(--color-surface-tertiary)' }}
-                                                />
-                                                <span
-                                                    className="text-sm"
-                                                    style={{ color: 'var(--color-text-muted)' }}
-                                                >
-                                                    Loading...
-                                                </span>
-                                            </div>
+                                {loadedSrc ? (
+                                    <img
+                                        src={loadedSrc}
+                                        alt={image.name}
+                                        className="w-full h-auto object-contain"
+                                        loading="lazy"
+                                    />
+                                ) : (
+                                    <div
+                                        className="w-full h-full flex items-center justify-center shimmer"
+                                        style={{
+                                            backgroundColor: 'var(--color-surface-secondary)',
+                                            minHeight: defaultHeight,
+                                        }}
+                                    >
+                                        <div className="flex flex-col items-center gap-2">
+                                            <div
+                                                className="w-12 h-12 rounded-full"
+                                                style={{ backgroundColor: 'var(--color-surface-tertiary)' }}
+                                            />
+                                            <span
+                                                className="text-sm"
+                                                style={{ color: 'var(--color-text-muted)' }}
+                                            >
+                                                Loading...
+                                            </span>
                                         </div>
-                                    )}
-                                </AnimatePresence>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     );

@@ -43,8 +43,6 @@ export function HasCustomOrder(arg1:string):Promise<boolean>;
 
 export function IsSeries(arg1:string):Promise<boolean>;
 
-export function LoadImage(arg1:string):Promise<string>;
-
 export function PreloadThumbnails(arg1:Array<string>):Promise<void>;
 
 export function RemoveHistory(arg1:string):Promise<void>;

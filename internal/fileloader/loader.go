@@ -2,7 +2,7 @@
 package fileloader
 
 import (
-	"encoding/base64"
+
 	"fmt"
 	"io"
 	"os"
@@ -104,28 +104,7 @@ func (fl *FileLoader) GetImages(folderPath string) ([]ImageInfo, error) {
 	return images, nil
 }
 
-// LoadImageAsBase64 loads an image and returns it as a base64 data URL
-func (fl *FileLoader) LoadImageAsBase64(imagePath string) (string, error) {
-	// Check if file exists
-	if _, err := os.Stat(imagePath); os.IsNotExist(err) {
-		return "", fmt.Errorf("image not found: %s", imagePath)
-	}
 
-	// Read file
-	data, err := os.ReadFile(imagePath)
-	if err != nil {
-		return "", fmt.Errorf("failed to read image: %w", err)
-	}
-
-	// Get MIME type
-	mimeType := fl.GetMimeType(imagePath)
-
-	// Encode as base64 data URL
-	base64Data := base64.StdEncoding.EncodeToString(data)
-	dataURL := fmt.Sprintf("data:%s;base64,%s", mimeType, base64Data)
-
-	return dataURL, nil
-}
 
 // LoadImageBytes loads an image and returns the raw bytes
 func (fl *FileLoader) LoadImageBytes(imagePath string) ([]byte, string, error) {

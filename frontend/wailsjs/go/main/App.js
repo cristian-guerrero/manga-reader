@@ -82,10 +82,6 @@ export function IsSeries(arg1) {
   return window['go']['main']['App']['IsSeries'](arg1);
 }
 
-export function LoadImage(arg1) {
-  return window['go']['main']['App']['LoadImage'](arg1);
-}
-
 export function PreloadThumbnails(arg1) {
   return window['go']['main']['App']['PreloadThumbnails'](arg1);
 }
