@@ -24,6 +24,7 @@
         "home": "Home",
         "history": "History",
         "folders": "Folders",
+        "series": "Series",
         "settings": "Settings",
         "viewer": "Viewer"
     },
@@ -64,6 +65,15 @@
         "confirmRemove": "Are you sure you want to remove this folder from the list?",
         "noFolders": "No folders added yet",
         "dragDrop": "Drag and drop or click to select"
+    },
+    "series": {
+        "title": "Series",
+        "addSeries": "Add Series",
+        "removeSeries": "Remove Series",
+        "chapters": "chapters",
+        "noSeries": "No series added yet",
+        "openSeries": "View Chapters",
+        "chapterCount": "{{count}} Chapters"
     },
     "history": {
         "title": "Reading History",

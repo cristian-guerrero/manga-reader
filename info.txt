@@ -43,8 +43,26 @@ Caracteristicas adicionales 2:
      ir por a otra vista, pero continuar viendo en el home lo que se estaba viendo o se 
     seleccione nuevo en la lista de carpetas o historial
 - 
+----------------------------------------------------------------
+careristicas adicionales 3: [DONE]
+- pendiente de viabilidad
+- crear una nueva seccion de series
+- cuando se agregue una carpeta y tenga subcarpetas agregarlas como carpetas
+-tener un nuevo submenu que tenga la lista de carpetass agregadas y sus subcarpetas seran 
+     caapitulos como una serie 
+- al agregar una carpeta con subcarpetas en el nuevo menu de series, se verifica si en la carpeta
+    principal tenga alguna imagen y se crea el thumbnail apartir de esa, o si no de la primera
+    subcarpeta que tenga una imagen (verificar el tamaño de la imagen de la carpeta principal, si exixte,
+    puede ya ser un thumbnail verificar por tamaño) (solo agregar subcarpetas que tengan imagenes)
+- el funcionamiento del nuevo menu de series se aplica cuando se agregue carpeta del boton de add folder
+    o cuando se agregue con el drag and drop y este activo el toggle de add dropped folders to library and history
+    si esta desactivado realizar el comportamiento actual de inciar el visualizador sin agregar a ninguna lista
+    y sin verificar si hay subcarpetas
+----------------------------------------------------------
+cambios adicionales:
+- el boton de panico lleva a la pantalla de configuracion
+- cada una de las secciones tien un boton de borrar todo como el de clear history
 
-
-
-dependecias para linux:   - libgtk-3: sudo apt install libgtk-3-dev
-  - libwebkit: sudo apt install libwebkit2gtk-4.1-dev
+dependecias para linux:   
+- libgtk-3: sudo apt install libgtk-3-dev
+- libwebkit: sudo apt install libwebkit2gtk-4.1-dev

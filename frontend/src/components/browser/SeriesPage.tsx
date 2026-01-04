@@ -1,17 +1,21 @@
 /**
- * FoldersPage - Folder browser and management
+ * SeriesPage - Series browser
  */
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { useNavigationStore } from '../../stores/navigationStore';
 import { EventsOn, EventsOff } from '../../../wailsjs/runtime';
+import { SeriesEntry } from '../../types';
 
 // Icons
-const FolderIcon = () => (
+const SeriesIcon = () => (
     <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+        <rect x="2" y="2" width="20" height="8" rx="2" ry="2" />
+        <rect x="2" y="14" width="20" height="8" rx="2" ry="2" />
+        <line x1="6" y1="6" x2="6" y2="6.01" />
+        <line x1="6" y1="18" x2="6" y2="18.01" />
     </svg>
 );
 
@@ -29,85 +33,60 @@ const TrashIcon = () => (
     </svg>
 );
 
-const ImageIcon = () => (
+const BookIcon = () => (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-        <rect x="3" y="3" width="18" height="18" rx="2" />
-        <circle cx="8.5" cy="8.5" r="1.5" />
-        <polyline points="21 15 16 10 5 21" />
+        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
     </svg>
 );
 
-interface FolderData {
-    path: string;
-    name: string;
-    imageCount: number;
-    coverImage?: string;
-}
-
-export function FoldersPage() {
+export function SeriesPage() {
     const { t } = useTranslation();
     const { navigate } = useNavigationStore();
-    const [folders, setFolders] = useState<FolderData[]>([]);
+    const [series, setSeries] = useState<SeriesEntry[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [thumbnails, setThumbnails] = useState<Record<string, string>>({});
 
-    // Load folders from settings/library
     useEffect(() => {
-        loadFolders();
+        loadSeries();
 
-        // Listen for updates (e.g. from drag and drop)
-        const cleanup = EventsOn('library_updated', () => {
-            loadFolders();
+        const cleanup = EventsOn('series_updated', () => {
+            loadSeries();
         });
 
         return () => {
-            // We need to unregister specifically, but Wails JS EventsOff creates a new listener if not passed specific ref?
-            // Actually EventsOn returns a cleanup function in some versions, but looking at runtime.js providing wrapper...
-            // runtime.js: export function EventsOn(...) { return window.runtime.EventsOnMultiple(...) }
-            // It returns the callback usually.
-            // Safe way:
-            EventsOff('library_updated');
+            EventsOff('series_updated');
         };
     }, []);
 
-    const loadFolders = async () => {
+    const loadSeries = async () => {
         setIsLoading(true);
         try {
-            // @ts-ignore - Wails generated bindings
-            const library = await window.go?.main?.App?.GetLibrary();
-            if (library && Array.isArray(library)) {
-                const folderData = library.map((entry: any) => ({
-                    path: entry.folderPath,
-                    name: entry.folderName,
-                    imageCount: entry.totalImages,
-                    coverImage: undefined,
-                }));
-                setFolders(folderData);
+            // @ts-ignore
+            const data = await window.go?.main?.App?.GetSeries();
+            if (data && Array.isArray(data)) {
+                setSeries(data);
 
-                // Load thumbnails for cover images
-                for (const entry of library) {
-                    if (entry.folderPath) {
-                        loadFolderThumbnail(entry.folderPath);
+                // Load thumbnails
+                for (const entry of data) {
+                    if (entry.coverImage) {
+                        loadThumbnail(entry.id, entry.coverImage);
                     }
                 }
             }
         } catch (error) {
-            console.error('Failed to load folders:', error);
+            console.error('Failed to load series:', error);
         } finally {
             setIsLoading(false);
         }
     };
 
-    const loadFolderThumbnail = async (folderPath: string) => {
+    const loadThumbnail = async (id: string, path: string) => {
         try {
-            // @ts-ignore - Wails generated bindings
-            const images = await window.go?.main?.App?.GetImages(folderPath);
-            if (images && images.length > 0) {
-                // @ts-ignore - Wails generated bindings
-                const thumb = await window.go?.main?.App?.GetThumbnail(images[0].path);
-                if (thumb) {
-                    setThumbnails((prev) => ({ ...prev, [folderPath]: thumb }));
-                }
+            // @ts-ignore
+            const thumb = await window.go?.main?.App?.GetThumbnail(path);
+            if (thumb) {
+                setThumbnails((prev) => ({ ...prev, [id]: thumb }));
             }
         } catch (error) {
             console.error('Failed to load thumbnail:', error);
@@ -116,43 +95,31 @@ export function FoldersPage() {
 
     const handleSelectFolder = async () => {
         try {
-            // @ts-ignore - Wails generated bindings
+            // @ts-ignore
             const folderPath = await window.go?.main?.App?.SelectFolder();
             if (folderPath) {
-                let isSeries = false;
-                try {
-                    // @ts-ignore
-                    isSeries = await window.go?.main?.App?.IsSeries(folderPath);
-                    // @ts-ignore
-                    await window.go?.main?.App?.AddFolder(folderPath);
-                } catch (e) {
-                    console.error("Failed to add to library", e);
-                }
-
-                if (isSeries) {
-                    navigate('series-details', { series: folderPath });
-                } else {
-                    navigate('viewer', { folder: folderPath });
-                }
+                // @ts-ignore
+                await window.go?.main?.App?.AddFolder(folderPath);
+                // The event 'series_updated' will trigger reloading if it was a series
+                // If it was a folder, it will be added to library
             }
         } catch (error) {
             console.error('Failed to select folder:', error);
         }
     };
 
-
-    const handleOpenFolder = (folder: FolderData) => {
-        navigate('viewer', { folder: folder.path });
+    const handleOpenSeries = (entry: SeriesEntry) => {
+        navigate('series-details', { series: entry.path });
     };
 
-    const handleRemoveFolder = async (folder: FolderData, e: React.MouseEvent) => {
+    const handleRemoveSeries = async (entry: SeriesEntry, e: React.MouseEvent) => {
         e.stopPropagation();
         try {
-            // @ts-ignore - Wails generated bindings
-            await window.go?.main?.App?.RemoveLibraryEntry(folder.path);
-            setFolders((prev) => prev.filter((f) => f.path !== folder.path));
+            // @ts-ignore
+            await window.go?.main?.App?.RemoveSeries(entry.path);
+            setSeries((prev) => prev.filter((s) => s.path !== entry.path));
         } catch (error) {
-            console.error('Failed to remove folder:', error);
+            console.error('Failed to remove series:', error);
         }
     };
 
@@ -181,7 +148,7 @@ export function FoldersPage() {
                     className="text-2xl font-bold"
                     style={{ color: 'var(--color-text-primary)' }}
                 >
-                    {t('folders.title')}
+                    {t('series.title')}
                 </h1>
                 <motion.button
                     onClick={handleSelectFolder}
@@ -190,11 +157,11 @@ export function FoldersPage() {
                     whileTap={{ scale: 0.98 }}
                 >
                     <PlusIcon />
-                    {t('folders.addFolder')}
+                    {t('series.addSeries')}
                 </motion.button>
             </div>
 
-            {/* Folders grid */}
+            {/* Series grid */}
             {isLoading ? (
                 <div className="flex items-center justify-center py-20">
                     <motion.div
@@ -207,7 +174,7 @@ export function FoldersPage() {
                         transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
                     />
                 </div>
-            ) : folders.length === 0 ? (
+            ) : series.length === 0 ? (
                 <motion.div
                     className="flex flex-col items-center justify-center py-20 rounded-2xl"
                     style={{
@@ -223,19 +190,13 @@ export function FoldersPage() {
                         animate={{ y: [0, -10, 0] }}
                         transition={{ duration: 2, repeat: Infinity }}
                     >
-                        <FolderIcon />
+                        <SeriesIcon />
                     </motion.div>
                     <p
                         className="text-lg font-medium mb-2"
                         style={{ color: 'var(--color-text-secondary)' }}
                     >
-                        {t('folders.noFolders')}
-                    </p>
-                    <p
-                        className="text-sm mb-4"
-                        style={{ color: 'var(--color-text-muted)' }}
-                    >
-                        {t('folders.dragDrop')}
+                        {t('series.noSeries')}
                     </p>
                     <motion.button
                         onClick={handleSelectFolder}
@@ -254,13 +215,13 @@ export function FoldersPage() {
                     animate="visible"
                 >
                     <AnimatePresence>
-                        {folders.map((folder) => (
+                        {series.map((item) => (
                             <motion.div
-                                key={folder.path}
+                                key={item.path}
                                 variants={itemVariants}
                                 layout
                                 exit={{ opacity: 0, scale: 0.9 }}
-                                onClick={() => handleOpenFolder(folder)}
+                                onClick={() => handleOpenSeries(item)}
                                 className="group relative rounded-xl overflow-hidden cursor-pointer hover-lift"
                                 style={{
                                     backgroundColor: 'var(--color-surface-secondary)',
@@ -273,10 +234,10 @@ export function FoldersPage() {
                                     className="aspect-[3/4] relative overflow-hidden"
                                     style={{ backgroundColor: 'var(--color-surface-tertiary)' }}
                                 >
-                                    {thumbnails[folder.path] ? (
+                                    {thumbnails[item.id] ? (
                                         <img
-                                            src={thumbnails[folder.path]}
-                                            alt={folder.name}
+                                            src={thumbnails[item.id]}
+                                            alt={item.name}
                                             className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                                         />
                                     ) : (
@@ -286,7 +247,7 @@ export function FoldersPage() {
                                                 animate={{ scale: [1, 1.1, 1] }}
                                                 transition={{ duration: 2, repeat: Infinity }}
                                             >
-                                                <FolderIcon />
+                                                <SeriesIcon />
                                             </motion.div>
                                         </div>
                                     )}
@@ -300,13 +261,13 @@ export function FoldersPage() {
                                             className="text-lg font-semibold"
                                             style={{ color: 'white' }}
                                         >
-                                            {t('folders.openFolder')}
+                                            {t('series.openSeries')}
                                         </span>
                                     </div>
 
                                     {/* Remove button */}
                                     <motion.button
-                                        onClick={(e) => handleRemoveFolder(folder, e)}
+                                        onClick={(e) => handleRemoveSeries(item, e)}
                                         className="absolute top-2 right-2 p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
                                         style={{
                                             backgroundColor: 'rgba(239, 68, 68, 0.9)',
@@ -314,7 +275,7 @@ export function FoldersPage() {
                                         }}
                                         whileHover={{ scale: 1.1 }}
                                         whileTap={{ scale: 0.9 }}
-                                        title={t('folders.removeFolder')}
+                                        title={t('series.removeSeries')}
                                     >
                                         <TrashIcon />
                                     </motion.button>
@@ -326,15 +287,15 @@ export function FoldersPage() {
                                         className="font-semibold truncate mb-1"
                                         style={{ color: 'var(--color-text-primary)' }}
                                     >
-                                        {folder.name}
+                                        {item.name}
                                     </h3>
                                     <div
                                         className="flex items-center gap-1 text-sm"
                                         style={{ color: 'var(--color-text-muted)' }}
                                     >
-                                        <ImageIcon />
+                                        <BookIcon />
                                         <span>
-                                            {folder.imageCount} {t('folders.images')}
+                                            {t('series.chapterCount', { count: item.chapters?.length || 0 })}
                                         </span>
                                     </div>
                                 </div>
@@ -347,4 +308,4 @@ export function FoldersPage() {
     );
 }
 
-export default FoldersPage;
+export default SeriesPage;

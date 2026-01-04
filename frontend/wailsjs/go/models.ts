@@ -45,6 +45,22 @@ export namespace main {
 
 export namespace persistence {
 	
+	export class ChapterInfo {
+	    path: string;
+	    name: string;
+	    imageCount: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new ChapterInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.path = source["path"];
+	        this.name = source["name"];
+	        this.imageCount = source["imageCount"];
+	    }
+	}
 	export class HistoryEntry {
 	    id: string;
 	    folderPath: string;
@@ -92,6 +108,46 @@ export namespace persistence {
 	        this.addedAt = source["addedAt"];
 	        this.coverImage = source["coverImage"];
 	    }
+	}
+	export class SeriesEntry {
+	    id: string;
+	    path: string;
+	    name: string;
+	    coverImage: string;
+	    addedAt: string;
+	    chapters: ChapterInfo[];
+	
+	    static createFrom(source: any = {}) {
+	        return new SeriesEntry(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.path = source["path"];
+	        this.name = source["name"];
+	        this.coverImage = source["coverImage"];
+	        this.addedAt = source["addedAt"];
+	        this.chapters = this.convertValues(source["chapters"], ChapterInfo);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 	export class Settings {
 	    language: string;

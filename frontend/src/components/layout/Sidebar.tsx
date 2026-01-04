@@ -29,6 +29,15 @@ const FolderIcon = () => (
     </svg>
 );
 
+const SeriesIcon = () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="2" y="2" width="20" height="8" rx="2" ry="2" />
+        <rect x="2" y="14" width="20" height="8" rx="2" ry="2" />
+        <line x1="6" y1="6" x2="6" y2="6.01" />
+        <line x1="6" y1="18" x2="6" y2="18.01" />
+    </svg>
+);
+
 const SettingsIcon = () => (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <circle cx="12" cy="12" r="3" />
@@ -58,6 +67,7 @@ const navItems: NavItem[] = [
     { id: 'home', icon: <HomeIcon />, labelKey: 'navigation.home' },
     { id: 'history', icon: <HistoryIcon />, labelKey: 'navigation.history' },
     { id: 'folders', icon: <FolderIcon />, labelKey: 'navigation.folders' },
+    { id: 'series', icon: <SeriesIcon />, labelKey: 'navigation.series' },
     { id: 'settings', icon: <SettingsIcon />, labelKey: 'navigation.settings' },
 ];
 

@@ -138,6 +138,25 @@ export interface ImageOrder {
 }
 
 // ============================================================================
+// Series Types
+// ============================================================================
+
+export interface ChapterInfo {
+    path: string;
+    name: string;
+    imageCount: number;
+}
+
+export interface SeriesEntry {
+    id: string;
+    path: string;
+    name: string;
+    coverImage: string;
+    addedAt: string;
+    chapters: ChapterInfo[];
+}
+
+// ============================================================================
 // Navigation Types
 // ============================================================================
 
@@ -146,6 +165,8 @@ export type PageType =
     | 'viewer'
     | 'history'
     | 'folders'
+    | 'series'
+    | 'series-details'
     | 'thumbnails'
     | 'settings';
 

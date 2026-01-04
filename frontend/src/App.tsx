@@ -8,6 +8,8 @@ import { MainLayout } from './components/layout/MainLayout';
 import { HomePage } from './components/HomePage';
 import { ViewerPage } from './components/viewers/ViewerPage';
 import { FoldersPage } from './components/browser/FoldersPage';
+import { SeriesPage } from './components/browser/SeriesPage';
+import { SeriesDetailsPage } from './components/browser/SeriesDetailsPage';
 import { HistoryPage } from './components/browser/HistoryPage';
 import { ThumbnailsPage } from './components/browser/ThumbnailsPage';
 import { SettingsPage } from './components/settings/SettingsPage';
@@ -121,6 +123,10 @@ function renderPage(page: string, params: Record<string, string>): React.ReactNo
             return <HistoryPage />;
         case 'folders':
             return <FoldersPage />;
+        case 'series':
+            return <SeriesPage />;
+        case 'series-details':
+            return <SeriesDetailsPage seriesPath={params.series} />;
         case 'settings':
             return <SettingsPage />;
         case 'thumbnails':

@@ -25,6 +25,7 @@ type App struct {
 
 	fileLoader *fileloader.FileLoader
 	thumbGen   *thumbnails.Generator
+	series     *persistence.SeriesManager
 }
 
 // NewApp creates a new App application struct
@@ -38,6 +39,7 @@ func NewApp() *App {
 
 		fileLoader: fileloader.NewFileLoader(),
 		thumbGen:   thumbnails.NewGenerator(),
+		series:     persistence.NewSeriesManager(),
 	}
 }
 
@@ -357,9 +359,15 @@ func (a *App) GetSubfolders(folderPath string) ([]FolderInfo, error) {
 	return folders, nil
 }
 
-// AddFolder adds a folder to the LIBRARY
+// AddFolder adds a folder to the LIBRARY or SERIES (if it has subfolders)
 func (a *App) AddFolder(path string) error {
 	folderPath := a.resolveToFolder(path)
+
+	// Check if it's a series (has subfolders with images)
+	subfolders, _ := a.GetSubfolders(folderPath)
+	if len(subfolders) > 0 {
+		return a.AddSeries(folderPath, subfolders)
+	}
 
 	folderInfo, err := a.GetFolderInfo(folderPath)
 	if err != nil {
@@ -386,6 +394,81 @@ func (a *App) AddFolder(path string) error {
 	runtime.EventsEmit(a.ctx, "library_updated")
 	fmt.Printf("Folder added to library: %s\n", folderPath)
 	return nil
+}
+
+// AddSeries adds a series with its chapters
+func (a *App) AddSeries(path string, subfolders []FolderInfo) error {
+	// 1. Find cover image
+	rootImages, _ := a.GetImages(path)
+	var coverImage string
+
+	if len(rootImages) > 0 {
+		// Prefer root image as cover.
+		// Heuristic: If multiple images, look for "cover", "folder", "thumb" or just any small file
+		coverImage = rootImages[0].Path
+		for _, img := range rootImages {
+			lowerName := strings.ToLower(img.Name)
+			// Preference for standard cover filenames
+			if strings.Contains(lowerName, "cover") || strings.Contains(lowerName, "folder") || strings.Contains(lowerName, "thumb") {
+				coverImage = img.Path
+				break
+			}
+			// If not found yet, and we see an image that is relatively small (possible thumbnail), keep it as candidate
+			if coverImage == rootImages[0].Path && img.Size < 500*1024 { // < 500KB
+				coverImage = img.Path
+			}
+		}
+	} else if len(subfolders) > 0 {
+		// Use first image of first subfolder as fallback
+		coverImage = subfolders[0].CoverImage
+	}
+
+	chapters := make([]persistence.ChapterInfo, len(subfolders))
+	for i, sub := range subfolders {
+		chapters[i] = persistence.ChapterInfo{
+			Path:       sub.Path,
+			Name:       sub.Name,
+			ImageCount: sub.ImageCount,
+		}
+	}
+
+	entry := persistence.SeriesEntry{
+		Path:       path,
+		Name:       filepath.Base(path),
+		CoverImage: coverImage,
+		AddedAt:    time.Now().Format(time.RFC3339),
+		Chapters:   chapters,
+	}
+
+	if err := a.series.Add(entry); err != nil {
+		fmt.Printf("Error adding series: %v\n", err)
+		return err
+	}
+
+	runtime.EventsEmit(a.ctx, "series_updated")
+	fmt.Printf("Series added: %s with %d chapters\n", path, len(subfolders))
+	return nil
+}
+
+// GetSeries returns all series entries
+func (a *App) GetSeries() []persistence.SeriesEntry {
+	return a.series.GetAll()
+}
+
+// RemoveSeries removes a series entry
+func (a *App) RemoveSeries(path string) error {
+	err := a.series.Remove(path)
+	if err == nil {
+		runtime.EventsEmit(a.ctx, "series_updated")
+	}
+	return err
+}
+
+// IsSeries checks if a folder should be treated as a series
+func (a *App) IsSeries(path string) bool {
+	folderPath := a.resolveToFolder(path)
+	subfolders, _ := a.GetSubfolders(folderPath)
+	return len(subfolders) > 0
 }
 
 // GetLibrary returns all library entries

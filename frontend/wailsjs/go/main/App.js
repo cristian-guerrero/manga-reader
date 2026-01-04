@@ -10,6 +10,10 @@ export function AddHistory(arg1) {
   return window['go']['main']['App']['AddHistory'](arg1);
 }
 
+export function AddSeries(arg1, arg2) {
+  return window['go']['main']['App']['AddSeries'](arg1, arg2);
+}
+
 export function ClearHistory() {
   return window['go']['main']['App']['ClearHistory']();
 }
@@ -46,6 +50,10 @@ export function GetOriginalOrder(arg1) {
   return window['go']['main']['App']['GetOriginalOrder'](arg1);
 }
 
+export function GetSeries() {
+  return window['go']['main']['App']['GetSeries']();
+}
+
 export function GetSettings() {
   return window['go']['main']['App']['GetSettings']();
 }
@@ -62,6 +70,10 @@ export function HasCustomOrder(arg1) {
   return window['go']['main']['App']['HasCustomOrder'](arg1);
 }
 
+export function IsSeries(arg1) {
+  return window['go']['main']['App']['IsSeries'](arg1);
+}
+
 export function LoadImage(arg1) {
   return window['go']['main']['App']['LoadImage'](arg1);
 }
@@ -76,6 +88,10 @@ export function RemoveHistory(arg1) {
 
 export function RemoveLibraryEntry(arg1) {
   return window['go']['main']['App']['RemoveLibraryEntry'](arg1);
+}
+
+export function RemoveSeries(arg1) {
+  return window['go']['main']['App']['RemoveSeries'](arg1);
 }
 
 export function ResetImageOrder(arg1) {

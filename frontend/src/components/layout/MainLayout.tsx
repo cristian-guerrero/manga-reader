@@ -54,17 +54,26 @@ export function MainLayout({ children }: MainLayoutProps) {
                     // Determine if we need to navigate or just add
                     if (uniqueFolders.length === 1) {
                         const path = uniqueFolders[0];
+                        let isSeries = false;
+
                         if (processDropped) {
+                            // @ts-ignore
+                            isSeries = await window.go?.main?.App?.IsSeries(path);
                             // @ts-ignore
                             await window.go?.main?.App?.AddFolder(path);
                         }
 
                         // @ts-ignore
                         const navigate = useNavigationStore.getState().navigate;
-                        navigate('viewer', {
-                            folder: path,
-                            noHistory: !processDropped ? 'true' : 'false'
-                        });
+
+                        if (isSeries && processDropped) {
+                            navigate('series-details', { series: path });
+                        } else {
+                            navigate('viewer', {
+                                folder: path,
+                                noHistory: !processDropped ? 'true' : 'false'
+                            });
+                        }
                         showToast(`Opening: ${path.split(/[\\/]/).pop()}`, 'success');
                     } else {
                         let addedCount = 0;

@@ -15,6 +15,7 @@ A premium desktop manga viewer application built with Wails, React, and Go.
 
 ### Organization
 - **Folder Browser** - Browse and manage your manga folders
+- **Series & Chapters** - Automatic organization of folders with subfolders as series
 - **Reading History** - Track your progress with visual indicators
 - **Image Reordering** - Drag & drop to reorder images (persistent)
 
@@ -162,6 +163,7 @@ All user data is stored in `~/.manga-visor/`:
 ~/.manga-visor/
 ├── settings.json          # Application settings
 ├── history.json           # Reading history
+├── series.json            # Series and chapters metadata
 ├── orders.json            # Custom image orders
 ├── themes/                # Custom themes (optional)
 └── cache/

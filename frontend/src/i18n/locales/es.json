@@ -21,6 +21,7 @@
         "home": "Inicio",
         "history": "Historial",
         "folders": "Carpetas",
+        "series": "Series",
         "settings": "Configuración",
         "viewer": "Visor"
     },
@@ -64,6 +65,15 @@
         "confirmRemove": "¿Estás seguro de quitar esta carpeta de la lista?",
         "noFolders": "No hay carpetas agregadas",
         "dragDrop": "Arrastra o haz clic para seleccionar"
+    },
+    "series": {
+        "title": "Series",
+        "addSeries": "Añadir Serie",
+        "removeSeries": "Quitar Serie",
+        "chapters": "capítulos",
+        "noSeries": "No hay series agregadas",
+        "openSeries": "Ver Capítulos",
+        "chapterCount": "{{count}} Capítulos"
     },
     "history": {
         "title": "Historial de Lectura",

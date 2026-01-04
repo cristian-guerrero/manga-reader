@@ -7,6 +7,8 @@ export function AddFolder(arg1:string):Promise<void>;
 
 export function AddHistory(arg1:persistence.HistoryEntry):Promise<void>;
 
+export function AddSeries(arg1:string,arg2:Array<main.FolderInfo>):Promise<void>;
+
 export function ClearHistory():Promise<void>;
 
 export function ClearThumbnailCache():Promise<void>;
@@ -25,6 +27,8 @@ export function GetLibrary():Promise<Array<persistence.LibraryEntry>>;
 
 export function GetOriginalOrder(arg1:string):Promise<Array<string>>;
 
+export function GetSeries():Promise<Array<persistence.SeriesEntry>>;
+
 export function GetSettings():Promise<persistence.Settings>;
 
 export function GetSubfolders(arg1:string):Promise<Array<main.FolderInfo>>;
@@ -33,6 +37,8 @@ export function GetThumbnail(arg1:string):Promise<string>;
 
 export function HasCustomOrder(arg1:string):Promise<boolean>;
 
+export function IsSeries(arg1:string):Promise<boolean>;
+
 export function LoadImage(arg1:string):Promise<string>;
 
 export function PreloadThumbnails(arg1:Array<string>):Promise<void>;
@@ -40,6 +46,8 @@ export function PreloadThumbnails(arg1:Array<string>):Promise<void>;
 export function RemoveHistory(arg1:string):Promise<void>;
 
 export function RemoveLibraryEntry(arg1:string):Promise<void>;
+
+export function RemoveSeries(arg1:string):Promise<void>;
 
 export function ResetImageOrder(arg1:string):Promise<void>;
 
