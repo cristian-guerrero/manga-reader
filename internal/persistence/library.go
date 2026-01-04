@@ -18,6 +18,7 @@ type LibraryEntry struct {
 	TotalImages int    `json:"totalImages"`
 	AddedAt     string `json:"addedAt"`
 	CoverImage  string `json:"coverImage,omitempty"`
+	IsTemporary bool   `json:"isTemporary"`
 }
 
 // Library represents the library structure

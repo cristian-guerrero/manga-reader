@@ -10,8 +10,8 @@ export function AddHistory(arg1) {
   return window['go']['main']['App']['AddHistory'](arg1);
 }
 
-export function AddSeries(arg1, arg2) {
-  return window['go']['main']['App']['AddSeries'](arg1, arg2);
+export function AddSeries(arg1, arg2, arg3) {
+  return window['go']['main']['App']['AddSeries'](arg1, arg2, arg3);
 }
 
 export function ClearHistory() {

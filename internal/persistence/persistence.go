@@ -63,3 +63,10 @@ func fileExists(filename string) bool {
 	_, err := os.Stat(filePath)
 	return err == nil
 }
+
+// GetTempDir returns the temporary directory for archives
+func GetTempDir() string {
+	tempDir := filepath.Join(getDataDir(), "temp")
+	os.MkdirAll(tempDir, 0755)
+	return tempDir
+}

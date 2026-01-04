@@ -1,5 +1,19 @@
 export namespace main {
 	
+	export class AddFolderResult {
+	    path: string;
+	    isSeries: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new AddFolderResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.path = source["path"];
+	        this.isSeries = source["isSeries"];
+	    }
+	}
 	export class FolderInfo {
 	    path: string;
 	    name: string;
@@ -94,6 +108,7 @@ export namespace persistence {
 	    totalImages: number;
 	    addedAt: string;
 	    coverImage?: string;
+	    isTemporary: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new LibraryEntry(source);
@@ -107,6 +122,7 @@ export namespace persistence {
 	        this.totalImages = source["totalImages"];
 	        this.addedAt = source["addedAt"];
 	        this.coverImage = source["coverImage"];
+	        this.isTemporary = source["isTemporary"];
 	    }
 	}
 	export class SeriesEntry {
@@ -116,6 +132,7 @@ export namespace persistence {
 	    coverImage: string;
 	    addedAt: string;
 	    chapters: ChapterInfo[];
+	    isTemporary: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new SeriesEntry(source);
@@ -129,6 +146,7 @@ export namespace persistence {
 	        this.coverImage = source["coverImage"];
 	        this.addedAt = source["addedAt"];
 	        this.chapters = this.convertValues(source["chapters"], ChapterInfo);
+	        this.isTemporary = source["isTemporary"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

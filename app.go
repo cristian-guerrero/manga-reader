@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"crypto/md5"
 	"fmt"
+	"manga-visor/internal/archiver"
 	"manga-visor/internal/fileloader"
 	"manga-visor/internal/persistence"
 	"manga-visor/internal/thumbnails"
@@ -26,6 +28,12 @@ type App struct {
 	fileLoader *fileloader.FileLoader
 	thumbGen   *thumbnails.Generator
 	series     *persistence.SeriesManager
+}
+
+// AddFolderResult represents the result of adding a folder
+type AddFolderResult struct {
+	Path     string `json:"path"`
+	IsSeries bool   `json:"isSeries"`
 }
 
 // NewApp creates a new App application struct
@@ -120,8 +128,12 @@ func (a *App) GetHistoryEntry(folderPath string) *persistence.HistoryEntry {
 	return a.history.Get(folderPath)
 }
 
-// resolveToFolder returns the path itself if it's a directory, or the parent directory if it's a file.
+// resolveToFolder returns the path itself if it's a directory or a supported archive, or the parent directory if it's a normal file.
 func (a *App) resolveToFolder(path string) string {
+	if archiver.IsArchive(path) {
+		return path
+	}
+
 	info, err := os.Stat(path)
 	if err != nil {
 		fmt.Printf("[App] Error stating path %s: %v\n", path, err)
@@ -157,12 +169,20 @@ func (a *App) AddHistory(entry persistence.HistoryEntry) error {
 
 // RemoveHistory removes a history entry
 func (a *App) RemoveHistory(folderPath string) error {
-	return a.history.Remove(folderPath)
+	err := a.history.Remove(folderPath)
+	if err == nil {
+		runtime.EventsEmit(a.ctx, "history_updated")
+	}
+	return err
 }
 
 // ClearHistory clears all history
 func (a *App) ClearHistory() error {
-	return a.history.Clear()
+	err := a.history.Clear()
+	if err == nil {
+		runtime.EventsEmit(a.ctx, "history_updated")
+	}
+	return err
 }
 
 // =============================================================================
@@ -366,22 +386,41 @@ func (a *App) GetSubfolders(folderPath string) ([]FolderInfo, error) {
 }
 
 // AddFolder adds a folder to the LIBRARY or SERIES (if it has subfolders)
-func (a *App) AddFolder(path string) error {
-	folderPath := a.resolveToFolder(path)
+func (a *App) AddFolder(path string) (*AddFolderResult, error) {
+	isTemp := false
+	actualPath := path
+
+	// If it's an archive, extract it
+	if archiver.IsArchive(path) {
+		tempBase := persistence.GetTempDir()
+		hash := md5.Sum([]byte(path))
+		folderName := strings.TrimSuffix(filepath.Base(path), filepath.Ext(path))
+		dest := filepath.Join(tempBase, fmt.Sprintf("%x_%s", hash, folderName))
+
+		fmt.Printf("[App] Extracting archive %s to %s\n", path, dest)
+		if err := archiver.Extract(path, dest); err != nil {
+			fmt.Printf("[App] Error extracting archive: %v\n", err)
+			return nil, err
+		}
+		actualPath = a.unwrapArchiveRoot(dest)
+		isTemp = true
+	}
+
+	folderPath := a.resolveToFolder(actualPath)
 
 	// Check if it's a series (has subfolders with images)
 	subfolders, _ := a.GetSubfolders(folderPath)
 	if len(subfolders) > 0 {
-		return a.AddSeries(folderPath, subfolders)
+		return a.AddSeries(folderPath, subfolders, isTemp)
 	}
 
 	folderInfo, err := a.GetFolderInfo(folderPath)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if folderInfo.ImageCount == 0 {
-		return fmt.Errorf("no images found in folder")
+		return nil, fmt.Errorf("no images found in folder")
 	}
 
 	entry := persistence.LibraryEntry{
@@ -390,42 +429,38 @@ func (a *App) AddFolder(path string) error {
 		TotalImages: folderInfo.ImageCount,
 		CoverImage:  folderInfo.CoverImage,
 		AddedAt:     time.Now().Format(time.RFC3339),
+		IsTemporary: isTemp,
 	}
 
 	if err := a.library.Add(entry); err != nil {
 		fmt.Printf("Error adding folder to library: %v\n", err)
-		return err
+		return nil, err
 	}
 
 	runtime.EventsEmit(a.ctx, "library_updated")
-	fmt.Printf("Folder added to library: %s\n", folderPath)
-	return nil
+	fmt.Printf("Folder added to library: %s (temp: %v)\n", folderPath, isTemp)
+	return &AddFolderResult{Path: folderPath, IsSeries: false}, nil
 }
 
 // AddSeries adds a series with its chapters
-func (a *App) AddSeries(path string, subfolders []FolderInfo) error {
-	// 1. Find cover image
+func (a *App) AddSeries(path string, subfolders []FolderInfo, isTemp bool) (*AddFolderResult, error) {
+	// ... existing logic ...
 	rootImages, _ := a.GetImages(path)
 	var coverImage string
 
 	if len(rootImages) > 0 {
-		// Prefer root image as cover.
-		// Heuristic: If multiple images, look for "cover", "folder", "thumb" or just any small file
 		coverImage = rootImages[0].Path
 		for _, img := range rootImages {
 			lowerName := strings.ToLower(img.Name)
-			// Preference for standard cover filenames
 			if strings.Contains(lowerName, "cover") || strings.Contains(lowerName, "folder") || strings.Contains(lowerName, "thumb") {
 				coverImage = img.Path
 				break
 			}
-			// If not found yet, and we see an image that is relatively small (possible thumbnail), keep it as candidate
-			if coverImage == rootImages[0].Path && img.Size < 500*1024 { // < 500KB
+			if coverImage == rootImages[0].Path && img.Size < 500*1024 {
 				coverImage = img.Path
 			}
 		}
 	} else if len(subfolders) > 0 {
-		// Use first image of first subfolder as fallback
 		coverImage = subfolders[0].CoverImage
 	}
 
@@ -439,21 +474,22 @@ func (a *App) AddSeries(path string, subfolders []FolderInfo) error {
 	}
 
 	entry := persistence.SeriesEntry{
-		Path:       path,
-		Name:       filepath.Base(path),
-		CoverImage: coverImage,
-		AddedAt:    time.Now().Format(time.RFC3339),
-		Chapters:   chapters,
+		Path:        path,
+		Name:        filepath.Base(path),
+		CoverImage:  coverImage,
+		AddedAt:     time.Now().Format(time.RFC3339),
+		Chapters:    chapters,
+		IsTemporary: isTemp,
 	}
 
 	if err := a.series.Add(entry); err != nil {
 		fmt.Printf("Error adding series: %v\n", err)
-		return err
+		return nil, err
 	}
 
 	runtime.EventsEmit(a.ctx, "series_updated")
-	fmt.Printf("Series added: %s with %d chapters\n", path, len(subfolders))
-	return nil
+	fmt.Printf("Series added: %s with %d chapters (temp: %v)\n", path, len(subfolders), isTemp)
+	return &AddFolderResult{Path: path, IsSeries: true}, nil
 }
 
 // GetSeries returns all series entries
@@ -463,6 +499,11 @@ func (a *App) GetSeries() []persistence.SeriesEntry {
 
 // RemoveSeries removes a series entry
 func (a *App) RemoveSeries(path string) error {
+	entry := a.series.Get(path)
+	if entry != nil && entry.IsTemporary {
+		a.cleanupTemporaryPath(path)
+	}
+
 	err := a.series.Remove(path)
 	if err == nil {
 		runtime.EventsEmit(a.ctx, "series_updated")
@@ -484,6 +525,11 @@ func (a *App) GetLibrary() []persistence.LibraryEntry {
 
 // RemoveLibraryEntry removes a library entry
 func (a *App) RemoveLibraryEntry(folderPath string) error {
+	entry := a.library.Get(folderPath)
+	if entry != nil && entry.IsTemporary {
+		a.cleanupTemporaryPath(folderPath)
+	}
+
 	err := a.library.Remove(folderPath)
 	if err == nil {
 		runtime.EventsEmit(a.ctx, "library_updated")
@@ -493,6 +539,13 @@ func (a *App) RemoveLibraryEntry(folderPath string) error {
 
 // ClearLibrary removes all library entries
 func (a *App) ClearLibrary() error {
+	entries := a.library.GetAll()
+	for _, entry := range entries {
+		if entry.IsTemporary {
+			a.cleanupTemporaryPath(entry.FolderPath)
+		}
+	}
+
 	err := a.library.Clear()
 	if err == nil {
 		runtime.EventsEmit(a.ctx, "library_updated")
@@ -502,6 +555,13 @@ func (a *App) ClearLibrary() error {
 
 // ClearSeries removes all series entries
 func (a *App) ClearSeries() error {
+	entries := a.series.GetAll()
+	for _, entry := range entries {
+		if entry.IsTemporary {
+			a.cleanupTemporaryPath(entry.Path)
+		}
+	}
+
 	err := a.series.Clear()
 	if err == nil {
 		runtime.EventsEmit(a.ctx, "series_updated")
@@ -531,4 +591,64 @@ func (a *App) PreloadThumbnails(imagePaths []string) {
 // ClearThumbnailCache clears the thumbnail cache
 func (a *App) ClearThumbnailCache() error {
 	return a.thumbGen.ClearCache()
+}
+
+// unwrapArchiveRoot walks down the directory tree if there's only one subfolder and no images.
+// This is common in ZIP files: ZIP -> Folder -> Images...
+func (a *App) unwrapArchiveRoot(path string) string {
+	for {
+		entries, err := os.ReadDir(path)
+		if err != nil {
+			return path
+		}
+
+		var subdirs []os.DirEntry
+		var hasImages bool
+		var validCount int
+
+		for _, e := range entries {
+			name := e.Name()
+			// Ignore hidden files and MacOS metadata
+			if strings.HasPrefix(name, ".") || name == "__MACOSX" {
+				continue
+			}
+			validCount++
+
+			if e.IsDir() {
+				subdirs = append(subdirs, e)
+			} else if a.fileLoader.IsSupportedImage(name) {
+				hasImages = true
+				break
+			}
+		}
+
+		// If we found images or there's more than one valid thing at this level, this is our root.
+		if hasImages || len(subdirs) != 1 || validCount > 1 {
+			return path
+		}
+
+		// Go one level deeper
+		path = filepath.Join(path, subdirs[0].Name())
+	}
+}
+
+// cleanupTemporaryPath ensures the entire extraction root is removed from the temp directory.
+func (a *App) cleanupTemporaryPath(path string) {
+	tempDir := persistence.GetTempDir()
+	rel, err := filepath.Rel(tempDir, path)
+	if err != nil {
+		fmt.Printf("[App] Error calculating relative path for cleanup: %v\n", err)
+		os.RemoveAll(path) // Fallback to removing the path itself
+		return
+	}
+
+	parts := strings.Split(rel, string(os.PathSeparator))
+	if len(parts) > 0 && parts[0] != ".." && parts[0] != "." {
+		rootToRemove := filepath.Join(tempDir, parts[0])
+		fmt.Printf("[App] Cleaning up temporary root: %s (from path %s)\n", rootToRemove, path)
+		os.RemoveAll(rootToRemove)
+	} else {
+		// If it's not actually inside tempDir or something weird happened
+		os.RemoveAll(path)
+	}
 }

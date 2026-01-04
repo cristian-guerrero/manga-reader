@@ -102,7 +102,7 @@ export function TitleBar({ title }: TitleBarProps) {
                 // @ts-ignore
                 '--wails-draggable': 'drag',
             }}
-
+            onDoubleClick={handleMaximize}
         >
             {/* App Logo and Title - Draggable */}
             <div className="flex items-center gap-2 flex-1 drag h-full">

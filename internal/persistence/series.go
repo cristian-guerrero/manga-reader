@@ -17,12 +17,13 @@ type ChapterInfo struct {
 
 // SeriesEntry represents a series folder entry
 type SeriesEntry struct {
-	ID         string        `json:"id"`
-	Path       string        `json:"path"`
-	Name       string        `json:"name"`
-	CoverImage string        `json:"coverImage"`
-	AddedAt    string        `json:"addedAt"`
-	Chapters   []ChapterInfo `json:"chapters"`
+	ID          string        `json:"id"`
+	Path        string        `json:"path"`
+	Name        string        `json:"name"`
+	CoverImage  string        `json:"coverImage"`
+	AddedAt     string        `json:"addedAt"`
+	Chapters    []ChapterInfo `json:"chapters"`
+	IsTemporary bool          `json:"isTemporary"`
 }
 
 // Series represents the series structure

@@ -154,6 +154,7 @@ export interface SeriesEntry {
     coverImage: string;
     addedAt: string;
     chapters: ChapterInfo[];
+    isTemporary?: boolean;
 }
 
 // ============================================================================

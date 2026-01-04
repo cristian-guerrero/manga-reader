@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { useNavigationStore } from '../../stores/navigationStore';
 import { EventsOn, EventsOff } from '../../../wailsjs/runtime';
+import { useToast } from '../common/Toast';
 
 // Icons
 const FolderIcon = () => (
@@ -42,45 +43,77 @@ interface FolderData {
     name: string;
     imageCount: number;
     coverImage?: string;
+    isTemporary?: boolean;
 }
 
 export function FoldersPage() {
     const { t } = useTranslation();
-    const { navigate } = useNavigationStore();
+    const { navigate, setIsProcessing } = useNavigationStore();
+    const { showToast } = useToast();
     const [folders, setFolders] = useState<FolderData[]>([]);
-    const [isLoading, setIsLoading] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
     const [thumbnails, setThumbnails] = useState<Record<string, string>>({});
 
     // Load folders from settings/library
     useEffect(() => {
-        loadFolders();
+        let isMounted = true;
+        let unsubscribe: () => void;
 
-        // Listen for updates (e.g. from drag and drop)
-        const cleanup = EventsOn('library_updated', () => {
+        const init = async () => {
+            await ensureWailsReady();
+            if (!isMounted) return;
+
             loadFolders();
-        });
+
+            // Listen for updates (e.g. from drag and drop)
+            unsubscribe = EventsOn('library_updated', () => {
+                if (isMounted) loadFolders();
+            });
+        };
+
+        init();
 
         return () => {
-            // We need to unregister specifically, but Wails JS EventsOff creates a new listener if not passed specific ref?
-            // Actually EventsOn returns a cleanup function in some versions, but looking at runtime.js providing wrapper...
-            // runtime.js: export function EventsOn(...) { return window.runtime.EventsOnMultiple(...) }
-            // It returns the callback usually.
-            // Safe way:
-            EventsOff('library_updated');
+            isMounted = false;
+            if (unsubscribe) unsubscribe();
         };
     }, []);
 
-    const loadFolders = async () => {
+    const ensureWailsReady = async (maxAttempts = 20) => {
+        for (let i = 0; i < maxAttempts; i++) {
+            // @ts-ignore
+            if (window.go?.main?.App?.GetLibrary) return true;
+            await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        console.warn('Wails bindings not ready after timeout');
+        return false;
+    };
+
+    const loadFolders = async (retryCount = 0) => {
         setIsLoading(true);
+        console.log(`[FoldersPage] Loading folders (attempt ${retryCount + 1})...`);
         try {
             // @ts-ignore - Wails generated bindings
-            const library = await window.go?.main?.App?.GetLibrary();
+            const app = window.go?.main?.App;
+            if (!app) {
+                console.log('[FoldersPage] Wails bindings not found');
+                if (retryCount < 3) {
+                    setTimeout(() => loadFolders(retryCount + 1), 500);
+                    return;
+                }
+                throw new Error('Bindings not available');
+            }
+
+            const library = await app.GetLibrary();
+            console.log(`[FoldersPage] Library received: ${library?.length || 0} items`);
+
             if (library && Array.isArray(library)) {
                 const folderData = library.map((entry: any) => ({
                     path: entry.folderPath,
                     name: entry.folderName,
                     imageCount: entry.totalImages,
                     coverImage: undefined,
+                    isTemporary: entry.isTemporary,
                 }));
                 setFolders(folderData);
 
@@ -92,7 +125,7 @@ export function FoldersPage() {
                 }
             }
         } catch (error) {
-            console.error('Failed to load folders:', error);
+            console.error('[FoldersPage] Failed to load folders:', error);
         } finally {
             setIsLoading(false);
         }
@@ -119,20 +152,22 @@ export function FoldersPage() {
             // @ts-ignore - Wails generated bindings
             const folderPath = await window.go?.main?.App?.SelectFolder();
             if (folderPath) {
-                let isSeries = false;
                 try {
+                    setIsProcessing(true);
                     // @ts-ignore
-                    isSeries = await window.go?.main?.App?.IsSeries(folderPath);
-                    // @ts-ignore
-                    await window.go?.main?.App?.AddFolder(folderPath);
+                    const result = await window.go?.main?.App?.AddFolder(folderPath);
+                    if (result) {
+                        if (result.isSeries) {
+                            navigate('series-details', { series: result.path });
+                        } else {
+                            navigate('viewer', { folder: result.path });
+                        }
+                    }
                 } catch (e) {
                     console.error("Failed to add to library", e);
-                }
-
-                if (isSeries) {
-                    navigate('series-details', { series: folderPath });
-                } else {
-                    navigate('viewer', { folder: folderPath });
+                    showToast?.(t('common.error'), 'error');
+                } finally {
+                    setIsProcessing(false);
                 }
             }
         } catch (error) {
@@ -273,19 +308,20 @@ export function FoldersPage() {
             ) : (
                 <motion.div
                     className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
-                    variants={containerVariants}
-                    initial="hidden"
-                    animate="visible"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.3 }}
                 >
                     <AnimatePresence>
                         {folders.map((folder) => (
                             <motion.div
                                 key={folder.path}
-                                variants={itemVariants}
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.95 }}
                                 layout
-                                exit={{ opacity: 0, scale: 0.9 }}
                                 onClick={() => handleOpenFolder(folder)}
-                                className="group relative rounded-xl overflow-hidden cursor-pointer hover-lift"
+                                className="group relative rounded-xl overflow-hidden cursor-pointer hover-lift shadow-sm"
                                 style={{
                                     backgroundColor: 'var(--color-surface-secondary)',
                                     border: '1px solid var(--color-border)',
@@ -312,6 +348,20 @@ export function FoldersPage() {
                                             >
                                                 <FolderIcon />
                                             </motion.div>
+                                        </div>
+                                    )}
+
+                                    {/* Archive Badge */}
+                                    {folder.isTemporary && (
+                                        <div
+                                            className="absolute top-2 left-2 px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider z-10 shadow-lg border border-white/10"
+                                            style={{
+                                                backgroundColor: 'rgba(56, 189, 248, 0.9)', // Sky 400
+                                                color: 'white',
+                                                backdropFilter: 'blur(4px)'
+                                            }}
+                                        >
+                                            {t('common.archive') || 'Archive'}
                                         </div>
                                     )}
 

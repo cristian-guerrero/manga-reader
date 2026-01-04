@@ -3,6 +3,7 @@ module manga-visor
 go 1.24.0
 
 require (
+	github.com/nwaples/rardecode/v2 v2.2.2
 	github.com/wailsapp/wails/v2 v2.11.0
 	golang.org/x/image v0.34.0
 )

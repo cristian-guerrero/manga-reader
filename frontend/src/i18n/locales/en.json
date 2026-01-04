@@ -15,10 +15,11 @@
         "previous": "Previous",
         "search": "Search",
         "noResults": "No results found",
-        "search": "Search",
-        "noResults": "No results found",
         "reset": "Reset",
-        "off": "Off"
+        "off": "Off",
+        "processing": "Processing...",
+        "pleaseWait": "Please wait while we prepare your content",
+        "archive": "Archive"
     },
     "navigation": {
         "home": "Home",

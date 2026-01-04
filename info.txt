@@ -1,3 +1,8 @@
+dependecias para linux:   
+- libgtk-3: sudo apt install libgtk-3-dev
+- libwebkit: sudo apt install libwebkit2gtk-4.1-dev
+
+-----------------------------------------------------------------------------
 vamos a crear un visor de manga
 
 stack propuest con wails , React + Vite,  Tailwind CSS, Framer Motion, Canvas API para entorno desktop
@@ -65,6 +70,9 @@ cambios adicionales: [DONE]
 - si se agrega una carpeta con subcarpetas (serie) y despues se agrega una de sus subcarpetas
     esta subcarpeta se debe agregar a la lista de carpetas (sin modificar el comportamiento de seriees)
 - rediseño visual moderno (fusión sidebar/titlebar con esquinas redondeadas)
-dependecias para linux:   
-- libgtk-3: sudo apt install libgtk-3-dev
-- libwebkit: sudo apt install libwebkit2gtk-4.1-dev
+-------------------------------------------------------------------------------
+caracteristicas adicionales 4:
+- verificar viabilidad sin dependencias externas del sistema
+- poder arrastrar zip o rar y hacer la funcionalidad como si se arrastrara una carpeta, guardar las imagenes temporales
+- si existen estas imagenes temporales al eliminar la carpeta o la serie se deben eliminar de disco, solo cuando cuando son temporales creadas 
+    por la extraccionde zip o rar

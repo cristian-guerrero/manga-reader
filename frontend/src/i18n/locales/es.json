@@ -15,7 +15,10 @@
         "previous": "Anterior",
         "search": "Buscar",
         "noResults": "Sin resultados",
-        "reset": "Restablecer"
+        "reset": "Restablecer",
+        "processing": "Procesando...",
+        "pleaseWait": "Por favor espera mientras preparamos tu contenido",
+        "archive": "Archivo"
     },
     "navigation": {
         "home": "Inicio",

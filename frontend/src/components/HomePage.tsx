@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigationStore } from '../stores/navigationStore';
+import { EventsOn, EventsOff } from '../../wailsjs/runtime';
 
 // Icons
 const FolderPlusIcon = () => (
@@ -30,6 +31,13 @@ const ArrowRightIcon = () => (
     </svg>
 );
 
+const TrashIcon = () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="3 6 5 6 21 6" />
+        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+    </svg>
+);
+
 export function HomePage() {
     const { t } = useTranslation();
     const { navigate } = useNavigationStore();
@@ -38,14 +46,55 @@ export function HomePage() {
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        loadRecentHistory();
+        let isMounted = true;
+        let unsubscribe: () => void;
+
+        const init = async () => {
+            await ensureWailsReady();
+            if (!isMounted) return;
+
+            loadRecentHistory();
+
+            unsubscribe = EventsOn('history_updated', () => {
+                console.log('[HomePage] Received history_updated event');
+                if (isMounted) loadRecentHistory();
+            });
+        };
+
+        init();
+
+        return () => {
+            isMounted = false;
+            if (unsubscribe) unsubscribe();
+        };
     }, []);
 
-    const loadRecentHistory = async () => {
+    const ensureWailsReady = async (maxAttempts = 20) => {
+        for (let i = 0; i < maxAttempts; i++) {
+            // @ts-ignore
+            if (window.go?.main?.App?.GetHistory) return true;
+            await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        console.warn('Wails bindings not ready after timeout');
+        return false;
+    };
+
+    const loadRecentHistory = async (retryCount = 0) => {
         setIsLoading(true);
         try {
             // @ts-ignore
-            const entries = await window.go?.main?.App?.GetHistory();
+            const app = window.go?.main?.App;
+            if (!app) {
+                if (retryCount < 3) {
+                    setTimeout(() => loadRecentHistory(retryCount + 1), 500);
+                    return;
+                }
+                throw new Error('Bindings not available');
+            }
+
+            const entries = await app.GetHistory();
+            console.log(`[HomePage] History received: ${entries?.length || 0} items`);
+
             if (entries && Array.isArray(entries) && entries.length > 0) {
                 // Show up to 4 recent items
                 const recent = entries.slice(0, 4);
@@ -67,6 +116,8 @@ export function HomePage() {
                         console.error('Failed to load thumbnail for', entry.folderName, err);
                     }
                 });
+            } else {
+                setHistoryEntries([]);
             }
         } catch (error) {
             console.error('Failed to load history', error);
@@ -77,6 +128,17 @@ export function HomePage() {
 
     const handleContinue = (path: string) => {
         navigate('viewer', { folder: path });
+    };
+
+    const handleRemoveHistory = async (path: string, e: React.MouseEvent) => {
+        e.stopPropagation();
+        try {
+            // @ts-ignore
+            await window.go?.main?.App?.RemoveHistory(path);
+            // The list will refresh via the history_updated event
+        } catch (error) {
+            console.error('Failed to remove history', error);
+        }
     };
 
     const handleSelectFolder = async () => {
@@ -178,6 +240,16 @@ export function HomePage() {
                                 >
                                     Continue Reading
                                 </motion.button>
+
+                                <motion.button
+                                    onClick={(e) => handleRemoveHistory(historyEntries[0].folderPath, e)}
+                                    className="px-4 py-3 rounded-xl bg-surface-tertiary text-text-muted hover:text-red-500 transition-colors border border-white/5"
+                                    whileHover={{ scale: 1.05 }}
+                                    whileTap={{ scale: 0.95 }}
+                                    title="Remove from history"
+                                >
+                                    <TrashIcon />
+                                </motion.button>
                             </div>
                         </div>
                     </motion.div>
@@ -222,8 +294,19 @@ export function HomePage() {
                                                     {entry.folderPath}
                                                 </p>
                                             </div>
-                                            <div className="mt-4 text-xs font-semibold text-accent uppercase tracking-tighter">
-                                                Page {entry.lastImageIndex + 1} of {entry.totalImages}
+                                            <div className="mt-4 flex items-end justify-between">
+                                                <div className="text-xs font-semibold text-accent uppercase tracking-tighter">
+                                                    Page {entry.lastImageIndex + 1} of {entry.totalImages}
+                                                </div>
+                                                <motion.button
+                                                    onClick={(e) => handleRemoveHistory(entry.folderPath, e)}
+                                                    className="p-1.5 rounded-lg bg-surface-tertiary/50 text-text-muted hover:text-red-500 transition-all opacity-0 group-hover:opacity-100"
+                                                    whileHover={{ scale: 1.1 }}
+                                                    whileTap={{ scale: 0.9 }}
+                                                    title="Remove"
+                                                >
+                                                    <TrashIcon />
+                                                </motion.button>
                                             </div>
                                         </div>
                                     </motion.div>

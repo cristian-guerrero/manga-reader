@@ -44,26 +44,59 @@ export function SeriesPage() {
     const { t } = useTranslation();
     const { navigate } = useNavigationStore();
     const [series, setSeries] = useState<SeriesEntry[]>([]);
-    const [isLoading, setIsLoading] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
     const [thumbnails, setThumbnails] = useState<Record<string, string>>({});
 
     useEffect(() => {
-        loadSeries();
+        let isMounted = true;
+        let unsubscribe: () => void;
 
-        const cleanup = EventsOn('series_updated', () => {
+        const init = async () => {
+            await ensureWailsReady();
+            if (!isMounted) return;
+
             loadSeries();
-        });
+
+            unsubscribe = EventsOn('series_updated', () => {
+                if (isMounted) loadSeries();
+            });
+        };
+
+        init();
 
         return () => {
-            EventsOff('series_updated');
+            isMounted = false;
+            if (unsubscribe) unsubscribe();
         };
     }, []);
 
-    const loadSeries = async () => {
+    const ensureWailsReady = async (maxAttempts = 20) => {
+        for (let i = 0; i < maxAttempts; i++) {
+            // @ts-ignore
+            if (window.go?.main?.App?.GetSeries) return true;
+            await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        console.warn('Wails bindings not ready after timeout');
+        return false;
+    };
+
+    const loadSeries = async (retryCount = 0) => {
         setIsLoading(true);
+        console.log(`[SeriesPage] Loading series (attempt ${retryCount + 1})...`);
         try {
             // @ts-ignore
-            const data = await window.go?.main?.App?.GetSeries();
+            const app = window.go?.main?.App;
+            if (!app) {
+                console.log('[SeriesPage] Wails bindings not found');
+                if (retryCount < 3) {
+                    setTimeout(() => loadSeries(retryCount + 1), 500);
+                    return;
+                }
+                throw new Error('Bindings not available');
+            }
+
+            const data = await app.GetSeries();
+            console.log(`[SeriesPage] Series received: ${data?.length || 0} items`);
             if (data && Array.isArray(data)) {
                 setSeries(data);
 
@@ -75,7 +108,7 @@ export function SeriesPage() {
                 }
             }
         } catch (error) {
-            console.error('Failed to load series:', error);
+            console.error('[SeriesPage] Failed to load series:', error);
         } finally {
             setIsLoading(false);
         }
@@ -234,19 +267,20 @@ export function SeriesPage() {
             ) : (
                 <motion.div
                     className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
-                    variants={containerVariants}
-                    initial="hidden"
-                    animate="visible"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.3 }}
                 >
                     <AnimatePresence>
                         {series.map((item) => (
                             <motion.div
                                 key={item.path}
-                                variants={itemVariants}
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.95 }}
                                 layout
-                                exit={{ opacity: 0, scale: 0.9 }}
                                 onClick={() => handleOpenSeries(item)}
-                                className="group relative rounded-xl overflow-hidden cursor-pointer hover-lift"
+                                className="group relative rounded-xl overflow-hidden cursor-pointer hover-lift shadow-sm"
                                 style={{
                                     backgroundColor: 'var(--color-surface-secondary)',
                                     border: '1px solid var(--color-border)',
@@ -273,6 +307,20 @@ export function SeriesPage() {
                                             >
                                                 <SeriesIcon />
                                             </motion.div>
+                                        </div>
+                                    )}
+
+                                    {/* Archive Badge */}
+                                    {item.isTemporary && (
+                                        <div
+                                            className="absolute top-2 left-2 px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider z-10 shadow-lg border border-white/10"
+                                            style={{
+                                                backgroundColor: 'rgba(56, 189, 248, 0.9)', // Sky 400
+                                                color: 'white',
+                                                backdropFilter: 'blur(4px)'
+                                            }}
+                                        >
+                                            {t('common.archive') || 'Archive'}
                                         </div>
                                     )}
 

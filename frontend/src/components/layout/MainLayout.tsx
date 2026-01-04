@@ -4,6 +4,7 @@
 
 import { motion, AnimatePresence } from 'framer-motion';
 import { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigationStore } from '../../stores/navigationStore';
 
 
@@ -18,7 +19,8 @@ interface MainLayoutProps {
 }
 
 export function MainLayout({ children }: MainLayoutProps) {
-    const { isPanicMode } = useNavigationStore();
+    const { t } = useTranslation();
+    const { isPanicMode, isProcessing, setIsProcessing } = useNavigationStore();
     const { showToast } = useToast();
     const { processDroppedFolders } = useSettingsStore();
 
@@ -40,6 +42,7 @@ export function MainLayout({ children }: MainLayoutProps) {
                 const processDropped = currentSettings.processDroppedFolders;
 
                 try {
+                    setIsProcessing(true);
                     // Resolve all paths to folders (e.g. if someone drags a .jpg)
                     const resolvedPaths = (await Promise.all(
                         paths.map(async (p) => {
@@ -55,26 +58,37 @@ export function MainLayout({ children }: MainLayoutProps) {
                     if (uniqueFolders.length === 1) {
                         const path = uniqueFolders[0];
                         let isSeries = false;
+                        let finalPath = path;
 
                         if (processDropped) {
+                            try {
+                                // @ts-ignore
+                                const result = await window.go?.main?.App?.AddFolder(path);
+                                if (result) {
+                                    finalPath = result.path;
+                                    isSeries = result.isSeries;
+                                }
+                            } catch (error) {
+                                console.error('Failed to add folder:', error);
+                                showToast("Failed to process archive", "error");
+                            }
+                        } else {
                             // @ts-ignore
                             isSeries = await window.go?.main?.App?.IsSeries(path);
-                            // @ts-ignore
-                            await window.go?.main?.App?.AddFolder(path);
                         }
 
                         // @ts-ignore
                         const navigate = useNavigationStore.getState().navigate;
 
                         if (isSeries && processDropped) {
-                            navigate('series-details', { series: path });
+                            navigate('series-details', { series: finalPath });
                         } else {
                             navigate('viewer', {
-                                folder: path,
+                                folder: finalPath,
                                 noHistory: !processDropped ? 'true' : 'false'
                             });
                         }
-                        showToast(`Opening: ${path.split(/[\\/]/).pop()}`, 'success');
+                        showToast(`Opening: ${finalPath.split(/[\\/]/).pop()}`, 'success');
                     } else {
                         let addedCount = 0;
                         for (const path of uniqueFolders) {
@@ -97,6 +111,8 @@ export function MainLayout({ children }: MainLayoutProps) {
                 } catch (e) {
                     console.error("Failed to process dropped items", e);
                     showToast("Failed to process dropped items", "error");
+                } finally {
+                    setIsProcessing(false);
                 }
             }
         }, false);
@@ -157,6 +173,53 @@ export function MainLayout({ children }: MainLayoutProps) {
                         >
                             {!isPanicMode && children}
                         </motion.div>
+                    </AnimatePresence>
+
+                    {/* Processing Overlay */}
+                    <AnimatePresence>
+                        {isProcessing && (
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                className="absolute inset-0 z-50 flex flex-col items-center justify-center backdrop-blur-md bg-black/40 rounded-tl-[40px]"
+                            >
+                                <motion.div
+                                    className="relative w-20 h-20 mb-6"
+                                    animate={{ scale: [1, 1.05, 1] }}
+                                    transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+                                >
+                                    {/* Spinner Background Ring */}
+                                    <div className="absolute inset-0 border-4 border-white/10 rounded-full" />
+
+                                    {/* Rotating Ring */}
+                                    <motion.div
+                                        animate={{ rotate: 360 }}
+                                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                                        className="absolute inset-0 border-4 border-t-transparent rounded-full shadow-glow"
+                                        style={{ borderColor: 'var(--color-accent) transparent transparent transparent' }}
+                                    />
+
+                                    {/* Center Glow */}
+                                    <div className="absolute inset-4 bg-accent/20 blur-xl rounded-full" />
+                                </motion.div>
+
+                                <motion.div
+                                    initial={{ y: 10, opacity: 0 }}
+                                    animate={{ y: 0, opacity: 1 }}
+                                    className="text-white font-bold text-xl tracking-wider text-shadow text-center px-6"
+                                >
+                                    {t('common.processing') || 'Processing...'}
+                                </motion.div>
+                                <motion.div
+                                    animate={{ opacity: [0.4, 0.8, 0.4] }}
+                                    transition={{ duration: 2, repeat: Infinity }}
+                                    className="text-white/60 text-sm mt-2 text-center"
+                                >
+                                    {t('common.pleaseWait') || 'Please wait while we prepare your content'}
+                                </motion.div>
+                            </motion.div>
+                        )}
                     </AnimatePresence>
                 </main>
             </div>

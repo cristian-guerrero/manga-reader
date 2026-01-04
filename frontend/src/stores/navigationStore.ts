@@ -24,6 +24,10 @@ interface NavigationStoreState extends NavigationState {
     isPanicMode: boolean;
     triggerPanic: () => void;
     exitPanic: () => void;
+
+    // Processing mode (e.g. ZIP extraction)
+    isProcessing: boolean;
+    setIsProcessing: (isProcessing: boolean) => void;
 }
 
 export const useNavigationStore = create<NavigationStoreState>((set, get) => ({
@@ -33,6 +37,7 @@ export const useNavigationStore = create<NavigationStoreState>((set, get) => ({
     params: {},
     history: [{ page: 'home', params: {} }],
     isPanicMode: false,
+    isProcessing: false,
 
     // Actions
     navigate: (page, params = {}) => {
@@ -114,5 +119,9 @@ export const useNavigationStore = create<NavigationStoreState>((set, get) => ({
 
     exitPanic: () => {
         set({ isPanicMode: false });
+    },
+
+    setIsProcessing: (isProcessing) => {
+        set({ isProcessing });
     },
 }));
