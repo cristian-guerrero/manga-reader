@@ -1,0 +1,34 @@
+vamos a crear un visor de manga
+
+stack propuest con wails , React + Vite,  Tailwind CSS, Framer Motion, Canvas API para entorno desktop
+ract-virtualized para carpetas con cientos de imagenes
+
+Caracteristicas:
+- Visor vertical y lateral
+- Lista de capitulos visto, lista de capitulos en carpeta seleccionada
+- guardar el pundo donde se termino de ver la ultima imagen cuando se abra desde la lista de capitulos visto (historial)
+- debe ser multi lenguaje (ingles, español, para empezar) y facil de hacer traducciones,
+- debe poderse actualizar (si es posible realizar actualizaciones al vuelo del front excelente)
+- debe ser portable
+- debe ser multiplataforma (windows, linux, mac)
+- debe verse espectacular pero profesional
+- con temas configurables, (centralizaso para poder agregar mas o que el usuario pueda agregarlos)
+- debe poderse elegir en vista lateral si se ve una imagen o desktop
+- debe poderse elegir en vertical (escroll infinito) determinar que porcentaje del ancho de la venta ocupa
+- debe tener boton de panico, que cuando se presione por ejemplo: escape, deje de mostrar imagenes o vuelva a la pantalla de inicio
+- debe tener selector de carpetas (dialogo)
+- debe poderse eliminar carpetas de la lista, (las carpetas funcionarian como capitlos por ahora porque solo es para imagenes)
+- debe poder leer los formatos de imagenes mas populares (png, jpg, jpeg, webp, gif, bmp, tiff, svg)
+-debe tener una pantalla de configuracion
+------------------------------------------------------------
+Caracteristicas adicionales:
+- se debe tener un menu en la carpeta que permita entrar a una previa de miniaturas de las carpetas
+    imagenes y poderlas ordenar, aparte del ordern por defecto poder arrastrarlas y ordenar las imagenes
+- el menu lateral debe compirmiser para dejar el mayor espacio posible para las imagenes you\
+    quedar en forma de iconos
+- la barra superior de la ventana debe tomar el tema (como lo hace visual code)
+- se puede hacer zoom pan a las imagenes
+- el ordenado de imagenes debe persistir pero se puede resetear a el orden origina.
+
+- la estructura del proyecto debe quedar con buenas practivas de programacion
+-documentacion clara de desarrollo y build y documentacion de uso de la app 

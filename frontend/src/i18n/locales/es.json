@@ -1,0 +1,129 @@
+{
+    "common": {
+        "appName": "Manga Visor",
+        "loading": "Cargando...",
+        "error": "Error",
+        "success": "Éxito",
+        "cancel": "Cancelar",
+        "confirm": "Confirmar",
+        "save": "Guardar",
+        "delete": "Eliminar",
+        "edit": "Editar",
+        "close": "Cerrar",
+        "back": "Atrás",
+        "next": "Siguiente",
+        "previous": "Anterior",
+        "search": "Buscar",
+        "noResults": "Sin resultados",
+        "reset": "Restablecer"
+    },
+    "navigation": {
+        "home": "Inicio",
+        "history": "Historial",
+        "folders": "Carpetas",
+        "settings": "Configuración",
+        "viewer": "Visor"
+    },
+    "home": {
+        "welcome": "Bienvenido a Manga Visor",
+        "subtitle": "Tu experiencia premium de lectura de manga",
+        "selectFolder": "Seleccionar Carpeta",
+        "recentlyRead": "Leídos Recientemente",
+        "continueReading": "Continuar Leyendo",
+        "noHistory": "Sin historial de lectura",
+        "startReading": "Selecciona una carpeta para comenzar"
+    },
+    "viewer": {
+        "vertical": "Modo Vertical",
+        "lateral": "Modo Lateral",
+        "singlePage": "Página Simple",
+        "doublePage": "Página Doble",
+        "zoomIn": "Acercar",
+        "zoomOut": "Alejar",
+        "resetZoom": "Restablecer Zoom",
+        "fitWidth": "Ajustar Ancho",
+        "fitHeight": "Ajustar Alto",
+        "page": "Página",
+        "of": "de",
+        "width": "Ancho",
+        "goToPage": "Ir a Página",
+        "thumbnails": "Miniaturas",
+        "imageInfo": "Info de Imagen"
+    },
+    "folders": {
+        "title": "Carpetas",
+        "selectFolder": "Seleccionar Carpeta",
+        "addFolder": "Agregar Carpeta",
+        "removeFolder": "Quitar Carpeta",
+        "openFolder": "Abrir Carpeta",
+        "images": "imágenes",
+        "lastModified": "Última modificación",
+        "confirmRemove": "¿Estás seguro de quitar esta carpeta de la lista?",
+        "noFolders": "No hay carpetas agregadas",
+        "dragDrop": "Arrastra o haz clic para seleccionar"
+    },
+    "history": {
+        "title": "Historial de Lectura",
+        "clearHistory": "Limpiar Historial",
+        "confirmClear": "¿Estás seguro de limpiar todo el historial?",
+        "noHistory": "Sin historial de lectura",
+        "progress": "Progreso",
+        "lastRead": "Última lectura",
+        "continueFrom": "Continuar desde página"
+    },
+    "thumbnails": {
+        "title": "Miniaturas",
+        "reorder": "Reordenar Imágenes",
+        "resetOrder": "Restablecer Orden Original",
+        "confirmReset": "¿Restablecer el orden de imágenes al original?",
+        "dragToReorder": "Arrastra para reordenar",
+        "orderSaved": "Orden guardado"
+    },
+    "settings": {
+        "title": "Configuración",
+        "appearance": "Apariencia",
+        "theme": "Tema",
+        "language": "Idioma",
+        "viewer": "Visor",
+        "defaultMode": "Modo Predeterminado",
+        "verticalWidth": "Ancho Vertical",
+        "lateralMode": "Modo Lateral",
+        "readingDirection": "Dirección de Lectura",
+        "leftToRight": "Izquierda a Derecha",
+        "rightToLeft": "Derecha a Izquierda",
+        "keyboard": "Teclado",
+        "panicKey": "Tecla de Pánico",
+        "panicKeyDesc": "Presiona para volver al inicio instantáneamente",
+        "advanced": "Avanzado",
+        "preloadImages": "Precargar Imágenes",
+        "preloadCount": "Imágenes a Precargar",
+        "showImageInfo": "Mostrar Info de Imagen",
+        "resetSettings": "Restablecer Valores",
+        "confirmReset": "¿Restablecer toda la configuración a valores predeterminados?"
+    },
+    "themes": {
+        "dark": "Oscuro",
+        "light": "Claro",
+        "midnight": "Azul Medianoche",
+        "sakura": "Sakura",
+        "amoled": "AMOLED Negro"
+    },
+    "errors": {
+        "loadFailed": "Error al cargar",
+        "saveFailed": "Error al guardar",
+        "folderNotFound": "Carpeta no encontrada",
+        "noImages": "No se encontraron imágenes en esta carpeta",
+        "imageLoadFailed": "Error al cargar imagen"
+    },
+    "shortcuts": {
+        "title": "Atajos de Teclado",
+        "navigation": "Navegación",
+        "nextPage": "Página Siguiente",
+        "prevPage": "Página Anterior",
+        "firstPage": "Primera Página",
+        "lastPage": "Última Página",
+        "toggleFullscreen": "Pantalla Completa",
+        "toggleSidebar": "Mostrar/Ocultar Barra Lateral",
+        "escape": "Salir / Pánico"
+    }
+}

@@ -1,0 +1,152 @@
+/**
+ * App - Main application component
+ */
+
+import { useEffect, Suspense } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { MainLayout } from './components/layout/MainLayout';
+import { HomePage } from './components/HomePage';
+import { ViewerPage } from './components/viewers/ViewerPage';
+import { FoldersPage } from './components/browser/FoldersPage';
+import { HistoryPage } from './components/browser/HistoryPage';
+import { ThumbnailsPage } from './components/browser/ThumbnailsPage';
+import { SettingsPage } from './components/settings/SettingsPage';
+import { useNavigationStore } from './stores/navigationStore';
+import { useSettingsStore } from './stores/settingsStore';
+import { usePanicMode } from './hooks/usePanicMode';
+import './i18n';
+
+// Loading component
+function LoadingScreen() {
+    return (
+        <div
+            className="flex items-center justify-center h-screen w-screen"
+            style={{ backgroundColor: 'var(--color-surface-primary)' }}
+        >
+            <motion.div
+                className="flex flex-col items-center gap-4"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.3 }}
+            >
+                {/* Animated logo */}
+                <motion.div
+                    className="w-16 h-16 rounded-xl flex items-center justify-center"
+                    style={{ background: 'var(--gradient-accent)' }}
+                    animate={{
+                        rotate: [0, 10, -10, 0],
+                        scale: [1, 1.05, 1],
+                    }}
+                    transition={{
+                        duration: 2,
+                        repeat: Infinity,
+                        ease: 'easeInOut',
+                    }}
+                >
+                    <svg
+                        width="32"
+                        height="32"
+                        viewBox="0 0 24 24"
+                        fill="white"
+                    >
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z" />
+                    </svg>
+                </motion.div>
+
+                {/* Loading text */}
+                <motion.div
+                    className="text-lg font-medium"
+                    style={{ color: 'var(--color-text-secondary)' }}
+                    animate={{ opacity: [0.5, 1, 0.5] }}
+                    transition={{ duration: 1.5, repeat: Infinity }}
+                >
+                    Loading...
+                </motion.div>
+
+                {/* Progress bar */}
+                <div
+                    className="w-48 h-1 rounded-full overflow-hidden"
+                    style={{ backgroundColor: 'var(--color-surface-tertiary)' }}
+                >
+                    <motion.div
+                        className="h-full rounded-full"
+                        style={{ background: 'var(--gradient-accent)' }}
+                        animate={{ x: ['-100%', '100%'] }}
+                        transition={{
+                            duration: 1,
+                            repeat: Infinity,
+                            ease: 'easeInOut',
+                        }}
+                    />
+                </div>
+            </motion.div>
+        </div>
+    );
+}
+
+// Page router component
+function PageRouter() {
+    const { currentPage, params } = useNavigationStore();
+
+    // Page transition animation
+    const pageTransition = {
+        initial: { opacity: 0, y: 10 },
+        animate: { opacity: 1, y: 0 },
+        exit: { opacity: 0, y: -10 },
+        transition: { duration: 0.2, ease: 'easeOut' },
+    };
+
+    return (
+        <AnimatePresence mode="wait">
+            <motion.div
+                key={currentPage}
+                {...pageTransition}
+                className="h-full w-full"
+            >
+                {renderPage(currentPage, params)}
+            </motion.div>
+        </AnimatePresence>
+    );
+}
+
+// Render page based on current navigation
+function renderPage(page: string, params: Record<string, string>): React.ReactNode {
+    switch (page) {
+        case 'home':
+            return <HomePage />;
+        case 'viewer':
+            return <ViewerPage folderPath={params.folder} />;
+        case 'history':
+            return <HistoryPage />;
+        case 'folders':
+            return <FoldersPage />;
+        case 'settings':
+            return <SettingsPage />;
+        case 'thumbnails':
+            return <ThumbnailsPage folderPath={params.folder} />;
+        default:
+            return <HomePage />;
+    }
+}
+
+function App() {
+    const { loadSettings } = useSettingsStore();
+
+    // Initialize panic mode hook
+    usePanicMode();
+
+    // Load settings on mount
+    useEffect(() => {
+        loadSettings();
+    }, [loadSettings]);
+
+    return (
+        <Suspense fallback={<LoadingScreen />}>
+            <MainLayout>
+                <PageRouter />
+            </MainLayout>
+        </Suspense>
+    );
+}
+
+export default App;

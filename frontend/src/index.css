@@ -1,0 +1,471 @@
+/* =============================================================================
+   Manga Visor - Global Styles
+   A premium, professional manga reading experience
+   ============================================================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* =============================================================================
+   CSS Variables - Theme System
+   ============================================================================= */
+
+:root {
+  /* Dark Theme (Default) - Elegant deep purple/blue palette */
+  --color-primary-50: #f5f3ff;
+  --color-primary-100: #ede9fe;
+  --color-primary-200: #ddd6fe;
+  --color-primary-300: #c4b5fd;
+  --color-primary-400: #a78bfa;
+  --color-primary-500: #8b5cf6;
+  --color-primary-600: #7c3aed;
+  --color-primary-700: #6d28d9;
+  --color-primary-800: #5b21b6;
+  --color-primary-900: #4c1d95;
+
+  /* Accent colors */
+  --color-accent: #8b5cf6;
+  --color-accent-hover: #a78bfa;
+  --color-accent-glow: rgba(139, 92, 246, 0.4);
+
+  /* Surface colors - Deep, rich backgrounds */
+  --color-surface-primary: #0a0a0f;
+  --color-surface-secondary: #12121a;
+  --color-surface-tertiary: #1a1a28;
+  --color-surface-elevated: #222233;
+  --color-surface-overlay: rgba(10, 10, 15, 0.95);
+
+  /* Title bar */
+  --color-titlebar-bg: #0a0a0f;
+  --color-titlebar-text: #e5e7eb;
+
+  /* Text colors */
+  --color-text-primary: #f9fafb;
+  --color-text-secondary: #d1d5db;
+  --color-text-muted: #9ca3af;
+  --color-text-disabled: #6b7280;
+
+  /* Border colors */
+  --color-border: rgba(255, 255, 255, 0.08);
+  --color-border-hover: rgba(255, 255, 255, 0.15);
+  --color-border-focus: rgba(139, 92, 246, 0.5);
+
+  /* Gradients */
+  --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --gradient-accent: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+  --gradient-surface: linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, transparent 100%);
+  --gradient-glow: radial-gradient(ellipse at center, var(--color-accent-glow) 0%, transparent 70%);
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.5);
+  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.6);
+  --shadow-glow: 0 0 30px var(--color-accent-glow);
+  --shadow-inner-glow: inset 0 0 30px rgba(139, 92, 246, 0.05);
+
+  /* Transitions */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Sidebar */
+  --sidebar-width-expanded: 260px;
+  --sidebar-width-collapsed: 72px;
+
+  /* Title bar */
+  --titlebar-height: 32px;
+
+  /* Border radius */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+}
+
+/* Light Theme */
+[data-theme="light"] {
+  --color-accent: #7c3aed;
+  --color-accent-hover: #6d28d9;
+  --color-accent-glow: rgba(124, 58, 237, 0.3);
+
+  --color-surface-primary: #f8fafc;
+  --color-surface-secondary: #f1f5f9;
+  --color-surface-tertiary: #e2e8f0;
+  --color-surface-elevated: #ffffff;
+  --color-surface-overlay: rgba(248, 250, 252, 0.98);
+
+  --color-titlebar-bg: #f1f5f9;
+  --color-titlebar-text: #1e293b;
+
+  --color-text-primary: #0f172a;
+  --color-text-secondary: #334155;
+  --color-text-muted: #64748b;
+  --color-text-disabled: #94a3b8;
+
+  --color-border: rgba(0, 0, 0, 0.08);
+  --color-border-hover: rgba(0, 0, 0, 0.15);
+  --color-border-focus: rgba(124, 58, 237, 0.5);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.15);
+  --shadow-glow: 0 0 30px rgba(124, 58, 237, 0.2);
+  --shadow-inner-glow: inset 0 0 30px rgba(124, 58, 237, 0.03);
+}
+
+/* =============================================================================
+   Base Styles
+   ============================================================================= */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background-color: var(--color-surface-primary);
+  color: var(--color-text-primary);
+  overflow: hidden;
+  min-height: 100vh;
+  touch-action: manipulation;
+  -webkit-text-size-adjust: 100%;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* =============================================================================
+   Scrollbar Styling
+   ============================================================================= */
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-surface-secondary);
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--color-accent) 0%, var(--color-primary-700) 100%);
+  border-radius: 5px;
+  border: 2px solid var(--color-surface-secondary);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, var(--color-accent-hover) 0%, var(--color-primary-600) 100%);
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-accent) var(--color-surface-secondary);
+}
+
+/* =============================================================================
+   Selection Styling
+   ============================================================================= */
+
+::selection {
+  background-color: var(--color-accent);
+  color: white;
+}
+
+/* =============================================================================
+   Utility Classes
+   ============================================================================= */
+
+@layer utilities {
+
+  /* Glass morphism effect */
+  .glass {
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--color-border);
+  }
+
+  .glass-strong {
+    background: rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--color-border);
+  }
+
+  /* Gradient text */
+  .text-gradient {
+    background: var(--gradient-accent);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Glow effect */
+  .glow {
+    box-shadow: var(--shadow-glow);
+  }
+
+  .glow-text {
+    text-shadow: 0 0 20px var(--color-accent-glow);
+  }
+
+  /* Hover lift effect */
+  .hover-lift {
+    transition: transform var(--transition-normal), box-shadow var(--transition-normal);
+  }
+
+  .hover-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+  }
+
+  /* Smooth transitions for theme changes */
+  .theme-transition {
+    transition:
+      background-color var(--transition-slow),
+      border-color var(--transition-slow),
+      color var(--transition-slow);
+  }
+
+  /* No drag for Wails window */
+  .no-drag {
+    -webkit-app-region: no-drag;
+  }
+
+  .drag {
+    -webkit-app-region: drag;
+  }
+
+  /* Hide scrollbar but keep functionality */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Subtle shimmer loading effect */
+  .shimmer {
+    background: linear-gradient(90deg,
+        var(--color-surface-tertiary) 0%,
+        var(--color-surface-elevated) 50%,
+        var(--color-surface-tertiary) 100%);
+    background-size: 200% 100%;
+    animation: shimmer 2s linear infinite;
+  }
+}
+
+/* =============================================================================
+   Component Styles
+   ============================================================================= */
+
+@layer components {
+
+  /* Button base */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 font-medium rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed;
+    border-radius: var(--radius-md);
+  }
+
+  .btn-primary {
+    @apply btn text-white;
+    background: var(--gradient-accent);
+    box-shadow: var(--shadow-md);
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    box-shadow: var(--shadow-glow);
+    transform: translateY(-1px);
+  }
+
+  .btn-secondary {
+    @apply btn;
+    background: var(--color-surface-tertiary);
+    color: var(--color-text-primary);
+    border: 1px solid var(--color-border);
+  }
+
+  .btn-secondary:hover:not(:disabled) {
+    background: var(--color-surface-elevated);
+    border-color: var(--color-border-hover);
+  }
+
+  .btn-ghost {
+    @apply btn;
+    background: transparent;
+    color: var(--color-text-secondary);
+  }
+
+  .btn-ghost:hover:not(:disabled) {
+    background: var(--color-surface-tertiary);
+    color: var(--color-text-primary);
+  }
+
+  .btn-icon {
+    @apply btn p-2;
+    min-width: 40px;
+    min-height: 40px;
+  }
+
+  /* Card */
+  .card {
+    @apply rounded-xl;
+    background: var(--color-surface-secondary);
+    border: 1px solid var(--color-border);
+    box-shadow: var(--shadow-md);
+  }
+
+  .card-elevated {
+    @apply card;
+    background: var(--color-surface-elevated);
+    box-shadow: var(--shadow-lg);
+  }
+
+  .card-glass {
+    @apply card glass;
+  }
+
+  /* Input */
+  .input {
+    @apply w-full px-4 py-2 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2;
+    background: var(--color-surface-tertiary);
+    border: 1px solid var(--color-border);
+    color: var(--color-text-primary);
+    border-radius: var(--radius-md);
+  }
+
+  .input:focus {
+    border-color: var(--color-border-focus);
+    --tw-ring-color: var(--color-accent);
+  }
+
+  .input::placeholder {
+    color: var(--color-text-muted);
+  }
+
+  /* Badge */
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 text-xs font-medium rounded-full;
+  }
+
+  .badge-primary {
+    @apply badge text-white;
+    background: var(--gradient-accent);
+  }
+
+  .badge-secondary {
+    @apply badge;
+    background: var(--color-surface-tertiary);
+    color: var(--color-text-secondary);
+  }
+
+  /* Tooltip */
+  .tooltip {
+    @apply absolute z-50 px-3 py-1.5 text-sm font-medium rounded-lg opacity-0 invisible transition-all duration-200;
+    background: var(--color-surface-elevated);
+    color: var(--color-text-primary);
+    box-shadow: var(--shadow-lg);
+    border: 1px solid var(--color-border);
+  }
+
+  .tooltip-visible {
+    @apply opacity-100 visible;
+  }
+}
+
+/* =============================================================================
+   Animations
+   ============================================================================= */
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+
+@keyframes float {
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+/* Page transition */
+.page-enter {
+  opacity: 0;
+  transform: translateX(20px);
+}
+
+.page-enter-active {
+  opacity: 1;
+  transform: translateX(0);
+  transition: opacity 300ms ease-out, transform 300ms ease-out;
+}
+
+.page-exit {
+  opacity: 1;
+}
+
+.page-exit-active {
+  opacity: 0;
+  transition: opacity 200ms ease-in;
+}
+
+/* =============================================================================
+   Wails Specific - Frameless Window Support
+   ============================================================================= */
+
+.wails-drag {
+  --wails-draggable: drag;
+}
+
+/* Ensure buttons and interactive elements are clickable */
+button,
+a,
+input,
+select,
+textarea,
+[role="button"] {
+  -webkit-app-region: no-drag;
+}
