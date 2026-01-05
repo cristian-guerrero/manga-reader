@@ -95,7 +95,7 @@ export function TitleBar({ title }: TitleBarProps) {
 
     return (
         <header
-            className="flex items-center justify-between h-8 px-3 select-none theme-transition"
+            className="flex items-center justify-between h-10 px-3 select-none theme-transition"
             style={{
                 backgroundColor: 'rgba(0, 0, 0, 0)',
                 color: 'var(--color-titlebar-text)',

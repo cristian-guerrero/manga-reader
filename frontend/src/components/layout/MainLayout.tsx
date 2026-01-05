@@ -135,15 +135,30 @@ export function MainLayout({ children }: MainLayoutProps) {
 
             {/* Main Content Area */}
             <div className="flex flex-1 overflow-hidden">
-                {/* Sidebar */}
-                <Sidebar />
+                {/* Sidebar with shadow overlay */}
+                <div className="relative z-10">
+                    <Sidebar />
+                    {/* Curved shadow overlay that projects onto content */}
+                    <div
+                        className="absolute top-0 right-0 h-full pointer-events-none"
+                        style={{
+                            width: '50px',
+                            transform: 'translateX(100%)',
+                            background: 'linear-gradient(to right, rgba(0,0,0,0.06), rgba(0,0,0,0.02) 50%, transparent)',
+                            borderTopLeftRadius: '40px',
+                            maskImage: 'linear-gradient(to bottom, transparent 0px, black 40px, black 100%)',
+                            WebkitMaskImage: 'linear-gradient(to bottom, transparent 0px, black 40px, black 100%)',
+                        }}
+                    />
+                </div>
 
-                {/* Content Area with Rounded Corner */}
+                {/* Content Area - no rounded corner since sidebar overlays it */}
                 <main
-                    className="flex-1 overflow-hidden relative theme-transition mr-3 mb-3 rounded-tl-[40px] shadow-2xl border"
+                    className="flex-1 overflow-hidden relative theme-transition mr-3 mb-3 shadow-lg border"
                     style={{
                         backgroundColor: 'var(--color-surface-primary)',
-                        borderColor: 'var(--color-border)'
+                        borderColor: 'var(--color-border)',
+                        borderTopLeftRadius: '40px',
                     }}
                 >
                     {/* Panic Mode Overlay */}

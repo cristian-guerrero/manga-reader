@@ -86,6 +86,6 @@ caracteristicas adicionales 4:
 - cuando la aplicacion incie regrese a la vista en la cual se estaba al salir (las vistas principales como home, series, folders, etc )
 
 -caracteristicas adicionales 5:
-- el visor vertica y el lateral deben permitir ir al siguente o al anterior capitulo si es una serie
+- el visor vertica y el lateral deben permitir ir al siguente o al anterior capitulo si es una serie (ok)
 
 
