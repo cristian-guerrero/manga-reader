@@ -3,6 +3,15 @@ package main
 import (
 	"context"
 	"embed"
+	"fmt"
+
+	_ "image/gif"
+	_ "image/jpeg"
+	_ "image/png"
+
+	_ "golang.org/x/image/bmp"
+	_ "golang.org/x/image/tiff"
+	_ "golang.org/x/image/webp"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
@@ -36,17 +45,24 @@ func main() {
 		windowState = options.Maximised
 	}
 
+	// Create ImageServer and start it if needed
+	imageServer := fileloader.NewImageServer(app.fileLoader, app.thumbGen)
+	if err := imageServer.Start(); err != nil {
+		fmt.Printf("Warning: Could not start standalone image server: %v\n", err)
+	}
+	app.imgServer = imageServer
+
 	// Create application with options
 	opts := &options.App{
-		Title:             "Manga Visor",
-		Width:             width,
-		Height:            height,
-		MinWidth:          800,
-		MinHeight:         600,
-		WindowStartState:  windowState,
+		Title:            "Manga Visor",
+		Width:            width,
+		Height:           height,
+		MinWidth:         800,
+		MinHeight:        600,
+		WindowStartState: windowState,
 		AssetServer: &assetserver.Options{
 			Assets:  assets,
-			Handler: fileloader.NewImageServer(app.fileLoader),
+			Handler: imageServer,
 		},
 		// Dark theme background color
 		BackgroundColour: &options.RGBA{R: 10, G: 10, B: 15, A: 255},

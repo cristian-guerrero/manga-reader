@@ -14,6 +14,8 @@ interface LateralViewerProps {
         path: string;
         name: string;
         index: number;
+        imageUrl?: string;
+        thumbnailUrl?: string;
     }>;
     onPageChange?: (index: number) => void;
     initialIndex?: number;
@@ -42,8 +44,7 @@ export function LateralViewer({
         if (loadedImages[index] || index < 0 || index >= images.length) return;
 
         try {
-            const encodedPath = encodeURIComponent(path);
-            const imageUrl = `/images?path=${encodedPath}`;
+            const imageUrl = images[index]?.imageUrl || `/images?path=${encodeURIComponent(path)}`;
             setLoadedImages((prev) => ({ ...prev, [index]: imageUrl }));
         } catch (error) {
             console.error(`Failed to load image ${path}:`, error);

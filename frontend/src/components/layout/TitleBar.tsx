@@ -97,7 +97,7 @@ export function TitleBar({ title }: TitleBarProps) {
         <header
             className="flex items-center justify-between h-8 px-3 select-none theme-transition"
             style={{
-                backgroundColor: 'transparent',
+                backgroundColor: 'rgba(0, 0, 0, 0)',
                 color: 'var(--color-titlebar-text)',
                 // @ts-ignore
                 '--wails-draggable': 'drag',

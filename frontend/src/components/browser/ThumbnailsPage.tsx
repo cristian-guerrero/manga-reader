@@ -107,10 +107,14 @@ export function ThumbnailsPage({ folderPath }: ThumbnailsPageProps) {
             if (imageList && Array.isArray(imageList)) {
                 setImages(imageList);
 
-                // Load thumbnails
+                // Load thumbnails from image metadata
+                const initialThumbs: Record<string, string> = {};
                 for (const img of imageList) {
-                    loadThumbnail(img.path);
+                    if (img.thumbnailUrl) {
+                        initialThumbs[img.path] = img.thumbnailUrl;
+                    }
                 }
+                setThumbnails(initialThumbs);
             }
 
             // Check if custom order exists

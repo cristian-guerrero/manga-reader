@@ -285,13 +285,14 @@ export function ViewerPage({ folderPath }: ViewerPageProps) {
             <AnimatePresence mode="wait">
                 {mode === 'vertical' ? (
                     <motion.div
-                        key="vertical"
+                        key={`vertical-${currentFolder.path}`}
                         className="h-full w-full"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                     >
                         <VerticalViewer
+                            key={currentFolder.path}
                             images={images}
                             onScrollPositionChange={saveProgress}
                             initialIndex={currentIndex}
@@ -300,13 +301,14 @@ export function ViewerPage({ folderPath }: ViewerPageProps) {
                     </motion.div>
                 ) : (
                     <motion.div
-                        key="lateral"
+                        key={`lateral-${currentFolder.path}`}
                         className="h-full w-full"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                     >
                         <LateralViewer
+                            key={currentFolder.path}
                             images={images}
                             onPageChange={saveProgress}
                             initialIndex={currentIndex}

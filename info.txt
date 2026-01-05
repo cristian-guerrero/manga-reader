@@ -76,3 +76,10 @@ caracteristicas adicionales 4:
 - poder arrastrar zip o rar y hacer la funcionalidad como si se arrastrara una carpeta, guardar las imagenes temporales
 - si existen estas imagenes temporales al eliminar la carpeta o la serie se deben eliminar de disco, solo cuando cuando son temporales creadas 
     por la extraccionde zip o rar
+
+-- Mejoras de rendimiento:
+- quitar la conversion a base64 de las imagenes para el thumbnail
+- quitar la conversion a base64 de las imagenes para el visor
+- revisar si la libreria de virtualizacion tiene alguna forma de optimizar el rendimiento (o si hay opciones)
+- revisar las animaciones de framer motion para optimizarlas
+- agregar compatibilidad con imagen avif

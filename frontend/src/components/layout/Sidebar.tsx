@@ -94,7 +94,7 @@ export function Sidebar() {
             variants={sidebarVariants}
             className="flex flex-col h-full theme-transition"
             style={{
-                backgroundColor: 'transparent',
+                backgroundColor: 'rgba(0, 0, 0, 0)',
             }}
         >
             {/* Navigation Items */}
@@ -165,7 +165,7 @@ function NavButton({ item, isActive, isCollapsed, onClick }: NavButtonProps) {
             onClick={onClick}
             className="relative flex items-center w-full h-11 px-3 rounded-lg transition-colors group"
             style={{
-                backgroundColor: isActive ? 'var(--color-accent)' : 'transparent',
+                backgroundColor: isActive ? 'var(--color-accent)' : 'rgba(0, 0, 0, 0)',
                 color: isActive ? 'white' : 'var(--color-text-secondary)',
             }}
             whileHover={{

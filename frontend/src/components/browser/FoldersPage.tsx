@@ -109,20 +109,23 @@ export function FoldersPage() {
 
             if (library && Array.isArray(library)) {
                 const folderData = library.map((entry: any) => ({
-                    path: entry.folderPath,
-                    name: entry.folderName,
-                    imageCount: entry.totalImages,
-                    coverImage: undefined,
+                    path: entry.path,
+                    name: entry.name,
+                    imageCount: entry.imageCount,
+                    coverImage: entry.coverImage,
+                    thumbnailUrl: entry.thumbnailUrl,
                     isTemporary: entry.isTemporary,
                 }));
                 setFolders(folderData);
 
-                // Load thumbnails for cover images
-                for (const entry of library) {
-                    if (entry.folderPath) {
-                        loadFolderThumbnail(entry.folderPath);
+                // Initialize thumbnails state from the folder metadata
+                const initialThumbs: Record<string, string> = {};
+                for (const folder of folderData) {
+                    if (folder.thumbnailUrl) {
+                        initialThumbs[folder.path] = folder.thumbnailUrl;
                     }
                 }
+                setThumbnails(initialThumbs);
             }
         } catch (error) {
             console.error('[FoldersPage] Failed to load folders:', error);

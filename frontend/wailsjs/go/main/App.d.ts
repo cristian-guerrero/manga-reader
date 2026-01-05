@@ -27,11 +27,11 @@ export function GetImageOrder(arg1:string):Promise<Array<string>>;
 
 export function GetImages(arg1:string):Promise<Array<main.ImageInfo>>;
 
-export function GetLibrary():Promise<Array<persistence.LibraryEntry>>;
+export function GetLibrary():Promise<Array<main.FolderInfo>>;
 
 export function GetOriginalOrder(arg1:string):Promise<Array<string>>;
 
-export function GetSeries():Promise<Array<persistence.SeriesEntry>>;
+export function GetSeries():Promise<Array<main.SeriesEntryWithURLs>>;
 
 export function GetSettings():Promise<persistence.Settings>;
 

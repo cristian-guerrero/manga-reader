@@ -47,10 +47,14 @@ export function SeriesDetailsPage({ seriesPath }: SeriesDetailsPageProps) {
                 const found = data.find((s: SeriesEntry) => s.path === seriesPath);
                 if (found) {
                     setSeries(found);
-                    // Load thumbnails for each chapter
+                    // Initialize thumbnails from the chapter metadata
+                    const initialThumbs: Record<string, string> = {};
                     for (const chapter of found.chapters) {
-                        loadChapterThumbnail(chapter.path);
+                        if (chapter.thumbnailUrl) {
+                            initialThumbs[chapter.path] = chapter.thumbnailUrl;
+                        }
                     }
+                    setThumbnails(initialThumbs);
                 }
             }
         } catch (error) {

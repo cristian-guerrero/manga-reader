@@ -14,11 +14,32 @@ export namespace main {
 	        this.isSeries = source["isSeries"];
 	    }
 	}
+	export class ChapterWithURLs {
+	    path: string;
+	    name: string;
+	    coverImage: string;
+	    imageCount: number;
+	    thumbnailUrl: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ChapterWithURLs(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.path = source["path"];
+	        this.name = source["name"];
+	        this.coverImage = source["coverImage"];
+	        this.imageCount = source["imageCount"];
+	        this.thumbnailUrl = source["thumbnailUrl"];
+	    }
+	}
 	export class FolderInfo {
 	    path: string;
 	    name: string;
 	    imageCount: number;
 	    coverImage: string;
+	    thumbnailUrl: string;
 	    lastModified: string;
 	
 	    static createFrom(source: any = {}) {
@@ -31,11 +52,14 @@ export namespace main {
 	        this.name = source["name"];
 	        this.imageCount = source["imageCount"];
 	        this.coverImage = source["coverImage"];
+	        this.thumbnailUrl = source["thumbnailUrl"];
 	        this.lastModified = source["lastModified"];
 	    }
 	}
 	export class ImageInfo {
 	    path: string;
+	    thumbnailUrl: string;
+	    imageUrl: string;
 	    name: string;
 	    extension: string;
 	    size: number;
@@ -48,33 +72,65 @@ export namespace main {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.path = source["path"];
+	        this.thumbnailUrl = source["thumbnailUrl"];
+	        this.imageUrl = source["imageUrl"];
 	        this.name = source["name"];
 	        this.extension = source["extension"];
 	        this.size = source["size"];
 	        this.index = source["index"];
 	    }
 	}
+	export class SeriesEntryWithURLs {
+	    id: string;
+	    path: string;
+	    name: string;
+	    coverImage: string;
+	    addedAt: string;
+	    chapters: persistence.ChapterInfo[];
+	    isTemporary: boolean;
+	    thumbnailUrl: string;
+	    chapters: ChapterWithURLs[];
+	
+	    static createFrom(source: any = {}) {
+	        return new SeriesEntryWithURLs(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.path = source["path"];
+	        this.name = source["name"];
+	        this.coverImage = source["coverImage"];
+	        this.addedAt = source["addedAt"];
+	        this.chapters = this.convertValues(source["chapters"], persistence.ChapterInfo);
+	        this.isTemporary = source["isTemporary"];
+	        this.thumbnailUrl = source["thumbnailUrl"];
+	        this.chapters = this.convertValues(source["chapters"], ChapterWithURLs);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 
 }
 
 export namespace persistence {
 	
-	export class ChapterInfo {
-	    path: string;
-	    name: string;
-	    imageCount: number;
-	
-	    static createFrom(source: any = {}) {
-	        return new ChapterInfo(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.path = source["path"];
-	        this.name = source["name"];
-	        this.imageCount = source["imageCount"];
-	    }
-	}
 	export class HistoryEntry {
 	    id: string;
 	    folderPath: string;
@@ -100,72 +156,6 @@ export namespace persistence {
 	        this.totalImages = source["totalImages"];
 	        this.lastRead = source["lastRead"];
 	    }
-	}
-	export class LibraryEntry {
-	    id: string;
-	    folderPath: string;
-	    folderName: string;
-	    totalImages: number;
-	    addedAt: string;
-	    coverImage?: string;
-	    isTemporary: boolean;
-	
-	    static createFrom(source: any = {}) {
-	        return new LibraryEntry(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.id = source["id"];
-	        this.folderPath = source["folderPath"];
-	        this.folderName = source["folderName"];
-	        this.totalImages = source["totalImages"];
-	        this.addedAt = source["addedAt"];
-	        this.coverImage = source["coverImage"];
-	        this.isTemporary = source["isTemporary"];
-	    }
-	}
-	export class SeriesEntry {
-	    id: string;
-	    path: string;
-	    name: string;
-	    coverImage: string;
-	    addedAt: string;
-	    chapters: ChapterInfo[];
-	    isTemporary: boolean;
-	
-	    static createFrom(source: any = {}) {
-	        return new SeriesEntry(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.id = source["id"];
-	        this.path = source["path"];
-	        this.name = source["name"];
-	        this.coverImage = source["coverImage"];
-	        this.addedAt = source["addedAt"];
-	        this.chapters = this.convertValues(source["chapters"], ChapterInfo);
-	        this.isTemporary = source["isTemporary"];
-	    }
-	
-		convertValues(a: any, classs: any, asMap: boolean = false): any {
-		    if (!a) {
-		        return a;
-		    }
-		    if (a.slice && a.map) {
-		        return (a as any[]).map(elem => this.convertValues(elem, classs));
-		    } else if ("object" === typeof a) {
-		        if (asMap) {
-		            for (const key of Object.keys(a)) {
-		                a[key] = new classs(a[key]);
-		            }
-		            return a;
-		        }
-		        return new classs(a);
-		    }
-		    return a;
-		}
 	}
 	export class Settings {
 	    language: string;

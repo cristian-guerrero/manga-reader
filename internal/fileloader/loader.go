@@ -2,7 +2,7 @@
 package fileloader
 
 import (
-
+	"crypto/md5"
 	"fmt"
 	"io"
 	"os"
@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"unicode"
 )
 
@@ -36,11 +37,41 @@ type ImageInfo struct {
 }
 
 // FileLoader handles image file operations
-type FileLoader struct{}
+type FileLoader struct {
+	dirPool map[string]string // Hash -> DirPath
+	mu      sync.RWMutex
+}
 
 // NewFileLoader creates a new file loader
 func NewFileLoader() *FileLoader {
-	return &FileLoader{}
+	return &FileLoader{
+		dirPool: make(map[string]string),
+	}
+}
+
+// RegisterDirectory registers a directory and returns a short hash for it
+func (fl *FileLoader) RegisterDirectory(dirPath string) string {
+	fl.mu.Lock()
+	defer fl.mu.Unlock()
+
+	// Use a consistent hash for the same path
+	hash := fmt.Sprintf("%x", md5.Sum([]byte(dirPath)))
+	fl.dirPool[hash] = dirPath
+	return hash
+}
+
+// GetDirectory returns the registered directory for a given hash
+func (fl *FileLoader) GetDirectory(hash string) (string, bool) {
+	fl.mu.RLock()
+	defer fl.mu.RUnlock()
+
+	path, exists := fl.dirPool[hash]
+	return path, exists
+}
+
+// ResolvePath joins a directory path and a filename
+func (fl *FileLoader) ResolvePath(dirPath, fileName string) string {
+	return filepath.Join(dirPath, fileName)
 }
 
 // IsSupportedImage checks if a file extension is a supported image format
@@ -59,52 +90,61 @@ func (fl *FileLoader) GetMimeType(filename string) string {
 	return "application/octet-stream"
 }
 
-// GetImages returns a list of images in the specified folder
+// GetImages returns a list of images in the specified folder (recursive)
 func (fl *FileLoader) GetImages(folderPath string) ([]ImageInfo, error) {
 	var images []ImageInfo
+	var imageFiles []struct {
+		path string
+		name string
+		info os.FileInfo
+	}
 
-	entries, err := os.ReadDir(folderPath)
+	err := filepath.WalkDir(folderPath, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			return nil
+		}
+		if fl.IsSupportedImage(d.Name()) {
+			info, err := d.Info()
+			if err != nil {
+				return nil
+			}
+			imageFiles = append(imageFiles, struct {
+				path string
+				name string
+				info os.FileInfo
+			}{path: path, name: d.Name(), info: info})
+		}
+		return nil
+	})
+
 	if err != nil {
-		return nil, fmt.Errorf("failed to read directory: %w", err)
+		return nil, fmt.Errorf("failed to walk directory: %w", err)
 	}
 
-	// Filter and collect image files
-	var imageFiles []os.DirEntry
-	for _, entry := range entries {
-		if entry.IsDir() {
-			continue
-		}
-		if fl.IsSupportedImage(entry.Name()) {
-			imageFiles = append(imageFiles, entry)
-		}
-	}
+	fmt.Printf("[FileLoader] GetImages: Found %d total image files in %s\n", len(imageFiles), folderPath)
 
-	// Sort by natural order
+	// Sort by natural order of full paths to keep sequence across folders
 	sort.Slice(imageFiles, func(i, j int) bool {
-		return naturalLess(imageFiles[i].Name(), imageFiles[j].Name())
+		return naturalLess(imageFiles[i].path, imageFiles[j].path)
 	})
 
 	// Build result
-	for i, entry := range imageFiles {
-		info, err := entry.Info()
-		if err != nil {
-			continue
-		}
-
-		ext := strings.ToLower(filepath.Ext(entry.Name()))
+	for i, file := range imageFiles {
+		ext := strings.ToLower(filepath.Ext(file.name))
 		images = append(images, ImageInfo{
-			Path:      filepath.Join(folderPath, entry.Name()),
-			Name:      entry.Name(),
+			Path:      file.path,
+			Name:      file.name,
 			Extension: strings.TrimPrefix(ext, "."),
-			Size:      info.Size(),
+			Size:      file.info.Size(),
 			Index:     i,
 		})
 	}
 
 	return images, nil
 }
-
-
 
 // LoadImageBytes loads an image and returns the raw bytes
 func (fl *FileLoader) LoadImageBytes(imagePath string) ([]byte, string, error) {
