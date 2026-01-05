@@ -104,6 +104,7 @@ export namespace main {
 	    extension: string;
 	    size: number;
 	    index: number;
+	    modTime: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new ImageInfo(source);
@@ -118,6 +119,7 @@ export namespace main {
 	        this.extension = source["extension"];
 	        this.size = source["size"];
 	        this.index = source["index"];
+	        this.modTime = source["modTime"];
 	    }
 	}
 	export class SeriesEntryWithURLs {

@@ -283,6 +283,7 @@ type ImageInfo struct {
 	Extension    string `json:"extension"`
 	Size         int64  `json:"size"`
 	Index        int    `json:"index"`
+	ModTime      int64  `json:"modTime"`
 }
 
 // GetImages returns a list of images in the specified folder
@@ -333,6 +334,7 @@ func (a *App) GetImages(path string) ([]ImageInfo, error) {
 			Extension:    img.Extension,
 			Size:         img.Size,
 			Index:        img.Index,
+			ModTime:      img.ModTime,
 		}
 	}
 

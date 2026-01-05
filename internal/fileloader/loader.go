@@ -35,6 +35,7 @@ type ImageInfo struct {
 	Extension string `json:"extension"`
 	Size      int64  `json:"size"`
 	Index     int    `json:"index"`
+	ModTime   int64  `json:"modTime"`
 }
 
 // FileLoader handles image file operations
@@ -141,6 +142,7 @@ func (fl *FileLoader) GetImages(folderPath string) ([]ImageInfo, error) {
 			Extension: strings.TrimPrefix(ext, "."),
 			Size:      file.info.Size(),
 			Index:     i,
+			ModTime:   file.info.ModTime().UnixMilli(),
 		})
 	}
 
