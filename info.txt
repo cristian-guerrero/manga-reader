@@ -83,9 +83,25 @@ caracteristicas adicionales 4:
 - revisar si la libreria de virtualizacion tiene alguna forma de optimizar el rendimiento (o si hay opciones) (ok)
 - revisar las animaciones de framer motion para optimizarlas (pendiente)
 - agregar compatibilidad con imagen avif (ok)
-- cuando la aplicacion incie regrese a la vista en la cual se estaba al salir (las vistas principales como home, series, folders, etc )
+- cuando la aplicacion incie regrese a la vista en la cual se estaba al salir (las vistas principales como home, series, folders, etc ) (ok)
 
 -caracteristicas adicionales 5:
 - el visor vertica y el lateral deben permitir ir al siguente o al anterior capitulo si es una serie (ok)
 
+caracteristicas adicionales 6:
+- Vamosos a agregar una nueva vista que nos permita explorar las carpetass con imagenes de
+    de una carpeta base, teniendo en cuenta que esta carpeta base puede tener imagenes y a su vezz
+    subcarpetas con imagenes y asi.
+- el eplorador de esta nueva vista es idependiente de la lista de carpetas y de la lista de series 
+    (asi como la lista de carpetas es idependiente de la lista de series)
+- debe tenr un boton para agregar carpeta base y otra pera eliminarla(de la lista no del disco)
+- el menu se llama explorer 
+- verificar que se esten creando las traducciones y si no estan crearlas (botones menus dialogos etc)
+- en la configuracion vamos a crear un menu que nos permita seleccionar o no los menus que se quieren ver
+    por ejemplo un usuario solo quier ver el explorer y ocultar las otras opciones
+    o por ejemplo no se quier ver ninguna opcion en el menu y se quier user la app solo como visor anonimo
+    como se hace ahora con el drag an drop cuando el toogle:Add dropped folders to library & history esta off
+    cuando se descelecicone todas las opociones del menu quedaria la app solo como visor sin guardar ningun historial
+- vamos a modularizar el codigo de la app para que al agregar nuevas funcionalidades no se quiebre el codigo (existente) 
+    se puede tener modulos compartidos, (ejemplo de modulos, folders, series, history, etc)
 
