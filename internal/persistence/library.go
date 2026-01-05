@@ -18,6 +18,7 @@ type LibraryEntry struct {
 	TotalImages int    `json:"totalImages"`
 	AddedAt     string `json:"addedAt"`
 	CoverImage  string `json:"coverImage,omitempty"`
+	IsTemporary bool   `json:"isTemporary"`
 }
 
 // Library represents the library structure
@@ -118,6 +119,15 @@ func (lm *LibraryManager) Remove(folderPath string) error {
 		}
 	}
 	return nil
+}
+
+// Clear removes all library entries
+func (lm *LibraryManager) Clear() error {
+	lm.mu.Lock()
+	defer lm.mu.Unlock()
+
+	lm.library.Entries = []LibraryEntry{}
+	return saveJSON(libraryFile, lm.library)
 }
 
 // Load loads library from disk

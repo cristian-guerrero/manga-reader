@@ -63,6 +63,7 @@ interface ImageData {
     path: string;
     name: string;
     index: number;
+    modTime?: number;
 }
 
 interface ThumbnailsPageProps {
@@ -78,6 +79,7 @@ export function ThumbnailsPage({ folderPath }: ThumbnailsPageProps) {
     const [hasCustomOrder, setHasCustomOrder] = useState(false);
     const [originalOrder, setOriginalOrder] = useState<string[]>([]);
     const [activeId, setActiveId] = useState<string | null>(null);
+    const [sortMode, setSortMode] = useState<string>('name'); // 'name', 'dateDesc', 'dateAsc', 'custom'
 
     // DnD sensors
     const sensors = useSensors(
@@ -97,20 +99,27 @@ export function ThumbnailsPage({ folderPath }: ThumbnailsPageProps) {
         loadImages();
     }, [folderPath]);
 
-    const loadImages = async () => {
+    const loadImages = async (silent = false) => {
         if (!folderPath) return;
 
-        setIsLoading(true);
+        if (!silent) setIsLoading(true);
         try {
             // @ts-ignore - Wails generated bindings
             const imageList = await window.go?.main?.App?.GetImages(folderPath);
             if (imageList && Array.isArray(imageList)) {
                 setImages(imageList);
-
-                // Load thumbnails
-                for (const img of imageList) {
-                    loadThumbnail(img.path);
+                if (imageList.length > 0) {
+                    console.log('First image debug:', imageList[0], 'ModTime:', imageList[0].modTime);
                 }
+
+                // Load thumbnails from image metadata
+                const initialThumbs: Record<string, string> = {};
+                for (const img of imageList) {
+                    if (img.thumbnailUrl) {
+                        initialThumbs[img.path] = img.thumbnailUrl;
+                    }
+                }
+                setThumbnails(initialThumbs);
             }
 
             // Check if custom order exists
@@ -127,6 +136,16 @@ export function ThumbnailsPage({ folderPath }: ThumbnailsPageProps) {
                 // If no original order saved yet, use current file system order
                 // (which is what GetImages returns when there's no custom order)
                 setOriginalOrder(imageList.map((img: ImageData) => img.name));
+            }
+
+            // Set initial sort mode
+            if (hasCustom) {
+                setSortMode('custom');
+            } else if (!silent) {
+                // Only reset to name if we are doing a full load, otherwise keep current? 
+                // Actually for now let's just keep the logic simple.
+                // If we are reloading for 'custom' switch, hasCustom will be true.
+                setSortMode('name');
             }
         } catch (error) {
             console.error('Failed to load images:', error);
@@ -147,6 +166,30 @@ export function ThumbnailsPage({ folderPath }: ThumbnailsPageProps) {
         }
     };
 
+    const handleSort = (mode: string) => {
+        setSortMode(mode);
+
+        // If switching to custom, reload from backend to get the saved order
+        if (mode === 'custom') {
+            loadImages(true); // Silent reload
+            return;
+        }
+
+        const newOrder = [...images];
+        switch (mode) {
+            case 'name':
+                newOrder.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
+                break;
+            case 'dateDesc':
+                newOrder.sort((a, b) => (b.modTime || 0) - (a.modTime || 0));
+                break;
+            case 'dateAsc':
+                newOrder.sort((a, b) => (a.modTime || 0) - (b.modTime || 0));
+                break;
+        }
+        setImages(newOrder);
+    };
+
     const handleDragStart = (event: DragStartEvent) => {
         setActiveId(event.active.id as string);
     };
@@ -162,6 +205,7 @@ export function ThumbnailsPage({ folderPath }: ThumbnailsPageProps) {
 
             setImages(newOrder);
             setHasCustomOrder(true);
+            setSortMode('custom');
 
             // Auto-save the new order
             if (folderPath) {
@@ -252,6 +296,19 @@ export function ThumbnailsPage({ folderPath }: ThumbnailsPageProps) {
                 </div>
 
                 <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 bg-surface-secondary/50 rounded-lg p-1 border border-white/5">
+                        <select
+                            value={sortMode}
+                            onChange={(e) => handleSort(e.target.value)}
+                            className="bg-transparent text-sm text-text-primary focus:outline-none border-none cursor-pointer py-1 px-2"
+                            style={{ backgroundImage: 'none' }}
+                        >
+                            <option value="name" className="bg-surface-secondary text-text-primary">Name</option>
+                            <option value="dateDesc" className="bg-surface-secondary text-text-primary">Date (Newest)</option>
+                            <option value="dateAsc" className="bg-surface-secondary text-text-primary">Date (Oldest)</option>
+                            {hasCustomOrder && <option value="custom" className="bg-surface-secondary text-text-primary">Custom Order</option>}
+                        </select>
+                    </div>
                     {hasCustomOrder && (
                         <motion.button
                             onClick={handleReset}

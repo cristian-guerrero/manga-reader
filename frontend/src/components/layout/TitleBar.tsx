@@ -95,15 +95,14 @@ export function TitleBar({ title }: TitleBarProps) {
 
     return (
         <header
-            className="flex items-center justify-between h-8 px-3 select-none theme-transition"
+            className="flex items-center justify-between h-10 px-3 select-none theme-transition"
             style={{
-                backgroundColor: 'var(--color-titlebar-bg)',
+                backgroundColor: 'rgba(0, 0, 0, 0)',
                 color: 'var(--color-titlebar-text)',
-                borderBottom: '1px solid var(--color-border)',
                 // @ts-ignore
                 '--wails-draggable': 'drag',
             }}
-
+            onDoubleClick={handleMaximize}
         >
             {/* App Logo and Title - Draggable */}
             <div className="flex items-center gap-2 flex-1 drag h-full">

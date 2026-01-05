@@ -2,10 +2,13 @@ package main
 
 import (
 	"context"
+	"crypto/md5"
 	"fmt"
+	"manga-visor/internal/archiver"
 	"manga-visor/internal/fileloader"
 	"manga-visor/internal/persistence"
 	"manga-visor/internal/thumbnails"
+	"net/url"
 	"os"
 	"path/filepath"
 	"sort"
@@ -25,6 +28,14 @@ type App struct {
 
 	fileLoader *fileloader.FileLoader
 	thumbGen   *thumbnails.Generator
+	series     *persistence.SeriesManager
+	imgServer  *fileloader.ImageServer
+}
+
+// AddFolderResult represents the result of adding a folder
+type AddFolderResult struct {
+	Path     string `json:"path"`
+	IsSeries bool   `json:"isSeries"`
 }
 
 // NewApp creates a new App application struct
@@ -38,12 +49,28 @@ func NewApp() *App {
 
 		fileLoader: fileloader.NewFileLoader(),
 		thumbGen:   thumbnails.NewGenerator(),
+		series:     persistence.NewSeriesManager(),
 	}
 }
 
 // startup is called when the app starts
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+
+	// Restore window position if saved
+	settings := a.settings.Get()
+	if settings.WindowX != -1 && settings.WindowY != -1 {
+		fmt.Printf("[App] Restoring window position: (%v, %v)\n", settings.WindowX, settings.WindowY)
+		runtime.WindowSetPosition(ctx, settings.WindowX, settings.WindowY)
+	}
+}
+
+// getBaseURL returns the base URL for images and thumbnails (standalone server in dev)
+func (a *App) getBaseURL() string {
+	if a.imgServer != nil && a.imgServer.Addr != "" {
+		return a.imgServer.Addr
+	}
+	return ""
 }
 
 // domReady is called after the frontend dom has been loaded
@@ -53,7 +80,35 @@ func (a *App) domReady(ctx context.Context) {
 
 // shutdown is called when the app is closing
 func (a *App) shutdown(ctx context.Context) {
-	// Cleanup code here
+	// Any other cleanup if needed
+}
+
+// SaveWindowState captures and saves the current window dimensions and position
+func (a *App) SaveWindowState() {
+	if a.ctx == nil {
+		return
+	}
+
+	isMaximized := runtime.WindowIsMaximised(a.ctx)
+	x, y := runtime.WindowGetPosition(a.ctx)
+	w, h := runtime.WindowGetSize(a.ctx)
+
+	// Don't save if width/height is 0 (happens if window is already destroyed)
+	if w <= 0 || h <= 0 {
+		fmt.Printf("[App] Ignoring invalid window state: %vx%v at (%v,%v)\n", w, h, x, y)
+		return
+	}
+
+	updates := map[string]interface{}{
+		"windowWidth":     w,
+		"windowHeight":    h,
+		"windowX":         x,
+		"windowY":         y,
+		"windowMaximized": isMaximized,
+	}
+
+	fmt.Printf("[App] Saving window state: %vx%v at (%v,%v), maximized: %v\n", w, h, x, y, isMaximized)
+	a.settings.Update(updates)
 }
 
 // =============================================================================
@@ -118,6 +173,30 @@ func (a *App) GetHistoryEntry(folderPath string) *persistence.HistoryEntry {
 	return a.history.Get(folderPath)
 }
 
+// resolveToFolder returns the path itself if it's a directory or a supported archive, or the parent directory if it's a normal file.
+func (a *App) resolveToFolder(path string) string {
+	if archiver.IsArchive(path) {
+		return path
+	}
+
+	info, err := os.Stat(path)
+	if err != nil {
+		fmt.Printf("[App] Error stating path %s: %v\n", path, err)
+		return path
+	}
+	if info.IsDir() {
+		return path
+	}
+	parent := filepath.Dir(path)
+	fmt.Printf("[App] Resolved file path %s to folder %s\n", path, parent)
+	return parent
+}
+
+// ResolveFolder exposes path resolution to the frontend
+func (a *App) ResolveFolder(path string) string {
+	return a.resolveToFolder(path)
+}
+
 // AddHistory adds or updates a history entry
 func (a *App) AddHistory(entry persistence.HistoryEntry) error {
 	// Check if history is enabled
@@ -125,6 +204,7 @@ func (a *App) AddHistory(entry persistence.HistoryEntry) error {
 	if !settings.EnableHistory {
 		return nil
 	}
+
 	if err := a.history.Add(entry); err != nil {
 		return err
 	}
@@ -134,12 +214,20 @@ func (a *App) AddHistory(entry persistence.HistoryEntry) error {
 
 // RemoveHistory removes a history entry
 func (a *App) RemoveHistory(folderPath string) error {
-	return a.history.Remove(folderPath)
+	err := a.history.Remove(folderPath)
+	if err == nil {
+		runtime.EventsEmit(a.ctx, "history_updated")
+	}
+	return err
 }
 
 // ClearHistory clears all history
 func (a *App) ClearHistory() error {
-	return a.history.Clear()
+	err := a.history.Clear()
+	if err == nil {
+		runtime.EventsEmit(a.ctx, "history_updated")
+	}
+	return err
 }
 
 // =============================================================================
@@ -188,15 +276,19 @@ func (a *App) SelectFolder() (string, error) {
 
 // ImageInfo represents information about an image file
 type ImageInfo struct {
-	Path      string `json:"path"`
-	Name      string `json:"name"`
-	Extension string `json:"extension"`
-	Size      int64  `json:"size"`
-	Index     int    `json:"index"`
+	Path         string `json:"path"`
+	ThumbnailURL string `json:"thumbnailUrl"`
+	ImageURL     string `json:"imageUrl"`
+	Name         string `json:"name"`
+	Extension    string `json:"extension"`
+	Size         int64  `json:"size"`
+	Index        int    `json:"index"`
+	ModTime      int64  `json:"modTime"`
 }
 
 // GetImages returns a list of images in the specified folder
-func (a *App) GetImages(folderPath string) ([]ImageInfo, error) {
+func (a *App) GetImages(path string) ([]ImageInfo, error) {
+	folderPath := a.resolveToFolder(path)
 	images, err := a.fileLoader.GetImages(folderPath)
 	if err != nil {
 		return nil, err
@@ -204,34 +296,45 @@ func (a *App) GetImages(folderPath string) ([]ImageInfo, error) {
 
 	// Filter by min size
 	settings := a.settings.Get()
+	originalCount := len(images)
 	if settings.MinImageSize > 0 {
 		var filtered []fileloader.ImageInfo
 		minBytes := settings.MinImageSize * 1024 // KB to Bytes
-		fmt.Printf("Filtering images: MinSize=%d KB (%d bytes)\n", settings.MinImageSize, minBytes)
 		for _, img := range images {
 			if img.Size >= minBytes {
 				filtered = append(filtered, img)
-			} else {
-				fmt.Printf("Skipping image %s: %d bytes\n", img.Name, img.Size)
 			}
 		}
 
-		// Re-index
-		for i := range filtered {
-			filtered[i].Index = i
+		// Only apply filter if it doesn't remove ALL images
+		if len(filtered) > 0 {
+			images = filtered
+		} else if originalCount > 0 {
+			fmt.Printf("[App] GetImages: MinImageSize filter (%d KB) would remove all %d images. Ignoring filter.\n", settings.MinImageSize, originalCount)
 		}
-		images = filtered
 	}
+
+	if len(images) < originalCount {
+		fmt.Printf("[App] GetImages: Filtered out %d images below %d KB. Remaining: %d\n", originalCount-len(images), settings.MinImageSize, len(images))
+	}
+
+	// Register directory and get hash
+	dirHash := a.fileLoader.RegisterDirectory(folderPath)
+	baseURL := a.getBaseURL()
 
 	// Convert to our type
 	result := make([]ImageInfo, len(images))
 	for i, img := range images {
+		relPath, _ := filepath.Rel(folderPath, img.Path)
 		result[i] = ImageInfo{
-			Path:      img.Path,
-			Name:      img.Name,
-			Extension: img.Extension,
-			Size:      img.Size,
-			Index:     img.Index,
+			Path:         img.Path,
+			ThumbnailURL: fmt.Sprintf("%s/thumbnails?did=%s&fid=%s", baseURL, dirHash, url.QueryEscape(relPath)),
+			ImageURL:     fmt.Sprintf("%s/images?did=%s&fid=%s", baseURL, dirHash, url.QueryEscape(relPath)),
+			Name:         img.Name,
+			Extension:    img.Extension,
+			Size:         img.Size,
+			Index:        img.Index,
+			ModTime:      img.ModTime,
 		}
 	}
 
@@ -274,6 +377,10 @@ func (a *App) GetImages(folderPath string) ([]ImageInfo, error) {
 		a.orders.SetOriginalOrder(folderPath, originalOrder)
 	}
 
+	if len(result) > 0 {
+		fmt.Printf("[App] GetImages: Returning %d images for %s. First ImageURL: %s\n", len(result), folderPath, result[0].ImageURL)
+	}
+
 	return result, nil
 }
 
@@ -283,6 +390,7 @@ type FolderInfo struct {
 	Name         string `json:"name"`
 	ImageCount   int    `json:"imageCount"`
 	CoverImage   string `json:"coverImage"`
+	ThumbnailURL string `json:"thumbnailUrl"`
 	LastModified string `json:"lastModified"`
 }
 
@@ -294,15 +402,20 @@ func (a *App) GetFolderInfo(folderPath string) (*FolderInfo, error) {
 	}
 
 	var coverImage string
+	var thumbnailURL string
 	if len(images) > 0 {
 		coverImage = images[0].Path
+		dirHash := a.fileLoader.RegisterDirectory(folderPath)
+		baseURL := a.getBaseURL()
+		thumbnailURL = fmt.Sprintf("%s/thumbnails?did=%s&fid=%s", baseURL, dirHash, url.QueryEscape(images[0].Name))
 	}
 
 	return &FolderInfo{
-		Path:       folderPath,
-		Name:       filepath.Base(folderPath),
-		ImageCount: len(images),
-		CoverImage: coverImage,
+		Path:         folderPath,
+		Name:         filepath.Base(folderPath),
+		ImageCount:   len(images),
+		CoverImage:   coverImage,
+		ThumbnailURL: thumbnailURL,
 	}, nil
 }
 
@@ -316,6 +429,12 @@ func (a *App) GetSubfolders(folderPath string) ([]FolderInfo, error) {
 	}
 
 	for _, entry := range entries {
+		// Ensure it's a directory
+		stat, err := os.Stat(entry)
+		if err != nil || !stat.IsDir() {
+			continue
+		}
+
 		info, err := a.GetFolderInfo(entry)
 		if err != nil {
 			continue
@@ -335,26 +454,46 @@ func (a *App) GetSubfolders(folderPath string) ([]FolderInfo, error) {
 	return folders, nil
 }
 
-// AddFolder adds a folder to the LIBRARY
-func (a *App) AddFolder(path string) error {
-	// Check if it's a file or directory
-	info, err := os.Stat(path)
-	if err != nil {
-		return err
+// AddFolder adds a folder to the LIBRARY or SERIES (if it has subfolders)
+func (a *App) AddFolder(path string) (*AddFolderResult, error) {
+	isTemp := false
+	actualPath := path
+
+	// If it's an archive, extract it
+	if archiver.IsArchive(path) {
+		tempBase := persistence.GetTempDir()
+		hash := md5.Sum([]byte(path))
+		folderName := strings.TrimSuffix(filepath.Base(path), filepath.Ext(path))
+		dest := filepath.Join(tempBase, fmt.Sprintf("%x_%s", hash, folderName))
+
+		fmt.Printf("[App] Extracting archive %s to %s\n", path, dest)
+		if err := archiver.Extract(path, dest); err != nil {
+			fmt.Printf("[App] Error extracting archive: %v\n", err)
+			return nil, err
+		}
+		actualPath = a.unwrapArchiveRoot(dest)
+		isTemp = true
+	} else {
+		// Even for normal folders, unwrap to find the real content root
+		// E.g. Root -> Subfolder -> images
+		actualPath = a.unwrapArchiveRoot(path)
 	}
 
-	folderPath := path
-	if !info.IsDir() {
-		folderPath = filepath.Dir(path)
+	folderPath := a.resolveToFolder(actualPath)
+
+	// Check if it's a series (has subfolders with images)
+	subfolders, _ := a.GetSubfolders(folderPath)
+	if len(subfolders) > 0 {
+		return a.AddSeries(folderPath, subfolders, isTemp)
 	}
 
 	folderInfo, err := a.GetFolderInfo(folderPath)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if folderInfo.ImageCount == 0 {
-		return fmt.Errorf("no images found in folder")
+		return nil, fmt.Errorf("no images found in folder")
 	}
 
 	entry := persistence.LibraryEntry{
@@ -363,38 +502,284 @@ func (a *App) AddFolder(path string) error {
 		TotalImages: folderInfo.ImageCount,
 		CoverImage:  folderInfo.CoverImage,
 		AddedAt:     time.Now().Format(time.RFC3339),
+		IsTemporary: isTemp,
 	}
 
 	if err := a.library.Add(entry); err != nil {
-		return err
+		fmt.Printf("Error adding folder to library: %v\n", err)
+		return nil, err
 	}
 
 	runtime.EventsEmit(a.ctx, "library_updated")
+	fmt.Printf("Folder added to library: %s (temp: %v)\n", folderPath, isTemp)
+	return &AddFolderResult{Path: folderPath, IsSeries: false}, nil
+}
+
+// AddSeries adds a series with its chapters
+func (a *App) AddSeries(path string, subfolders []FolderInfo, isTemp bool) (*AddFolderResult, error) {
+	// ... existing logic ...
+	rootImages, _ := a.GetImages(path)
+	var coverImage string
+
+	if len(rootImages) > 0 {
+		coverImage = rootImages[0].Path
+		for _, img := range rootImages {
+			lowerName := strings.ToLower(img.Name)
+			if strings.Contains(lowerName, "cover") || strings.Contains(lowerName, "folder") || strings.Contains(lowerName, "thumb") {
+				coverImage = img.Path
+				break
+			}
+			if coverImage == rootImages[0].Path && img.Size < 500*1024 {
+				coverImage = img.Path
+			}
+		}
+	} else if len(subfolders) > 0 {
+		coverImage = subfolders[0].CoverImage
+	}
+
+	chapters := make([]persistence.ChapterInfo, len(subfolders))
+	for i, sub := range subfolders {
+		// Find first image in subfolder for chapter cover
+		chapterImages, _ := a.GetImages(sub.Path)
+		chCover := ""
+		if len(chapterImages) > 0 {
+			chCover = chapterImages[0].Name
+		}
+
+		chapters[i] = persistence.ChapterInfo{
+			Path:       sub.Path,
+			Name:       sub.Name,
+			CoverImage: chCover,
+			ImageCount: sub.ImageCount,
+		}
+	}
+
+	entry := persistence.SeriesEntry{
+		Path:        path,
+		Name:        filepath.Base(path),
+		CoverImage:  coverImage,
+		AddedAt:     time.Now().Format(time.RFC3339),
+		Chapters:    chapters,
+		IsTemporary: isTemp,
+	}
+
+	if err := a.series.Add(entry); err != nil {
+		fmt.Printf("Error adding series: %v\n", err)
+		return nil, err
+	}
+
+	runtime.EventsEmit(a.ctx, "series_updated")
+	fmt.Printf("Series added: %s with %d chapters (temp: %v)\n", path, len(subfolders), isTemp)
+	return &AddFolderResult{Path: path, IsSeries: true}, nil
+}
+
+// SeriesEntryWithURLs is a SeriesEntry with added URL fields for the frontend
+type SeriesEntryWithURLs struct {
+	persistence.SeriesEntry
+	ThumbnailURL string            `json:"thumbnailUrl"`
+	Chapters     []ChapterWithURLs `json:"chapters"`
+}
+
+type ChapterWithURLs struct {
+	persistence.ChapterInfo
+	ThumbnailURL string `json:"thumbnailUrl"`
+}
+
+// GetSeries returns all series entries with direct links
+func (a *App) GetSeries() []SeriesEntryWithURLs {
+	entries := a.series.GetAll()
+	result := make([]SeriesEntryWithURLs, len(entries))
+
+	baseURL := a.getBaseURL()
+	for i, entry := range entries {
+		chapters := make([]ChapterWithURLs, len(entry.Chapters))
+		changed := false
+
+		for j, ch := range entry.Chapters {
+			dirHash := a.fileLoader.RegisterDirectory(ch.Path)
+			fid := ch.CoverImage
+
+			// Proactively find cover image if missing (for old entries)
+			if fid == "" {
+				chapterImages, _ := a.GetImages(ch.Path)
+				if len(chapterImages) > 0 {
+					fid = chapterImages[0].Name
+					entry.Chapters[j].CoverImage = fid
+					changed = true
+				} else {
+					fid = filepath.Base(ch.Path)
+				}
+			}
+
+			chapters[j] = ChapterWithURLs{
+				ChapterInfo:  entry.Chapters[j],
+				ThumbnailURL: fmt.Sprintf("%s/thumbnails?did=%s&fid=%s", baseURL, dirHash, url.QueryEscape(fid)),
+			}
+		}
+
+		// If we fixed any missing cover images, save them back to persistence
+		if changed {
+			a.series.Add(entry)
+		}
+
+		dirHash := a.fileLoader.RegisterDirectory(filepath.Dir(entry.CoverImage))
+		result[i] = SeriesEntryWithURLs{
+			SeriesEntry:  entry,
+			ThumbnailURL: fmt.Sprintf("%s/thumbnails?did=%s&fid=%s", baseURL, dirHash, url.QueryEscape(filepath.Base(entry.CoverImage))),
+			Chapters:     chapters,
+		}
+	}
+
+	return result
+}
+
+// RemoveSeries removes a series entry
+func (a *App) RemoveSeries(path string) error {
+	entry := a.series.Get(path)
+	if entry != nil && entry.IsTemporary {
+		a.cleanupTemporaryPath(path)
+	}
+
+	err := a.series.Remove(path)
+	if err == nil {
+		runtime.EventsEmit(a.ctx, "series_updated")
+	}
+	return err
+}
+
+// IsSeries checks if a folder should be treated as a series
+func (a *App) IsSeries(path string) bool {
+	folderPath := a.resolveToFolder(path)
+	subfolders, _ := a.GetSubfolders(folderPath)
+	return len(subfolders) > 0
+}
+
+// ChapterNavigation contains adjacent chapter info for navigation
+type ChapterNavigation struct {
+	PrevChapter   *persistence.ChapterInfo `json:"prevChapter"`
+	NextChapter   *persistence.ChapterInfo `json:"nextChapter"`
+	SeriesPath    string                   `json:"seriesPath"`
+	SeriesName    string                   `json:"seriesName"`
+	ChapterIndex  int                      `json:"chapterIndex"`
+	TotalChapters int                      `json:"totalChapters"`
+}
+
+// GetChapterNavigation returns prev/next chapter for a given chapter path
+func (a *App) GetChapterNavigation(chapterPath string) *ChapterNavigation {
+	entries := a.series.GetAll()
+
+	for _, entry := range entries {
+		for i, ch := range entry.Chapters {
+			if ch.Path == chapterPath {
+				nav := &ChapterNavigation{
+					SeriesPath:    entry.Path,
+					SeriesName:    entry.Name,
+					ChapterIndex:  i,
+					TotalChapters: len(entry.Chapters),
+				}
+
+				// Previous chapter
+				if i > 0 {
+					prev := entry.Chapters[i-1]
+					nav.PrevChapter = &prev
+				}
+
+				// Next chapter
+				if i < len(entry.Chapters)-1 {
+					next := entry.Chapters[i+1]
+					nav.NextChapter = &next
+				}
+
+				fmt.Printf("[App] GetChapterNavigation: Found chapter %d/%d in series '%s'\n", i+1, len(entry.Chapters), entry.Name)
+				return nav
+			}
+		}
+	}
+
+	fmt.Printf("[App] GetChapterNavigation: No series found for path: %s\n", chapterPath)
 	return nil
 }
 
-// GetLibrary returns all library entries
-func (a *App) GetLibrary() []persistence.LibraryEntry {
-	return a.library.GetAll()
+// GetLibrary returns all library entries as FolderInfo with direct links
+func (a *App) GetLibrary() []FolderInfo {
+	entries := a.library.GetAll()
+	result := make([]FolderInfo, 0, len(entries))
+
+	for _, entry := range entries {
+		info, err := a.GetFolderInfo(entry.FolderPath)
+		if err == nil {
+			result = append(result, *info)
+		} else {
+			// Fallback if folder no longer exists or error
+			result = append(result, FolderInfo{
+				Path:       entry.FolderPath,
+				Name:       entry.FolderName,
+				ImageCount: entry.TotalImages,
+				CoverImage: entry.CoverImage,
+			})
+		}
+	}
+
+	return result
 }
 
 // RemoveLibraryEntry removes a library entry
 func (a *App) RemoveLibraryEntry(folderPath string) error {
-	return a.library.Remove(folderPath)
+	entry := a.library.Get(folderPath)
+	if entry != nil && entry.IsTemporary {
+		a.cleanupTemporaryPath(folderPath)
+	}
+
+	err := a.library.Remove(folderPath)
+	if err == nil {
+		runtime.EventsEmit(a.ctx, "library_updated")
+	}
+	return err
+}
+
+// ClearLibrary removes all library entries
+func (a *App) ClearLibrary() error {
+	entries := a.library.GetAll()
+	for _, entry := range entries {
+		if entry.IsTemporary {
+			a.cleanupTemporaryPath(entry.FolderPath)
+		}
+	}
+
+	err := a.library.Clear()
+	if err == nil {
+		runtime.EventsEmit(a.ctx, "library_updated")
+	}
+	return err
+}
+
+// ClearSeries removes all series entries
+func (a *App) ClearSeries() error {
+	entries := a.series.GetAll()
+	for _, entry := range entries {
+		if entry.IsTemporary {
+			a.cleanupTemporaryPath(entry.Path)
+		}
+	}
+
+	err := a.series.Clear()
+	if err == nil {
+		runtime.EventsEmit(a.ctx, "series_updated")
+	}
+	return err
 }
 
 // =============================================================================
 // Image Loading Methods
 // =============================================================================
 
-// LoadImage loads an image as base64 data URL
-func (a *App) LoadImage(imagePath string) (string, error) {
-	return a.fileLoader.LoadImageAsBase64(imagePath)
-}
-
 // GetThumbnail generates or retrieves a thumbnail for an image
+// GetThumbnail generates or retrieves a thumbnail for an image and returns a direct link
 func (a *App) GetThumbnail(imagePath string) (string, error) {
-	return a.thumbGen.GetThumbnail(imagePath)
+	dirHash := a.fileLoader.RegisterDirectory(filepath.Dir(imagePath))
+	baseURL := a.getBaseURL()
+	// @ts-ignore
+	return fmt.Sprintf("%s/thumbnails?did=%s&fid=%s", baseURL, dirHash, url.QueryEscape(filepath.Base(imagePath))), nil
 }
 
 // PreloadThumbnails generates thumbnails for a list of images in the background
@@ -405,4 +790,64 @@ func (a *App) PreloadThumbnails(imagePaths []string) {
 // ClearThumbnailCache clears the thumbnail cache
 func (a *App) ClearThumbnailCache() error {
 	return a.thumbGen.ClearCache()
+}
+
+// unwrapArchiveRoot walks down the directory tree if there's only one subfolder and no images.
+// This is common in ZIP files: ZIP -> Folder -> Images...
+func (a *App) unwrapArchiveRoot(path string) string {
+	for {
+		entries, err := os.ReadDir(path)
+		if err != nil {
+			return path
+		}
+
+		var subdirs []os.DirEntry
+		var hasImages bool
+		var validCount int
+
+		for _, e := range entries {
+			name := e.Name()
+			// Ignore hidden files and MacOS metadata
+			if strings.HasPrefix(name, ".") || name == "__MACOSX" {
+				continue
+			}
+			validCount++
+
+			if e.IsDir() {
+				subdirs = append(subdirs, e)
+			} else if a.fileLoader.IsSupportedImage(name) {
+				hasImages = true
+				break
+			}
+		}
+
+		// If we found images or there's more than one valid thing at this level, this is our root.
+		if hasImages || len(subdirs) != 1 || validCount > 1 {
+			return path
+		}
+
+		// Go one level deeper
+		path = filepath.Join(path, subdirs[0].Name())
+	}
+}
+
+// cleanupTemporaryPath ensures the entire extraction root is removed from the temp directory.
+func (a *App) cleanupTemporaryPath(path string) {
+	tempDir := persistence.GetTempDir()
+	rel, err := filepath.Rel(tempDir, path)
+	if err != nil {
+		fmt.Printf("[App] Error calculating relative path for cleanup: %v\n", err)
+		os.RemoveAll(path) // Fallback to removing the path itself
+		return
+	}
+
+	parts := strings.Split(rel, string(os.PathSeparator))
+	if len(parts) > 0 && parts[0] != ".." && parts[0] != "." {
+		rootToRemove := filepath.Join(tempDir, parts[0])
+		fmt.Printf("[App] Cleaning up temporary root: %s (from path %s)\n", rootToRemove, path)
+		os.RemoveAll(rootToRemove)
+	} else {
+		// If it's not actually inside tempDir or something weird happened
+		os.RemoveAll(path)
+	}
 }

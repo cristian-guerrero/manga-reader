@@ -1,3 +1,8 @@
+dependecias para linux:   
+- libgtk-3: sudo apt install libgtk-3-dev
+- libwebkit: sudo apt install libwebkit2gtk-4.1-dev
+
+-----------------------------------------------------------------------------
 vamos a crear un visor de manga
 
 stack propuest con wails , React + Vite,  Tailwind CSS, Framer Motion, Canvas API para entorno desktop
@@ -43,3 +48,60 @@ Caracteristicas adicionales 2:
      ir por a otra vista, pero continuar viendo en el home lo que se estaba viendo o se 
     seleccione nuevo en la lista de carpetas o historial
 - 
+----------------------------------------------------------------
+careristicas adicionales 3: [DONE]
+- pendiente de viabilidad
+- crear una nueva seccion de series
+- cuando se agregue una carpeta y tenga subcarpetas agregarlas como carpetas
+-tener un nuevo submenu que tenga la lista de carpetass agregadas y sus subcarpetas seran 
+     caapitulos como una serie 
+- al agregar una carpeta con subcarpetas en el nuevo menu de series, se verifica si en la carpeta
+    principal tenga alguna imagen y se crea el thumbnail apartir de esa, o si no de la primera
+    subcarpeta que tenga una imagen (verificar el tamaño de la imagen de la carpeta principal, si exixte,
+    puede ya ser un thumbnail verificar por tamaño) (solo agregar subcarpetas que tengan imagenes)
+- el funcionamiento del nuevo menu de series se aplica cuando se agregue carpeta del boton de add folder
+    o cuando se agregue con el drag and drop y este activo el toggle de add dropped folders to library and history
+    si esta desactivado realizar el comportamiento actual de inciar el visualizador sin agregar a ninguna lista
+    y sin verificar si hay subcarpetas
+----------------------------------------------------------
+cambios adicionales: [DONE]
+- el boton de panico lleva a la pantalla de configuracion
+- cada una de las secciones tien un boton de borrar todo como el de clear history
+- si se agrega una carpeta con subcarpetas (serie) y despues se agrega una de sus subcarpetas
+    esta subcarpeta se debe agregar a la lista de carpetas (sin modificar el comportamiento de seriees)
+- rediseño visual moderno (fusión sidebar/titlebar con esquinas redondeadas)
+-------------------------------------------------------------------------------
+caracteristicas adicionales 4:
+- verificar viabilidad sin dependencias externas del sistema
+- poder arrastrar zip o rar y hacer la funcionalidad como si se arrastrara una carpeta, guardar las imagenes temporales
+- si existen estas imagenes temporales al eliminar la carpeta o la serie se deben eliminar de disco, solo cuando cuando son temporales creadas 
+    por la extraccionde zip o rar
+
+-- Mejoras de rendimiento:
+- quitar la conversion a base64 de las imagenes para el thumbnail (ok)
+- quitar la conversion a base64 de las imagenes para el visor (ok)
+- revisar si la libreria de virtualizacion tiene alguna forma de optimizar el rendimiento (o si hay opciones) (ok)
+- revisar las animaciones de framer motion para optimizarlas (pendiente)
+- agregar compatibilidad con imagen avif (ok)
+- cuando la aplicacion incie regrese a la vista en la cual se estaba al salir (las vistas principales como home, series, folders, etc ) (ok)
+
+-caracteristicas adicionales 5:
+- el visor vertica y el lateral deben permitir ir al siguente o al anterior capitulo si es una serie (ok)
+
+caracteristicas adicionales 6:
+- Vamosos a agregar una nueva vista que nos permita explorar las carpetass con imagenes de
+    de una carpeta base, teniendo en cuenta que esta carpeta base puede tener imagenes y a su vezz
+    subcarpetas con imagenes y asi.
+- el eplorador de esta nueva vista es idependiente de la lista de carpetas y de la lista de series 
+    (asi como la lista de carpetas es idependiente de la lista de series)
+- debe tenr un boton para agregar carpeta base y otra pera eliminarla(de la lista no del disco)
+- el menu se llama explorer 
+- verificar que se esten creando las traducciones y si no estan crearlas (botones menus dialogos etc)
+- en la configuracion vamos a crear un menu que nos permita seleccionar o no los menus que se quieren ver
+    por ejemplo un usuario solo quier ver el explorer y ocultar las otras opciones
+    o por ejemplo no se quier ver ninguna opcion en el menu y se quier user la app solo como visor anonimo
+    como se hace ahora con el drag an drop cuando el toogle:Add dropped folders to library & history esta off
+    cuando se descelecicone todas las opociones del menu quedaria la app solo como visor sin guardar ningun historial
+- vamos a modularizar el codigo de la app para que al agregar nuevas funcionalidades no se quiebre el codigo (existente) 
+    se puede tener modulos compartidos, (ejemplo de modulos, folders, series, history, etc)
+

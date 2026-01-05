@@ -15,15 +15,17 @@
         "previous": "Previous",
         "search": "Search",
         "noResults": "No results found",
-        "search": "Search",
-        "noResults": "No results found",
         "reset": "Reset",
-        "off": "Off"
+        "off": "Off",
+        "processing": "Processing...",
+        "pleaseWait": "Please wait while we prepare your content",
+        "archive": "Archive"
     },
     "navigation": {
         "home": "Home",
         "history": "History",
         "folders": "Folders",
+        "series": "Series",
         "settings": "Settings",
         "viewer": "Viewer"
     },
@@ -51,7 +53,9 @@
         "width": "Width",
         "goToPage": "Go to Page",
         "thumbnails": "Thumbnails",
-        "imageInfo": "Image Info"
+        "imageInfo": "Image Info",
+        "prevChapter": "Previous Chapter",
+        "nextChapter": "Next Chapter"
     },
     "folders": {
         "title": "Folders",
@@ -62,8 +66,23 @@
         "images": "images",
         "lastModified": "Last modified",
         "confirmRemove": "Are you sure you want to remove this folder from the list?",
+        "clearAll": "Clear All",
+        "confirmClear": "Are you sure you want to remove all folders from the library?",
         "noFolders": "No folders added yet",
-        "dragDrop": "Drag and drop or click to select"
+        "dragDrop": "Drag and drop or click to select",
+        "addFailed": "Failed to add folder",
+        "foldersAdded": "{{count}} folders added to library"
+    },
+    "series": {
+        "title": "Series",
+        "addSeries": "Add Series",
+        "removeSeries": "Remove Series",
+        "clearAll": "Clear All",
+        "confirmClear": "Are you sure you want to remove all series from the library?",
+        "chapters": "chapters",
+        "noSeries": "No series added yet",
+        "openSeries": "View Chapters",
+        "chapterCount": "{{count}} Chapters"
     },
     "history": {
         "title": "Reading History",
@@ -103,7 +122,8 @@
         "preloadImages": "Preload Images",
         "preloadCount": "Images to Preload",
         "enableHistory": "Enable History",
-        "minImageSize": "Minimum Image Size (KB)",
+        "minImageSize": "Min Image Size (KB)",
+        "processDroppedFolders": "Add dropped folders to library & history",
         "minImageSizeDesc": "Filter out images smaller than this size (useful for removing covers/logos)",
         "showImageInfo": "Show Image Info",
         "resetSettings": "Reset to Defaults",
@@ -114,7 +134,10 @@
         "light": "Light",
         "midnight": "Midnight Blue",
         "sakura": "Sakura",
-        "amoled": "AMOLED Black"
+        "amoled": "AMOLED Black",
+        "lavender": "Lavender Dream",
+        "mint": "Mint Fresh",
+        "peach": "Peach Blossom"
     },
     "errors": {
         "loadFailed": "Failed to load",

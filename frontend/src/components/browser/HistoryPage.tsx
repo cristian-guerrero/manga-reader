@@ -52,29 +52,59 @@ export function HistoryPage() {
     const { enableHistory } = useSettingsStore();
 
     useEffect(() => {
+        let isMounted = true;
+        let unsubscribe: () => void;
+
         if (enableHistory) {
-            loadHistory();
+            const init = async () => {
+                await ensureWailsReady();
+                if (!isMounted) return;
 
-            const cleanup = EventsOn('history_updated', () => {
                 loadHistory();
-            });
 
-            return () => {
-                EventsOff('history_updated');
+                unsubscribe = EventsOn('history_updated', () => {
+                    if (isMounted) loadHistory();
+                });
             };
+
+            init();
         } else {
             setIsLoading(false);
             setHistory([]);
         }
+
+        return () => {
+            isMounted = false;
+            if (unsubscribe) unsubscribe();
+        };
     }, [enableHistory]);
 
+    const ensureWailsReady = async (maxAttempts = 20) => {
+        for (let i = 0; i < maxAttempts; i++) {
+            // @ts-ignore
+            if (window.go?.main?.App?.GetHistory) return true;
+            await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        console.warn('Wails bindings not ready after timeout');
+        return false;
+    };
 
 
-    const loadHistory = async () => {
+
+    const loadHistory = async (retryCount = 0) => {
         setIsLoading(true);
         try {
             // @ts-ignore - Wails generated bindings
-            const entries = await window.go?.main?.App?.GetHistory();
+            const app = window.go?.main?.App;
+            if (!app) {
+                if (retryCount < 3) {
+                    setTimeout(() => loadHistory(retryCount + 1), 500);
+                    return;
+                }
+                throw new Error('Bindings not available');
+            }
+
+            const entries = await app.GetHistory();
             if (entries && Array.isArray(entries)) {
                 setHistory(entries);
 

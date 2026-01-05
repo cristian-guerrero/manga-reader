@@ -15,12 +15,16 @@
         "previous": "Anterior",
         "search": "Buscar",
         "noResults": "Sin resultados",
-        "reset": "Restablecer"
+        "reset": "Restablecer",
+        "processing": "Procesando...",
+        "pleaseWait": "Por favor espera mientras preparamos tu contenido",
+        "archive": "Archivo"
     },
     "navigation": {
         "home": "Inicio",
         "history": "Historial",
         "folders": "Carpetas",
+        "series": "Series",
         "settings": "Configuración",
         "viewer": "Visor"
     },
@@ -47,8 +51,13 @@
         "of": "de",
         "width": "Ancho",
         "goToPage": "Ir a Página",
+        "enableHistory": "Habilitar Historial",
+        "minImageSize": "Tamaño Mín de Imagen (KB)",
+        "processDroppedFolders": "Añadir carpetas arrastradas a la librería y el historial",
         "thumbnails": "Miniaturas",
-        "imageInfo": "Info de Imagen"
+        "imageInfo": "Info de Imagen",
+        "prevChapter": "Capítulo Anterior",
+        "nextChapter": "Capítulo Siguiente"
     },
     "folders": {
         "title": "Carpetas",
@@ -59,8 +68,23 @@
         "images": "imágenes",
         "lastModified": "Última modificación",
         "confirmRemove": "¿Estás seguro de quitar esta carpeta de la lista?",
+        "clearAll": "Borrar Todo",
+        "confirmClear": "¿Estás seguro de quitar todas las carpetas de la librería?",
         "noFolders": "No hay carpetas agregadas",
-        "dragDrop": "Arrastra o haz clic para seleccionar"
+        "dragDrop": "Arrastra o haz clic para seleccionar",
+        "addFailed": "Error al añadir carpeta",
+        "foldersAdded": "{{count}} carpetas añadidas a la librería"
+    },
+    "series": {
+        "title": "Series",
+        "addSeries": "Añadir Serie",
+        "removeSeries": "Quitar Serie",
+        "clearAll": "Borrar Todo",
+        "confirmClear": "¿Estás seguro de quitar todas las series de la librería?",
+        "chapters": "capítulos",
+        "noSeries": "No hay series agregadas",
+        "openSeries": "Ver Capítulos",
+        "chapterCount": "{{count}} Capítulos"
     },
     "history": {
         "title": "Historial de Lectura",
@@ -106,7 +130,10 @@
         "light": "Claro",
         "midnight": "Azul Medianoche",
         "sakura": "Sakura",
-        "amoled": "AMOLED Negro"
+        "amoled": "AMOLED Negro",
+        "lavender": "Sueño Lavanda",
+        "mint": "Menta Fresca",
+        "peach": "Flor de Durazno"
     },
     "errors": {
         "loadFailed": "Error al cargar",

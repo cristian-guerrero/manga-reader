@@ -3,12 +3,15 @@ module manga-visor
 go 1.24.0
 
 require (
+	github.com/gen2brain/avif v0.4.4
+	github.com/nwaples/rardecode/v2 v2.2.2
 	github.com/wailsapp/wails/v2 v2.11.0
 	golang.org/x/image v0.34.0
 )
 
 require (
 	github.com/bep/debounce v1.2.1 // indirect
+	github.com/ebitengine/purego v0.8.3 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
@@ -26,6 +29,7 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/samber/lo v1.49.1 // indirect
+	github.com/tetratelabs/wazero v1.9.0 // indirect
 	github.com/tkrajina/go-reflector v0.5.8 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v1.2.2 // indirect

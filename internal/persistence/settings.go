@@ -37,6 +37,16 @@ type Settings struct {
 	EnableHistory bool `json:"enableHistory"`
 	// Minimum image size in KB to display
 	MinImageSize int64 `json:"minImageSize"`
+	// Process dropped folders (add to library and save history)
+	ProcessDroppedFolders bool `json:"processDroppedFolders"`
+	// Window dimensions
+	WindowWidth     int  `json:"windowWidth"`
+	WindowHeight    int  `json:"windowHeight"`
+	WindowX         int  `json:"windowX"`
+	WindowY         int  `json:"windowY"`
+	WindowMaximized bool `json:"windowMaximized"`
+	// Last page visited (for startup restore)
+	LastPage string `json:"lastPage"`
 }
 
 // DefaultSettings returns the default settings
@@ -55,10 +65,16 @@ func DefaultSettings() *Settings {
 		PreloadImages:    true,
 		PreloadCount:     3,
 
-		EnableHistory: true,
-		MinImageSize:  0,
+		EnableHistory:         true,
+		MinImageSize:          0,
+		ProcessDroppedFolders: true,
+		WindowWidth:           1280,
+		WindowHeight:          800,
+		WindowX:               -1, // -1 means center
+		WindowY:               -1,
+		WindowMaximized:       false,
+		LastPage:              "home",
 	}
-
 }
 
 // SettingsManager handles settings persistence
@@ -122,6 +138,7 @@ func (sm *SettingsManager) Update(updates map[string]interface{}) error {
 
 	// Apply updates
 	for key, value := range updates {
+		fmt.Printf("[SettingsManager] Updating field %s to %v\n", key, value)
 		switch key {
 		case "language":
 			if v, ok := value.(string); ok {
@@ -186,7 +203,42 @@ func (sm *SettingsManager) Update(updates map[string]interface{}) error {
 			} else {
 				fmt.Printf("Failed to update minImageSize: invalid type %v (%T)\n", value, value)
 			}
-
+		case "processDroppedFolders":
+			if v, ok := value.(bool); ok {
+				sm.settings.ProcessDroppedFolders = v
+			}
+		case "windowWidth":
+			if v, ok := value.(float64); ok {
+				sm.settings.WindowWidth = int(v)
+			} else if v, ok := value.(int); ok {
+				sm.settings.WindowWidth = v
+			}
+		case "windowHeight":
+			if v, ok := value.(float64); ok {
+				sm.settings.WindowHeight = int(v)
+			} else if v, ok := value.(int); ok {
+				sm.settings.WindowHeight = v
+			}
+		case "windowX":
+			if v, ok := value.(float64); ok {
+				sm.settings.WindowX = int(v)
+			} else if v, ok := value.(int); ok {
+				sm.settings.WindowX = v
+			}
+		case "windowY":
+			if v, ok := value.(float64); ok {
+				sm.settings.WindowY = int(v)
+			} else if v, ok := value.(int); ok {
+				sm.settings.WindowY = v
+			}
+		case "windowMaximized":
+			if v, ok := value.(bool); ok {
+				sm.settings.WindowMaximized = v
+			}
+		case "lastPage":
+			if v, ok := value.(string); ok {
+				sm.settings.LastPage = v
+			}
 		}
 
 	}

@@ -24,6 +24,10 @@ interface NavigationStoreState extends NavigationState {
     isPanicMode: boolean;
     triggerPanic: () => void;
     exitPanic: () => void;
+
+    // Processing mode (e.g. ZIP extraction)
+    isProcessing: boolean;
+    setIsProcessing: (isProcessing: boolean) => void;
 }
 
 export const useNavigationStore = create<NavigationStoreState>((set, get) => ({
@@ -33,10 +37,11 @@ export const useNavigationStore = create<NavigationStoreState>((set, get) => ({
     params: {},
     history: [{ page: 'home', params: {} }],
     isPanicMode: false,
+    isProcessing: false,
 
     // Actions
     navigate: (page, params = {}) => {
-        const { currentPage, params: currentParams, history } = get();
+        const { currentPage, history } = get();
 
         // Add current page to history before navigating
         const newHistory = [
@@ -50,6 +55,15 @@ export const useNavigationStore = create<NavigationStoreState>((set, get) => ({
             params,
             history: newHistory,
         });
+
+        // Save main pages to settings for startup restore
+        const mainPages = ['home', 'folders', 'series', 'history', 'settings'];
+        if (mainPages.includes(page)) {
+            // @ts-ignore - Dynamic import to avoid circular dependency
+            import('./settingsStore').then(({ useSettingsStore }) => {
+                useSettingsStore.getState().setLastPage(page);
+            });
+        }
     },
 
     goBack: () => {
@@ -105,14 +119,18 @@ export const useNavigationStore = create<NavigationStoreState>((set, get) => ({
     triggerPanic: () => {
         set({
             isPanicMode: true,
-            currentPage: 'home',
+            currentPage: 'settings',
             previousPage: null,
             params: {},
-            history: [{ page: 'home', params: {} }],
+            history: [{ page: 'settings', params: {} }],
         });
     },
 
     exitPanic: () => {
         set({ isPanicMode: false });
+    },
+
+    setIsProcessing: (isProcessing) => {
+        set({ isProcessing });
     },
 }));

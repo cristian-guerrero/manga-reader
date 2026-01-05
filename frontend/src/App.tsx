@@ -2,19 +2,35 @@
  * App - Main application component
  */
 
-import { useEffect, Suspense } from 'react';
+import { useEffect, Suspense, useState, useCallback } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { MainLayout } from './components/layout/MainLayout';
 import { HomePage } from './components/HomePage';
 import { ViewerPage } from './components/viewers/ViewerPage';
 import { FoldersPage } from './components/browser/FoldersPage';
+import { SeriesPage } from './components/browser/SeriesPage';
+import { SeriesDetailsPage } from './components/browser/SeriesDetailsPage';
 import { HistoryPage } from './components/browser/HistoryPage';
 import { ThumbnailsPage } from './components/browser/ThumbnailsPage';
 import { SettingsPage } from './components/settings/SettingsPage';
 import { useNavigationStore } from './stores/navigationStore';
 import { useSettingsStore } from './stores/settingsStore';
 import { usePanicMode } from './hooks/usePanicMode';
+import { ToastProvider } from './components/common/Toast';
 import './i18n';
+
+declare global {
+    interface Window {
+        go?: {
+            main?: {
+                App?: {
+                    WindowIsMaximised?: () => Promise<boolean>;
+                    [key: string]: any;
+                };
+            };
+        };
+    }
+}
 
 // Loading component
 function LoadingScreen() {
@@ -88,24 +104,10 @@ function LoadingScreen() {
 function PageRouter() {
     const { currentPage, params } = useNavigationStore();
 
-    // Page transition animation
-    const pageTransition = {
-        initial: { opacity: 0, y: 10 },
-        animate: { opacity: 1, y: 0 },
-        exit: { opacity: 0, y: -10 },
-        transition: { duration: 0.2, ease: 'easeOut' },
-    };
-
     return (
-        <AnimatePresence mode="wait">
-            <motion.div
-                key={currentPage}
-                {...pageTransition}
-                className="h-full w-full"
-            >
-                {renderPage(currentPage, params)}
-            </motion.div>
-        </AnimatePresence>
+        <div className="h-full w-full">
+            {renderPage(currentPage, params)}
+        </div>
     );
 }
 
@@ -120,6 +122,10 @@ function renderPage(page: string, params: Record<string, string>): React.ReactNo
             return <HistoryPage />;
         case 'folders':
             return <FoldersPage />;
+        case 'series':
+            return <SeriesPage />;
+        case 'series-details':
+            return <SeriesDetailsPage seriesPath={params.series} />;
         case 'settings':
             return <SettingsPage />;
         case 'thumbnails':
@@ -131,20 +137,69 @@ function renderPage(page: string, params: Record<string, string>): React.ReactNo
 
 function App() {
     const { loadSettings } = useSettingsStore();
+    const [isMaximized, setIsMaximized] = useState(false);
 
     // Initialize panic mode hook
     usePanicMode();
 
-    // Load settings on mount
+    // Check window maximization state - use local detection instead of backend call
+    const checkMaximized = useCallback(() => {
+        // Consider maximized if window fills ~95% of screen
+        const isFullScreen =
+            window.outerWidth >= window.screen.availWidth * 0.95 &&
+            window.outerHeight >= window.screen.availHeight * 0.95;
+        setIsMaximized(isFullScreen);
+    }, []);
+
+    // Load settings on mount and set up window resize listener
     useEffect(() => {
-        loadSettings();
-    }, [loadSettings]);
+        const initApp = async () => {
+            await loadSettings();
+
+            // Restore last page after settings load
+            const lastPage = useSettingsStore.getState().lastPage;
+            if (lastPage && lastPage !== 'home') {
+                // Only restore main pages, not viewer or other temporary pages
+                const mainPages = ['home', 'folders', 'series', 'history', 'settings'];
+                if (mainPages.includes(lastPage)) {
+                    useNavigationStore.getState().navigate(lastPage as any);
+                }
+            }
+        };
+
+        initApp();
+        checkMaximized();
+
+        // Debounced resize handler to avoid excessive backend calls
+        let resizeTimeout: ReturnType<typeof setTimeout> | null = null;
+        const handleResize = () => {
+            if (resizeTimeout) clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(checkMaximized, 200);
+        };
+
+        window.addEventListener('resize', handleResize);
+        return () => {
+            window.removeEventListener('resize', handleResize);
+            if (resizeTimeout) clearTimeout(resizeTimeout);
+        };
+    }, [loadSettings, checkMaximized]);
+
+    // Apply rounded corners when not maximized
+    useEffect(() => {
+        if (isMaximized) {
+            document.body.classList.remove('window-rounded');
+        } else {
+            document.body.classList.add('window-rounded');
+        }
+    }, [isMaximized]);
 
     return (
         <Suspense fallback={<LoadingScreen />}>
-            <MainLayout>
-                <PageRouter />
-            </MainLayout>
+            <ToastProvider>
+                <MainLayout>
+                    <PageRouter />
+                </MainLayout>
+            </ToastProvider>
         </Suspense>
     );
 }

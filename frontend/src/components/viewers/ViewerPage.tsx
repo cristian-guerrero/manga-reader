@@ -51,6 +51,18 @@ const SettingsIcon = () => (
     </svg>
 );
 
+const ChevronLeftIcon = () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <polyline points="15 18 9 12 15 6" />
+    </svg>
+);
+
+const ChevronRightIcon = () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <polyline points="9 18 15 12 9 6" />
+    </svg>
+);
+
 interface ViewerPageProps {
     folderPath?: string;
 }
@@ -73,15 +85,36 @@ export function ViewerPage({ folderPath }: ViewerPageProps) {
 
     const [showControls, setShowControls] = useState(true);
     const [showWidthSlider, setShowWidthSlider] = useState(false);
-    const [initialScrollPos, setInitialScrollPos] = useState(0);
+    // Local state for resume position - avoids timing issues with store
+    const [resumeIndex, setResumeIndex] = useState(0);
+    const [resumeScrollPos, setResumeScrollPos] = useState(0);
+    // Session flag state that can be updated during component reuse
+    const [isNoHistorySession, setIsNoHistorySession] = useState(useNavigationStore.getState().params.noHistory === 'true');
+    // Chapter navigation state for series
+    const [chapterNav, setChapterNav] = useState<{
+        prevChapter?: { path: string; name: string };
+        nextChapter?: { path: string; name: string };
+        seriesName?: string;
+        chapterIndex?: number;
+        totalChapters?: number;
+    } | null>(null);
+
+    // Update session flag when navigation params change (handles component reuse)
+    useEffect(() => {
+        const noHistory = useNavigationStore.getState().params.noHistory === 'true';
+        console.log(`[ViewerPage] Updating isNoHistorySession for ${folderPath} to: ${noHistory}`);
+        setIsNoHistorySession(noHistory);
+    }, [folderPath]);
 
     // Load folder and images
     useEffect(() => {
         if (!folderPath) return;
 
         const loadFolder = async () => {
-            // Avoid double loading
-            // if (isLoading) return; 
+            // Save current progress before switching if not a no-history session
+            if (currentFolder && !isNoHistorySession) {
+                await saveProgress();
+            }
 
             setIsLoading(true);
             try {
@@ -109,24 +142,38 @@ export function ViewerPage({ folderPath }: ViewerPageProps) {
                     if (historyEntry) {
                         if (historyEntry.lastImageIndex < imgs.length) {
                             targetIndex = historyEntry.lastImageIndex;
-                            console.log("Resuming from history index:", targetIndex);
+                            console.log(`[ViewerPage] Resuming from history index: ${targetIndex}`);
                         }
                         if (historyEntry.scrollPosition > 0) {
                             targetScroll = historyEntry.scrollPosition;
-                            setInitialScrollPos(targetScroll);
-                            console.log("Resuming from scroll position:", targetScroll);
+                            console.log(`[ViewerPage] Resuming from scroll position: ${targetScroll}`);
                         }
                     }
 
-                    // We update the store. We might need to update useViewerStore to allow setting both
-                    // For now we rely on the fact that we can set them.
+                    // Set local state FIRST before store update
+                    console.log(`[ViewerPage] Setting resumeIndex=${targetIndex}, resumeScrollPos=${targetScroll}`);
+                    setResumeIndex(targetIndex);
+                    setResumeScrollPos(targetScroll);
+
+                    // Update store with new images and index
                     useViewerStore.setState({
                         images: imgs,
                         currentIndex: targetIndex,
+                        scrollPosition: targetScroll,
                         currentFolder: folderInfo as FolderInfo,
-                        isLoading: false // manual override
+                        isLoading: false
                     });
                     // setIsLoading(false) moved here implicitly by store update? No, local state.
+                }
+
+                // Fetch chapter navigation info (for series)
+                // @ts-ignore
+                const navInfo = await window.go?.main?.App?.GetChapterNavigation(folderPath);
+                if (navInfo) {
+                    console.log(`[ViewerPage] Chapter navigation found:`, navInfo);
+                    setChapterNav(navInfo);
+                } else {
+                    setChapterNav(null);
                 }
 
             } catch (error) {
@@ -160,6 +207,10 @@ export function ViewerPage({ folderPath }: ViewerPageProps) {
     const saveProgress = useCallback(async () => {
         if (!currentFolder || images.length === 0) return;
 
+        if (isNoHistorySession) {
+            return;
+        }
+
         try {
             // @ts-ignore - Wails generated bindings
             await window.go?.main?.App?.AddHistory({
@@ -182,7 +233,7 @@ export function ViewerPage({ folderPath }: ViewerPageProps) {
         return () => {
             saveProgress();
         };
-    }, [saveProgress]);
+    }, [saveProgress, isNoHistorySession]);
 
     // Auto-hide controls
     useEffect(() => {
@@ -207,6 +258,21 @@ export function ViewerPage({ folderPath }: ViewerPageProps) {
         setMode(newMode);
         setViewerMode(newMode);
     };
+
+    // Chapter navigation handlers
+    const handlePrevChapter = useCallback(async () => {
+        if (chapterNav?.prevChapter) {
+            await saveProgress();
+            navigate('viewer', { folder: chapterNav.prevChapter.path });
+        }
+    }, [chapterNav, navigate, saveProgress]);
+
+    const handleNextChapter = useCallback(async () => {
+        if (chapterNav?.nextChapter) {
+            await saveProgress();
+            navigate('viewer', { folder: chapterNav.nextChapter.path });
+        }
+    }, [chapterNav, navigate, saveProgress]);
 
     if (isLoading) {
         return (
@@ -270,31 +336,33 @@ export function ViewerPage({ folderPath }: ViewerPageProps) {
             <AnimatePresence mode="wait">
                 {mode === 'vertical' ? (
                     <motion.div
-                        key="vertical"
+                        key={`vertical-${currentFolder.path}`}
                         className="h-full w-full"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                     >
                         <VerticalViewer
+                            key={`${currentFolder.path}-${resumeIndex}`}
                             images={images}
                             onScrollPositionChange={saveProgress}
-                            initialIndex={currentIndex}
-                            initialScrollPosition={initialScrollPos}
+                            initialIndex={resumeIndex}
+                            initialScrollPosition={resumeScrollPos}
                         />
                     </motion.div>
                 ) : (
                     <motion.div
-                        key="lateral"
+                        key={`lateral-${currentFolder.path}`}
                         className="h-full w-full"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                     >
                         <LateralViewer
+                            key={`${currentFolder.path}-${resumeIndex}`}
                             images={images}
                             onPageChange={saveProgress}
-                            initialIndex={currentIndex}
+                            initialIndex={resumeIndex}
                         />
                     </motion.div>
                 )}
@@ -323,12 +391,22 @@ export function ViewerPage({ folderPath }: ViewerPageProps) {
                             >
                                 <BackIcon />
                             </motion.button>
-                            <span
-                                className="text-sm font-medium truncate max-w-xs"
-                                style={{ color: 'var(--color-text-primary)' }}
-                            >
-                                {currentFolder.name}
-                            </span>
+                            <div className="flex flex-col">
+                                <span
+                                    className="text-sm font-medium truncate max-w-xs"
+                                    style={{ color: 'var(--color-text-primary)' }}
+                                >
+                                    {currentFolder.name}
+                                </span>
+                                {chapterNav && (
+                                    <span
+                                        className="text-xs truncate max-w-xs"
+                                        style={{ color: 'var(--color-text-secondary)' }}
+                                    >
+                                        {chapterNav.seriesName} • Cap. {(chapterNav.chapterIndex ?? 0) + 1}/{chapterNav.totalChapters}
+                                    </span>
+                                )}
+                            </div>
                         </div>
 
                         {/* Right side */}
@@ -394,6 +472,73 @@ export function ViewerPage({ folderPath }: ViewerPageProps) {
                                 {mode === 'vertical' ? <LateralIcon /> : <VerticalIcon />}
                             </motion.button>
                         </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Bottom chapter navigation bar */}
+            <AnimatePresence>
+                {showControls && chapterNav && (chapterNav.prevChapter || chapterNav.nextChapter) && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 20 }}
+                        className="absolute bottom-0 left-0 right-0 flex items-center justify-between px-4 py-3 z-50"
+                        style={{
+                            background: 'linear-gradient(to top, var(--color-surface-overlay), transparent)',
+                        }}
+                    >
+                        {/* Previous chapter */}
+                        <motion.button
+                            onClick={handlePrevChapter}
+                            disabled={!chapterNav.prevChapter}
+                            className="flex items-center gap-2 px-4 py-2 rounded-lg transition-all"
+                            style={{
+                                backgroundColor: chapterNav.prevChapter ? 'var(--color-surface-elevated)' : 'transparent',
+                                color: chapterNav.prevChapter ? 'var(--color-text-primary)' : 'var(--color-text-tertiary)',
+                                border: '1px solid var(--color-border)',
+                                opacity: chapterNav.prevChapter ? 1 : 0.4,
+                                cursor: chapterNav.prevChapter ? 'pointer' : 'not-allowed',
+                            }}
+                            whileHover={chapterNav.prevChapter ? { scale: 1.02, backgroundColor: 'var(--color-accent)' } : {}}
+                            whileTap={chapterNav.prevChapter ? { scale: 0.98 } : {}}
+                        >
+                            <ChevronLeftIcon />
+                            <div className="flex flex-col items-start">
+                                <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+                                    {t('viewer.prevChapter')}
+                                </span>
+                                <span className="text-sm font-medium truncate max-w-[150px]">
+                                    {chapterNav.prevChapter?.name || '—'}
+                                </span>
+                            </div>
+                        </motion.button>
+
+                        {/* Next chapter */}
+                        <motion.button
+                            onClick={handleNextChapter}
+                            disabled={!chapterNav.nextChapter}
+                            className="flex items-center gap-2 px-4 py-2 rounded-lg transition-all"
+                            style={{
+                                backgroundColor: chapterNav.nextChapter ? 'var(--color-surface-elevated)' : 'transparent',
+                                color: chapterNav.nextChapter ? 'var(--color-text-primary)' : 'var(--color-text-tertiary)',
+                                border: '1px solid var(--color-border)',
+                                opacity: chapterNav.nextChapter ? 1 : 0.4,
+                                cursor: chapterNav.nextChapter ? 'pointer' : 'not-allowed',
+                            }}
+                            whileHover={chapterNav.nextChapter ? { scale: 1.02, backgroundColor: 'var(--color-accent)' } : {}}
+                            whileTap={chapterNav.nextChapter ? { scale: 0.98 } : {}}
+                        >
+                            <div className="flex flex-col items-end">
+                                <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+                                    {t('viewer.nextChapter')}
+                                </span>
+                                <span className="text-sm font-medium truncate max-w-[150px]">
+                                    {chapterNav.nextChapter?.name || '—'}
+                                </span>
+                            </div>
+                            <ChevronRightIcon />
+                        </motion.button>
                     </motion.div>
                 )}
             </AnimatePresence>

@@ -15,14 +15,19 @@ A premium desktop manga viewer application built with Wails, React, and Go.
 
 ### Organization
 - **Folder Browser** - Browse and manage your manga folders
-- **Reading History** - Track your progress with visual indicators
+- **Series & Chapters** - Automatic organization of folders with subfolders as series
+- **Reading History** - Track your progress with visual indicators (sync across devices)
 - **Image Reordering** - Drag & drop to reorder images (persistent)
+- **Archive Management** - Drag & drop archives to extract and read automatically
+- **Visual Identifiers** - Distinctive badges for archives (ZIP/RAR) in the library
 
 ### Experience
 - **5 Built-in Themes** - Dark, Light, Midnight Blue, Sakura, AMOLED Black
 - **Multi-language** - English and Spanish (easy to add more)
 - **Panic Button** - Press ESC to instantly clear the screen
 - **Keyboard Navigation** - Full keyboard support
+- **Double Click Actions** - Double-click title bar to maximize/restore window
+- **Processing Feedback** - High-quality animated loading indicators for heavy tasks
 
 ### Technical
 - **Portable** - Single executable, no installation required
@@ -111,8 +116,12 @@ Create a JSON file in `~/.manga-visor/themes/`:
 
 ## 📁 Supported Formats
 
-- **Images**: PNG, JPG, JPEG, WebP, GIF, BMP, TIFF, SVG
-- **Archives**: Coming soon (ZIP, RAR, CBZ, CBR)
+- **Images**: PNG, JPG, JPEG, WebP, GIF, BMP, TIFF, SVG, AVIF
+- **Archives**: ZIP, RAR, CBZ, CBR (Automatic extraction and cleanup)
+
+## 🔄 Session Restore
+
+Manga Visor remembers your last visited main page (Home, Folders, Series, History, Settings) and automatically restores it when you reopen the application.
 
 ## 🌐 Translations
 
@@ -136,7 +145,8 @@ manga-visor/
 ├── internal/              # Go internal packages
 │   ├── persistence/       # Data persistence (settings, history, orders)
 │   ├── fileloader/        # Image loading & processing
-│   └── thumbnails/        # Thumbnail generation & caching
+│   ├── thumbnails/        # Thumbnail generation & caching
+│   └── archiver/          # ZIP/RAR extraction & sanitization
 ├── frontend/              # React frontend
 │   ├── src/
 │   │   ├── components/    # React components
@@ -162,10 +172,12 @@ All user data is stored in `~/.manga-visor/`:
 ~/.manga-visor/
 ├── settings.json          # Application settings
 ├── history.json           # Reading history
+├── series.json            # Series and chapters metadata
 ├── orders.json            # Custom image orders
 ├── themes/                # Custom themes (optional)
 └── cache/
-    └── thumbnails/        # Cached thumbnails
+    ├── thumbnails/        # Cached thumbnails
+    └── temp/              # Temporary storage for extracted archives
 ```
 
 ## 🛠️ Tech Stack
