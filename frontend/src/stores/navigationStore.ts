@@ -41,7 +41,7 @@ export const useNavigationStore = create<NavigationStoreState>((set, get) => ({
 
     // Actions
     navigate: (page, params = {}) => {
-        const { currentPage, params: currentParams, history } = get();
+        const { currentPage, history } = get();
 
         // Add current page to history before navigating
         const newHistory = [
@@ -55,6 +55,15 @@ export const useNavigationStore = create<NavigationStoreState>((set, get) => ({
             params,
             history: newHistory,
         });
+
+        // Save main pages to settings for startup restore
+        const mainPages = ['home', 'folders', 'series', 'history', 'settings'];
+        if (mainPages.includes(page)) {
+            // @ts-ignore - Dynamic import to avoid circular dependency
+            import('./settingsStore').then(({ useSettingsStore }) => {
+                useSettingsStore.getState().setLastPage(page);
+            });
+        }
     },
 
     goBack: () => {

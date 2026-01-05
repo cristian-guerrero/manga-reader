@@ -24,7 +24,7 @@ interface SettingsState extends Settings {
     setEnableHistory: (enable: boolean) => void;
     setMinImageSize: (kb: number) => void;
     setProcessDroppedFolders: (process: boolean) => void;
-
+    setLastPage: (page: string) => void;
 
     // Persistence
     loadSettings: () => Promise<void>;
@@ -120,8 +120,10 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         get().saveSettings();
     },
 
-
-    // Persistence - Will be connected to Go backend
+    setLastPage: (lastPage) => {
+        set({ lastPage });
+        get().saveSettings();
+    },    // Persistence - Will be connected to Go backend
     loadSettings: async () => {
         try {
             // @ts-ignore

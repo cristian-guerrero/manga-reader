@@ -116,8 +116,12 @@ Create a JSON file in `~/.manga-visor/themes/`:
 
 ## 📁 Supported Formats
 
-- **Images**: PNG, JPG, JPEG, WebP, GIF, BMP, TIFF, SVG
+- **Images**: PNG, JPG, JPEG, WebP, GIF, BMP, TIFF, SVG, AVIF
 - **Archives**: ZIP, RAR, CBZ, CBR (Automatic extraction and cleanup)
+
+## 🔄 Session Restore
+
+Manga Visor remembers your last visited main page (Home, Folders, Series, History, Settings) and automatically restores it when you reopen the application.
 
 ## 🌐 Translations
 

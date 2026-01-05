@@ -102,6 +102,8 @@ export interface Settings {
     minImageSize: number;
     /** Process dropped folders (add to library and save history) */
     processDroppedFolders: boolean;
+    /** Last visited page (for startup restore) */
+    lastPage: string;
 }
 
 
@@ -124,6 +126,7 @@ export const DEFAULT_SETTINGS: Settings = {
     enableHistory: true,
     minImageSize: 0,
     processDroppedFolders: true,
+    lastPage: 'home',
 };
 
 

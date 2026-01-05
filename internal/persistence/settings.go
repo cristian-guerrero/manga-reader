@@ -45,6 +45,8 @@ type Settings struct {
 	WindowX         int  `json:"windowX"`
 	WindowY         int  `json:"windowY"`
 	WindowMaximized bool `json:"windowMaximized"`
+	// Last page visited (for startup restore)
+	LastPage string `json:"lastPage"`
 }
 
 // DefaultSettings returns the default settings
@@ -71,6 +73,7 @@ func DefaultSettings() *Settings {
 		WindowX:               -1, // -1 means center
 		WindowY:               -1,
 		WindowMaximized:       false,
+		LastPage:              "home",
 	}
 }
 
@@ -231,6 +234,10 @@ func (sm *SettingsManager) Update(updates map[string]interface{}) error {
 		case "windowMaximized":
 			if v, ok := value.(bool); ok {
 				sm.settings.WindowMaximized = v
+			}
+		case "lastPage":
+			if v, ok := value.(string); ok {
+				sm.settings.LastPage = v
 			}
 		}
 

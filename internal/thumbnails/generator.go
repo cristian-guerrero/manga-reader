@@ -17,9 +17,10 @@ import (
 
 	"golang.org/x/image/draw"
 
-	_ "golang.org/x/image/bmp"  // BMP support
-	_ "golang.org/x/image/tiff" // TIFF support
-	_ "golang.org/x/image/webp" // WebP support
+	_ "github.com/gen2brain/avif" // AVIF support
+	_ "golang.org/x/image/bmp"    // BMP support
+	_ "golang.org/x/image/tiff"   // TIFF support
+	_ "golang.org/x/image/webp"   // WebP support
 )
 
 const (

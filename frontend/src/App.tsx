@@ -153,7 +153,21 @@ function App() {
 
     // Load settings on mount and set up window resize listener
     useEffect(() => {
-        loadSettings();
+        const initApp = async () => {
+            await loadSettings();
+
+            // Restore last page after settings load
+            const lastPage = useSettingsStore.getState().lastPage;
+            if (lastPage && lastPage !== 'home') {
+                // Only restore main pages, not viewer or other temporary pages
+                const mainPages = ['home', 'folders', 'series', 'history', 'settings'];
+                if (mainPages.includes(lastPage)) {
+                    useNavigationStore.getState().navigate(lastPage as any);
+                }
+            }
+        };
+
+        initApp();
         checkMaximized();
 
         // Debounced resize handler to avoid excessive backend calls

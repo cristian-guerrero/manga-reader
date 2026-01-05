@@ -25,6 +25,7 @@ var SupportedExtensions = map[string]string{
 	".tiff": "image/tiff",
 	".tif":  "image/tiff",
 	".svg":  "image/svg+xml",
+	".avif": "image/avif",
 }
 
 // ImageInfo represents information about an image file

@@ -178,6 +178,7 @@ export namespace persistence {
 	    windowX: number;
 	    windowY: number;
 	    windowMaximized: boolean;
+	    lastPage: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new Settings(source);
@@ -205,6 +206,7 @@ export namespace persistence {
 	        this.windowX = source["windowX"];
 	        this.windowY = source["windowY"];
 	        this.windowMaximized = source["windowMaximized"];
+	        this.lastPage = source["lastPage"];
 	    }
 	}
 
