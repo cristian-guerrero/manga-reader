@@ -134,7 +134,10 @@
         "light": "Light",
         "midnight": "Midnight Blue",
         "sakura": "Sakura",
-        "amoled": "AMOLED Black"
+        "amoled": "AMOLED Black",
+        "lavender": "Lavender Dream",
+        "mint": "Mint Fresh",
+        "peach": "Peach Blossom"
     },
     "errors": {
         "loadFailed": "Failed to load",

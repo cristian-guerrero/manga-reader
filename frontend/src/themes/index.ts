@@ -159,7 +159,7 @@ export const sakuraTheme: Theme = {
     },
 };
 
-export const amoldedTheme: Theme = {
+export const amoledTheme: Theme = {
     id: 'amoled',
     name: 'AMOLED Black',
     isDark: true,
@@ -188,13 +188,103 @@ export const amoldedTheme: Theme = {
     },
 };
 
+export const lavenderTheme: Theme = {
+    id: 'lavender',
+    name: 'Lavender Dream',
+    isDark: false,
+    colors: {
+        accent: '#a855f7',
+        accentHover: '#9333ea',
+        accentGlow: 'rgba(168, 85, 247, 0.3)',
+
+        surfacePrimary: '#faf5ff',
+        surfaceSecondary: '#f3e8ff',
+        surfaceTertiary: '#e9d5ff',
+        surfaceElevated: '#ffffff',
+        surfaceOverlay: 'rgba(250, 245, 255, 0.98)',
+
+        titlebarBg: '#f3e8ff',
+        titlebarText: '#581c87',
+
+        textPrimary: '#3b0764',
+        textSecondary: '#581c87',
+        textMuted: '#7e22ce',
+        textDisabled: '#a855f7',
+
+        border: 'rgba(126, 34, 206, 0.1)',
+        borderHover: 'rgba(126, 34, 206, 0.2)',
+        borderFocus: 'rgba(168, 85, 247, 0.5)',
+    },
+};
+
+export const mintTheme: Theme = {
+    id: 'mint',
+    name: 'Mint Fresh',
+    isDark: false,
+    colors: {
+        accent: '#10b981',
+        accentHover: '#059669',
+        accentGlow: 'rgba(16, 185, 129, 0.3)',
+
+        surfacePrimary: '#ecfdf5',
+        surfaceSecondary: '#d1fae5',
+        surfaceTertiary: '#a7f3d0',
+        surfaceElevated: '#ffffff',
+        surfaceOverlay: 'rgba(236, 253, 245, 0.98)',
+
+        titlebarBg: '#d1fae5',
+        titlebarText: '#064e3b',
+
+        textPrimary: '#022c22',
+        textSecondary: '#064e3b',
+        textMuted: '#047857',
+        textDisabled: '#10b981',
+
+        border: 'rgba(4, 120, 87, 0.1)',
+        borderHover: 'rgba(4, 120, 87, 0.2)',
+        borderFocus: 'rgba(16, 185, 129, 0.5)',
+    },
+};
+
+export const peachTheme: Theme = {
+    id: 'peach',
+    name: 'Peach Blossom',
+    isDark: false,
+    colors: {
+        accent: '#f97316',
+        accentHover: '#ea580c',
+        accentGlow: 'rgba(249, 115, 22, 0.3)',
+
+        surfacePrimary: '#fff7ed',
+        surfaceSecondary: '#ffedd5',
+        surfaceTertiary: '#fed7aa',
+        surfaceElevated: '#ffffff',
+        surfaceOverlay: 'rgba(255, 247, 237, 0.98)',
+
+        titlebarBg: '#ffedd5',
+        titlebarText: '#7c2d12',
+
+        textPrimary: '#431407',
+        textSecondary: '#7c2d12',
+        textMuted: '#c2410c',
+        textDisabled: '#ea580c',
+
+        border: 'rgba(194, 65, 12, 0.1)',
+        borderHover: 'rgba(194, 65, 12, 0.2)',
+        borderFocus: 'rgba(249, 115, 22, 0.5)',
+    },
+};
+
 // All built-in themes
 export const builtInThemes: Theme[] = [
     darkTheme,
     lightTheme,
     midnightTheme,
     sakuraTheme,
-    amoldedTheme,
+    amoledTheme,
+    lavenderTheme,
+    mintTheme,
+    peachTheme,
 ];
 
 // ============================================================================

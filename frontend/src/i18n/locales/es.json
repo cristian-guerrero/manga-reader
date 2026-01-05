@@ -130,7 +130,10 @@
         "light": "Claro",
         "midnight": "Azul Medianoche",
         "sakura": "Sakura",
-        "amoled": "AMOLED Negro"
+        "amoled": "AMOLED Negro",
+        "lavender": "Sueño Lavanda",
+        "mint": "Menta Fresca",
+        "peach": "Flor de Durazno"
     },
     "errors": {
         "loadFailed": "Error al cargar",
