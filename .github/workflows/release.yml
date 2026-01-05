@@ -8,6 +8,8 @@ on:
 jobs:
   build-and-release:
     runs-on: windows-latest
+    permissions:
+      contents: write # Permiso necesario para crear releases y subir archivos
 
     steps:
       - name: Checkout del código
