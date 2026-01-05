@@ -2,8 +2,7 @@
  * MainLayout - Main application layout with title bar, sidebar, and content area
  */
 
-import { motion, AnimatePresence } from 'framer-motion';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigationStore } from '../../stores/navigationStore';
 
@@ -20,17 +19,10 @@ interface MainLayoutProps {
 
 export function MainLayout({ children }: MainLayoutProps) {
     const { t } = useTranslation();
-    const { isPanicMode, isProcessing, setIsProcessing } = useNavigationStore();
+    const { isPanicMode, isProcessing, setIsProcessing, currentPage } = useNavigationStore();
     const { showToast } = useToast();
     const { processDroppedFolders } = useSettingsStore();
 
-
-    // Page transition variants
-    const pageVariants = {
-        initial: { opacity: 0, x: 20 },
-        animate: { opacity: 1, x: 0 },
-        exit: { opacity: 0, x: -20 },
-    };
 
     // Handle drag and drop
     useEffect(() => {
@@ -162,80 +154,56 @@ export function MainLayout({ children }: MainLayoutProps) {
                     }}
                 >
                     {/* Panic Mode Overlay */}
-                    <AnimatePresence>
-                        {isPanicMode && (
-                            <motion.div
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                exit={{ opacity: 0 }}
-                                className="absolute inset-0 z-50 rounded-tl-[40px]"
-                                style={{ backgroundColor: 'var(--color-surface-primary)' }}
-                            />
-                        )}
-                    </AnimatePresence>
+                    {isPanicMode && (
+                        <div
+                            className="absolute inset-0 z-50 rounded-tl-[40px] animate-fade-in"
+                            style={{ backgroundColor: 'var(--color-surface-primary)' }}
+                        />
+                    )}
 
                     {/* Page Content with Transitions */}
-                    <AnimatePresence mode="wait">
-                        <motion.div
-                            key={isPanicMode ? 'panic' : 'content'}
-                            variants={pageVariants}
-                            initial="initial"
-                            animate="animate"
-                            exit="exit"
-                            transition={{ duration: 0.2, ease: 'easeOut' }}
-                            className="h-full w-full overflow-auto"
-                            style={{ scrollbarGutter: 'stable' }}
-                        >
-                            {!isPanicMode && children}
-                        </motion.div>
-                    </AnimatePresence>
+                    <div
+                        key={currentPage}
+                        className="h-full w-full overflow-auto animate-fade-in"
+                        style={{ scrollbarGutter: 'stable' }}
+                    >
+                        {!isPanicMode && children}
+                    </div>
 
                     {/* Processing Overlay */}
-                    <AnimatePresence>
-                        {isProcessing && (
-                            <motion.div
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                exit={{ opacity: 0 }}
-                                className="absolute inset-0 z-50 flex flex-col items-center justify-center backdrop-blur-md bg-black/40 rounded-tl-[40px]"
+                    {isProcessing && (
+                        <div
+                            className="absolute inset-0 z-50 flex flex-col items-center justify-center backdrop-blur-md bg-black/40 rounded-tl-[40px] animate-fade-in"
+                        >
+                            <div
+                                className="relative w-20 h-20 mb-6"
+                                style={{ animation: 'scaleIn 1.5s ease-in-out infinite' }}
                             >
-                                <motion.div
-                                    className="relative w-20 h-20 mb-6"
-                                    animate={{ scale: [1, 1.05, 1] }}
-                                    transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-                                >
-                                    {/* Spinner Background Ring */}
-                                    <div className="absolute inset-0 border-4 border-white/10 rounded-full" />
+                                {/* Spinner Background Ring */}
+                                <div className="absolute inset-0 border-4 border-white/10 rounded-full" />
 
-                                    {/* Rotating Ring */}
-                                    <motion.div
-                                        animate={{ rotate: 360 }}
-                                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                                        className="absolute inset-0 border-4 border-t-transparent rounded-full shadow-glow"
-                                        style={{ borderColor: 'var(--color-accent) transparent transparent transparent' }}
-                                    />
+                                {/* Rotating Ring */}
+                                <div
+                                    className="absolute inset-0 border-4 border-t-transparent rounded-full shadow-glow animate-spin"
+                                    style={{ borderColor: 'var(--color-accent) transparent transparent transparent' }}
+                                />
 
-                                    {/* Center Glow */}
-                                    <div className="absolute inset-4 bg-accent/20 blur-xl rounded-full" />
-                                </motion.div>
+                                {/* Center Glow */}
+                                <div className="absolute inset-4 bg-accent/20 blur-xl rounded-full" />
+                            </div>
 
-                                <motion.div
-                                    initial={{ y: 10, opacity: 0 }}
-                                    animate={{ y: 0, opacity: 1 }}
-                                    className="text-white font-bold text-xl tracking-wider text-shadow text-center px-6"
-                                >
-                                    {t('common.processing') || 'Processing...'}
-                                </motion.div>
-                                <motion.div
-                                    animate={{ opacity: [0.4, 0.8, 0.4] }}
-                                    transition={{ duration: 2, repeat: Infinity }}
-                                    className="text-white/60 text-sm mt-2 text-center"
-                                >
-                                    {t('common.pleaseWait') || 'Please wait while we prepare your content'}
-                                </motion.div>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
+                            <div
+                                className="text-white font-bold text-xl tracking-wider text-shadow text-center px-6 animate-scale-in"
+                            >
+                                {t('common.processing') || 'Processing...'}
+                            </div>
+                            <div
+                                className="text-white/60 text-sm mt-2 text-center animate-pulse-slow"
+                            >
+                                {t('common.pleaseWait') || 'Please wait while we prepare your content'}
+                            </div>
+                        </div>
+                    )}
                 </main>
             </div>
         </div>

@@ -1,9 +1,4 @@
-/**
- * LateralViewer - Page-by-page image viewer with single/double page modes
- */
-
 import { useEffect, useState, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
 import { useViewerStore } from '../../stores/viewerStore';
 import { useSettingsStore } from '../../stores/settingsStore';
@@ -33,7 +28,7 @@ export function LateralViewer({
     const [loadedImages, setLoadedImages] = useState<Record<number, string>>({});
     const [direction, setDirection] = useState(0); // -1 for prev, 1 for next
     const { lateralMode, readingDirection } = useSettingsStore();
-    const { currentIndex, setCurrentIndex, nextImage, prevImage } = useViewerStore();
+    const { currentIndex, setCurrentIndex } = useViewerStore();
 
     // Enable keyboard navigation
     useKeyboardNav({ enabled: true });
@@ -112,22 +107,6 @@ export function LateralViewer({
         }
     }, [handlePrev, handleNext]);
 
-    // Page transition animation
-    const pageVariants = {
-        enter: (dir: number) => ({
-            x: dir > 0 ? '100%' : '-100%',
-            opacity: 0,
-        }),
-        center: {
-            x: 0,
-            opacity: 1,
-        },
-        exit: (dir: number) => ({
-            x: dir > 0 ? '-100%' : '100%',
-            opacity: 0,
-        }),
-    };
-
     // Get images to display (1 or 2 based on mode)
     const displayImages = lateralMode === 'double'
         ? [images[currentIndex], images[currentIndex + 1]].filter(Boolean)
@@ -153,78 +132,68 @@ export function LateralViewer({
                 className="flex-1 h-full flex items-center justify-center cursor-pointer"
                 onClick={handleClick}
             >
-                <AnimatePresence custom={direction}>
-                    <motion.div
-                        key={currentIndex}
-                        custom={direction}
-                        variants={pageVariants}
-                        initial="enter"
-                        animate="center"
-                        exit="exit"
-                        transition={{ duration: 0.3, ease: 'easeInOut' }}
-                        className={`h-full flex items-center justify-center gap-2 ${lateralMode === 'double' ? 'flex-row' : ''
-                            }`}
-                    >
-                        {displayImages.map((image, idx) => {
-                            const imageIndex = currentIndex + idx;
-                            const loadedSrc = loadedImages[imageIndex];
+                <div
+                    key={currentIndex}
+                    className={`h-full flex items-center justify-center gap-2 animate-fade-in ${lateralMode === 'double' ? 'flex-row' : ''
+                        }`}
+                >
+                    {displayImages.map((image, idx) => {
+                        const imageIndex = currentIndex + idx;
+                        const loadedSrc = loadedImages[imageIndex];
 
-                            return (
-                                <TransformWrapper
-                                    key={imageIndex}
-                                    initialScale={1}
-                                    minScale={0.5}
-                                    maxScale={5}
-                                    doubleClick={{ mode: 'reset' }}
-                                    wheel={{ step: 0.1 }}
+                        return (
+                            <TransformWrapper
+                                key={imageIndex}
+                                initialScale={1}
+                                minScale={0.5}
+                                maxScale={5}
+                                doubleClick={{ mode: 'reset' }}
+                                wheel={{ step: 0.1 }}
+                            >
+                                <TransformComponent
+                                    wrapperStyle={{
+                                        width: lateralMode === 'double' ? '50%' : '100%',
+                                        height: '100%',
+                                    }}
+                                    contentStyle={{
+                                        width: '100%',
+                                        height: '100%',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                    }}
                                 >
-                                    <TransformComponent
-                                        wrapperStyle={{
-                                            width: lateralMode === 'double' ? '50%' : '100%',
-                                            height: '100%',
-                                        }}
-                                        contentStyle={{
-                                            width: '100%',
-                                            height: '100%',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                        }}
-                                    >
-                                        {loadedSrc ? (
-                                            <img
-                                                src={loadedSrc}
-                                                alt={image.name}
-                                                className="max-h-full max-w-full object-contain"
-                                                draggable={false}
-                                            />
-                                        ) : (
+                                    {loadedSrc ? (
+                                        <img
+                                            src={loadedSrc}
+                                            alt={image.name}
+                                            className="max-h-full max-w-full object-contain"
+                                            draggable={false}
+                                        />
+                                    ) : (
+                                        <div
+                                            className="flex items-center justify-center shimmer"
+                                            style={{
+                                                width: '60%',
+                                                height: '80%',
+                                                backgroundColor: 'var(--color-surface-secondary)',
+                                                borderRadius: 'var(--radius-lg)',
+                                            }}
+                                        >
                                             <div
-                                                className="flex items-center justify-center shimmer"
+                                                className="w-8 h-8 border-2 rounded-full animate-spin"
                                                 style={{
-                                                    width: '60%',
-                                                    height: '80%',
-                                                    backgroundColor: 'var(--color-surface-secondary)',
-                                                    borderRadius: 'var(--radius-lg)',
+                                                    borderColor: 'var(--color-accent)',
+                                                    borderTopColor: 'transparent',
                                                 }}
-                                            >
-                                                <motion.div
-                                                    animate={{ rotate: 360 }}
-                                                    transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-                                                    className="w-8 h-8 border-2 rounded-full"
-                                                    style={{
-                                                        borderColor: 'var(--color-accent)',
-                                                        borderTopColor: 'transparent',
-                                                    }}
-                                                />
-                                            </div>
-                                        )}
-                                    </TransformComponent>
-                                </TransformWrapper>
-                            );
-                        })}
-                    </motion.div>
-                </AnimatePresence>
+                                            />
+                                        </div>
+                                    )}
+                                </TransformComponent>
+                            </TransformWrapper>
+                        );
+                    })}
+                </div>
             </div>
 
             <NavigationButton
@@ -237,8 +206,8 @@ export function LateralViewer({
             />
 
             {/* Page indicator */}
-            <motion.div
-                className="absolute left-1/2 -translate-x-1/2 px-4 py-2 rounded-full text-sm font-medium shadow-lg z-[60]"
+            <div
+                className="absolute left-1/2 -translate-x-1/2 px-4 py-2 rounded-full text-sm font-medium shadow-lg z-[60] animate-slide-up"
                 style={{
                     bottom: (showControls && hasChapterButtons) ? '6.5rem' : '2rem',
                     backgroundColor: 'rgba(0, 0, 0, 0.7)',
@@ -247,15 +216,12 @@ export function LateralViewer({
                     border: '1px solid rgba(255, 255, 255, 0.2)',
                     transition: 'bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
                 }}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
             >
                 {lateralMode === 'double' && currentIndex + 1 < images.length
                     ? `${currentIndex + 1}-${currentIndex + 2}`
                     : currentIndex + 1}{' '}
                 / {images.length}
-            </motion.div>
+            </div>
         </div>
     );
 }
@@ -271,10 +237,10 @@ function NavigationButton({ direction, onClick, disabled }: NavigationButtonProp
     const isPrev = direction === 'prev';
 
     return (
-        <motion.button
+        <button
             onClick={onClick}
             disabled={disabled}
-            className="absolute z-10 flex items-center justify-center w-12 h-24 rounded-lg transition-opacity"
+            className="absolute z-10 flex items-center justify-center w-12 h-24 rounded-lg transition-all hover:scale-105 hover:bg-accent active:scale-95"
             style={{
                 [isPrev ? 'left' : 'right']: '1rem',
                 backgroundColor: 'var(--color-surface-overlay)',
@@ -283,8 +249,6 @@ function NavigationButton({ direction, onClick, disabled }: NavigationButtonProp
                 opacity: disabled ? 0.3 : 1,
                 cursor: disabled ? 'not-allowed' : 'pointer',
             }}
-            whileHover={!disabled ? { scale: 1.05, backgroundColor: 'var(--color-accent)' } : {}}
-            whileTap={!disabled ? { scale: 0.95 } : {}}
         >
             <svg
                 width="24"
@@ -299,7 +263,7 @@ function NavigationButton({ direction, onClick, disabled }: NavigationButtonProp
             >
                 <polyline points="15 18 9 12 15 6" />
             </svg>
-        </motion.button>
+        </button>
     );
 }
 

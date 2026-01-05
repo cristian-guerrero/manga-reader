@@ -234,29 +234,31 @@ export function ViewerPage({ folderPath }: ViewerPageProps) {
         } catch (error) {
             console.error('Failed to save progress:', error);
         }
-    }, [currentFolder, images, currentIndex]);
+    }, [currentFolder, images, currentIndex, isNoHistorySession]);
 
     // Save progress when leaving
     useEffect(() => {
         return () => {
             saveProgress();
         };
-    }, [saveProgress, isNoHistorySession]);
+    }, [saveProgress]);
 
     // Auto-hide controls
     useEffect(() => {
-        let timeout: ReturnType<typeof setTimeout>;
-
         const handleMouseMove = () => {
             setShowControls(true);
-            clearTimeout(timeout);
-            timeout = setTimeout(() => setShowControls(false), 3000);
+            if (controlsTimeoutRef.current) {
+                clearTimeout(controlsTimeoutRef.current);
+            }
+            controlsTimeoutRef.current = setTimeout(() => setShowControls(false), 3000);
         };
 
         window.addEventListener('mousemove', handleMouseMove);
         return () => {
             window.removeEventListener('mousemove', handleMouseMove);
-            clearTimeout(timeout);
+            if (controlsTimeoutRef.current) {
+                clearTimeout(controlsTimeoutRef.current);
+            }
         };
     }, []);
 
@@ -320,24 +322,20 @@ export function ViewerPage({ folderPath }: ViewerPageProps) {
                 className="flex items-center justify-center h-full"
                 style={{ backgroundColor: 'var(--color-surface-primary)' }}
             >
-                <motion.div
-                    className="flex flex-col items-center gap-4"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
+                <div
+                    className="flex flex-col items-center gap-4 animate-fade-in"
                 >
-                    <motion.div
-                        className="w-16 h-16 border-4 rounded-full"
+                    <div
+                        className="w-16 h-16 border-4 rounded-full animate-spin-slow"
                         style={{
                             borderColor: 'var(--color-accent)',
                             borderTopColor: 'transparent',
                         }}
-                        animate={{ rotate: 360 }}
-                        transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
                     />
                     <span style={{ color: 'var(--color-text-secondary)' }}>
                         {t('common.loading')}
                     </span>
-                </motion.div>
+                </div>
             </div>
         );
     }
@@ -348,24 +346,20 @@ export function ViewerPage({ folderPath }: ViewerPageProps) {
                 className="flex flex-col items-center justify-center h-full gap-4"
                 style={{ backgroundColor: 'var(--color-surface-primary)' }}
             >
-                <motion.div
-                    className="text-6xl"
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
+                <div
+                    className="text-6xl animate-scale-in"
                 >
                     📂
-                </motion.div>
+                </div>
                 <span style={{ color: 'var(--color-text-secondary)' }}>
                     {t('errors.noImages')}
                 </span>
-                <motion.button
+                <button
                     onClick={goBack}
-                    className="btn-primary"
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
+                    className="btn-primary hover:scale-105 active:scale-95 transition-transform"
                 >
                     {t('common.back')}
-                </motion.button>
+                </button>
             </div>
         );
     }
@@ -373,14 +367,11 @@ export function ViewerPage({ folderPath }: ViewerPageProps) {
     return (
         <div className="relative h-full w-full overflow-hidden">
             {/* Viewer */}
-            <AnimatePresence mode="wait">
+            <div className="relative h-full w-full">
                 {mode === 'vertical' ? (
-                    <motion.div
+                    <div
                         key={`vertical-${currentFolder.path}-${resetKey}`}
-                        className="h-full w-full"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
+                        className={`h-full w-full transition-opacity duration-300 ${mode === 'vertical' ? 'opacity-100' : 'opacity-0'}`}
                     >
                         <VerticalViewer
                             key={`${currentFolder.path}-${resumeIndex}-${resetKey}`}
@@ -391,14 +382,11 @@ export function ViewerPage({ folderPath }: ViewerPageProps) {
                             showControls={showControls}
                             hasChapterButtons={hasChapterButtons}
                         />
-                    </motion.div>
+                    </div>
                 ) : (
-                    <motion.div
+                    <div
                         key={`lateral-${currentFolder.path}-${resetKey}`}
-                        className="h-full w-full"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
+                        className={`h-full w-full transition-opacity duration-300 ${mode === 'lateral' ? 'opacity-100' : 'opacity-0'}`}
                     >
                         <LateralViewer
                             key={`${currentFolder.path}-${resumeIndex}-${resetKey}`}
@@ -408,197 +396,157 @@ export function ViewerPage({ folderPath }: ViewerPageProps) {
                             showControls={showControls}
                             hasChapterButtons={hasChapterButtons}
                         />
-                    </motion.div>
+                    </div>
                 )}
-            </AnimatePresence>
+            </div>
 
             {/* Top control bar */}
-            <AnimatePresence>
-                {showControls && (
-                    <motion.div
-                        initial={{ opacity: 0, y: -20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -20 }}
-                        className="absolute top-0 left-0 right-0 flex items-center justify-between px-4 py-2 z-50"
-                        style={{
-                            background: 'linear-gradient(to bottom, var(--color-surface-overlay), transparent)',
-                        }}
+            <div
+                className={`absolute top-0 left-0 right-0 flex items-center justify-between px-4 py-2 z-50 transition-all duration-300 ${showControls ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0'
+                    }`}
+                style={{
+                    background: 'linear-gradient(to bottom, var(--color-surface-overlay), transparent)',
+                }}
+            >
+                {/* Left side */}
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={goBack}
+                        className="btn-icon btn-ghost hover:scale-110 active:scale-90 transition-transform"
+                        title={t('common.back')}
                     >
-                        {/* Left side */}
-                        <div className="flex items-center gap-2">
-                            <motion.button
-                                onClick={goBack}
-                                className="btn-icon btn-ghost"
-                                whileHover={{ scale: 1.1 }}
-                                whileTap={{ scale: 0.9 }}
-                                title={t('common.back')}
+                        <BackIcon />
+                    </button>
+                    <div className="flex flex-col">
+                        <span
+                            className="text-sm font-medium truncate max-w-xs"
+                            style={{ color: 'var(--color-text-primary)' }}
+                        >
+                            {currentFolder.name}
+                        </span>
+                        {chapterNav && (
+                            <span
+                                className="text-xs truncate max-w-xs"
+                                style={{ color: 'var(--color-text-secondary)' }}
                             >
-                                <BackIcon />
-                            </motion.button>
-                            <div className="flex flex-col">
-                                <span
-                                    className="text-sm font-medium truncate max-w-xs"
-                                    style={{ color: 'var(--color-text-primary)' }}
+                                {chapterNav.seriesName} • Cap. {(chapterNav.chapterIndex ?? 0) + 1}/{chapterNav.totalChapters}
+                            </span>
+                        )}
+                    </div>
+                </div>
+
+                {/* Right side */}
+                <div className="flex items-center gap-2">
+                    {/* Go to Start */}
+                    <button
+                        onClick={handleGoToStart}
+                        className="btn-icon btn-ghost hover:scale-110 active:scale-90 transition-transform"
+                        title={t('viewer.goToStart') || 'Go to Start'}
+                    >
+                        <SkipBackIcon />
+                    </button>
+
+                    {/* Width slider (vertical mode only) */}
+                    {mode === 'vertical' && (
+                        <div className="relative">
+                            <button
+                                onClick={() => setShowWidthSlider(!showWidthSlider)}
+                                className="btn-icon btn-ghost hover:scale-110 active:scale-90 transition-transform"
+                                title={t('viewer.width')}
+                            >
+                                <span className="text-xs font-bold">{verticalWidth}%</span>
+                            </button>
+
+                            {showWidthSlider && (
+                                <div
+                                    className="absolute top-full right-0 mt-2 p-4 rounded-lg animate-slide-down"
+                                    style={{
+                                        backgroundColor: 'var(--color-surface-elevated)',
+                                        border: '1px solid var(--color-border)',
+                                    }}
                                 >
-                                    {currentFolder.name}
-                                </span>
-                                {chapterNav && (
-                                    <span
-                                        className="text-xs truncate max-w-xs"
-                                        style={{ color: 'var(--color-text-secondary)' }}
-                                    >
-                                        {chapterNav.seriesName} • Cap. {(chapterNav.chapterIndex ?? 0) + 1}/{chapterNav.totalChapters}
-                                    </span>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Right side */}
-                        <div className="flex items-center gap-2">
-                            {/* Go to Start */}
-                            <motion.button
-                                onClick={handleGoToStart}
-                                className="btn-icon btn-ghost"
-                                whileHover={{ scale: 1.1 }}
-                                whileTap={{ scale: 0.9 }}
-                                title={t('viewer.goToStart') || 'Go to Start'}
-                            >
-                                <SkipBackIcon />
-                            </motion.button>
-
-                            {/* Width slider (vertical mode only) */}
-                            {mode === 'vertical' && (
-                                <div className="relative">
-                                    <motion.button
-                                        onClick={() => setShowWidthSlider(!showWidthSlider)}
-                                        className="btn-icon btn-ghost"
-                                        whileHover={{ scale: 1.1 }}
-                                        whileTap={{ scale: 0.9 }}
-                                        title={t('viewer.width')}
-                                    >
-                                        <span className="text-xs font-bold">{verticalWidth}%</span>
-                                    </motion.button>
-
-                                    <AnimatePresence>
-                                        {showWidthSlider && (
-                                            <motion.div
-                                                initial={{ opacity: 0, y: -10 }}
-                                                animate={{ opacity: 1, y: 0 }}
-                                                exit={{ opacity: 0, y: -10 }}
-                                                className="absolute top-full right-0 mt-2 p-4 rounded-lg"
-                                                style={{
-                                                    backgroundColor: 'var(--color-surface-elevated)',
-                                                    border: '1px solid var(--color-border)',
-                                                }}
-                                            >
-                                                <input
-                                                    type="range"
-                                                    min="30"
-                                                    max="100"
-                                                    value={verticalWidth}
-                                                    onChange={(e) => setVerticalWidth(Number(e.target.value))}
-                                                    className="w-32"
-                                                />
-                                            </motion.div>
-                                        )}
-                                    </AnimatePresence>
+                                    <input
+                                        type="range"
+                                        min="30"
+                                        max="100"
+                                        value={verticalWidth}
+                                        onChange={(e) => setVerticalWidth(Number(e.target.value))}
+                                        className="w-32"
+                                    />
                                 </div>
                             )}
+                        </motion.div>
+                    )}
+                </AnimatePresence>
 
-                            {/* Thumbnails */}
+                {/* Bottom chapter navigation bar */}
+                <AnimatePresence>
+                    {showControls && chapterNav && (chapterNav.prevChapter || chapterNav.nextChapter) && (
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: 20 }}
+                            className="absolute bottom-0 left-0 right-0 flex items-center justify-between px-4 py-3 z-50"
+                            style={{
+                                background: 'linear-gradient(to top, var(--color-surface-overlay), transparent)',
+                            }}
+                        >
+                            {/* Previous chapter */}
                             <motion.button
-                                onClick={() => navigate('thumbnails', { folder: currentFolder.path })}
-                                className="btn-icon btn-ghost"
-                                whileHover={{ scale: 1.1 }}
-                                whileTap={{ scale: 0.9 }}
-                                title={t('viewer.thumbnails')}
+                                onClick={handlePrevChapter}
+                                disabled={!chapterNav.prevChapter}
+                                className="flex items-center gap-2 px-4 py-2 rounded-lg transition-all"
+                                style={{
+                                    backgroundColor: chapterNav.prevChapter ? 'var(--color-surface-elevated)' : 'transparent',
+                                    color: chapterNav.prevChapter ? 'var(--color-text-primary)' : 'var(--color-text-tertiary)',
+                                    border: '1px solid var(--color-border)',
+                                    opacity: chapterNav.prevChapter ? 1 : 0.4,
+                                    cursor: chapterNav.prevChapter ? 'pointer' : 'not-allowed',
+                                }}
+                                whileHover={chapterNav.prevChapter ? { scale: 1.02, backgroundColor: 'var(--color-accent)' } : {}}
+                                whileTap={chapterNav.prevChapter ? { scale: 0.98 } : {}}
                             >
-                                <GridIcon />
+                                <ChevronLeftIcon />
+                                <div className="flex flex-col items-start">
+                                    <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+                                        {t('viewer.prevChapter')}
+                                    </span>
+                                    <span className="text-sm font-medium truncate max-w-[150px]">
+                                        {chapterNav.prevChapter?.name || '—'}
+                                    </span>
+                                </div>
                             </motion.button>
 
-                            {/* Toggle mode */}
+                            {/* Next chapter */}
                             <motion.button
-                                onClick={toggleMode}
-                                className="btn-icon btn-ghost"
-                                whileHover={{ scale: 1.1 }}
-                                whileTap={{ scale: 0.9 }}
-                                title={mode === 'vertical' ? t('viewer.lateral') : t('viewer.vertical')}
+                                onClick={handleNextChapter}
+                                disabled={!chapterNav.nextChapter}
+                                className="flex items-center gap-2 px-4 py-2 rounded-lg transition-all"
+                                style={{
+                                    backgroundColor: chapterNav.nextChapter ? 'var(--color-surface-elevated)' : 'transparent',
+                                    color: chapterNav.nextChapter ? 'var(--color-text-primary)' : 'var(--color-text-tertiary)',
+                                    border: '1px solid var(--color-border)',
+                                    opacity: chapterNav.nextChapter ? 1 : 0.4,
+                                    cursor: chapterNav.nextChapter ? 'pointer' : 'not-allowed',
+                                }}
+                                whileHover={chapterNav.nextChapter ? { scale: 1.02, backgroundColor: 'var(--color-accent)' } : {}}
+                                whileTap={chapterNav.nextChapter ? { scale: 0.98 } : {}}
                             >
-                                {mode === 'vertical' ? <LateralIcon /> : <VerticalIcon />}
+                                <div className="flex flex-col items-end">
+                                    <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+                                        {t('viewer.nextChapter')}
+                                    </span>
+                                    <span className="text-sm font-medium truncate max-w-[150px]">
+                                        {chapterNav.nextChapter?.name || '—'}
+                                    </span>
+                                </div>
+                                <ChevronRightIcon />
                             </motion.button>
-                        </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-
-            {/* Bottom chapter navigation bar */}
-            <AnimatePresence>
-                {showControls && chapterNav && (chapterNav.prevChapter || chapterNav.nextChapter) && (
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 20 }}
-                        className="absolute bottom-0 left-0 right-0 flex items-center justify-between px-4 py-3 z-50"
-                        style={{
-                            background: 'linear-gradient(to top, var(--color-surface-overlay), transparent)',
-                        }}
-                    >
-                        {/* Previous chapter */}
-                        <motion.button
-                            onClick={handlePrevChapter}
-                            disabled={!chapterNav.prevChapter}
-                            className="flex items-center gap-2 px-4 py-2 rounded-lg transition-all"
-                            style={{
-                                backgroundColor: chapterNav.prevChapter ? 'var(--color-surface-elevated)' : 'transparent',
-                                color: chapterNav.prevChapter ? 'var(--color-text-primary)' : 'var(--color-text-tertiary)',
-                                border: '1px solid var(--color-border)',
-                                opacity: chapterNav.prevChapter ? 1 : 0.4,
-                                cursor: chapterNav.prevChapter ? 'pointer' : 'not-allowed',
-                            }}
-                            whileHover={chapterNav.prevChapter ? { scale: 1.02, backgroundColor: 'var(--color-accent)' } : {}}
-                            whileTap={chapterNav.prevChapter ? { scale: 0.98 } : {}}
-                        >
-                            <ChevronLeftIcon />
-                            <div className="flex flex-col items-start">
-                                <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-                                    {t('viewer.prevChapter')}
-                                </span>
-                                <span className="text-sm font-medium truncate max-w-[150px]">
-                                    {chapterNav.prevChapter?.name || '—'}
-                                </span>
-                            </div>
-                        </motion.button>
-
-                        {/* Next chapter */}
-                        <motion.button
-                            onClick={handleNextChapter}
-                            disabled={!chapterNav.nextChapter}
-                            className="flex items-center gap-2 px-4 py-2 rounded-lg transition-all"
-                            style={{
-                                backgroundColor: chapterNav.nextChapter ? 'var(--color-surface-elevated)' : 'transparent',
-                                color: chapterNav.nextChapter ? 'var(--color-text-primary)' : 'var(--color-text-tertiary)',
-                                border: '1px solid var(--color-border)',
-                                opacity: chapterNav.nextChapter ? 1 : 0.4,
-                                cursor: chapterNav.nextChapter ? 'pointer' : 'not-allowed',
-                            }}
-                            whileHover={chapterNav.nextChapter ? { scale: 1.02, backgroundColor: 'var(--color-accent)' } : {}}
-                            whileTap={chapterNav.nextChapter ? { scale: 0.98 } : {}}
-                        >
-                            <div className="flex flex-col items-end">
-                                <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-                                    {t('viewer.nextChapter')}
-                                </span>
-                                <span className="text-sm font-medium truncate max-w-[150px]">
-                                    {chapterNav.nextChapter?.name || '—'}
-                                </span>
-                            </div>
-                            <ChevronRightIcon />
-                        </motion.button>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-        </div>
-    );
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+            </div>
+            );
 }
 
-export default ViewerPage;
+            export default ViewerPage;

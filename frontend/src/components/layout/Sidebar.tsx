@@ -1,12 +1,6 @@
-/**
- * Sidebar - Collapsible navigation sidebar with animated transitions
- */
-
-import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useNavigationStore } from '../../stores/navigationStore';
-import { PageType } from '../../types';
 
 // Icons
 interface NavItem {
@@ -78,29 +72,33 @@ export function Sidebar() {
 
     const visibleItems = navItems.filter(item => enabledMenuItems?.[item.id] !== false);
 
-    const sidebarVariants = {
-        expanded: {
-            width: 'var(--sidebar-width-expanded)',
-            transition: { duration: 0.3, ease: [0.4, 0, 0.2, 1] },
-        },
-        collapsed: {
-            width: 'var(--sidebar-width-collapsed)',
-            transition: { duration: 0.3, ease: [0.4, 0, 0.2, 1] },
-        },
-    };
+    // Calculate Y offset for the indicator based on visible items
+    const activeItemIndex = visibleItems.findIndex(item => item.id === currentPage);
+    const indicatorY = activeItemIndex !== -1 ? activeItemIndex * 48 : 0; // 48px is height of NavButton (44px + 4px gap roughly)
+    const showIndicator = activeItemIndex !== -1;
 
     return (
-        <motion.aside
-            initial={false}
-            animate={sidebarCollapsed ? 'collapsed' : 'expanded'}
-            variants={sidebarVariants}
-            className="flex flex-col h-full theme-transition"
+        <aside
+            className={`flex flex-col h-full theme-transition sidebar-transition ${sidebarCollapsed ? 'w-[72px]' : 'w-[260px]'
+                }`}
             style={{
                 backgroundColor: 'rgba(0, 0, 0, 0)',
+                width: sidebarCollapsed ? 'var(--sidebar-width-collapsed)' : 'var(--sidebar-width-expanded)'
             }}
         >
             {/* Navigation Items */}
-            <nav className="flex-1 py-4 px-3 space-y-1">
+            <nav className="flex-1 py-4 px-3 space-y-1 relative">
+                {/* Active indicator */}
+                {showIndicator && (
+                    <div
+                        className="sidebar-item-active-indicator"
+                        style={{
+                            transform: `translateY(${indicatorY}px)`,
+                            top: '26px' // Adjust for initial padding and alignment
+                        }}
+                    />
+                )}
+
                 {visibleItems.map((item) => (
                     <NavButton
                         key={item.id}
@@ -114,40 +112,30 @@ export function Sidebar() {
 
             {/* Collapse Toggle */}
             <div className="p-3 border-t" style={{ borderColor: 'var(--color-border)' }}>
-                <motion.button
+                <button
                     onClick={toggleSidebar}
-                    className="flex items-center justify-center w-full h-10 rounded-lg transition-colors"
+                    className="flex items-center justify-center w-full h-10 rounded-lg transition-all hover:scale-[1.02] active:scale-[0.98]"
                     style={{
                         backgroundColor: 'var(--color-surface-tertiary)',
                         color: 'var(--color-text-secondary)',
                     }}
-                    whileHover={{
-                        backgroundColor: 'var(--color-surface-elevated)',
-                        color: 'var(--color-text-primary)',
-                    }}
-                    whileTap={{ scale: 0.98 }}
                 >
-                    <motion.div
-                        animate={{ rotate: sidebarCollapsed ? 180 : 0 }}
-                        transition={{ duration: 0.3 }}
+                    <div
+                        className="transition-transform duration-300"
+                        style={{ transform: sidebarCollapsed ? 'rotate(180deg)' : 'rotate(0deg)' }}
                     >
                         <ChevronLeftIcon />
-                    </motion.div>
-                    <AnimatePresence mode="wait">
-                        {!sidebarCollapsed && (
-                            <motion.span
-                                initial={{ opacity: 0, width: 0 }}
-                                animate={{ opacity: 1, width: 'auto' }}
-                                exit={{ opacity: 0, width: 0 }}
-                                className="ml-2 text-sm font-medium overflow-hidden whitespace-nowrap"
-                            >
-                                {t('common.close')}
-                            </motion.span>
-                        )}
-                    </AnimatePresence>
-                </motion.button>
+                    </div>
+                    {!sidebarCollapsed && (
+                        <span
+                            className="ml-2 text-sm font-medium overflow-hidden whitespace-nowrap animate-fade-in"
+                        >
+                            {t('common.close')}
+                        </span>
+                    )}
+                </button>
             </div>
-        </motion.aside>
+        </aside>
     );
 }
 
@@ -163,52 +151,29 @@ function NavButton({ item, isActive, isCollapsed, onClick }: NavButtonProps) {
     const { t } = useTranslation();
 
     return (
-        <motion.button
+        <button
             onClick={onClick}
-            className="relative flex items-center w-full h-11 px-3 rounded-lg transition-colors group"
+            className="relative flex items-center w-full h-11 px-3 rounded-lg transition-all group active:scale-[0.98]"
             style={{
                 backgroundColor: isActive ? 'var(--color-accent)' : 'rgba(0, 0, 0, 0)',
                 color: isActive ? 'white' : 'var(--color-text-secondary)',
             }}
-            whileHover={{
-                backgroundColor: isActive ? 'var(--color-accent-hover)' : 'var(--color-surface-tertiary)',
-                color: isActive ? 'white' : 'var(--color-text-primary)',
-            }}
-            whileTap={{ scale: 0.98 }}
         >
-            {/* Active indicator */}
-            {isActive && (
-                <motion.div
-                    layoutId="activeIndicator"
-                    className="absolute left-0 w-1 h-6 rounded-r-full"
-                    style={{ backgroundColor: 'white' }}
-                    transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
-                />
-            )}
-
             {/* Icon */}
-            <motion.div
-                className="flex-shrink-0"
-                whileHover={{ scale: 1.1 }}
-                transition={{ duration: 0.2 }}
+            <div
+                className="flex-shrink-0 transition-transform duration-200 group-hover:scale-110"
             >
                 {item.icon}
-            </motion.div>
+            </div>
 
             {/* Label */}
-            <AnimatePresence mode="wait">
-                {!isCollapsed && (
-                    <motion.span
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -10 }}
-                        transition={{ duration: 0.2 }}
-                        className="ml-3 text-sm font-medium truncate"
-                    >
-                        {t(item.labelKey)}
-                    </motion.span>
-                )}
-            </AnimatePresence>
+            {!isCollapsed && (
+                <span
+                    className="ml-3 text-sm font-medium truncate animate-fade-in"
+                >
+                    {t(item.labelKey)}
+                </span>
+            )}
 
             {/* Tooltip for collapsed state */}
             {isCollapsed && (
@@ -226,7 +191,7 @@ function NavButton({ item, isActive, isCollapsed, onClick }: NavButtonProps) {
                     {t(item.labelKey)}
                 </div>
             )}
-        </motion.button>
+        </button>
     );
 }
 

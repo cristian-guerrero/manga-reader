@@ -176,24 +176,19 @@ export function VerticalViewer({
             </div>
 
             {/* Image counter */}
-            <AnimatePresence>
-                <motion.div
-                    className="fixed left-1/2 -translate-x-1/2 px-4 py-2 rounded-full text-sm font-medium z-[60] pointer-events-none shadow-lg"
-                    style={{
-                        bottom: (showControls && hasChapterButtons) ? '6.5rem' : '2rem',
-                        backgroundColor: 'rgba(0, 0, 0, 0.7)',
-                        backdropFilter: 'blur(12px)',
-                        color: 'white',
-                        border: '1px solid rgba(255, 255, 255, 0.2)',
-                        transition: 'bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
-                    }}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 20 }}
-                >
-                    {useViewerStore((state) => state.currentIndex) + 1} / {images.length}
-                </motion.div>
-            </AnimatePresence>
+            <div
+                className="fixed left-1/2 -translate-x-1/2 px-4 py-2 rounded-full text-sm font-medium z-[60] pointer-events-none shadow-lg animate-slide-up"
+                style={{
+                    bottom: (showControls && hasChapterButtons) ? '6.5rem' : '2rem',
+                    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                    backdropFilter: 'blur(12px)',
+                    color: 'white',
+                    border: '1px solid rgba(255, 255, 255, 0.2)',
+                    transition: 'bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+                }}
+            >
+                {useViewerStore((state) => state.currentIndex) + 1} / {images.length}
+            </div>
         </div>
     );
 }

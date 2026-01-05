@@ -2,7 +2,6 @@
  * HomePage - Welcome screen with recent history and folder selection
  */
 
-import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigationStore } from '../stores/navigationStore';
@@ -145,46 +144,21 @@ export function HomePage() {
         navigate('folders');
     };
 
-    // Animation variants - fast to avoid visible flicker
-    const containerVariants = {
-        hidden: { opacity: 0 },
-        visible: {
-            opacity: 1,
-            transition: {
-                staggerChildren: 0.02,
-                delayChildren: 0,
-            },
-        },
-    };
-
-    const itemVariants = {
-        hidden: { opacity: 0, y: 5 },
-        visible: {
-            opacity: 1,
-            y: 0,
-            transition: { duration: 0.15, ease: 'easeOut' },
-        },
-    };
-
     return (
-        <motion.div
-            className="flex flex-col items-center min-h-full px-8 py-12"
-            variants={containerVariants}
-            initial="hidden"
-            animate="visible"
+        <div
+            className="flex flex-col items-center min-h-full px-8 py-12 animate-fade-in"
         >
             {historyEntries.length > 0 ? (
                 <div className="w-full max-w-6xl space-y-12">
                     {/* Featured Recent Item (The very last one read) */}
-                    <motion.div variants={itemVariants} className="w-full flex flex-col md:flex-row gap-8 items-center bg-surface-secondary p-8 rounded-2xl border border-white/5 shadow-2xl relative overflow-hidden">
+                    <div className="w-full flex flex-col md:flex-row gap-8 items-center bg-surface-secondary p-8 rounded-2xl border border-white/5 shadow-2xl relative overflow-hidden animate-scale-in">
                         {/* Background Glow */}
                         <div className="absolute -top-24 -right-24 w-64 h-64 bg-accent/10 blur-3xl rounded-full pointer-events-none" />
 
                         {/* Thumbnail / Cover */}
-                        <motion.div
-                            className="w-48 h-72 rounded-lg overflow-hidden shadow-lg flex-shrink-0 bg-surface-tertiary relative group cursor-pointer border border-white/5"
+                        <div
+                            className="w-48 h-72 rounded-lg overflow-hidden shadow-lg flex-shrink-0 bg-surface-tertiary relative group cursor-pointer border border-white/5 transition-transform hover:scale-[1.02] active:scale-[0.98]"
                             onClick={() => handleContinue(historyEntries[0].folderPath)}
-                            whileHover={{ scale: 1.02 }}
                         >
                             {thumbnails[historyEntries[0].id] ? (
                                 <img src={thumbnails[historyEntries[0].id]} alt="Cover" className="w-full h-full object-cover" />
@@ -198,32 +172,31 @@ export function HomePage() {
                                     <BookOpenIcon />
                                 </div>
                             </div>
-                        </motion.div>
+                        </div>
 
                         {/* Info */}
                         <div className="flex-1 flex flex-col items-start text-left">
-                            <motion.div
-                                initial={{ opacity: 0, x: -20 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                className="bg-accent/10 text-accent px-3 py-1 rounded-full text-xs font-semibold mb-3 tracking-wider"
+                            <div
+                                className="bg-accent/10 text-accent px-3 py-1 rounded-full text-xs font-semibold mb-3 tracking-wider animate-slide-in-right"
                             >
                                 CONTINUE READING
-                            </motion.div>
+                            </div>
 
-                            <h1 className="text-3xl font-bold text-text-primary mb-2 line-clamp-2">
+                            <h1 className="text-3xl font-bold text-text-primary mb-2 line-clamp-2 animate-slide-in-right" style={{ animationDelay: '0.1s' }}>
                                 {historyEntries[0].folderName}
                             </h1>
 
-                            <p className="text-text-secondary mb-6 line-clamp-1 opacity-60 text-sm">
+                            <p className="text-text-secondary mb-6 line-clamp-1 opacity-60 text-sm animate-slide-in-right" style={{ animationDelay: '0.15s' }}>
                                 {historyEntries[0].folderPath}
                             </p>
 
                             <div className="w-full bg-surface-tertiary h-2 rounded-full mb-2 overflow-hidden">
-                                <motion.div
-                                    className="h-full bg-accent"
-                                    initial={{ width: 0 }}
-                                    animate={{ width: `${Math.round(((historyEntries[0].lastImageIndex + 1) / historyEntries[0].totalImages) * 100)}%` }}
-                                    transition={{ duration: 1, delay: 0.5 }}
+                                <div
+                                    className="h-full bg-accent transition-all duration-1000 ease-out"
+                                    style={{
+                                        width: `${Math.round(((historyEntries[0].lastImageIndex + 1) / historyEntries[0].totalImages) * 100)}%`,
+                                        transitionDelay: '0.5s'
+                                    }}
                                 />
                             </div>
                             <div className="flex justify-between w-full text-sm text-text-muted mb-8">
@@ -232,27 +205,23 @@ export function HomePage() {
                             </div>
 
                             <div className="flex gap-4 w-full">
-                                <motion.button
+                                <button
                                     onClick={() => handleContinue(historyEntries[0].folderPath)}
-                                    className="flex-1 btn-primary py-3 text-lg shadow-lg shadow-accent/20"
-                                    whileHover={{ scale: 1.02 }}
-                                    whileTap={{ scale: 0.98 }}
+                                    className="flex-1 btn-primary py-3 text-lg shadow-lg shadow-accent/20 transition-transform hover:scale-[1.02] active:scale-[0.98]"
                                 >
                                     Continue Reading
-                                </motion.button>
+                                </button>
 
-                                <motion.button
+                                <button
                                     onClick={(e) => handleRemoveHistory(historyEntries[0].folderPath, e)}
-                                    className="px-4 py-3 rounded-xl bg-surface-tertiary text-text-muted hover:text-red-500 transition-colors border border-white/5"
-                                    whileHover={{ scale: 1.05 }}
-                                    whileTap={{ scale: 0.95 }}
+                                    className="px-4 py-3 rounded-xl bg-surface-tertiary text-text-muted hover:text-red-500 transition-all hover:scale-[1.05] active:scale-[0.95] border border-white/5"
                                     title="Remove from history"
                                 >
                                     <TrashIcon />
-                                </motion.button>
+                                </button>
                             </div>
                         </div>
-                    </motion.div>
+                    </div>
 
                     {/* Other Recent Items Grid */}
                     {historyEntries.length > 1 && (
@@ -262,12 +231,11 @@ export function HomePage() {
                                 Recent History
                             </h2>
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                                {historyEntries.slice(1).map((entry) => (
-                                    <motion.div
+                                {historyEntries.slice(1).map((entry, idx) => (
+                                    <div
                                         key={entry.id}
-                                        variants={itemVariants}
-                                        className="bg-surface-secondary rounded-xl overflow-hidden border border-white/5 hover:border-accent/30 transition-all group flex flex-col"
-                                        whileHover={{ y: -4 }}
+                                        className="bg-surface-secondary rounded-xl overflow-hidden border border-white/5 hover:border-accent/30 transition-all group flex flex-col hover:-translate-y-1 animate-scale-in"
+                                        style={{ animationDelay: `${(idx + 1) * 0.05}s` }}
                                         onClick={() => handleContinue(entry.folderPath)}
                                     >
                                         <div className="aspect-[3/4] relative overflow-hidden bg-surface-tertiary">
@@ -298,61 +266,48 @@ export function HomePage() {
                                                 <div className="text-xs font-semibold text-accent uppercase tracking-tighter">
                                                     Page {entry.lastImageIndex + 1} of {entry.totalImages}
                                                 </div>
-                                                <motion.button
+                                                <button
                                                     onClick={(e) => handleRemoveHistory(entry.folderPath, e)}
-                                                    className="p-1.5 rounded-lg bg-surface-tertiary/50 text-text-muted hover:text-red-500 transition-all opacity-0 group-hover:opacity-100"
-                                                    whileHover={{ scale: 1.1 }}
-                                                    whileTap={{ scale: 0.9 }}
+                                                    className="p-1.5 rounded-lg bg-surface-tertiary/50 text-text-muted hover:text-red-500 transition-all opacity-0 group-hover:opacity-100 hover:scale-110 active:scale-90"
                                                     title="Remove"
                                                 >
                                                     <TrashIcon />
-                                                </motion.button>
+                                                </button>
                                             </div>
                                         </div>
-                                    </motion.div>
+                                    </div>
                                 ))}
 
                                 {/* Browse More Card */}
-                                <motion.div
-                                    variants={itemVariants}
-                                    className="bg-surface-secondary/50 rounded-xl border-2 border-dashed border-white/5 flex flex-col items-center justify-center cursor-pointer hover:border-accent/40 transition-colors py-12"
+                                <div
+                                    className="bg-surface-secondary/50 rounded-xl border-2 border-dashed border-white/5 flex flex-col items-center justify-center cursor-pointer hover:border-accent/40 transition-all py-12 hover:scale-[0.98] animate-scale-in"
+                                    style={{ animationDelay: '0.2s' }}
                                     onClick={() => navigate('history')}
-                                    whileHover={{ scale: 0.98 }}
                                 >
                                     <div className="w-12 h-12 rounded-full bg-surface-tertiary flex items-center justify-center mb-4 text-text-muted group-hover:text-accent transition-colors">
                                         <ArrowRightIcon />
                                     </div>
                                     <span className="text-sm font-bold text-text-secondary">View Full History</span>
-                                </motion.div>
+                                </div>
                             </div>
                         </div>
                     )}
                 </div>
             ) : (
                 // Welcome View (No History)
-                <motion.div
-                    variants={itemVariants}
-                    className="flex flex-col items-center text-center max-w-2xl"
+                <div
+                    className="flex flex-col items-center text-center max-w-2xl animate-scale-in"
                 >
                     {/* Animated Logo */}
-                    <motion.div
+                    <div
                         className="relative mb-8"
-                        initial={{ scale: 0.5, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        transition={{ duration: 0.6, ease: 'backOut' }}
                     >
                         {/* Glow effect */}
-                        <motion.div
-                            className="absolute inset-0 rounded-full blur-3xl"
-                            style={{ backgroundColor: 'var(--color-accent-glow)' }}
-                            animate={{
-                                scale: [1, 1.2, 1],
-                                opacity: [0.5, 0.8, 0.5],
-                            }}
-                            transition={{
-                                duration: 3,
-                                repeat: Infinity,
-                                ease: 'easeInOut',
+                        <div
+                            className="absolute inset-0 rounded-full blur-3xl animate-pulse-slow"
+                            style={{
+                                backgroundColor: 'var(--color-accent-glow)',
+                                animationDuration: '3s'
                             }}
                         />
 
@@ -362,96 +317,83 @@ export function HomePage() {
                             style={{
                                 background: 'var(--gradient-accent)',
                                 boxShadow: 'var(--shadow-glow)',
+                                animation: 'rotateLogo 4s ease-in-out infinite'
                             }}
                         >
-                            <motion.div
-                                animate={{ rotate: [0, 5, -5, 0] }}
-                                transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
-                                style={{ color: 'white' }}
-                            >
+                            <div style={{ color: 'white' }}>
                                 <BookOpenIcon />
-                            </motion.div>
+                            </div>
                         </div>
-                    </motion.div>
+                    </div>
 
                     {/* Title */}
-                    <motion.h1
-                        variants={itemVariants}
-                        className="text-4xl font-bold mb-3 text-gradient"
+                    <h1
+                        className="text-4xl font-bold mb-3 text-gradient animate-slide-in-right"
                     >
                         {t('home.welcome')}
-                    </motion.h1>
+                    </h1>
 
                     {/* Subtitle */}
-                    <motion.p
-                        variants={itemVariants}
-                        className="text-lg mb-8"
-                        style={{ color: 'var(--color-text-secondary)' }}
+                    <p
+                        className="text-lg mb-8 animate-slide-in-right"
+                        style={{ color: 'var(--color-text-secondary)', animationDelay: '0.1s' }}
                     >
                         {t('home.subtitle')}
-                    </motion.p>
+                    </p>
 
                     {/* CTA Button */}
-                    <motion.button
-                        variants={itemVariants}
+                    <button
                         onClick={handleSelectFolder}
                         className="group flex items-center gap-3 px-8 py-4 rounded-xl text-white font-semibold text-lg
-                     transition-all duration-300"
+                     transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] animate-slide-in-right"
                         style={{
                             background: 'var(--gradient-accent)',
                             boxShadow: 'var(--shadow-md)',
+                            animationDelay: '0.2s'
                         }}
-                        whileHover={{
-                            scale: 1.02,
-                            boxShadow: 'var(--shadow-glow)',
-                        }}
-                        whileTap={{ scale: 0.98 }}
                     >
                         <FolderPlusIcon />
                         <span>{t('home.selectFolder')}</span>
-                        <motion.div
+                        <div
                             className="transition-transform group-hover:translate-x-1"
                         >
                             <ArrowRightIcon />
-                        </motion.div>
-                    </motion.button>
-                </motion.div>
+                        </div>
+                    </button>
+                </div>
             )}
 
-            {/* Recent History Section - Only show if current view is NOT the continue reading card OR if there are multiple history items */}
-            {/* Keeping it simple: If we have history, we show the card. If they want to see more they go to history page */}
-
             {/* Link to full history if displaying welcome screen or if we want to provide access */}
-            <motion.div
-                variants={itemVariants}
-                className="mt-16 w-full max-w-4xl flex justify-center"
+            <div
+                className="mt-16 w-full max-w-4xl flex justify-center animate-fade-in"
+                style={{ animationDelay: '0.4s' }}
             >
-                <motion.button
+                <button
                     onClick={() => navigate('history')}
-                    className="text-sm font-medium px-6 py-2 rounded-full transition-colors border border-white/5 bg-surface-secondary text-text-secondary hover:text-white hover:bg-surface-tertiary"
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
+                    className="text-sm font-medium px-6 py-2 rounded-full transition-all border border-white/5 bg-surface-secondary text-text-secondary hover:text-white hover:bg-surface-tertiary hover:scale-105 active:scale-95"
                 >
                     {t('common.history')} →
-                </motion.button>
-            </motion.div>
+                </button>
+            </div>
 
 
             {/* Decorative Elements */}
             <div className="fixed inset-0 pointer-events-none overflow-hidden -z-10">
                 {/* Top right gradient */}
                 <div
-                    className="absolute -top-40 -right-40 w-80 h-80 rounded-full blur-3xl opacity-20"
-                    style={{ backgroundColor: 'var(--color-accent)' }}
+                    className="absolute -top-40 -right-40 w-80 h-80 rounded-full blur-3xl opacity-20 animate-pulse-slow"
+                    style={{ backgroundColor: 'var(--color-accent)', animationDuration: '4s' }}
                 />
                 {/* Bottom left gradient */}
                 <div
-                    className="absolute -bottom-40 -left-40 w-80 h-80 rounded-full blur-3xl opacity-10"
-                    style={{ backgroundColor: 'var(--color-accent)' }}
+                    className="absolute -bottom-40 -left-40 w-80 h-80 rounded-full blur-3xl opacity-10 animate-pulse-slow"
+                    style={{ backgroundColor: 'var(--color-accent)', animationDuration: '5s' }}
                 />
             </div>
-        </motion.div>
+        </div>
     );
 }
+
+export default HomePage;
 
 export default HomePage;

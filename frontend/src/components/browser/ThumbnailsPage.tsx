@@ -1,10 +1,4 @@
-/**
- * ThumbnailsPage - Image thumbnail grid with drag & drop reordering
- * Uses @dnd-kit for multi-axis grid reordering
- */
-
 import { useEffect, useState, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import {
     DndContext,
@@ -248,14 +242,12 @@ export function ThumbnailsPage({ folderPath }: ThumbnailsPageProps) {
         return (
             <div className="flex flex-col items-center justify-center h-full gap-4">
                 <p style={{ color: 'var(--color-text-muted)' }}>No folder selected</p>
-                <motion.button
+                <button
                     onClick={goBack}
-                    className="btn-secondary"
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
+                    className="btn-secondary transition-transform hover:scale-[1.02] active:scale-[0.98]"
                 >
                     {t('common.back')}
-                </motion.button>
+                </button>
             </div>
         );
     }
@@ -271,14 +263,12 @@ export function ThumbnailsPage({ folderPath }: ThumbnailsPageProps) {
                 style={{ borderColor: 'var(--color-border)' }}
             >
                 <div className="flex items-center gap-4">
-                    <motion.button
+                    <button
                         onClick={goBack}
-                        className="btn-icon btn-ghost"
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
+                        className="btn-icon btn-ghost transition-transform hover:scale-110 active:scale-90"
                     >
                         <BackIcon />
-                    </motion.button>
+                    </button>
                     <div>
                         <h1
                             className="text-xl font-bold"
@@ -310,15 +300,13 @@ export function ThumbnailsPage({ folderPath }: ThumbnailsPageProps) {
                         </select>
                     </div>
                     {hasCustomOrder && (
-                        <motion.button
+                        <button
                             onClick={handleReset}
-                            className="btn-ghost flex items-center gap-2 text-sm"
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
+                            className="btn-ghost flex items-center gap-2 text-sm transition-transform hover:scale-[1.02] active:scale-[0.98]"
                         >
                             <ResetIcon />
                             {t('thumbnails.resetOrder')}
-                        </motion.button>
+                        </button>
                     )}
                 </div>
             </div>
@@ -327,14 +315,12 @@ export function ThumbnailsPage({ folderPath }: ThumbnailsPageProps) {
             <div className="flex-1 overflow-auto p-6">
                 {isLoading ? (
                     <div className="flex items-center justify-center h-full">
-                        <motion.div
-                            className="w-12 h-12 border-4 rounded-full"
+                        <div
+                            className="w-12 h-12 border-4 rounded-full animate-spin"
                             style={{
                                 borderColor: 'var(--color-accent)',
                                 borderTopColor: 'transparent',
                             }}
-                            animate={{ rotate: 360 }}
-                            transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
                         />
                     </div>
                 ) : (
@@ -436,14 +422,12 @@ function ThumbnailCard({
     dragHandleProps,
 }: ThumbnailCardProps) {
     return (
-        <motion.div
-            className={`relative group ${isDragging ? 'shadow-2xl' : ''}`}
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: index * 0.02 }}
+        <div
+            className={`relative group ${isDragging ? 'shadow-2xl' : ''} animate-scale-in`}
+            style={{ animationDelay: `${index * 0.01}s` }}
         >
             <div
-                className="aspect-[3/4] rounded-lg overflow-hidden cursor-grab active:cursor-grabbing"
+                className="aspect-[3/4] rounded-lg overflow-hidden cursor-grab active:cursor-grabbing transition-transform hover:scale-[1.02]"
                 style={{
                     backgroundColor: 'var(--color-surface-secondary)',
                     border: isDragging ? '2px solid var(--color-accent)' : '2px solid var(--color-border)',
@@ -459,14 +443,12 @@ function ThumbnailCard({
                     />
                 ) : (
                     <div className="flex items-center justify-center h-full shimmer">
-                        <motion.div
-                            className="w-8 h-8 border-2 rounded-full"
+                        <div
+                            className="w-8 h-8 border-2 rounded-full animate-spin"
                             style={{
                                 borderColor: 'var(--color-accent)',
                                 borderTopColor: 'transparent',
                             }}
-                            animate={{ rotate: 360 }}
-                            transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
                         />
                     </div>
                 )}
@@ -503,16 +485,15 @@ function ThumbnailCard({
                             onImageClick(index);
                         }}
                     >
-                        <motion.div
-                            className="px-3 py-1.5 rounded-full text-sm font-medium cursor-pointer"
+                        <div
+                            className="px-3 py-1.5 rounded-full text-sm font-medium cursor-pointer transition-transform hover:scale-110 active:scale-90"
                             style={{
                                 backgroundColor: 'var(--color-accent)',
                                 color: 'white',
                             }}
-                            whileHover={{ scale: 1.1 }}
                         >
                             View
-                        </motion.div>
+                        </div>
                     </div>
                 )}
             </div>
@@ -524,7 +505,7 @@ function ThumbnailCard({
             >
                 {image.name}
             </p>
-        </motion.div>
+        </div>
     );
 }
 
