@@ -73,7 +73,9 @@ export function ViewerPage({ folderPath }: ViewerPageProps) {
 
     const [showControls, setShowControls] = useState(true);
     const [showWidthSlider, setShowWidthSlider] = useState(false);
-    const [initialScrollPos, setInitialScrollPos] = useState(0);
+    // Local state for resume position - avoids timing issues with store
+    const [resumeIndex, setResumeIndex] = useState(0);
+    const [resumeScrollPos, setResumeScrollPos] = useState(0);
     // Session flag state that can be updated during component reuse
     const [isNoHistorySession, setIsNoHistorySession] = useState(useNavigationStore.getState().params.noHistory === 'true');
 
@@ -120,22 +122,26 @@ export function ViewerPage({ folderPath }: ViewerPageProps) {
                     if (historyEntry) {
                         if (historyEntry.lastImageIndex < imgs.length) {
                             targetIndex = historyEntry.lastImageIndex;
-                            console.log("Resuming from history index:", targetIndex);
+                            console.log(`[ViewerPage] Resuming from history index: ${targetIndex}`);
                         }
                         if (historyEntry.scrollPosition > 0) {
                             targetScroll = historyEntry.scrollPosition;
-                            setInitialScrollPos(targetScroll);
-                            console.log("Resuming from scroll position:", targetScroll);
+                            console.log(`[ViewerPage] Resuming from scroll position: ${targetScroll}`);
                         }
                     }
 
-                    // We update the store. We might need to update useViewerStore to allow setting both
-                    // For now we rely on the fact that we can set them.
+                    // Set local state FIRST before store update
+                    console.log(`[ViewerPage] Setting resumeIndex=${targetIndex}, resumeScrollPos=${targetScroll}`);
+                    setResumeIndex(targetIndex);
+                    setResumeScrollPos(targetScroll);
+
+                    // Update store with new images and index
                     useViewerStore.setState({
                         images: imgs,
                         currentIndex: targetIndex,
+                        scrollPosition: targetScroll,
                         currentFolder: folderInfo as FolderInfo,
-                        isLoading: false // manual override
+                        isLoading: false
                     });
                     // setIsLoading(false) moved here implicitly by store update? No, local state.
                 }
@@ -292,11 +298,11 @@ export function ViewerPage({ folderPath }: ViewerPageProps) {
                         exit={{ opacity: 0 }}
                     >
                         <VerticalViewer
-                            key={currentFolder.path}
+                            key={`${currentFolder.path}-${resumeIndex}`}
                             images={images}
                             onScrollPositionChange={saveProgress}
-                            initialIndex={currentIndex}
-                            initialScrollPosition={initialScrollPos}
+                            initialIndex={resumeIndex}
+                            initialScrollPosition={resumeScrollPos}
                         />
                     </motion.div>
                 ) : (
@@ -308,10 +314,10 @@ export function ViewerPage({ folderPath }: ViewerPageProps) {
                         exit={{ opacity: 0 }}
                     >
                         <LateralViewer
-                            key={currentFolder.path}
+                            key={`${currentFolder.path}-${resumeIndex}`}
                             images={images}
                             onPageChange={saveProgress}
-                            initialIndex={currentIndex}
+                            initialIndex={resumeIndex}
                         />
                     </motion.div>
                 )}
