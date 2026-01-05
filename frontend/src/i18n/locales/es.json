@@ -55,7 +55,9 @@
         "minImageSize": "Tamaño Mín de Imagen (KB)",
         "processDroppedFolders": "Añadir carpetas arrastradas a la librería y el historial",
         "thumbnails": "Miniaturas",
-        "imageInfo": "Info de Imagen"
+        "imageInfo": "Info de Imagen",
+        "prevChapter": "Capítulo Anterior",
+        "nextChapter": "Capítulo Siguiente"
     },
     "folders": {
         "title": "Carpetas",

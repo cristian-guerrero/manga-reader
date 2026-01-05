@@ -78,8 +78,14 @@ caracteristicas adicionales 4:
     por la extraccionde zip o rar
 
 -- Mejoras de rendimiento:
-- quitar la conversion a base64 de las imagenes para el thumbnail
-- quitar la conversion a base64 de las imagenes para el visor
-- revisar si la libreria de virtualizacion tiene alguna forma de optimizar el rendimiento (o si hay opciones)
-- revisar las animaciones de framer motion para optimizarlas
-- agregar compatibilidad con imagen avif
+- quitar la conversion a base64 de las imagenes para el thumbnail (ok)
+- quitar la conversion a base64 de las imagenes para el visor (ok)
+- revisar si la libreria de virtualizacion tiene alguna forma de optimizar el rendimiento (o si hay opciones) (ok)
+- revisar las animaciones de framer motion para optimizarlas (pendiente)
+- agregar compatibilidad con imagen avif (ok)
+- cuando la aplicacion incie regrese a la vista en la cual se estaba al salir (las vistas principales como home, series, folders, etc )
+
+-caracteristicas adicionales 5:
+- el visor vertica y el lateral deben permitir ir al siguente o al anterior capitulo si es una serie
+
+

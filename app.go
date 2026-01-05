@@ -652,6 +652,52 @@ func (a *App) IsSeries(path string) bool {
 	return len(subfolders) > 0
 }
 
+// ChapterNavigation contains adjacent chapter info for navigation
+type ChapterNavigation struct {
+	PrevChapter   *persistence.ChapterInfo `json:"prevChapter"`
+	NextChapter   *persistence.ChapterInfo `json:"nextChapter"`
+	SeriesPath    string                   `json:"seriesPath"`
+	SeriesName    string                   `json:"seriesName"`
+	ChapterIndex  int                      `json:"chapterIndex"`
+	TotalChapters int                      `json:"totalChapters"`
+}
+
+// GetChapterNavigation returns prev/next chapter for a given chapter path
+func (a *App) GetChapterNavigation(chapterPath string) *ChapterNavigation {
+	entries := a.series.GetAll()
+
+	for _, entry := range entries {
+		for i, ch := range entry.Chapters {
+			if ch.Path == chapterPath {
+				nav := &ChapterNavigation{
+					SeriesPath:    entry.Path,
+					SeriesName:    entry.Name,
+					ChapterIndex:  i,
+					TotalChapters: len(entry.Chapters),
+				}
+
+				// Previous chapter
+				if i > 0 {
+					prev := entry.Chapters[i-1]
+					nav.PrevChapter = &prev
+				}
+
+				// Next chapter
+				if i < len(entry.Chapters)-1 {
+					next := entry.Chapters[i+1]
+					nav.NextChapter = &next
+				}
+
+				fmt.Printf("[App] GetChapterNavigation: Found chapter %d/%d in series '%s'\n", i+1, len(entry.Chapters), entry.Name)
+				return nav
+			}
+		}
+	}
+
+	fmt.Printf("[App] GetChapterNavigation: No series found for path: %s\n", chapterPath)
+	return nil
+}
+
 // GetLibrary returns all library entries as FolderInfo with direct links
 func (a *App) GetLibrary() []FolderInfo {
 	entries := a.library.GetAll()

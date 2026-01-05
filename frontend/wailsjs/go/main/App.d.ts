@@ -17,6 +17,8 @@ export function ClearSeries():Promise<void>;
 
 export function ClearThumbnailCache():Promise<void>;
 
+export function GetChapterNavigation(arg1:string):Promise<main.ChapterNavigation>;
+
 export function GetFolderInfo(arg1:string):Promise<main.FolderInfo>;
 
 export function GetHistory():Promise<Array<persistence.HistoryEntry>>;

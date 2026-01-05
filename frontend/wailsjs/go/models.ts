@@ -14,6 +14,46 @@ export namespace main {
 	        this.isSeries = source["isSeries"];
 	    }
 	}
+	export class ChapterNavigation {
+	    prevChapter?: persistence.ChapterInfo;
+	    nextChapter?: persistence.ChapterInfo;
+	    seriesPath: string;
+	    seriesName: string;
+	    chapterIndex: number;
+	    totalChapters: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new ChapterNavigation(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.prevChapter = this.convertValues(source["prevChapter"], persistence.ChapterInfo);
+	        this.nextChapter = this.convertValues(source["nextChapter"], persistence.ChapterInfo);
+	        this.seriesPath = source["seriesPath"];
+	        this.seriesName = source["seriesName"];
+	        this.chapterIndex = source["chapterIndex"];
+	        this.totalChapters = source["totalChapters"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class ChapterWithURLs {
 	    path: string;
 	    name: string;
@@ -131,6 +171,24 @@ export namespace main {
 
 export namespace persistence {
 	
+	export class ChapterInfo {
+	    path: string;
+	    name: string;
+	    coverImage: string;
+	    imageCount: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new ChapterInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.path = source["path"];
+	        this.name = source["name"];
+	        this.coverImage = source["coverImage"];
+	        this.imageCount = source["imageCount"];
+	    }
+	}
 	export class HistoryEntry {
 	    id: string;
 	    folderPath: string;

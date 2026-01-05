@@ -30,6 +30,10 @@ export function ClearThumbnailCache() {
   return window['go']['main']['App']['ClearThumbnailCache']();
 }
 
+export function GetChapterNavigation(arg1) {
+  return window['go']['main']['App']['GetChapterNavigation'](arg1);
+}
+
 export function GetFolderInfo(arg1) {
   return window['go']['main']['App']['GetFolderInfo'](arg1);
 }

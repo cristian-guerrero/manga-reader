@@ -53,7 +53,9 @@
         "width": "Width",
         "goToPage": "Go to Page",
         "thumbnails": "Thumbnails",
-        "imageInfo": "Image Info"
+        "imageInfo": "Image Info",
+        "prevChapter": "Previous Chapter",
+        "nextChapter": "Next Chapter"
     },
     "folders": {
         "title": "Folders",
