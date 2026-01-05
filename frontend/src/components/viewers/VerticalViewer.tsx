@@ -15,6 +15,8 @@ interface VerticalViewerProps {
         path: string;
         name: string;
         index: number;
+        imageUrl?: string;
+        thumbnailUrl?: string;
     }>;
     onScrollPositionChange?: (position: number) => void;
     initialScrollPosition?: number;
@@ -44,58 +46,99 @@ export function VerticalViewer({
     const virtualizer = useVirtualizer({
         count: images.length,
         getScrollElement: () => parentRef.current,
-        estimateSize: (index) => imageHeights[index] || defaultHeight,
-        overscan: 3, // Preload 3 images above and below
-        initialOffset: initialScrollPosition > 0 ? undefined : undefined, // rely on scrollToIndex
+        estimateSize: (index) => Math.floor(imageHeights[index] || defaultHeight),
+        overscan: 10, // Balanced overscan
     });
 
     // Handle initial index scroll
     // Handle initial scroll
+    const scrollAttempts = useRef(0);
     useEffect(() => {
         if (!parentRef.current || hasAppliedInitialScroll || images.length === 0) return;
 
-        if (initialIndex >= 0) {
-            // Check if the target image is already loaded and measured
-            if (imageHeights[initialIndex]) {
-                virtualizer.scrollToIndex(initialIndex, { align: 'start' });
-                setHasAppliedInitialScroll(true);
-            } else {
-                // If not measured, do a preliminary scroll anyway
-                virtualizer.scrollToIndex(initialIndex, { align: 'start' });
-                // But don't set hasAppliedInitialScroll yet, let the loadImage re-trigger it
-            }
-        } else {
+        // Prevent trying to scroll past the end
+        if (initialIndex >= images.length) {
+            console.warn(`[VerticalViewer] initialIndex ${initialIndex} is out of bounds (max ${images.length - 1}). Cancelling scroll.`);
             setHasAppliedInitialScroll(true);
+            return;
         }
-    }, [initialIndex, hasAppliedInitialScroll, images.length, imageHeights]);
 
+        const performInitialScroll = () => {
+            if (parentRef.current) {
+                // If we have any measured items OR we've waited enough, just jump
+                // The virtualizer doesn't need the Target item to be measured to scroll to it
+                // because it uses estimateSize for non-measured items.
+                if (Object.keys(imageHeights).length > 0 || scrollAttempts.current > 5) {
+                    console.log(`[VerticalViewer] Executing initial scroll to index ${initialIndex}`);
+                    virtualizer.scrollToIndex(initialIndex, { align: 'start' });
+                    setHasAppliedInitialScroll(true);
+                } else if (scrollAttempts.current < 20) {
+                    scrollAttempts.current++;
+                    setTimeout(performInitialScroll, 100);
+                } else {
+                    console.warn(`[VerticalViewer] Falling back to immediate scroll to index ${initialIndex}`);
+                    virtualizer.scrollToIndex(initialIndex, { align: 'start' });
+                    setHasAppliedInitialScroll(true);
+                }
+            } else {
+                requestAnimationFrame(performInitialScroll);
+            }
+        };
+
+        performInitialScroll();
+    }, [initialIndex, hasAppliedInitialScroll, images.length, imageHeights, virtualizer]);
+
+
+    // Use a ref for imageHeights to avoid dependency loops in loadImage
+    const heightsRef = useRef<Record<number, number>>({});
+    useEffect(() => {
+        heightsRef.current = imageHeights;
+    }, [imageHeights]);
 
     // Load image and get its dimensions
     const loadImage = useCallback(async (index: number, path: string) => {
-        if (loadedImages[index]) return;
-
         try {
-            // Use direct URL from our custom AssetHandler
-            const encodedPath = encodeURIComponent(path);
-            const imageUrl = `/images?path=${encodedPath}`;
+            // Use direct URL from our images or construct it
+            const imageUrl = images[index]?.imageUrl || `/images?path=${encodeURIComponent(path)}`;
 
             setLoadedImages((prev) => ({ ...prev, [index]: imageUrl }));
 
             // Get actual image dimensions
             const img = new Image();
+
+            // Safety timeout: if image doesn't load in 20s, assume error to unstick virtualizer
+            const timeoutId = setTimeout(() => {
+                if (!heightsRef.current[index]) {
+                    console.warn(`[VerticalViewer] Image load timeout at index ${index}: ${imageUrl}`);
+                    setImageHeights((prev) => ({ ...prev, [index]: 1200 }));
+                    virtualizer.measure();
+                }
+            }, 20000);
+
             img.onload = () => {
+                clearTimeout(timeoutId);
                 // Use updated width calculation
                 const currentWidth = parentRef.current?.clientWidth || 800;
                 const containerWidth = currentWidth * (verticalWidth / 100);
                 const aspectRatio = img.height / img.width;
                 const height = containerWidth * aspectRatio;
+                console.log(`[VerticalViewer] Image loaded at index ${index}: ${img.width}x${img.height} (calculated height: ${height})`);
                 setImageHeights((prev) => ({ ...prev, [index]: height }));
+                virtualizer.measure();
+            };
+            img.onerror = () => {
+                clearTimeout(timeoutId);
+                console.error(`[VerticalViewer] Failed to load image at index ${index}: ${imageUrl}`);
+                // Set a sensible default height even on error to keep virtualizer happy
+                setImageHeights((prev) => ({ ...prev, [index]: 1200 }));
+                virtualizer.measure();
             };
             img.src = imageUrl;
         } catch (error) {
-            console.error(`Failed to load image ${path}:`, error);
+            console.error(`[VerticalViewer] Error in loadImage for ${path}:`, error);
+            setImageHeights((prev) => ({ ...prev, [index]: 1200 }));
         }
-    }, [loadedImages, verticalWidth]);
+    }, [images, verticalWidth, virtualizer]); // heightsRef is a ref, doesn't need to be in deps
 
     // Load visible images - use a ref to track requested images
     const loadRequestedRef = useRef<Set<number>>(new Set());
@@ -112,11 +155,14 @@ export function VerticalViewer({
             const image = images[item.index];
             // Only load if not already loaded AND not already requested
             if (image && !loadedImages[item.index] && !loadRequestedRef.current.has(item.index)) {
+                console.log(`[VerticalViewer] Requesting load for index ${item.index} (Image ${item.index + 1})`);
                 loadRequestedRef.current.add(item.index);
                 loadImage(item.index, image.path);
             }
         });
     }, [virtualizer, images, loadedImages, loadImage]);
+
+    const virtualItems = virtualizer.getVirtualItems();
 
     // Handle scroll position tracking with throttle
     const scrollThrottleRef = useRef<number | null>(null);
@@ -219,7 +265,7 @@ export function VerticalViewer({
             ref={parentRef}
             className="h-full w-full overflow-y-auto"
             onScroll={handleScroll}
-            onWheel={handleWheel} // Add wheel handler
+            onWheel={handleWheel}
             style={{
                 backgroundColor: 'var(--color-surface-primary)',
                 overflowX: 'hidden'
@@ -230,7 +276,6 @@ export function VerticalViewer({
                     height: `${virtualizer.getTotalSize()}px`,
                     width: '100%',
                     position: 'relative',
-                    overflow: 'hidden',
                 }}
             >
                 {virtualizer.getVirtualItems().map((virtualItem) => {
@@ -240,46 +285,45 @@ export function VerticalViewer({
                     return (
                         <div
                             key={virtualItem.key}
+                            data-index={virtualItem.index}
                             style={{
-                                position: 'absolute',
-                                top: 0,
-                                left: 0,
                                 transform: `translateY(${virtualItem.start}px)`,
                                 width: '100%',
-                                height: `${virtualItem.size}px`,
                                 zIndex: 1,
                                 display: 'flex',
                                 justifyContent: 'center',
-                                overflow: 'hidden'
+                                overflow: 'hidden',
+                                height: `${virtualItem.size}px`,
+                                position: 'absolute',
+                                top: 0,
+                                left: 0,
                             }}
+                            className="py-4 transition-opacity duration-300"
                         >
-                            <div style={{ width: `${itemWidth}px`, height: '100%', transition: 'width 0.1s ease-out' }}>
+                            <div style={{ width: `${itemWidth}px`, transition: 'width 0.1s ease-out' }}>
                                 {loadedSrc ? (
-                                    <img
-                                        src={loadedSrc}
-                                        alt={image.name}
-                                        className="w-full h-auto object-contain"
-                                        loading="lazy"
-                                    />
+                                    <div className="flex flex-col gap-4">
+                                        <img
+                                            src={loadedSrc}
+                                            alt={image.name}
+                                            className="w-full h-auto shadow-2xl rounded-lg"
+                                        // Removed loading="lazy" to solve Edge/WebView2 Intervention deferring load events
+                                        // which stalls virtualization measurement.
+                                        />
+                                    </div>
                                 ) : (
                                     <div
-                                        className="w-full h-full flex items-center justify-center shimmer"
+                                        className="w-full flex flex-col items-center justify-center shimmer rounded-lg"
                                         style={{
                                             backgroundColor: 'var(--color-surface-secondary)',
-                                            minHeight: defaultHeight,
+                                            height: imageHeights[virtualItem.index] || defaultHeight,
                                         }}
                                     >
-                                        <div className="flex flex-col items-center gap-2">
-                                            <div
-                                                className="w-12 h-12 rounded-full"
-                                                style={{ backgroundColor: 'var(--color-surface-tertiary)' }}
-                                            />
-                                            <span
-                                                className="text-sm"
-                                                style={{ color: 'var(--color-text-muted)' }}
-                                            >
-                                                Loading...
-                                            </span>
+                                        <div className="flex flex-col items-center gap-4 text-zinc-400">
+                                            <div className="relative">
+                                                <div className="w-12 h-12 border-4 border-pink-500/20 border-t-pink-500 rounded-full animate-spin" />
+                                            </div>
+                                            <span className="text-sm font-medium animate-pulse">Loading {virtualItem.index + 1}...</span>
                                         </div>
                                     </div>
                                 )}
@@ -293,9 +337,10 @@ export function VerticalViewer({
             <motion.div
                 className="fixed bottom-4 right-4 px-4 py-2 rounded-full text-sm font-medium z-50 pointer-events-none"
                 style={{
-                    backgroundColor: 'var(--color-surface-overlay)',
-                    color: 'var(--color-text-primary)',
-                    border: '1px solid var(--color-border)',
+                    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+                    backdropFilter: 'blur(8px)',
+                    color: 'white',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
                 }}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -303,7 +348,7 @@ export function VerticalViewer({
             >
                 {useViewerStore.getState().currentIndex + 1} / {images.length}
             </motion.div>
-        </div >
+        </div>
     );
 }
 

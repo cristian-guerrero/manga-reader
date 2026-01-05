@@ -8,6 +8,7 @@ import (
 	"manga-visor/internal/fileloader"
 	"manga-visor/internal/persistence"
 	"manga-visor/internal/thumbnails"
+	"net/url"
 	"os"
 	"path/filepath"
 	"sort"
@@ -28,6 +29,7 @@ type App struct {
 	fileLoader *fileloader.FileLoader
 	thumbGen   *thumbnails.Generator
 	series     *persistence.SeriesManager
+	imgServer  *fileloader.ImageServer
 }
 
 // AddFolderResult represents the result of adding a folder
@@ -61,6 +63,14 @@ func (a *App) startup(ctx context.Context) {
 		fmt.Printf("[App] Restoring window position: (%v, %v)\n", settings.WindowX, settings.WindowY)
 		runtime.WindowSetPosition(ctx, settings.WindowX, settings.WindowY)
 	}
+}
+
+// getBaseURL returns the base URL for images and thumbnails (standalone server in dev)
+func (a *App) getBaseURL() string {
+	if a.imgServer != nil && a.imgServer.Addr != "" {
+		return a.imgServer.Addr
+	}
+	return ""
 }
 
 // domReady is called after the frontend dom has been loaded
@@ -266,11 +276,13 @@ func (a *App) SelectFolder() (string, error) {
 
 // ImageInfo represents information about an image file
 type ImageInfo struct {
-	Path      string `json:"path"`
-	Name      string `json:"name"`
-	Extension string `json:"extension"`
-	Size      int64  `json:"size"`
-	Index     int    `json:"index"`
+	Path         string `json:"path"`
+	ThumbnailURL string `json:"thumbnailUrl"`
+	ImageURL     string `json:"imageUrl"`
+	Name         string `json:"name"`
+	Extension    string `json:"extension"`
+	Size         int64  `json:"size"`
+	Index        int    `json:"index"`
 }
 
 // GetImages returns a list of images in the specified folder
@@ -283,6 +295,7 @@ func (a *App) GetImages(path string) ([]ImageInfo, error) {
 
 	// Filter by min size
 	settings := a.settings.Get()
+	originalCount := len(images)
 	if settings.MinImageSize > 0 {
 		var filtered []fileloader.ImageInfo
 		minBytes := settings.MinImageSize * 1024 // KB to Bytes
@@ -292,22 +305,34 @@ func (a *App) GetImages(path string) ([]ImageInfo, error) {
 			}
 		}
 
-		// Re-index
-		for i := range filtered {
-			filtered[i].Index = i
+		// Only apply filter if it doesn't remove ALL images
+		if len(filtered) > 0 {
+			images = filtered
+		} else if originalCount > 0 {
+			fmt.Printf("[App] GetImages: MinImageSize filter (%d KB) would remove all %d images. Ignoring filter.\n", settings.MinImageSize, originalCount)
 		}
-		images = filtered
 	}
+
+	if len(images) < originalCount {
+		fmt.Printf("[App] GetImages: Filtered out %d images below %d KB. Remaining: %d\n", originalCount-len(images), settings.MinImageSize, len(images))
+	}
+
+	// Register directory and get hash
+	dirHash := a.fileLoader.RegisterDirectory(folderPath)
+	baseURL := a.getBaseURL()
 
 	// Convert to our type
 	result := make([]ImageInfo, len(images))
 	for i, img := range images {
+		relPath, _ := filepath.Rel(folderPath, img.Path)
 		result[i] = ImageInfo{
-			Path:      img.Path,
-			Name:      img.Name,
-			Extension: img.Extension,
-			Size:      img.Size,
-			Index:     img.Index,
+			Path:         img.Path,
+			ThumbnailURL: fmt.Sprintf("%s/thumbnails?did=%s&fid=%s", baseURL, dirHash, url.QueryEscape(relPath)),
+			ImageURL:     fmt.Sprintf("%s/images?did=%s&fid=%s", baseURL, dirHash, url.QueryEscape(relPath)),
+			Name:         img.Name,
+			Extension:    img.Extension,
+			Size:         img.Size,
+			Index:        img.Index,
 		}
 	}
 
@@ -350,6 +375,10 @@ func (a *App) GetImages(path string) ([]ImageInfo, error) {
 		a.orders.SetOriginalOrder(folderPath, originalOrder)
 	}
 
+	if len(result) > 0 {
+		fmt.Printf("[App] GetImages: Returning %d images for %s. First ImageURL: %s\n", len(result), folderPath, result[0].ImageURL)
+	}
+
 	return result, nil
 }
 
@@ -359,6 +388,7 @@ type FolderInfo struct {
 	Name         string `json:"name"`
 	ImageCount   int    `json:"imageCount"`
 	CoverImage   string `json:"coverImage"`
+	ThumbnailURL string `json:"thumbnailUrl"`
 	LastModified string `json:"lastModified"`
 }
 
@@ -370,15 +400,20 @@ func (a *App) GetFolderInfo(folderPath string) (*FolderInfo, error) {
 	}
 
 	var coverImage string
+	var thumbnailURL string
 	if len(images) > 0 {
 		coverImage = images[0].Path
+		dirHash := a.fileLoader.RegisterDirectory(folderPath)
+		baseURL := a.getBaseURL()
+		thumbnailURL = fmt.Sprintf("%s/thumbnails?did=%s&fid=%s", baseURL, dirHash, url.QueryEscape(images[0].Name))
 	}
 
 	return &FolderInfo{
-		Path:       folderPath,
-		Name:       filepath.Base(folderPath),
-		ImageCount: len(images),
-		CoverImage: coverImage,
+		Path:         folderPath,
+		Name:         filepath.Base(folderPath),
+		ImageCount:   len(images),
+		CoverImage:   coverImage,
+		ThumbnailURL: thumbnailURL,
 	}, nil
 }
 
@@ -502,9 +537,17 @@ func (a *App) AddSeries(path string, subfolders []FolderInfo, isTemp bool) (*Add
 
 	chapters := make([]persistence.ChapterInfo, len(subfolders))
 	for i, sub := range subfolders {
+		// Find first image in subfolder for chapter cover
+		chapterImages, _ := a.GetImages(sub.Path)
+		chCover := ""
+		if len(chapterImages) > 0 {
+			chCover = chapterImages[0].Name
+		}
+
 		chapters[i] = persistence.ChapterInfo{
 			Path:       sub.Path,
 			Name:       sub.Name,
+			CoverImage: chCover,
 			ImageCount: sub.ImageCount,
 		}
 	}
@@ -528,9 +571,64 @@ func (a *App) AddSeries(path string, subfolders []FolderInfo, isTemp bool) (*Add
 	return &AddFolderResult{Path: path, IsSeries: true}, nil
 }
 
-// GetSeries returns all series entries
-func (a *App) GetSeries() []persistence.SeriesEntry {
-	return a.series.GetAll()
+// SeriesEntryWithURLs is a SeriesEntry with added URL fields for the frontend
+type SeriesEntryWithURLs struct {
+	persistence.SeriesEntry
+	ThumbnailURL string            `json:"thumbnailUrl"`
+	Chapters     []ChapterWithURLs `json:"chapters"`
+}
+
+type ChapterWithURLs struct {
+	persistence.ChapterInfo
+	ThumbnailURL string `json:"thumbnailUrl"`
+}
+
+// GetSeries returns all series entries with direct links
+func (a *App) GetSeries() []SeriesEntryWithURLs {
+	entries := a.series.GetAll()
+	result := make([]SeriesEntryWithURLs, len(entries))
+
+	baseURL := a.getBaseURL()
+	for i, entry := range entries {
+		chapters := make([]ChapterWithURLs, len(entry.Chapters))
+		changed := false
+
+		for j, ch := range entry.Chapters {
+			dirHash := a.fileLoader.RegisterDirectory(ch.Path)
+			fid := ch.CoverImage
+
+			// Proactively find cover image if missing (for old entries)
+			if fid == "" {
+				chapterImages, _ := a.GetImages(ch.Path)
+				if len(chapterImages) > 0 {
+					fid = chapterImages[0].Name
+					entry.Chapters[j].CoverImage = fid
+					changed = true
+				} else {
+					fid = filepath.Base(ch.Path)
+				}
+			}
+
+			chapters[j] = ChapterWithURLs{
+				ChapterInfo:  entry.Chapters[j],
+				ThumbnailURL: fmt.Sprintf("%s/thumbnails?did=%s&fid=%s", baseURL, dirHash, url.QueryEscape(fid)),
+			}
+		}
+
+		// If we fixed any missing cover images, save them back to persistence
+		if changed {
+			a.series.Add(entry)
+		}
+
+		dirHash := a.fileLoader.RegisterDirectory(filepath.Dir(entry.CoverImage))
+		result[i] = SeriesEntryWithURLs{
+			SeriesEntry:  entry,
+			ThumbnailURL: fmt.Sprintf("%s/thumbnails?did=%s&fid=%s", baseURL, dirHash, url.QueryEscape(filepath.Base(entry.CoverImage))),
+			Chapters:     chapters,
+		}
+	}
+
+	return result
 }
 
 // RemoveSeries removes a series entry
@@ -554,9 +652,27 @@ func (a *App) IsSeries(path string) bool {
 	return len(subfolders) > 0
 }
 
-// GetLibrary returns all library entries
-func (a *App) GetLibrary() []persistence.LibraryEntry {
-	return a.library.GetAll()
+// GetLibrary returns all library entries as FolderInfo with direct links
+func (a *App) GetLibrary() []FolderInfo {
+	entries := a.library.GetAll()
+	result := make([]FolderInfo, 0, len(entries))
+
+	for _, entry := range entries {
+		info, err := a.GetFolderInfo(entry.FolderPath)
+		if err == nil {
+			result = append(result, *info)
+		} else {
+			// Fallback if folder no longer exists or error
+			result = append(result, FolderInfo{
+				Path:       entry.FolderPath,
+				Name:       entry.FolderName,
+				ImageCount: entry.TotalImages,
+				CoverImage: entry.CoverImage,
+			})
+		}
+	}
+
+	return result
 }
 
 // RemoveLibraryEntry removes a library entry
@@ -609,11 +725,13 @@ func (a *App) ClearSeries() error {
 // Image Loading Methods
 // =============================================================================
 
-
-
 // GetThumbnail generates or retrieves a thumbnail for an image
+// GetThumbnail generates or retrieves a thumbnail for an image and returns a direct link
 func (a *App) GetThumbnail(imagePath string) (string, error) {
-	return a.thumbGen.GetThumbnail(imagePath)
+	dirHash := a.fileLoader.RegisterDirectory(filepath.Dir(imagePath))
+	baseURL := a.getBaseURL()
+	// @ts-ignore
+	return fmt.Sprintf("%s/thumbnails?did=%s&fid=%s", baseURL, dirHash, url.QueryEscape(filepath.Base(imagePath))), nil
 }
 
 // PreloadThumbnails generates thumbnails for a list of images in the background

@@ -8,10 +8,10 @@ import (
 
 const seriesFile = "series.json"
 
-// ChapterInfo represents information about a chapter in a series
 type ChapterInfo struct {
 	Path       string `json:"path"`
 	Name       string `json:"name"`
+	CoverImage string `json:"coverImage"`
 	ImageCount int    `json:"imageCount"`
 }
 

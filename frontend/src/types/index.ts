@@ -9,6 +9,10 @@
 export interface ImageInfo {
     /** Full path to the image file */
     path: string;
+    /** Shortened URL for the thumbnail */
+    thumbnailUrl?: string;
+    /** Shortened URL for the full image */
+    imageUrl?: string;
     /** Filename only */
     name: string;
     /** File extension (lowercase, without dot) */
@@ -28,6 +32,8 @@ export interface FolderInfo {
     imageCount: number;
     /** First image path for thumbnail */
     coverImage?: string;
+    /** Shortened URL for the cover thumbnail */
+    thumbnailUrl?: string;
     /** Last modified timestamp */
     lastModified: string;
 }
@@ -144,7 +150,9 @@ export interface ImageOrder {
 export interface ChapterInfo {
     path: string;
     name: string;
+    coverImage?: string;
     imageCount: number;
+    thumbnailUrl?: string;
 }
 
 export interface SeriesEntry {
@@ -152,6 +160,7 @@ export interface SeriesEntry {
     path: string;
     name: string;
     coverImage: string;
+    thumbnailUrl?: string;
     addedAt: string;
     chapters: ChapterInfo[];
     isTemporary?: boolean;
