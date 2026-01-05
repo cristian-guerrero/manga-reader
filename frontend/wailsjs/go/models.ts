@@ -1,4 +1,59 @@
-export namespace main {
+export namespace explorer {
+	
+	export class BaseFolderEntry {
+	    path: string;
+	    name: string;
+	    addedAt: string;
+	    isVisible: boolean;
+	    hasImages: boolean;
+	    thumbnailUrl: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new BaseFolderEntry(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.path = source["path"];
+	        this.name = source["name"];
+	        this.addedAt = source["addedAt"];
+	        this.isVisible = source["isVisible"];
+	        this.hasImages = source["hasImages"];
+	        this.thumbnailUrl = source["thumbnailUrl"];
+	    }
+	}
+	export class ExplorerEntry {
+	    path: string;
+	    name: string;
+	    isDirectory: boolean;
+	    hasImages: boolean;
+	    imageCount: number;
+	    coverImage: string;
+	    thumbnailUrl: string;
+	    size: number;
+	    lastModified: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new ExplorerEntry(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.path = source["path"];
+	        this.name = source["name"];
+	        this.isDirectory = source["isDirectory"];
+	        this.hasImages = source["hasImages"];
+	        this.imageCount = source["imageCount"];
+	        this.coverImage = source["coverImage"];
+	        this.thumbnailUrl = source["thumbnailUrl"];
+	        this.size = source["size"];
+	        this.lastModified = source["lastModified"];
+	    }
+	}
+
+}
+
+export namespace persistence {
 	
 	export class AddFolderResult {
 	    path: string;
@@ -14,6 +69,131 @@ export namespace main {
 	        this.isSeries = source["isSeries"];
 	    }
 	}
+	export class ChapterInfo {
+	    path: string;
+	    name: string;
+	    coverImage: string;
+	    imageCount: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new ChapterInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.path = source["path"];
+	        this.name = source["name"];
+	        this.coverImage = source["coverImage"];
+	        this.imageCount = source["imageCount"];
+	    }
+	}
+	export class FolderInfo {
+	    path: string;
+	    name: string;
+	    imageCount: number;
+	    coverImage: string;
+	    thumbnailUrl?: string;
+	    lastModified?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new FolderInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.path = source["path"];
+	        this.name = source["name"];
+	        this.imageCount = source["imageCount"];
+	        this.coverImage = source["coverImage"];
+	        this.thumbnailUrl = source["thumbnailUrl"];
+	        this.lastModified = source["lastModified"];
+	    }
+	}
+	export class HistoryEntry {
+	    id: string;
+	    folderPath: string;
+	    folderName: string;
+	    lastImage: string;
+	    lastImageIndex: number;
+	    scrollPosition: number;
+	    totalImages: number;
+	    lastRead: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new HistoryEntry(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.folderPath = source["folderPath"];
+	        this.folderName = source["folderName"];
+	        this.lastImage = source["lastImage"];
+	        this.lastImageIndex = source["lastImageIndex"];
+	        this.scrollPosition = source["scrollPosition"];
+	        this.totalImages = source["totalImages"];
+	        this.lastRead = source["lastRead"];
+	    }
+	}
+	export class Settings {
+	    language: string;
+	    theme: string;
+	    viewerMode: string;
+	    verticalWidth: number;
+	    lateralMode: string;
+	    readingDirection: string;
+	    panicKey: string;
+	    lastFolder: string;
+	    sidebarCollapsed: boolean;
+	    showImageInfo: boolean;
+	    preloadImages: boolean;
+	    preloadCount: number;
+	    enableHistory: boolean;
+	    minImageSize: number;
+	    processDroppedFolders: boolean;
+	    windowWidth: number;
+	    windowHeight: number;
+	    windowX: number;
+	    windowY: number;
+	    windowMaximized: boolean;
+	    lastPage: string;
+	    enabledMenuItems: Record<string, boolean>;
+	
+	    static createFrom(source: any = {}) {
+	        return new Settings(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.language = source["language"];
+	        this.theme = source["theme"];
+	        this.viewerMode = source["viewerMode"];
+	        this.verticalWidth = source["verticalWidth"];
+	        this.lateralMode = source["lateralMode"];
+	        this.readingDirection = source["readingDirection"];
+	        this.panicKey = source["panicKey"];
+	        this.lastFolder = source["lastFolder"];
+	        this.sidebarCollapsed = source["sidebarCollapsed"];
+	        this.showImageInfo = source["showImageInfo"];
+	        this.preloadImages = source["preloadImages"];
+	        this.preloadCount = source["preloadCount"];
+	        this.enableHistory = source["enableHistory"];
+	        this.minImageSize = source["minImageSize"];
+	        this.processDroppedFolders = source["processDroppedFolders"];
+	        this.windowWidth = source["windowWidth"];
+	        this.windowHeight = source["windowHeight"];
+	        this.windowX = source["windowX"];
+	        this.windowY = source["windowY"];
+	        this.windowMaximized = source["windowMaximized"];
+	        this.lastPage = source["lastPage"];
+	        this.enabledMenuItems = source["enabledMenuItems"];
+	    }
+	}
+
+}
+
+export namespace series {
+	
 	export class ChapterNavigation {
 	    prevChapter?: persistence.ChapterInfo;
 	    nextChapter?: persistence.ChapterInfo;
@@ -74,54 +254,6 @@ export namespace main {
 	        this.thumbnailUrl = source["thumbnailUrl"];
 	    }
 	}
-	export class FolderInfo {
-	    path: string;
-	    name: string;
-	    imageCount: number;
-	    coverImage: string;
-	    thumbnailUrl: string;
-	    lastModified: string;
-	
-	    static createFrom(source: any = {}) {
-	        return new FolderInfo(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.path = source["path"];
-	        this.name = source["name"];
-	        this.imageCount = source["imageCount"];
-	        this.coverImage = source["coverImage"];
-	        this.thumbnailUrl = source["thumbnailUrl"];
-	        this.lastModified = source["lastModified"];
-	    }
-	}
-	export class ImageInfo {
-	    path: string;
-	    thumbnailUrl: string;
-	    imageUrl: string;
-	    name: string;
-	    extension: string;
-	    size: number;
-	    index: number;
-	    modTime: number;
-	
-	    static createFrom(source: any = {}) {
-	        return new ImageInfo(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.path = source["path"];
-	        this.thumbnailUrl = source["thumbnailUrl"];
-	        this.imageUrl = source["imageUrl"];
-	        this.name = source["name"];
-	        this.extension = source["extension"];
-	        this.size = source["size"];
-	        this.index = source["index"];
-	        this.modTime = source["modTime"];
-	    }
-	}
 	export class SeriesEntryWithURLs {
 	    id: string;
 	    path: string;
@@ -171,102 +303,32 @@ export namespace main {
 
 }
 
-export namespace persistence {
+export namespace struct { Path string "json:\"path\""; ThumbnailURL string "json:\"thumbnailUrl\""; ImageURL string "json:\"imageUrl\""; Name string "json:\"name\""; Extension string "json:\"extension\""; Size int64 "json:\"size\""; Index int "json:\"index\""; ModTime int64 "json:\"modTime\"" } {
 	
-	export class ChapterInfo {
+	export class  {
 	    path: string;
+	    thumbnailUrl: string;
+	    imageUrl: string;
 	    name: string;
-	    coverImage: string;
-	    imageCount: number;
+	    extension: string;
+	    size: number;
+	    index: number;
+	    modTime: number;
 	
 	    static createFrom(source: any = {}) {
-	        return new ChapterInfo(source);
+	        return new (source);
 	    }
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.path = source["path"];
+	        this.thumbnailUrl = source["thumbnailUrl"];
+	        this.imageUrl = source["imageUrl"];
 	        this.name = source["name"];
-	        this.coverImage = source["coverImage"];
-	        this.imageCount = source["imageCount"];
-	    }
-	}
-	export class HistoryEntry {
-	    id: string;
-	    folderPath: string;
-	    folderName: string;
-	    lastImage: string;
-	    lastImageIndex: number;
-	    scrollPosition: number;
-	    totalImages: number;
-	    lastRead: string;
-	
-	    static createFrom(source: any = {}) {
-	        return new HistoryEntry(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.id = source["id"];
-	        this.folderPath = source["folderPath"];
-	        this.folderName = source["folderName"];
-	        this.lastImage = source["lastImage"];
-	        this.lastImageIndex = source["lastImageIndex"];
-	        this.scrollPosition = source["scrollPosition"];
-	        this.totalImages = source["totalImages"];
-	        this.lastRead = source["lastRead"];
-	    }
-	}
-	export class Settings {
-	    language: string;
-	    theme: string;
-	    viewerMode: string;
-	    verticalWidth: number;
-	    lateralMode: string;
-	    readingDirection: string;
-	    panicKey: string;
-	    lastFolder: string;
-	    sidebarCollapsed: boolean;
-	    showImageInfo: boolean;
-	    preloadImages: boolean;
-	    preloadCount: number;
-	    enableHistory: boolean;
-	    minImageSize: number;
-	    processDroppedFolders: boolean;
-	    windowWidth: number;
-	    windowHeight: number;
-	    windowX: number;
-	    windowY: number;
-	    windowMaximized: boolean;
-	    lastPage: string;
-	
-	    static createFrom(source: any = {}) {
-	        return new Settings(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.language = source["language"];
-	        this.theme = source["theme"];
-	        this.viewerMode = source["viewerMode"];
-	        this.verticalWidth = source["verticalWidth"];
-	        this.lateralMode = source["lateralMode"];
-	        this.readingDirection = source["readingDirection"];
-	        this.panicKey = source["panicKey"];
-	        this.lastFolder = source["lastFolder"];
-	        this.sidebarCollapsed = source["sidebarCollapsed"];
-	        this.showImageInfo = source["showImageInfo"];
-	        this.preloadImages = source["preloadImages"];
-	        this.preloadCount = source["preloadCount"];
-	        this.enableHistory = source["enableHistory"];
-	        this.minImageSize = source["minImageSize"];
-	        this.processDroppedFolders = source["processDroppedFolders"];
-	        this.windowWidth = source["windowWidth"];
-	        this.windowHeight = source["windowHeight"];
-	        this.windowX = source["windowX"];
-	        this.windowY = source["windowY"];
-	        this.windowMaximized = source["windowMaximized"];
-	        this.lastPage = source["lastPage"];
+	        this.extension = source["extension"];
+	        this.size = source["size"];
+	        this.index = source["index"];
+	        this.modTime = source["modTime"];
 	    }
 	}
 

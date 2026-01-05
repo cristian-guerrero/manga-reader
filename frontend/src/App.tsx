@@ -11,6 +11,7 @@ import { FoldersPage } from './components/browser/FoldersPage';
 import { SeriesPage } from './components/browser/SeriesPage';
 import { SeriesDetailsPage } from './components/browser/SeriesDetailsPage';
 import { HistoryPage } from './components/browser/HistoryPage';
+import { ExplorerPage } from './components/browser/ExplorerPage';
 import { ThumbnailsPage } from './components/browser/ThumbnailsPage';
 import { SettingsPage } from './components/settings/SettingsPage';
 import { useNavigationStore } from './stores/navigationStore';
@@ -130,6 +131,8 @@ function renderPage(page: string, params: Record<string, string>): React.ReactNo
             return <SettingsPage />;
         case 'thumbnails':
             return <ThumbnailsPage folderPath={params.folder} />;
+        case 'explorer':
+            return <ExplorerPage />;
         default:
             return <HomePage />;
     }

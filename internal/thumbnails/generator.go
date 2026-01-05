@@ -31,9 +31,10 @@ const (
 
 // Generator handles thumbnail generation and caching
 type Generator struct {
-	cacheDir string
-	mu       sync.RWMutex
-	pending  sync.Map // map[string]chan struct{} for deduplicating generation
+	cacheDir  string
+	mu        sync.RWMutex
+	pending   sync.Map      // map[string]chan struct{} for deduplicating generation
+	semaphore chan struct{} // Global limit for concurrent generation
 }
 
 // NewGenerator creates a new thumbnail generator
@@ -49,7 +50,8 @@ func NewGenerator() *Generator {
 	os.MkdirAll(fullCacheDir, 0755)
 
 	return &Generator{
-		cacheDir: fullCacheDir,
+		cacheDir:  fullCacheDir,
+		semaphore: make(chan struct{}, 4), // Limit to 4 concurrent generations
 	}
 }
 
@@ -130,9 +132,9 @@ func (g *Generator) loadCachedThumbnail(imagePath string) (string, error) {
 
 // generateThumbnail generates a thumbnail for an image
 func (g *Generator) generateThumbnail(imagePath string) (string, error) {
-	// Mutex is essentially replaced by g.pending for this specific imagePath
-	// but we still use it for thread-safe access to general state if needed.
-	// We don't want to hold a global lock während decoding/scaling.
+	// Acquire semaphore to limit concurrency
+	g.semaphore <- struct{}{}
+	defer func() { <-g.semaphore }()
 
 	// Open original image
 	file, err := os.Open(imagePath)

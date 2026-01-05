@@ -27,7 +27,9 @@
         "folders": "Folders",
         "series": "Series",
         "settings": "Settings",
-        "viewer": "Viewer"
+        "settings": "Settings",
+        "viewer": "Viewer",
+        "explorer": "Explorer"
     },
     "home": {
         "welcome": "Welcome to Manga Visor ",
@@ -127,7 +129,19 @@
         "minImageSizeDesc": "Filter out images smaller than this size (useful for removing covers/logos)",
         "showImageInfo": "Show Image Info",
         "resetSettings": "Reset to Defaults",
-        "confirmReset": "Reset all settings to default values?"
+        "confirmReset": "Reset all settings to default values?",
+        "menuItems": "Menu Items",
+        "menuItemsDesc": "Toggle visibility of sidebar navigation items"
+    },
+    "explorer": {
+        "title": "Explorer",
+        "addBaseFolder": "Add Base Folder",
+        "folderAdded": "Folder added to explorer",
+        "addFailed": "Failed to add base folder",
+        "folderRemoved": "Base folder removed",
+        "loadFailed": "Failed to load directory",
+        "noFolders": "No base folders added",
+        "startMessage": "Add a base folder to start exploring your files recursively."
     },
     "themes": {
         "dark": "Dark",

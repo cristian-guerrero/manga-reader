@@ -9,6 +9,7 @@ import { builtInThemes, applyTheme, getThemeById } from '../../themes';
 import { languages, changeLanguage } from '../../i18n';
 
 export function SettingsPage() {
+    console.log("[SettingsPage] Rendering with enabledMenuItems:", useSettingsStore.getState().enabledMenuItems);
     const { t } = useTranslation();
     const {
         language,
@@ -37,6 +38,8 @@ export function SettingsPage() {
         processDroppedFolders,
         setProcessDroppedFolders,
         resetSettings,
+        enabledMenuItems,
+        toggleMenuItem,
 
     } = useSettingsStore();
 
@@ -133,6 +136,38 @@ export function SettingsPage() {
                                 </option>
                             ))}
                         </select>
+                    </SettingRow>
+
+                    {/* Menu Items */}
+                    <SettingRow
+                        label={t('settings.menuItems')}
+                        description={t('settings.menuItemsDesc')}
+                    >
+                        <div className="grid grid-cols-2 gap-3 mt-2">
+                            {['home', 'explorer', 'history', 'folders', 'series'].map((item) => {
+                                const isSettings = item === 'settings';
+                                const isEnabled = enabledMenuItems?.[item] !== false;
+
+                                return (
+                                    <div
+                                        key={item}
+                                        className={`flex items-center space-x-3 p-2 rounded-lg transition-colors ${isSettings ? 'opacity-80 cursor-default' : 'hover:bg-white/5 cursor-pointer'
+                                            }`}
+                                        onClick={() => !isSettings && toggleMenuItem(item)}
+                                    >
+                                        <Toggle
+                                            checked={isEnabled}
+                                            onChange={() => toggleMenuItem(item)}
+                                            disabled={isSettings}
+                                        />
+                                        <span className="text-sm font-medium select-none" style={{ color: 'var(--color-text-secondary)' }}>
+                                            {t(`navigation.${item}`)}
+                                            {isSettings && <span className="ml-1 opacity-50 text-[10px]">({t('common.alwaysOn') || 'Always On'})</span>}
+                                        </span>
+                                    </div>
+                                );
+                            })}
+                        </div>
                     </SettingRow>
                 </motion.section>
 
@@ -411,22 +446,29 @@ function ModeButton({
 function Toggle({
     checked,
     onChange,
+    disabled = false,
 }: {
     checked: boolean;
     onChange: (value: boolean) => void;
+    disabled?: boolean;
 }) {
     return (
         <motion.button
-            onClick={() => {
-                onChange(!checked);
+            onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (!disabled) {
+                    onChange(!checked);
+                }
             }}
-            className="relative w-12 h-6 rounded-full transition-colors"
+            className={`relative w-12 h-6 rounded-full transition-colors ${disabled ? 'opacity-50 cursor-default' : ''
+                }`}
             style={{
                 backgroundColor: checked
                     ? 'var(--color-accent)'
                     : 'var(--color-surface-tertiary)',
             }}
-            whileTap={{ scale: 0.95 }}
+            whileTap={disabled ? {} : { scale: 0.95 }}
         >
             <motion.div
                 className="absolute top-1 w-4 h-4 rounded-full bg-white"

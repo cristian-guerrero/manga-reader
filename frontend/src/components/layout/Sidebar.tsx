@@ -9,6 +9,18 @@ import { useNavigationStore } from '../../stores/navigationStore';
 import { PageType } from '../../types';
 
 // Icons
+interface NavItem {
+    id: 'home' | 'explorer' | 'history' | 'folders' | 'series' | 'settings';
+    icon: JSX.Element;
+    labelKey: string;
+}
+
+const ChevronLeftIcon = () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="15 18 9 12 15 6" />
+    </svg>
+);
+
 const HomeIcon = () => (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
@@ -44,27 +56,15 @@ const SettingsIcon = () => (
         <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
     </svg>
 );
-
-const ChevronLeftIcon = () => (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <polyline points="15 18 9 12 15 6" />
+const ExplorerIcon = () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
     </svg>
 );
-
-const ChevronRightIcon = () => (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <polyline points="9 18 15 12 9 6" />
-    </svg>
-);
-
-interface NavItem {
-    id: PageType;
-    icon: React.ReactNode;
-    labelKey: string;
-}
 
 const navItems: NavItem[] = [
     { id: 'home', icon: <HomeIcon />, labelKey: 'navigation.home' },
+    { id: 'explorer', icon: <ExplorerIcon />, labelKey: 'navigation.explorer' },
     { id: 'history', icon: <HistoryIcon />, labelKey: 'navigation.history' },
     { id: 'folders', icon: <FolderIcon />, labelKey: 'navigation.folders' },
     { id: 'series', icon: <SeriesIcon />, labelKey: 'navigation.series' },
@@ -73,8 +73,10 @@ const navItems: NavItem[] = [
 
 export function Sidebar() {
     const { t } = useTranslation();
-    const { sidebarCollapsed, toggleSidebar } = useSettingsStore();
+    const { sidebarCollapsed, toggleSidebar, enabledMenuItems } = useSettingsStore();
     const { currentPage, navigate } = useNavigationStore();
+
+    const visibleItems = navItems.filter(item => enabledMenuItems?.[item.id] !== false);
 
     const sidebarVariants = {
         expanded: {
@@ -99,7 +101,7 @@ export function Sidebar() {
         >
             {/* Navigation Items */}
             <nav className="flex-1 py-4 px-3 space-y-1">
-                {navItems.map((item) => (
+                {visibleItems.map((item) => (
                     <NavButton
                         key={item.id}
                         item={item}

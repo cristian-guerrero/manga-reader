@@ -40,12 +40,19 @@ const BookIcon = () => (
     </svg>
 );
 
+const PlayIcon = () => (
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
+        <polygon points="5 3 19 12 5 21 5 3" />
+    </svg>
+);
+
 export function SeriesPage() {
     const { t } = useTranslation();
     const { navigate } = useNavigationStore();
     const [series, setSeries] = useState<SeriesEntry[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [thumbnails, setThumbnails] = useState<Record<string, string>>({});
+    const [history, setHistory] = useState<any[]>([]);
 
     useEffect(() => {
         let isMounted = true;
@@ -56,10 +63,19 @@ export function SeriesPage() {
             if (!isMounted) return;
 
             loadSeries();
+            loadHistory();
 
             unsubscribe = EventsOn('series_updated', () => {
                 if (isMounted) loadSeries();
             });
+
+            const historyUnsubscribe = EventsOn('history_updated', () => {
+                if (isMounted) loadHistory();
+            });
+
+            return () => {
+                if (historyUnsubscribe) historyUnsubscribe();
+            };
         };
 
         init();
@@ -78,6 +94,16 @@ export function SeriesPage() {
         }
         console.warn('Wails bindings not ready after timeout');
         return false;
+    };
+
+    const loadHistory = async () => {
+        try {
+            // @ts-ignore
+            const data = await window.go?.main?.App?.GetHistory();
+            if (data) setHistory(data);
+        } catch (error) {
+            console.error('Failed to load history:', error);
+        }
     };
 
     const loadSeries = async (retryCount = 0) => {
@@ -143,6 +169,25 @@ export function SeriesPage() {
 
     const handleOpenSeries = (entry: SeriesEntry) => {
         navigate('series-details', { series: entry.path });
+    };
+
+    const handlePlaySeries = (entry: SeriesEntry, e: React.MouseEvent) => {
+        e.stopPropagation();
+
+        if (!entry.chapters || entry.chapters.length === 0) return;
+
+        // Find if any chapter is in history
+        const chapterPaths = entry.chapters.map(c => c.path);
+        const lastRead = history
+            .filter(h => chapterPaths.includes(h.folderPath))
+            .sort((a, b) => new Date(b.lastRead).getTime() - new Date(a.lastRead).getTime())[0];
+
+        if (lastRead) {
+            navigate('viewer', { folder: lastRead.folderPath });
+        } else {
+            // Play first chapter
+            navigate('viewer', { folder: entry.chapters[0].path });
+        }
     };
 
     const handleRemoveSeries = async (entry: SeriesEntry, e: React.MouseEvent) => {
@@ -324,17 +369,23 @@ export function SeriesPage() {
                                         </div>
                                     )}
 
-                                    {/* Overlay on hover */}
+                                    {/* Overlay on hover - Play Button */}
                                     <div
-                                        className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center"
-                                        style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+                                        className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center p-4 bg-black/40"
                                     >
-                                        <span
-                                            className="text-lg font-semibold"
-                                            style={{ color: 'white' }}
+                                        <motion.button
+                                            onClick={(e) => handlePlaySeries(item, e)}
+                                            className="w-16 h-16 rounded-full flex items-center justify-center text-white shadow-2xl backdrop-blur-md"
+                                            style={{ backgroundColor: 'var(--color-accent)' }}
+                                            whileHover={{ scale: 1.1, backgroundColor: 'var(--color-accent-hover)' }}
+                                            whileTap={{ scale: 0.9 }}
                                         >
+                                            <PlayIcon />
+                                        </motion.button>
+
+                                        <div className="absolute bottom-4 text-white font-medium text-sm">
                                             {t('series.openSeries')}
-                                        </span>
+                                        </div>
                                     </div>
 
                                     {/* Remove button */}

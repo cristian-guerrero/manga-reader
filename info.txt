@@ -105,3 +105,5 @@ caracteristicas adicionales 6:
 - vamos a modularizar el codigo de la app para que al agregar nuevas funcionalidades no se quiebre el codigo (existente) 
     se puede tener modulos compartidos, (ejemplo de modulos, folders, series, history, etc)
 
+optimizaciones:
+- validar como se estan cargando las imagenes en el visor 

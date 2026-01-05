@@ -19,12 +19,16 @@ interface LateralViewerProps {
     }>;
     onPageChange?: (index: number) => void;
     initialIndex?: number;
+    showControls?: boolean;
+    hasChapterButtons?: boolean;
 }
 
 export function LateralViewer({
     images,
     onPageChange,
     initialIndex = 0,
+    showControls = false,
+    hasChapterButtons = false,
 }: LateralViewerProps) {
     const [loadedImages, setLoadedImages] = useState<Record<number, string>>({});
     const [direction, setDirection] = useState(0); // -1 for prev, 1 for next
@@ -234,11 +238,14 @@ export function LateralViewer({
 
             {/* Page indicator */}
             <motion.div
-                className="absolute bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 rounded-full text-sm font-medium"
+                className="absolute left-1/2 -translate-x-1/2 px-4 py-2 rounded-full text-sm font-medium shadow-lg z-[60]"
                 style={{
-                    backgroundColor: 'var(--color-surface-overlay)',
-                    color: 'var(--color-text-primary)',
-                    border: '1px solid var(--color-border)',
+                    bottom: (showControls && hasChapterButtons) ? '6.5rem' : '2rem',
+                    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                    backdropFilter: 'blur(12px)',
+                    color: 'white',
+                    border: '1px solid rgba(255, 255, 255, 0.2)',
+                    transition: 'bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
                 }}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}

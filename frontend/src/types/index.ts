@@ -104,6 +104,8 @@ export interface Settings {
     processDroppedFolders: boolean;
     /** Last visited page (for startup restore) */
     lastPage: string;
+    /** Enabled menu items */
+    enabledMenuItems: Record<string, boolean>;
 }
 
 
@@ -127,6 +129,14 @@ export const DEFAULT_SETTINGS: Settings = {
     minImageSize: 0,
     processDroppedFolders: true,
     lastPage: 'home',
+    enabledMenuItems: {
+        'home': true,
+        'history': true,
+        'folders': true,
+        'series': true,
+        'explorer': true,
+        'settings': true
+    },
 };
 
 
@@ -181,6 +191,7 @@ export type PageType =
     | 'series'
     | 'series-details'
     | 'thumbnails'
+    | 'explorer'
     | 'settings';
 
 export interface NavigationState {

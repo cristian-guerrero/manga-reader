@@ -63,6 +63,13 @@ const ChevronRightIcon = () => (
     </svg>
 );
 
+const SkipBackIcon = () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M12 19V5M5 12l7-7 7 7" />
+        <line x1="5" y1="2" x2="19" y2="2" />
+    </svg>
+);
+
 interface ViewerPageProps {
     folderPath?: string;
 }
@@ -88,6 +95,7 @@ export function ViewerPage({ folderPath }: ViewerPageProps) {
     // Local state for resume position - avoids timing issues with store
     const [resumeIndex, setResumeIndex] = useState(0);
     const [resumeScrollPos, setResumeScrollPos] = useState(0);
+    const [resetKey, setResetKey] = useState(0);
     // Session flag state that can be updated during component reuse
     const [isNoHistorySession, setIsNoHistorySession] = useState(useNavigationStore.getState().params.noHistory === 'true');
     // Chapter navigation state for series
@@ -274,6 +282,38 @@ export function ViewerPage({ folderPath }: ViewerPageProps) {
         }
     }, [chapterNav, navigate, saveProgress]);
 
+    const handleGoToStart = useCallback(async () => {
+        setResumeIndex(0);
+        setResumeScrollPos(0);
+        setResetKey(prev => prev + 1);
+
+        // Force store update to trigger re-renders in children
+        useViewerStore.setState({
+            currentIndex: 0,
+            scrollPosition: 0
+        });
+        // Save progress at start
+        if (currentFolder && !isNoHistorySession) {
+            try {
+                // @ts-ignore
+                await window.go?.main?.App?.AddHistory({
+                    id: '',
+                    folderPath: currentFolder.path,
+                    folderName: currentFolder.name,
+                    lastImage: images[0]?.name || '',
+                    lastImageIndex: 0,
+                    scrollPosition: 0,
+                    totalImages: images.length,
+                    lastRead: new Date().toISOString(),
+                });
+            } catch (error) {
+                console.error('Failed to reset progress in history:', error);
+            }
+        }
+    }, [currentFolder, images, isNoHistorySession]);
+
+    const hasChapterButtons = !!(chapterNav && (chapterNav.prevChapter || chapterNav.nextChapter));
+
     if (isLoading) {
         return (
             <div
@@ -336,33 +376,37 @@ export function ViewerPage({ folderPath }: ViewerPageProps) {
             <AnimatePresence mode="wait">
                 {mode === 'vertical' ? (
                     <motion.div
-                        key={`vertical-${currentFolder.path}`}
+                        key={`vertical-${currentFolder.path}-${resetKey}`}
                         className="h-full w-full"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                     >
                         <VerticalViewer
-                            key={`${currentFolder.path}-${resumeIndex}`}
+                            key={`${currentFolder.path}-${resumeIndex}-${resetKey}`}
                             images={images}
                             onScrollPositionChange={saveProgress}
                             initialIndex={resumeIndex}
                             initialScrollPosition={resumeScrollPos}
+                            showControls={showControls}
+                            hasChapterButtons={hasChapterButtons}
                         />
                     </motion.div>
                 ) : (
                     <motion.div
-                        key={`lateral-${currentFolder.path}`}
+                        key={`lateral-${currentFolder.path}-${resetKey}`}
                         className="h-full w-full"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                     >
                         <LateralViewer
-                            key={`${currentFolder.path}-${resumeIndex}`}
+                            key={`${currentFolder.path}-${resumeIndex}-${resetKey}`}
                             images={images}
                             onPageChange={saveProgress}
                             initialIndex={resumeIndex}
+                            showControls={showControls}
+                            hasChapterButtons={hasChapterButtons}
                         />
                     </motion.div>
                 )}
@@ -411,6 +455,17 @@ export function ViewerPage({ folderPath }: ViewerPageProps) {
 
                         {/* Right side */}
                         <div className="flex items-center gap-2">
+                            {/* Go to Start */}
+                            <motion.button
+                                onClick={handleGoToStart}
+                                className="btn-icon btn-ghost"
+                                whileHover={{ scale: 1.1 }}
+                                whileTap={{ scale: 0.9 }}
+                                title={t('viewer.goToStart') || 'Go to Start'}
+                            >
+                                <SkipBackIcon />
+                            </motion.button>
+
                             {/* Width slider (vertical mode only) */}
                             {mode === 'vertical' && (
                                 <div className="relative">
