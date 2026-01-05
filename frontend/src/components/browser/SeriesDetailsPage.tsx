@@ -3,7 +3,6 @@
  */
 
 import { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { useNavigationStore } from '../../stores/navigationStore';
 import { ChapterInfo, SeriesEntry } from '../../types';
@@ -84,31 +83,16 @@ export function SeriesDetailsPage({ seriesPath }: SeriesDetailsPageProps) {
         navigate('viewer', { folder: path });
     };
 
-    // Animation variants
-    const containerVariants = {
-        hidden: { opacity: 0 },
-        visible: {
-            opacity: 1,
-            transition: { staggerChildren: 0.05 },
-        },
-    };
-
-    const itemVariants = {
-        hidden: { opacity: 0, x: -20 },
-        visible: { opacity: 1, x: 0 },
-    };
 
     if (isLoading) {
         return (
             <div className="flex items-center justify-center h-full">
-                <motion.div
-                    className="w-12 h-12 border-4 rounded-full"
+                <div
+                    className="w-12 h-12 border-4 rounded-full animate-spin"
                     style={{
                         borderColor: 'var(--color-accent)',
                         borderTopColor: 'transparent',
                     }}
-                    animate={{ rotate: 360 }}
-                    transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
                 />
             </div>
         );
@@ -131,15 +115,13 @@ export function SeriesDetailsPage({ seriesPath }: SeriesDetailsPageProps) {
         <div className="h-full overflow-auto p-6" style={{ backgroundColor: 'var(--color-surface-primary)' }}>
             {/* Header */}
             <div className="flex items-center gap-4 mb-8">
-                <motion.button
+                <button
                     onClick={goBack}
-                    className="p-2 rounded-lg transition-colors hover:bg-white/5"
+                    className="p-2 rounded-lg transition-all hover:bg-white/5 hover:scale-110 active:scale-90"
                     style={{ color: 'var(--color-text-secondary)' }}
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
                 >
                     <ChevronLeftIcon />
-                </motion.button>
+                </button>
                 <div>
                     <h1 className="text-2xl font-bold" style={{ color: 'var(--color-text-primary)' }}>
                         {series.name}
@@ -151,18 +133,14 @@ export function SeriesDetailsPage({ seriesPath }: SeriesDetailsPageProps) {
             </div>
 
             {/* Chapters Grid */}
-            <motion.div
-                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6"
-                variants={containerVariants}
-                initial="hidden"
-                animate="visible"
+            <div
+                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6 animate-fade-in"
             >
                 {series.chapters.map((chapter: ChapterInfo) => (
-                    <motion.div
+                    <div
                         key={chapter.path}
-                        variants={itemVariants}
                         onClick={() => handleOpenChapter(chapter.path)}
-                        className="group flex flex-col cursor-pointer"
+                        className="group flex flex-col cursor-pointer animate-slide-in-right"
                     >
                         <div
                             className="aspect-[3/4] rounded-xl overflow-hidden mb-3 relative shadow-lg"
@@ -197,9 +175,9 @@ export function SeriesDetailsPage({ seriesPath }: SeriesDetailsPageProps) {
                         <p className="text-xs opacity-60" style={{ color: 'var(--color-text-muted)' }}>
                             {chapter.imageCount} pages
                         </p>
-                    </motion.div>
+                    </div>
                 ))}
-            </motion.div>
+            </div>
         </div>
     );
 }

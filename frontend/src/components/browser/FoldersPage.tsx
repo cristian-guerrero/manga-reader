@@ -3,7 +3,6 @@
  */
 
 import { useEffect, useState, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { useNavigationStore } from '../../stores/navigationStore';
 import { EventsOn, EventsOff } from '../../../wailsjs/runtime';
@@ -205,19 +204,6 @@ export function FoldersPage() {
         }
     };
 
-    // Animation variants
-    const containerVariants = {
-        hidden: { opacity: 0 },
-        visible: {
-            opacity: 1,
-            transition: { staggerChildren: 0.05 },
-        },
-    };
-
-    const itemVariants = {
-        hidden: { opacity: 0, y: 20 },
-        visible: { opacity: 1, y: 0 },
-    };
 
     return (
         <div
@@ -234,59 +220,49 @@ export function FoldersPage() {
                 </h1>
                 <div className="flex items-center gap-2">
                     {folders.length > 0 && (
-                        <motion.button
+                        <button
                             onClick={handleClearAll}
-                            className="btn-ghost text-red-500 flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-red-500/10 transition-colors"
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
+                            className="btn-ghost text-red-500 flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-red-500/10 transition-transform hover:scale-105 active:scale-95"
                         >
                             <TrashIcon />
                             {t('folders.clearAll')}
-                        </motion.button>
+                        </button>
                     )}
-                    <motion.button
+                    <button
                         onClick={handleSelectFolder}
-                        className="btn-primary flex items-center gap-2"
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
+                        className="btn-primary flex items-center gap-2 transition-transform hover:scale-105 active:scale-95"
                     >
                         <PlusIcon />
                         {t('folders.addFolder')}
-                    </motion.button>
+                    </button>
                 </div>
             </div>
 
             {/* Folders grid */}
             {isLoading ? (
                 <div className="flex items-center justify-center py-20">
-                    <motion.div
-                        className="w-12 h-12 border-4 rounded-full"
+                    <div
+                        className="w-12 h-12 border-4 rounded-full animate-spin"
                         style={{
                             borderColor: 'var(--color-accent)',
                             borderTopColor: 'transparent',
                         }}
-                        animate={{ rotate: 360 }}
-                        transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
                     />
                 </div>
             ) : folders.length === 0 ? (
-                <motion.div
-                    className="flex flex-col items-center justify-center py-20 rounded-2xl"
+                <div
+                    className="flex flex-col items-center justify-center py-20 rounded-2xl animate-scale-in"
                     style={{
                         backgroundColor: 'var(--color-surface-secondary)',
                         border: '2px dashed var(--color-border)',
                     }}
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
                 >
-                    <motion.div
-                        className="mb-4"
+                    <div
+                        className="mb-4 animate-bounce"
                         style={{ color: 'var(--color-text-muted)' }}
-                        animate={{ y: [0, -10, 0] }}
-                        transition={{ duration: 2, repeat: Infinity }}
                     >
                         <FolderIcon />
-                    </motion.div>
+                    </div>
                     <p
                         className="text-lg font-medium mb-2"
                         style={{ color: 'var(--color-text-secondary)' }}
@@ -299,128 +275,114 @@ export function FoldersPage() {
                     >
                         {t('folders.dragDrop')}
                     </p>
-                    <motion.button
+                    <button
                         onClick={handleSelectFolder}
-                        className="btn-secondary"
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
+                        className="btn-secondary transition-transform hover:scale-105 active:scale-95"
                     >
                         {t('folders.selectFolder')}
-                    </motion.button>
-                </motion.div>
+                    </button>
+                </div>
             ) : (
-                <motion.div
-                    className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 0.3 }}
+                <div
+                    className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 animate-fade-in"
                 >
-                    <AnimatePresence>
-                        {folders.map((folder) => (
-                            <motion.div
-                                key={folder.path}
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, scale: 0.95 }}
-                                layout
-                                onClick={() => handleOpenFolder(folder)}
-                                className="group relative rounded-xl overflow-hidden cursor-pointer hover-lift shadow-sm"
-                                style={{
-                                    backgroundColor: 'var(--color-surface-secondary)',
-                                    border: '1px solid var(--color-border)',
-                                }}
-                                whileHover={{ borderColor: 'var(--color-accent)' }}
+                    {folders.map((folder) => (
+                        <div
+                            key={folder.path}
+                            onClick={() => handleOpenFolder(folder)}
+                            className="group relative rounded-xl overflow-hidden cursor-pointer hover-lift shadow-sm hover:border-accent transition-all animate-slide-up"
+                            style={{
+                                backgroundColor: 'var(--color-surface-secondary)',
+                                border: '1px solid var(--color-border)',
+                            }}
+                        >
+                            {/* Cover image */}
+                            <div
+                                className="aspect-[3/4] relative overflow-hidden"
+                                style={{ backgroundColor: 'var(--color-surface-tertiary)' }}
                             >
-                                {/* Cover image */}
-                                <div
-                                    className="aspect-[3/4] relative overflow-hidden"
-                                    style={{ backgroundColor: 'var(--color-surface-tertiary)' }}
-                                >
-                                    {thumbnails[folder.path] ? (
-                                        <img
-                                            src={thumbnails[folder.path]}
-                                            alt={folder.name}
-                                            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                                        />
-                                    ) : (
-                                        <div className="flex items-center justify-center h-full">
-                                            <motion.div
-                                                style={{ color: 'var(--color-text-muted)' }}
-                                                animate={{ scale: [1, 1.1, 1] }}
-                                                transition={{ duration: 2, repeat: Infinity }}
-                                            >
-                                                <FolderIcon />
-                                            </motion.div>
-                                        </div>
-                                    )}
-
-                                    {/* Archive Badge */}
-                                    {folder.isTemporary && (
+                                {thumbnails[folder.path] ? (
+                                    <img
+                                        src={thumbnails[folder.path]}
+                                        alt={folder.name}
+                                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                                    />
+                                ) : (
+                                    <div className="flex items-center justify-center h-full">
                                         <div
-                                            className="absolute top-2 left-2 px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider z-10 shadow-lg border border-white/10"
-                                            style={{
-                                                backgroundColor: 'rgba(56, 189, 248, 0.9)', // Sky 400
-                                                color: 'white',
-                                                backdropFilter: 'blur(4px)'
-                                            }}
+                                            className="animate-pulse"
+                                            style={{ color: 'var(--color-text-muted)' }}
                                         >
-                                            {t('common.archive') || 'Archive'}
+                                            <FolderIcon />
                                         </div>
-                                    )}
-
-                                    {/* Overlay on hover */}
-                                    <div
-                                        className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center"
-                                        style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
-                                    >
-                                        <span
-                                            className="text-lg font-semibold"
-                                            style={{ color: 'white' }}
-                                        >
-                                            {t('folders.openFolder')}
-                                        </span>
                                     </div>
+                                )}
 
-                                    {/* Remove button */}
-                                    <motion.button
-                                        onClick={(e) => handleRemoveFolder(folder, e)}
-                                        className="absolute top-2 right-2 p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                {/* Archive Badge */}
+                                {folder.isTemporary && (
+                                    <div
+                                        className="absolute top-2 left-2 px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider z-10 shadow-lg border border-white/10"
                                         style={{
-                                            backgroundColor: 'rgba(239, 68, 68, 0.9)',
+                                            backgroundColor: 'rgba(56, 189, 248, 0.9)', // Sky 400
                                             color: 'white',
+                                            backdropFilter: 'blur(4px)'
                                         }}
-                                        whileHover={{ scale: 1.1 }}
-                                        whileTap={{ scale: 0.9 }}
-                                        title={t('folders.removeFolder')}
                                     >
-                                        <TrashIcon />
-                                    </motion.button>
+                                        {t('common.archive') || 'Archive'}
+                                    </div>
+                                )}
+
+                                {/* Overlay on hover */}
+                                <div
+                                    className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center"
+                                    style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+                                >
+                                    <span
+                                        className="text-lg font-semibold"
+                                        style={{ color: 'white' }}
+                                    >
+                                        {t('folders.openFolder')}
+                                    </span>
                                 </div>
 
-                                {/* Info */}
-                                <div className="p-4">
-                                    <h3
-                                        className="font-semibold truncate mb-1"
-                                        style={{ color: 'var(--color-text-primary)' }}
-                                    >
-                                        {folder.name}
-                                    </h3>
-                                    <div
-                                        className="flex items-center gap-1 text-sm"
-                                        style={{ color: 'var(--color-text-muted)' }}
-                                    >
-                                        <ImageIcon />
-                                        <span>
-                                            {folder.imageCount} {t('folders.images')}
-                                        </span>
-                                    </div>
+                                {/* Remove button */}
+                                <button
+                                    onClick={(e) => handleRemoveFolder(folder, e)}
+                                    className="absolute top-2 right-2 p-2 rounded-full opacity-0 group-hover:opacity-100 transition-all hover:scale-110 active:scale-90"
+                                    style={{
+                                        backgroundColor: 'rgba(239, 68, 68, 0.9)',
+                                        color: 'white',
+                                    }}
+                                    title={t('folders.removeFolder')}
+                                >
+                                    <TrashIcon />
+                                </button>
+                            </div>
+
+                            {/* Info */}
+                            <div className="p-4">
+                                <h3
+                                    className="font-semibold truncate mb-1"
+                                    style={{ color: 'var(--color-text-primary)' }}
+                                >
+                                    {folder.name}
+                                </h3>
+                                <div
+                                    className="flex items-center gap-1 text-sm"
+                                    style={{ color: 'var(--color-text-muted)' }}
+                                >
+                                    <ImageIcon />
+                                    <span>
+                                        {folder.imageCount} {t('folders.images')}
+                                    </span>
                                 </div>
-                            </motion.div>
-                        ))}
-                    </AnimatePresence>
-                </motion.div>
-            )}
-        </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )
+            }
+        </div >
     );
 }
 

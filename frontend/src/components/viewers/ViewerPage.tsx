@@ -2,8 +2,7 @@
  * ViewerPage - Main viewer page that manages vertical and lateral modes
  */
 
-import { useEffect, useState, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { VerticalViewer } from './VerticalViewer';
 import { LateralViewer } from './LateralViewer';
@@ -96,6 +95,7 @@ export function ViewerPage({ folderPath }: ViewerPageProps) {
     const [resumeIndex, setResumeIndex] = useState(0);
     const [resumeScrollPos, setResumeScrollPos] = useState(0);
     const [resetKey, setResetKey] = useState(0);
+    const controlsTimeoutRef = useRef<any>(null);
     // Session flag state that can be updated during component reuse
     const [isNoHistorySession, setIsNoHistorySession] = useState(useNavigationStore.getState().params.noHistory === 'true');
     // Chapter navigation state for series
@@ -437,6 +437,24 @@ export function ViewerPage({ folderPath }: ViewerPageProps) {
 
                 {/* Right side */}
                 <div className="flex items-center gap-2">
+                    {/* Thumbnails */}
+                    <button
+                        onClick={() => navigate('thumbnails', { folder: currentFolder.path })}
+                        className="btn-icon btn-ghost hover:scale-110 active:scale-90 transition-transform"
+                        title={t('viewer.thumbnails') || 'Thumbnails'}
+                    >
+                        <GridIcon />
+                    </button>
+
+                    {/* Mode Toggle */}
+                    <button
+                        onClick={toggleMode}
+                        className="btn-icon btn-ghost hover:scale-110 active:scale-90 transition-transform"
+                        title={mode === 'vertical' ? t('viewer.lateral') : t('viewer.vertical')}
+                    >
+                        {mode === 'vertical' ? <LateralIcon /> : <VerticalIcon />}
+                    </button>
+
                     {/* Go to Start */}
                     <button
                         onClick={handleGoToStart}
@@ -475,78 +493,71 @@ export function ViewerPage({ folderPath }: ViewerPageProps) {
                                     />
                                 </div>
                             )}
-                        </motion.div>
+                        </div>
                     )}
-                </AnimatePresence>
-
-                {/* Bottom chapter navigation bar */}
-                <AnimatePresence>
-                    {showControls && chapterNav && (chapterNav.prevChapter || chapterNav.nextChapter) && (
-                        <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: 20 }}
-                            className="absolute bottom-0 left-0 right-0 flex items-center justify-between px-4 py-3 z-50"
-                            style={{
-                                background: 'linear-gradient(to top, var(--color-surface-overlay), transparent)',
-                            }}
-                        >
-                            {/* Previous chapter */}
-                            <motion.button
-                                onClick={handlePrevChapter}
-                                disabled={!chapterNav.prevChapter}
-                                className="flex items-center gap-2 px-4 py-2 rounded-lg transition-all"
-                                style={{
-                                    backgroundColor: chapterNav.prevChapter ? 'var(--color-surface-elevated)' : 'transparent',
-                                    color: chapterNav.prevChapter ? 'var(--color-text-primary)' : 'var(--color-text-tertiary)',
-                                    border: '1px solid var(--color-border)',
-                                    opacity: chapterNav.prevChapter ? 1 : 0.4,
-                                    cursor: chapterNav.prevChapter ? 'pointer' : 'not-allowed',
-                                }}
-                                whileHover={chapterNav.prevChapter ? { scale: 1.02, backgroundColor: 'var(--color-accent)' } : {}}
-                                whileTap={chapterNav.prevChapter ? { scale: 0.98 } : {}}
-                            >
-                                <ChevronLeftIcon />
-                                <div className="flex flex-col items-start">
-                                    <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-                                        {t('viewer.prevChapter')}
-                                    </span>
-                                    <span className="text-sm font-medium truncate max-w-[150px]">
-                                        {chapterNav.prevChapter?.name || '—'}
-                                    </span>
-                                </div>
-                            </motion.button>
-
-                            {/* Next chapter */}
-                            <motion.button
-                                onClick={handleNextChapter}
-                                disabled={!chapterNav.nextChapter}
-                                className="flex items-center gap-2 px-4 py-2 rounded-lg transition-all"
-                                style={{
-                                    backgroundColor: chapterNav.nextChapter ? 'var(--color-surface-elevated)' : 'transparent',
-                                    color: chapterNav.nextChapter ? 'var(--color-text-primary)' : 'var(--color-text-tertiary)',
-                                    border: '1px solid var(--color-border)',
-                                    opacity: chapterNav.nextChapter ? 1 : 0.4,
-                                    cursor: chapterNav.nextChapter ? 'pointer' : 'not-allowed',
-                                }}
-                                whileHover={chapterNav.nextChapter ? { scale: 1.02, backgroundColor: 'var(--color-accent)' } : {}}
-                                whileTap={chapterNav.nextChapter ? { scale: 0.98 } : {}}
-                            >
-                                <div className="flex flex-col items-end">
-                                    <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-                                        {t('viewer.nextChapter')}
-                                    </span>
-                                    <span className="text-sm font-medium truncate max-w-[150px]">
-                                        {chapterNav.nextChapter?.name || '—'}
-                                    </span>
-                                </div>
-                                <ChevronRightIcon />
-                            </motion.button>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
+                </div>
             </div>
-            );
+
+            {/* Bottom chapter navigation bar */}
+            {chapterNav && (chapterNav.prevChapter || chapterNav.nextChapter) && (
+                <div
+                    className={`absolute bottom-0 left-0 right-0 flex items-center justify-between px-4 py-3 z-50 transition-all duration-300 ${showControls ? 'translate-y-0 opacity-100' : 'translate-y-20 opacity-0 pointer-events-none'
+                        }`}
+                    style={{
+                        background: 'linear-gradient(to top, var(--color-surface-overlay), transparent)',
+                    }}
+                >
+                    {/* Previous chapter */}
+                    <button
+                        onClick={handlePrevChapter}
+                        disabled={!chapterNav.prevChapter}
+                        className="flex items-center gap-2 px-4 py-2 rounded-lg transition-all hover:scale-105 active:scale-95"
+                        style={{
+                            backgroundColor: chapterNav.prevChapter ? 'var(--color-surface-elevated)' : 'transparent',
+                            color: chapterNav.prevChapter ? 'var(--color-text-primary)' : 'var(--color-text-tertiary)',
+                            border: '1px solid var(--color-border)',
+                            opacity: chapterNav.prevChapter ? 1 : 0.4,
+                            cursor: chapterNav.prevChapter ? 'pointer' : 'not-allowed',
+                        }}
+                    >
+                        <ChevronLeftIcon />
+                        <div className="flex flex-col items-start">
+                            <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+                                {t('viewer.prevChapter')}
+                            </span>
+                            <span className="text-sm font-medium truncate max-w-[150px]">
+                                {chapterNav.prevChapter?.name || '—'}
+                            </span>
+                        </div>
+                    </button>
+
+                    {/* Next chapter */}
+                    <button
+                        onClick={handleNextChapter}
+                        disabled={!chapterNav.nextChapter}
+                        className="flex items-center gap-2 px-4 py-2 rounded-lg transition-all hover:scale-105 active:scale-95"
+                        style={{
+                            backgroundColor: chapterNav.nextChapter ? 'var(--color-surface-elevated)' : 'transparent',
+                            color: chapterNav.nextChapter ? 'var(--color-text-primary)' : 'var(--color-text-tertiary)',
+                            border: '1px solid var(--color-border)',
+                            opacity: chapterNav.nextChapter ? 1 : 0.4,
+                            cursor: chapterNav.nextChapter ? 'pointer' : 'not-allowed',
+                        }}
+                    >
+                        <div className="flex flex-col items-end">
+                            <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+                                {t('viewer.nextChapter')}
+                            </span>
+                            <span className="text-sm font-medium truncate max-w-[150px]">
+                                {chapterNav.nextChapter?.name || '—'}
+                            </span>
+                        </div>
+                        <ChevronRightIcon />
+                    </button>
+                </div>
+            )}
+        </div>
+    );
 }
 
-            export default ViewerPage;
+export default ViewerPage;

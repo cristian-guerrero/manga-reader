@@ -2,7 +2,6 @@
  * Toast - Notification toast component
  */
 
-import { motion, AnimatePresence } from 'framer-motion';
 import { useEffect, useState, createContext, useContext, useCallback } from 'react';
 
 // Icons
@@ -87,11 +86,9 @@ interface ToastContainerProps {
 function ToastContainer({ toasts, onRemove }: ToastContainerProps) {
     return (
         <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2">
-            <AnimatePresence>
-                {toasts.map((toast) => (
-                    <ToastItem key={toast.id} toast={toast} onRemove={onRemove} />
-                ))}
-            </AnimatePresence>
+            {toasts.map((toast) => (
+                <ToastItem key={toast.id} toast={toast} onRemove={onRemove} />
+            ))}
         </div>
     );
 }
@@ -146,12 +143,8 @@ function ToastItem({ toast, onRemove }: ToastItemProps) {
     const colors = getColors();
 
     return (
-        <motion.div
-            initial={{ opacity: 0, x: 100, scale: 0.9 }}
-            animate={{ opacity: 1, x: 0, scale: 1 }}
-            exit={{ opacity: 0, x: 100, scale: 0.9 }}
-            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="flex items-center gap-3 px-4 py-3 rounded-lg min-w-64 max-w-md"
+        <div
+            className="flex items-center gap-3 px-4 py-3 rounded-lg min-w-64 max-w-md animate-slide-in-right"
             style={{
                 backgroundColor: colors.bg,
                 border: `1px solid ${colors.border}`,
@@ -165,16 +158,14 @@ function ToastItem({ toast, onRemove }: ToastItemProps) {
             >
                 {toast.message}
             </p>
-            <motion.button
+            <button
                 onClick={() => onRemove(toast.id)}
-                className="p-1 rounded hover:bg-black/10 dark:hover:bg-white/10"
+                className="p-1 rounded hover:bg-black/10 dark:hover:bg-white/10 transition-transform hover:scale-110 active:scale-90"
                 style={{ color: 'var(--color-text-muted)' }}
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
             >
                 <CloseIcon />
-            </motion.button>
-        </motion.div>
+            </button>
+        </div>
     );
 }
 

@@ -12,6 +12,7 @@ import (
 	"manga-visor/internal/thumbnails"
 	"net/url"
 	"path/filepath"
+	"sort"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -416,9 +417,34 @@ func (a *App) GetImages(path string) ([]struct {
 	// Check Custom Order
 	customOrder := a.orders.GetOrder(folderPath)
 	if customOrder != nil && len(customOrder) > 0 {
-		// ... sort logic ...
-		// (Simplified for brevity, assuming standard sort)
-		// I should probably move Order logic to a helper if I want to keep this clean.
+		// Create a map for fast lookup of custom index
+		orderMap := make(map[string]int)
+		for i, name := range customOrder {
+			orderMap[name] = i
+		}
+
+		// Sort the result slice based on custom orders
+		sort.Slice(result, func(i, j int) bool {
+			idxI, existsI := orderMap[result[i].Name]
+			idxJ, existsJ := orderMap[result[j].Name]
+
+			if existsI && existsJ {
+				return idxI < idxJ
+			}
+			if existsI {
+				return true
+			}
+			if existsJ {
+				return false
+			}
+			// If neither in custom order, keep original relative order (sort by name as fallback)
+			return result[i].Name < result[j].Name
+		})
+
+		// Update indices to match new order
+		for i := range result {
+			result[i].Index = i
+		}
 	}
 
 	return result, nil

@@ -2,7 +2,6 @@
  * SettingsPage - Application settings and preferences
  */
 
-import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { builtInThemes, applyTheme, getThemeById } from '../../themes';
@@ -63,46 +62,33 @@ export function SettingsPage() {
         }
     };
 
-    // Animation variants
-    const sectionVariants = {
-        hidden: { opacity: 0, y: 20 },
-        visible: { opacity: 1, y: 0 },
-    };
 
     return (
         <div
             className="h-full overflow-auto p-6"
             style={{ backgroundColor: 'var(--color-surface-primary)' }}
         >
-            <motion.div
-                className="max-w-2xl mx-auto space-y-8"
-                initial="hidden"
-                animate="visible"
-                variants={{
-                    visible: { transition: { staggerChildren: 0.1 } },
-                }}
-            >
+            <div className="max-w-2xl mx-auto space-y-8 animate-fade-in">
                 {/* Header */}
-                <motion.h1
-                    variants={sectionVariants}
+                <h1
                     className="text-2xl font-bold"
                     style={{ color: 'var(--color-text-primary)' }}
                 >
                     {t('settings.title')}
-                </motion.h1>
+                </h1>
 
                 {/* Appearance Section */}
-                <motion.section variants={sectionVariants}>
+                <section className="animate-slide-up" style={{ animationDelay: '0.1s' }}>
                     <SectionHeader title={t('settings.appearance')} />
 
                     {/* Theme */}
                     <SettingRow label={t('settings.theme')}>
                         <div className="flex flex-wrap gap-2">
                             {builtInThemes.map((themeOption) => (
-                                <motion.button
+                                <button
                                     key={themeOption.id}
                                     onClick={() => handleThemeChange(themeOption.id)}
-                                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${theme === themeOption.id ? 'ring-2 ring-offset-2' : ''
+                                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all hover:scale-105 active:scale-95 ${theme === themeOption.id ? 'ring-2 ring-offset-2' : ''
                                         }`}
                                     style={{
                                         backgroundColor: theme === themeOption.id
@@ -114,11 +100,9 @@ export function SettingsPage() {
                                         '--tw-ring-color': 'var(--color-accent)',
                                         '--tw-ring-offset-color': 'var(--color-surface-primary)',
                                     } as React.CSSProperties}
-                                    whileHover={{ scale: 1.02 }}
-                                    whileTap={{ scale: 0.98 }}
                                 >
                                     {t(`themes.${themeOption.id}`)}
-                                </motion.button>
+                                </button>
                             ))}
                         </div>
                     </SettingRow>
@@ -169,10 +153,10 @@ export function SettingsPage() {
                             })}
                         </div>
                     </SettingRow>
-                </motion.section>
+                </section>
 
                 {/* Viewer Section */}
-                <motion.section variants={sectionVariants}>
+                <section className="animate-slide-up" style={{ animationDelay: '0.2s' }}>
                     <SectionHeader title={t('settings.viewer')} />
 
                     {/* Default Mode */}
@@ -242,10 +226,10 @@ export function SettingsPage() {
                             />
                         </div>
                     </SettingRow>
-                </motion.section>
+                </section>
 
                 {/* Keyboard Section */}
-                <motion.section variants={sectionVariants}>
+                <section className="animate-slide-up" style={{ animationDelay: '0.3s' }}>
                     <SectionHeader title={t('settings.keyboard')} />
 
                     <SettingRow
@@ -263,10 +247,10 @@ export function SettingsPage() {
                             {panicKey}
                         </div>
                     </SettingRow>
-                </motion.section>
+                </section>
 
                 {/* Advanced Section */}
-                <motion.section variants={sectionVariants}>
+                <section className="animate-slide-up" style={{ animationDelay: '0.4s' }}>
                     <SectionHeader title={t('settings.advanced')} />
 
                     <SettingRow label={t('settings.preloadImages')}>
@@ -276,26 +260,28 @@ export function SettingsPage() {
                         />
                     </SettingRow>
 
-                    {preloadImages && (
-                        <SettingRow label={t('settings.preloadCount')}>
-                            <div className="flex items-center gap-4">
-                                <input
-                                    type="range"
-                                    min="1"
-                                    max="10"
-                                    value={preloadCount}
-                                    onChange={(e) => setPreloadCount(Number(e.target.value))}
-                                    className="flex-1 max-w-32"
-                                />
-                                <span
-                                    className="text-sm font-medium w-8 text-right"
-                                    style={{ color: 'var(--color-text-secondary)' }}
-                                >
-                                    {preloadCount}
-                                </span>
-                            </div>
-                        </SettingRow>
-                    )}
+                    {
+                        preloadImages && (
+                            <SettingRow label={t('settings.preloadCount')}>
+                                <div className="flex items-center gap-4">
+                                    <input
+                                        type="range"
+                                        min="1"
+                                        max="10"
+                                        value={preloadCount}
+                                        onChange={(e) => setPreloadCount(Number(e.target.value))}
+                                        className="flex-1 max-w-32"
+                                    />
+                                    <span
+                                        className="text-sm font-medium w-8 text-right"
+                                        style={{ color: 'var(--color-text-secondary)' }}
+                                    >
+                                        {preloadCount}
+                                    </span>
+                                </div>
+                            </SettingRow>
+                        )
+                    }
 
                     <SettingRow label={t('settings.showImageInfo')}>
                         <Toggle
@@ -340,28 +326,23 @@ export function SettingsPage() {
                             onChange={setProcessDroppedFolders}
                         />
                     </SettingRow>
-                </motion.section>
+                </section>
 
                 {/* Reset */}
-                <motion.section variants={sectionVariants}>
-                    <motion.button
+                <section className="animate-slide-up" style={{ animationDelay: '0.5s' }}>
+                    <button
                         onClick={handleReset}
-                        className="w-full py-3 rounded-lg text-sm font-medium transition-colors"
+                        className="w-full py-3 rounded-lg text-sm font-medium transition-all hover:scale-[1.01] active:scale-[0.99]"
                         style={{
                             backgroundColor: 'var(--color-surface-tertiary)',
                             color: '#ef4444',
                             border: '1px solid var(--color-border)',
                         }}
-                        whileHover={{
-                            backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                            borderColor: '#ef4444',
-                        }}
-                        whileTap={{ scale: 0.99 }}
                     >
                         {t('settings.resetSettings')}
-                    </motion.button>
-                </motion.section>
-            </motion.div>
+                    </button>
+                </section>
+            </div>
         </div>
     );
 }
@@ -425,20 +406,20 @@ function ModeButton({
     label: string;
 }) {
     return (
-        <motion.button
+        <button
             onClick={onClick}
-            className="px-4 py-2 rounded-lg text-sm font-medium transition-all"
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all hover:scale-105 active:scale-95 ${active ? 'ring-2 ring-offset-2' : ''}`}
             style={{
                 backgroundColor: active
                     ? 'var(--color-accent)'
                     : 'var(--color-surface-tertiary)',
                 color: active ? 'white' : 'var(--color-text-secondary)',
-            }}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
+                '--tw-ring-color': 'var(--color-accent)',
+                '--tw-ring-offset-color': 'var(--color-surface-primary)',
+            } as React.CSSProperties}
         >
             {label}
-        </motion.button>
+        </button>
     );
 }
 
@@ -453,29 +434,27 @@ function Toggle({
     disabled?: boolean;
 }) {
     return (
-        <motion.button
-            onClick={(e) => {
+        <button
+            onClick={(e: React.MouseEvent) => {
                 e.preventDefault();
                 e.stopPropagation();
                 if (!disabled) {
                     onChange(!checked);
                 }
             }}
-            className={`relative w-12 h-6 rounded-full transition-colors ${disabled ? 'opacity-50 cursor-default' : ''
+            className={`relative w-12 h-6 rounded-full transition-all active:scale-95 ${disabled ? 'opacity-50 cursor-default' : ''
                 }`}
             style={{
                 backgroundColor: checked
                     ? 'var(--color-accent)'
                     : 'var(--color-surface-tertiary)',
             }}
-            whileTap={disabled ? {} : { scale: 0.95 }}
         >
-            <motion.div
-                className="absolute top-1 w-4 h-4 rounded-full bg-white"
-                animate={{ left: checked ? '1.5rem' : '0.25rem' }}
-                transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+            <div
+                className="absolute top-1 w-4 h-4 rounded-full bg-white transition-all duration-300"
+                style={{ left: checked ? '1.5rem' : '0.25rem' }}
             />
-        </motion.button>
+        </button>
     );
 }
 

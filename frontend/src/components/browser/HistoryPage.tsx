@@ -3,7 +3,6 @@
  */
 
 import { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { useNavigationStore } from '../../stores/navigationStore';
 import { useSettingsStore } from '../../stores/settingsStore';
@@ -197,32 +196,28 @@ export function HistoryPage() {
                     {t('history.title')}
                 </h1>
                 {enableHistory && history.length > 0 && (
-                    <motion.button
+                    <button
                         onClick={handleClearAll}
-                        className="btn-ghost text-sm flex items-center gap-2"
+                        className="btn-ghost text-sm flex items-center gap-2 transition-transform hover:scale-105 active:scale-95"
                         style={{ color: '#ef4444' }}
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
                     >
                         <TrashIcon />
                         {t('history.clearHistory')}
-                    </motion.button>
+                    </button>
                 )}
             </div>
 
             {/* History list */}
             {!enableHistory ? (
-                <motion.div
-                    className="flex flex-col items-center justify-center py-20"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
+                <div
+                    className="flex flex-col items-center justify-center py-20 animate-fade-in"
                 >
-                    <motion.div
+                    <div
                         className="mb-4 text-4xl"
                         style={{ color: 'var(--color-text-muted)' }}
                     >
                         🚫
-                    </motion.div>
+                    </div>
                     <p
                         className="text-lg font-medium"
                         style={{ color: 'var(--color-text-secondary)' }}
@@ -235,165 +230,148 @@ export function HistoryPage() {
                     >
                         {t('history.disabledDesc')}
                     </p>
-                </motion.div>
+                </div>
             ) : isLoading ? (
                 <div className="flex items-center justify-center py-20">
-                    <motion.div
-                        className="w-12 h-12 border-4 rounded-full"
-                        style={{
-                            borderColor: 'var(--color-accent)',
-                            borderTopColor: 'transparent',
-                        }}
-                        animate={{ rotate: 360 }}
-                        transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-                    />
+                    <div className="flex items-center justify-center py-20">
+                        <div
+                            className="w-12 h-12 border-4 rounded-full animate-spin"
+                            style={{
+                                borderColor: 'var(--color-accent)',
+                                borderTopColor: 'transparent',
+                            }}
+                        />
+                    </div>
                 </div>
             ) : history.length === 0 ? (
-                <motion.div
-                    className="flex flex-col items-center justify-center py-20 rounded-2xl"
+                <div
+                    className="flex flex-col items-center justify-center py-20 rounded-2xl animate-scale-in"
                     style={{
                         backgroundColor: 'var(--color-surface-secondary)',
                         border: '1px solid var(--color-border)',
                     }}
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
                 >
-                    <motion.div
-                        className="mb-4"
+                    <div
+                        className="mb-4 animate-pulse"
                         style={{ color: 'var(--color-text-muted)' }}
-                        animate={{ rotate: [0, 10, -10, 0] }}
-                        transition={{ duration: 3, repeat: Infinity }}
                     >
                         <ClockIcon />
-                    </motion.div>
+                    </div>
                     <p
                         className="text-lg font-medium"
                         style={{ color: 'var(--color-text-secondary)' }}
                     >
                         {t('history.noHistory')}
                     </p>
-                </motion.div>
+                </div>
             ) : (
-                <motion.div
-                    className="space-y-3"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
+                <div
+                    className="space-y-3 animate-fade-in"
                 >
-                    <AnimatePresence>
-                        {history.map((entry, index) => (
-                            <motion.div
-                                key={entry.id}
-                                initial={{ opacity: 0, x: -20 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                exit={{ opacity: 0, x: 20, height: 0 }}
-                                transition={{ delay: index * 0.05 }}
-                                onClick={() => handleContinue(entry)}
-                                className="group flex items-center gap-4 p-4 rounded-xl cursor-pointer transition-all hover-lift"
-                                style={{
-                                    backgroundColor: 'var(--color-surface-secondary)',
-                                    border: '1px solid var(--color-border)',
-                                }}
-                                whileHover={{ borderColor: 'var(--color-accent)' }}
+                    {history.map((entry, index) => (
+                        <div
+                            key={entry.id}
+                            onClick={() => handleContinue(entry)}
+                            className="group flex items-center gap-4 p-4 rounded-xl cursor-pointer transition-all hover:border-accent hover-lift animate-slide-in-left"
+                            style={{
+                                backgroundColor: 'var(--color-surface-secondary)',
+                                border: '1px solid var(--color-border)',
+                                animationDelay: `${index * 0.05}s`
+                            }}
+                        >
+                            {/* Thumbnail */}
+                            <div
+                                className="relative w-20 h-28 rounded-lg overflow-hidden flex-shrink-0"
+                                style={{ backgroundColor: 'var(--color-surface-tertiary)' }}
                             >
-                                {/* Thumbnail */}
+                                {thumbnails[entry.id] ? (
+                                    <img
+                                        src={thumbnails[entry.id]}
+                                        alt={entry.folderName}
+                                        className="w-full h-full object-cover"
+                                    />
+                                ) : (
+                                    <div className="flex items-center justify-center h-full">
+                                        <ClockIcon />
+                                    </div>
+                                )}
+
+                                {/* Play overlay */}
                                 <div
-                                    className="relative w-20 h-28 rounded-lg overflow-hidden flex-shrink-0"
-                                    style={{ backgroundColor: 'var(--color-surface-tertiary)' }}
+                                    className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                    style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
                                 >
-                                    {thumbnails[entry.id] ? (
-                                        <img
-                                            src={thumbnails[entry.id]}
-                                            alt={entry.folderName}
-                                            className="w-full h-full object-cover"
-                                        />
-                                    ) : (
-                                        <div className="flex items-center justify-center h-full">
-                                            <ClockIcon />
-                                        </div>
-                                    )}
-
-                                    {/* Play overlay */}
                                     <div
-                                        className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                                        style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+                                        className="w-10 h-10 rounded-full flex items-center justify-center transition-transform hover:scale-110"
+                                        style={{ backgroundColor: 'var(--color-accent)' }}
                                     >
-                                        <motion.div
-                                            className="w-10 h-10 rounded-full flex items-center justify-center"
-                                            style={{ backgroundColor: 'var(--color-accent)' }}
-                                            whileHover={{ scale: 1.1 }}
-                                        >
-                                            <PlayIcon />
-                                        </motion.div>
+                                        <PlayIcon />
                                     </div>
                                 </div>
+                            </div>
 
-                                {/* Info */}
-                                <div className="flex-1 min-w-0">
-                                    <h3
-                                        className="font-semibold truncate mb-1"
-                                        style={{ color: 'var(--color-text-primary)' }}
+                            {/* Info */}
+                            <div className="flex-1 min-w-0">
+                                <h3
+                                    className="font-semibold truncate mb-1"
+                                    style={{ color: 'var(--color-text-primary)' }}
+                                >
+                                    {entry.folderName}
+                                </h3>
+
+                                <p
+                                    className="text-sm mb-2"
+                                    style={{ color: 'var(--color-text-muted)' }}
+                                >
+                                    {t('history.continueFrom')} {entry.lastImageIndex + 1} / {entry.totalImages}
+                                </p>
+
+                                {/* Progress bar */}
+                                <div className="flex items-center gap-2">
+                                    <div
+                                        className="flex-1 h-1.5 rounded-full overflow-hidden"
+                                        style={{ backgroundColor: 'var(--color-surface-tertiary)' }}
                                     >
-                                        {entry.folderName}
-                                    </h3>
-
-                                    <p
-                                        className="text-sm mb-2"
-                                        style={{ color: 'var(--color-text-muted)' }}
-                                    >
-                                        {t('history.continueFrom')} {entry.lastImageIndex + 1} / {entry.totalImages}
-                                    </p>
-
-                                    {/* Progress bar */}
-                                    <div className="flex items-center gap-2">
                                         <div
-                                            className="flex-1 h-1.5 rounded-full overflow-hidden"
-                                            style={{ backgroundColor: 'var(--color-surface-tertiary)' }}
-                                        >
-                                            <motion.div
-                                                className="h-full rounded-full"
-                                                style={{ backgroundColor: 'var(--color-accent)' }}
-                                                initial={{ width: 0 }}
-                                                animate={{ width: `${getProgress(entry)}%` }}
-                                                transition={{ duration: 0.5, delay: index * 0.1 }}
-                                            />
-                                        </div>
-                                        <span
-                                            className="text-xs font-medium"
-                                            style={{ color: 'var(--color-text-muted)' }}
-                                        >
-                                            {getProgress(entry)}%
-                                        </span>
+                                            className="h-full rounded-full transition-all duration-500"
+                                            style={{
+                                                backgroundColor: 'var(--color-accent)',
+                                                width: `${getProgress(entry)}%`
+                                            }}
+                                        />
                                     </div>
-                                </div>
-
-                                {/* Date and actions */}
-                                <div className="flex flex-col items-end gap-2">
                                     <span
-                                        className="text-xs"
+                                        className="text-xs font-medium"
                                         style={{ color: 'var(--color-text-muted)' }}
                                     >
-                                        {formatDate(entry.lastRead)}
+                                        {getProgress(entry)}%
                                     </span>
-
-                                    <motion.button
-                                        onClick={(e) => handleRemove(entry, e)}
-                                        className="p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
-                                        style={{
-                                            backgroundColor: 'var(--color-surface-tertiary)',
-                                            color: '#ef4444',
-                                        }}
-                                        whileHover={{
-                                            backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                                        }}
-                                        whileTap={{ scale: 0.9 }}
-                                    >
-                                        <TrashIcon />
-                                    </motion.button>
                                 </div>
-                            </motion.div>
-                        ))}
-                    </AnimatePresence>
-                </motion.div>
+                            </div>
+
+                            {/* Date and actions */}
+                            <div className="flex flex-col items-end gap-2">
+                                <span
+                                    className="text-xs"
+                                    style={{ color: 'var(--color-text-muted)' }}
+                                >
+                                    {formatDate(entry.lastRead)}
+                                </span>
+
+                                <button
+                                    onClick={(e) => handleRemove(entry, e)}
+                                    className="p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500/10 active:scale-90"
+                                    style={{
+                                        backgroundColor: 'var(--color-surface-tertiary)',
+                                        color: '#ef4444',
+                                    }}
+                                >
+                                    <TrashIcon />
+                                </button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
             )}
         </div>
     );
