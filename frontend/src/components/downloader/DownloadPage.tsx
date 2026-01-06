@@ -130,7 +130,8 @@ export const DownloadPage: React.FC = () => {
         const interval = setInterval(async () => {
             try {
                 const text = await navigator.clipboard.readText();
-                if (text && text !== lastClipboard && (text.includes('hitomi.la') || text.includes('manhwaweb.com') || text.includes('zonatmo.com') || text.includes('nhentai') || text.includes('mangadex'))) {
+                // Check if it's a valid URL format (starts with http) and contains known domains
+                if (text && text !== lastClipboard && text.startsWith('http') && (text.includes('hitomi.la') || text.includes('manhwaweb.com') || text.includes('zonatmo.com') || text.includes('nhentai') || text.includes('mangadex'))) {
                     lastClipboard = text;
 
                     // Hitomi Series Detection: Don't auto-start, just paste.
@@ -148,6 +149,7 @@ export const DownloadPage: React.FC = () => {
                         setUrl(text);
                         showToast(t('download.pastedFromClipboard'), 'info');
                     } else {
+                        setUrl(text);
                         showToast(t('download.pastedFromClipboard'), 'info');
                         handleStartDownload(text);
                     }

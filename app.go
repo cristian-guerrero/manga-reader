@@ -14,6 +14,7 @@ import (
 	"net/url"
 	"os/exec"
 	"path/filepath"
+	stdruntime "runtime"
 	"sort"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -562,7 +563,17 @@ func (a *App) FetchMangaInfo(url string) (*downloader.SiteInfo, error) {
 
 // OpenInFileManager opens a path in the system's file manager
 func (a *App) OpenInFileManager(path string) error {
-	// Use xdg-open on Linux
-	cmd := exec.Command("xdg-open", path)
+	var cmd *exec.Cmd
+	switch stdruntime.GOOS {
+	case "windows":
+		// explorer on Windows
+		cmd = exec.Command("explorer", path)
+	case "darwin":
+		// open on macOS
+		cmd = exec.Command("open", path)
+	default:
+		// xdg-open on Linux
+		cmd = exec.Command("xdg-open", path)
+	}
 	return cmd.Start()
 }

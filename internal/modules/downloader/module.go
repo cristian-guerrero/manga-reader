@@ -102,6 +102,49 @@ func (m *Module) StartDownload(url string) (string, error) {
 		return "", fmt.Errorf("no algorithm found for this URL")
 	}
 
+	// Check for existing jobs
+	var existingJob *persistence.DownloadJob
+	existingJobs := m.pm.GetJobs()
+	for _, j := range existingJobs {
+		if j.URL == url {
+			temp := j
+			existingJob = &temp
+			break
+		}
+	}
+
+	if existingJob != nil {
+		if existingJob.Status == persistence.StatusCompleted {
+			fmt.Printf("[Downloader] URL already completed: %s\n", url)
+			return existingJob.ID, nil
+		}
+
+		if existingJob.Status == persistence.StatusRunning || existingJob.Status == persistence.StatusPending {
+			// Check if it's actually running in memory
+			_, isActive := m.activeJobs.Load(existingJob.ID)
+
+			// Also check if it's in the pending queue
+			m.queueLock.Lock()
+			inQueue := false
+			if queue, ok := m.queues[existingJob.Site]; ok {
+				for _, qj := range queue {
+					if qj.job.ID == existingJob.ID {
+						inQueue = true
+						break
+					}
+				}
+			}
+			m.queueLock.Unlock()
+
+			if isActive || inQueue {
+				fmt.Printf("[Downloader] URL actually active/queued: %s\n", url)
+				return existingJob.ID, nil
+			}
+			// If not active and not in queue, it's a zombie from previous run. Verify it.
+			fmt.Printf("[Downloader] Found zombie job (Status: %s), resuming: %s\n", existingJob.Status, existingJob.ID)
+		}
+	}
+
 	info, err := algo.GetImages(url)
 	if err != nil {
 		return "", err
@@ -111,21 +154,40 @@ func (m *Module) StartDownload(url string) (string, error) {
 		return "", fmt.Errorf("this is a series URL, use FetchMangaInfo to select chapters")
 	}
 
-	jobID := fmt.Sprintf("%d", time.Now().UnixNano())
+	var jobID string
+	var job persistence.DownloadJob
 
-	// Create job in persistence
-	job := persistence.DownloadJob{
-		ID:          jobID,
-		URL:         url,
-		Site:        algo.GetSiteID(),
-		SeriesName:  info.SeriesName,
-		ChapterName: info.ChapterName,
-		Status:      persistence.StatusPending, // Initially pending
-		Progress:    0,
-		TotalPages:  len(info.Images),
-		CreatedAt:   time.Now(),
+	if existingJob != nil {
+		// Resume existing job
+		jobID = existingJob.ID
+		job = *existingJob
+		// Update details in case they changed (e.g. total pages, though unlikely for same URL)
+		job.Status = persistence.StatusPending
+		job.SeriesName = info.SeriesName
+		job.ChapterName = info.ChapterName
+		job.TotalPages = len(info.Images)
+
+		// Update persistence status to Pending so UI shows it waiting
+		m.pm.UpdateJob(jobID, map[string]interface{}{
+			"status": persistence.StatusPending,
+		})
+	} else {
+		// Create new job
+		jobID = fmt.Sprintf("%d", time.Now().UnixNano())
+		job = persistence.DownloadJob{
+			ID:          jobID,
+			URL:         url,
+			Site:        algo.GetSiteID(),
+			SeriesName:  info.SeriesName,
+			ChapterName: info.ChapterName,
+			Status:      persistence.StatusPending,
+			Progress:    0,
+			TotalPages:  len(info.Images),
+			CreatedAt:   time.Now(),
+		}
+		m.pm.AddJob(job)
 	}
-	m.pm.AddJob(job)
+	m.notifyUpdate() // Notify frontend
 
 	// Check concurrency limits
 	m.queueLock.Lock()
@@ -187,12 +249,21 @@ func (m *Module) runDownload(job persistence.DownloadJob, info *SiteInfo) {
 			m.notifyUpdate()
 			return
 		default:
+			// Check if file already exists (Resume capability)
+			destPath := filepath.Join(downloadDir, img.Filename)
+			if fInfo, err := os.Stat(destPath); err == nil && fInfo.Size() > 0 {
+				fmt.Printf("[Downloader] Skipping existing file: %s\n", img.Filename)
+				m.pm.UpdateJob(job.ID, map[string]interface{}{"progress": i + 1})
+				m.notifyUpdate()
+				continue
+			}
+
 			// Add a small delay between requests to avoid rate limiting
 			if i > 0 && info.DownloadDelay > 0 {
 				time.Sleep(info.DownloadDelay)
 			}
 
-			err := downloadFile(img.URL, filepath.Join(downloadDir, img.Filename), img.Headers)
+			err := downloadFile(img.URL, destPath, img.Headers)
 			if err != nil {
 				// Retry is handled inside downloadFile, if it still fails, we fail the job
 				m.failJob(job.ID, fmt.Sprintf("Failed to download page %d: %v", i+1, err))
