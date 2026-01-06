@@ -683,9 +683,14 @@ export const DownloadPage: React.FC = () => {
                                 <div className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
                                     {displayedChapters.length} chapters
                                 </div>
-                                <button onClick={toggleAllChapters} className="text-sm font-medium hover:underline" style={{ color: 'var(--color-accent)' }}>
-                                    {isAllDisplayedSelected ? "Deselect All" : "Select All"}
-                                </button>
+                                {(() => {
+                                    const isAllDisplayedSelected = displayedChapters.length > 0 && displayedChapters.every((c: any) => selectedChapters.has(c.ID));
+                                    return (
+                                        <button onClick={toggleAllChapters} className="text-sm font-medium hover:underline" style={{ color: 'var(--color-accent)' }}>
+                                            {isAllDisplayedSelected ? "Deselect All" : "Select All"}
+                                        </button>
+                                    );
+                                })()}
                             </div>
                         </div>
 

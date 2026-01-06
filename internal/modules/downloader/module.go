@@ -45,7 +45,7 @@ func NewModule(pm *persistence.DownloaderManager, sm *persistence.SettingsManage
 		queues:       make(map[string][]*queuedJob),
 		activeCounts: make(map[string]int),
 		maxConcurrency: map[string]int{
-			"hitomi.la": 1, // todo pendiente que este numero puede se mayor, por ahora solo 1
+			"hitomi.la": 2, // modificado a 2 para probar
 		},
 		algorithms: []DownloaderInterface{
 			&HitomiDownloader{},
@@ -67,6 +67,33 @@ func (m *Module) GetHistory() []persistence.DownloadJob {
 
 func (m *Module) ClearHistory() {
 	m.pm.ClearJobs()
+}
+
+func (m *Module) ClearDownloadsData() error {
+	// 1. Clear jobs history
+	m.pm.ClearJobs()
+	m.notifyUpdate()
+
+	// 2. Delete actual files
+	settings := m.sm.Get()
+	basePath := settings.DownloadPath
+	if basePath == "" {
+		homeDir, _ := os.UserHomeDir()
+		basePath = filepath.Join(homeDir, ".manga-visor", "downloads")
+	}
+
+	// Safety check: ensure basePath is not empty or root
+	if basePath == "" || basePath == "/" || basePath == "\\" {
+		return fmt.Errorf("invalid download path: %s", basePath)
+	}
+
+	// Remove all contents
+	if err := os.RemoveAll(basePath); err != nil {
+		return err
+	}
+
+	// Recreate directory
+	return os.MkdirAll(basePath, 0755)
 }
 
 func (m *Module) RemoveJob(id string) {

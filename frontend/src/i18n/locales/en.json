@@ -162,7 +162,20 @@
         "resetSettings": "Reset to Defaults",
         "confirmReset": "Reset all settings to default values?",
         "menuItems": "Menu Items",
-        "menuItemsDesc": "Toggle visibility of sidebar navigation items"
+        "menuItemsDesc": "Toggle visibility of sidebar navigation items",
+        "help": {
+            "title": "Help & Information",
+            "appearance": "Appearance",
+            "appearanceDesc": "Customize the look and feel, language, and visible menu items.",
+            "viewer": "Viewer",
+            "viewerDesc": "Configure default reading modes, vertical image width, and reading direction (LTR/RTL).",
+            "advanced": "Advanced",
+            "advancedDesc": "Manage cache, history, and performance settings like image preloading."
+        },
+        "clearAllCache": "Clear All Cache",
+        "confirmClearCache": "This will delete all history, cached data, downloads, and app usage data. Settings will be preserved. Are you sure?",
+        "clearCacheSuccess": "Cache cleared successfully!",
+        "clearCacheError": "Failed to clear cache. Please restart the app and try again."
     },
     "explorer": {
         "title": "Explorer",

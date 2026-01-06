@@ -6,6 +6,8 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigationStore } from '../../stores/navigationStore';
 import { useSettingsStore } from '../../stores/settingsStore';
+import { useToast } from '../common/Toast';
+import { ConfirmDialog } from '../common/ConfirmDialog';
 import { EventsOn, EventsOff } from '../../../wailsjs/runtime';
 
 
@@ -45,8 +47,10 @@ interface HistoryEntry {
 export function HistoryPage() {
     const { t } = useTranslation();
     const { navigate } = useNavigationStore();
+    const { showToast } = useToast();
     const [history, setHistory] = useState<HistoryEntry[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [isClearHistoryOpen, setIsClearHistoryOpen] = useState(false);
     const [thumbnails, setThumbnails] = useState<Record<string, string>>({});
     const { enableHistory } = useSettingsStore();
 
@@ -150,15 +154,20 @@ export function HistoryPage() {
         }
     };
 
-    const handleClearAll = async () => {
-        if (!confirm(t('history.confirmClear'))) return;
+    const handleClearAllClick = () => {
+        setIsClearHistoryOpen(true);
+    };
 
+    const confirmClearAll = async () => {
         try {
             // @ts-ignore - Wails generated bindings
             await window.go?.main?.App?.ClearHistory();
             setHistory([]);
+            setIsClearHistoryOpen(false);
+            showToast(t('history.clearSuccess') || 'History cleared successfully', 'success');
         } catch (error) {
             console.error('Failed to clear history:', error);
+            showToast(t('history.clearError') || 'Failed to clear history', 'error');
         }
     };
 
@@ -197,7 +206,7 @@ export function HistoryPage() {
                 </h1>
                 {enableHistory && history.length > 0 && (
                     <button
-                        onClick={handleClearAll}
+                        onClick={handleClearAllClick}
                         className="btn-ghost text-sm flex items-center gap-2 transition-transform hover:scale-105 active:scale-95"
                         style={{ color: '#ef4444' }}
                     >
@@ -373,6 +382,18 @@ export function HistoryPage() {
                     ))}
                 </div>
             )}
+            {/* Clear History Confirmation Dialog */}
+            <ConfirmDialog
+                isOpen={isClearHistoryOpen}
+                onClose={() => setIsClearHistoryOpen(false)}
+                onConfirm={confirmClearAll}
+                title={t('history.clearHistory')}
+                message={t('history.confirmClear')}
+                isDestructive={true}
+                confirmText={t('common.confirm') || 'Confirm'}
+                cancelText={t('common.cancel') || 'Cancel'}
+                icon={<TrashIcon />}
+            />
         </div>
     );
 }

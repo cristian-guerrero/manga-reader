@@ -155,7 +155,20 @@
         "preloadCount": "Imágenes a Precargar",
         "showImageInfo": "Mostrar Info de Imagen",
         "resetSettings": "Restablecer Valores",
-        "confirmReset": "¿Restablecer toda la configuración a valores predeterminados?"
+        "confirmReset": "¿Restablecer toda la configuración a valores predeterminados?",
+        "help": {
+            "title": "Ayuda e Información",
+            "appearance": "Apariencia",
+            "appearanceDesc": "Personaliza el aspecto, idioma y elementos visibles del menú.",
+            "viewer": "Visor",
+            "viewerDesc": "Configura modos de lectura, ancho de imagen vertical y dirección de lectura.",
+            "advanced": "Avanzado",
+            "advancedDesc": "Gestiona caché, historial y ajustes de rendimiento como precarga de imágenes."
+        },
+        "clearAllCache": "Borrar Todo el Caché",
+        "confirmClearCache": "Esto eliminará todo el historial, datos guardados, descargas y datos de uso de la aplicación. La configuración se conservará. ¿Estás seguro?",
+        "clearCacheSuccess": "¡Caché borrado exitosamente!",
+        "clearCacheError": "Error al borrar caché. Por favor reinicia la app e intenta nuevamente."
     },
     "themes": {
         "dark": "Oscuro",

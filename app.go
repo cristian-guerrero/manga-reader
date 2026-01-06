@@ -577,3 +577,48 @@ func (a *App) OpenInFileManager(path string) error {
 	}
 	return cmd.Start()
 }
+
+// ClearAllData wipes all application data (cache, history, library, etc.)
+func (a *App) ClearAllData() error {
+	fmt.Println("[App] Clearing all application data...")
+
+	// 1. Clear History
+	if err := a.historyMod.ClearHistory(); err != nil {
+		fmt.Printf("[App] Failed to clear history: %v\n", err)
+	}
+
+	// 2. Clear Library
+	if err := a.libraryMod.ClearLibrary(); err != nil {
+		fmt.Printf("[App] Failed to clear library: %v\n", err)
+	}
+
+	// 3. Clear Series
+	if err := a.seriesMod.ClearSeries(); err != nil {
+		fmt.Printf("[App] Failed to clear series: %v\n", err)
+	}
+
+	// 4. Clear Thumbnails
+	if err := a.thumbGen.ClearCache(); err != nil {
+		fmt.Printf("[App] Failed to clear thumbnails: %v\n", err)
+	}
+
+	// 5. Clear Downloads (History + Files)
+	if err := a.downloaderMod.ClearDownloadsData(); err != nil {
+		fmt.Printf("[App] Failed to clear downloads: %v\n", err)
+	}
+
+	// 6. Clear Explorer Folders
+	if err := a.explorerMod.ClearBaseFolders(); err != nil {
+		fmt.Printf("[App] Failed to clear explorer folders: %v\n", err)
+	}
+
+	// 7. Reset specific settings (LastPage, LastFolder)
+	updates := map[string]interface{}{
+		"lastPage":   "home",
+		"lastFolder": "",
+	}
+	a.settings.Update(updates)
+
+	fmt.Println("[App] All data cleared successfully.")
+	return nil
+}

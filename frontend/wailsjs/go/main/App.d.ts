@@ -13,6 +13,8 @@ export function AddHistory(arg1:persistence.HistoryEntry):Promise<void>;
 
 export function AddSeries(arg1:string,arg2:Array<persistence.FolderInfo>,arg3:boolean):Promise<persistence.AddFolderResult>;
 
+export function ClearAllData():Promise<void>;
+
 export function ClearDownloadHistory():Promise<void>;
 
 export function ClearHistory():Promise<void>;

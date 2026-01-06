@@ -18,6 +18,10 @@ export function AddSeries(arg1, arg2, arg3) {
   return window['go']['main']['App']['AddSeries'](arg1, arg2, arg3);
 }
 
+export function ClearAllData() {
+  return window['go']['main']['App']['ClearAllData']();
+}
+
 export function ClearDownloadHistory() {
   return window['go']['main']['App']['ClearDownloadHistory']();
 }

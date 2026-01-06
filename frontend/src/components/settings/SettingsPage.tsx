@@ -3,7 +3,10 @@
  */
 
 import { useTranslation } from 'react-i18next';
+import { useState } from 'react';
 import { useSettingsStore } from '../../stores/settingsStore';
+import { useToast } from '../common/Toast';
+import { ConfirmDialog } from '../common/ConfirmDialog';
 import { builtInThemes, applyTheme, getThemeById } from '../../themes';
 import { languages, changeLanguage } from '../../i18n';
 
@@ -42,6 +45,11 @@ export function SettingsPage() {
 
     } = useSettingsStore();
 
+    const { showToast } = useToast();
+    const [isHelpOpen, setIsHelpOpen] = useState(false);
+    const [isClearCacheOpen, setIsClearCacheOpen] = useState(false);
+    const [isResetOpen, setIsResetOpen] = useState(false);
+
 
     const handleLanguageChange = (newLang: string) => {
         setLanguage(newLang);
@@ -56,12 +64,33 @@ export function SettingsPage() {
         }
     };
 
-    const handleReset = () => {
-        if (confirm(t('settings.confirmReset'))) {
-            resetSettings();
-        }
+    const handleResetClick = () => {
+        setIsResetOpen(true);
     };
 
+    const confirmReset = () => {
+        resetSettings();
+        setIsResetOpen(false);
+        showToast(t('settings.resetSuccess') || 'Settings reset to defaults', 'success');
+    };
+
+
+
+    const handleClearCacheClick = () => {
+        setIsClearCacheOpen(true);
+    };
+
+    const confirmClearCache = async () => {
+        try {
+            // @ts-ignore
+            await window.go?.main?.App?.ClearAllData();
+            setIsClearCacheOpen(false);
+            showToast(t('settings.clearCacheSuccess'), 'success');
+        } catch (error) {
+            console.error("Failed to clear cache:", error);
+            showToast(t('settings.clearCacheError'), 'error');
+        }
+    };
 
     return (
         <div
@@ -70,12 +99,26 @@ export function SettingsPage() {
         >
             <div className="max-w-2xl mx-auto space-y-8 animate-fade-in">
                 {/* Header */}
-                <h1
-                    className="text-2xl font-bold"
-                    style={{ color: 'var(--color-text-primary)' }}
-                >
-                    {t('settings.title')}
-                </h1>
+                <div className="flex justify-between items-center">
+                    <h1
+                        className="text-2xl font-bold"
+                        style={{ color: 'var(--color-text-primary)' }}
+                    >
+                        {t('settings.title')}
+                    </h1>
+                    <button
+                        onClick={() => setIsHelpOpen(true)}
+                        className="p-2 rounded-full hover:bg-white/10 transition-colors"
+                        title={t('settings.help.title')}
+                        style={{ color: 'var(--color-text-secondary)' }}
+                    >
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                        </svg>
+                    </button>
+                </div>
 
                 {/* Appearance Section */}
                 <section className="animate-slide-up" style={{ animationDelay: '0.1s' }}>
@@ -329,21 +372,138 @@ export function SettingsPage() {
                     </SettingRow>
                 </section>
 
-                {/* Reset */}
-                <section className="animate-slide-up" style={{ animationDelay: '0.5s' }}>
-                    <button
-                        onClick={handleReset}
-                        className="w-full py-3 rounded-lg text-sm font-medium transition-all hover:scale-[1.01] active:scale-[0.99]"
-                        style={{
-                            backgroundColor: 'var(--color-surface-tertiary)',
-                            color: '#ef4444',
-                            border: '1px solid var(--color-border)',
-                        }}
-                    >
-                        {t('settings.resetSettings')}
-                    </button>
+                {/* Danger Zone */}
+                <section className="animate-slide-up space-y-4" style={{ animationDelay: '0.5s' }}>
+                    <div className="grid grid-cols-2 gap-4">
+                        <button
+                            onClick={handleResetClick}
+                            className="py-3 rounded-lg text-sm font-medium transition-all hover:scale-[1.01] active:scale-[0.99] border border-orange-500/30 text-orange-500 hover:bg-orange-500/10"
+                        >
+                            {t('settings.resetSettings')}
+                        </button>
+
+                        <button
+                            onClick={handleClearCacheClick}
+                            className="py-3 rounded-lg text-sm font-medium transition-all hover:scale-[1.01] active:scale-[0.99] border border-red-500/30 text-red-500 hover:bg-red-500/10"
+                        >
+                            {t('settings.clearAllCache')}
+                        </button>
+                    </div>
                 </section>
             </div>
+
+            {/* Reset Settings Confirmation Dialog */}
+            <ConfirmDialog
+                isOpen={isResetOpen}
+                onClose={() => setIsResetOpen(false)}
+                onConfirm={confirmReset}
+                title={t('settings.resetSettings')}
+                message={t('settings.confirmReset')}
+                isDestructive={false}
+                confirmText={t('common.confirm') || 'Confirm'}
+                cancelText={t('common.cancel') || 'Cancel'}
+                icon={
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                        <path d="M3 3v5h5"></path>
+                    </svg>
+                }
+            />
+
+            {/* Clear Cache Confirmation Dialog */}
+            <ConfirmDialog
+                isOpen={isClearCacheOpen}
+                onClose={() => setIsClearCacheOpen(false)}
+                onConfirm={confirmClearCache}
+                title={t('settings.clearAllCache')}
+                message={t('settings.confirmClearCache')}
+                isDestructive={true}
+                confirmText={t('common.confirm') || 'Confirm'}
+                cancelText={t('common.cancel') || 'Cancel'}
+                icon={
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                        <line x1="12" y1="9" x2="12" y2="13"></line>
+                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                    </svg>
+                }
+            />
+
+            {/* Help Dialog */}
+            {isHelpOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in" onClick={() => setIsHelpOpen(false)}>
+                    <div className="card w-full max-w-lg p-6 shadow-2xl animate-scale-in" onClick={(e) => e.stopPropagation()} style={{ backgroundColor: 'var(--color-surface-elevated)' }}>
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="text-xl font-bold" style={{ color: 'var(--color-text-primary)' }}>
+                                {t('settings.help.title')}
+                            </h3>
+                            <button
+                                onClick={() => setIsHelpOpen(false)}
+                                className="p-1 rounded hover:bg-white/10 transition-colors"
+                                style={{ color: 'var(--color-text-secondary)' }}
+                            >
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M18 6L6 18M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        <div className="space-y-6 max-h-[60vh] overflow-y-auto pr-2">
+                            {/* Appearance */}
+                            <div>
+                                <h4 className="font-semibold text-sm uppercase tracking-wider mb-2 flex items-center gap-2" style={{ color: 'var(--color-accent)' }}>
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <circle cx="12" cy="12" r="10" />
+                                        <circle cx="12" cy="12" r="4" />
+                                        <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+                                    </svg>
+                                    {t('settings.help.appearance')}
+                                </h4>
+                                <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+                                    {t('settings.help.appearanceDesc')}
+                                </p>
+                            </div>
+
+                            {/* Viewer */}
+                            <div>
+                                <h4 className="font-semibold text-sm uppercase tracking-wider mb-2 flex items-center gap-2" style={{ color: 'var(--color-accent)' }}>
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+                                        <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+                                    </svg>
+                                    {t('settings.help.viewer')}
+                                </h4>
+                                <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+                                    {t('settings.help.viewerDesc')}
+                                </p>
+                            </div>
+
+                            {/* Advanced */}
+                            <div>
+                                <h4 className="font-semibold text-sm uppercase tracking-wider mb-2 flex items-center gap-2" style={{ color: 'var(--color-accent)' }}>
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <circle cx="12" cy="12" r="3" />
+                                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                                    </svg>
+                                    {t('settings.help.advanced')}
+                                </h4>
+                                <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+                                    {t('settings.help.advancedDesc')}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="mt-8 flex justify-end">
+                            <button
+                                onClick={() => setIsHelpOpen(false)}
+                                className="btn btn-primary px-6"
+                            >
+                                {t('common.close')}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

@@ -76,6 +76,19 @@ func (m *Module) RemoveBaseFolder(path string) error {
 		return err
 	}
 	runtime.EventsEmit(m.ctx, "explorer_updated")
+	runtime.EventsEmit(m.ctx, "explorer_updated")
+	return nil
+}
+
+// ClearBaseFolders removes all folders from the explorer roots
+func (m *Module) ClearBaseFolders() error {
+	folders := m.explorerManager.GetAll()
+	for _, f := range folders {
+		if err := m.explorerManager.Remove(f.Path); err != nil {
+			return err
+		}
+	}
+	runtime.EventsEmit(m.ctx, "explorer_updated")
 	return nil
 }
 
