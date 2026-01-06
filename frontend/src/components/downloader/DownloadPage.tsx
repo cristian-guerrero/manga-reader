@@ -132,13 +132,25 @@ export const DownloadPage: React.FC = () => {
                 const text = await navigator.clipboard.readText();
                 if (text && text !== lastClipboard && (text.includes('hitomi.la') || text.includes('manhwaweb.com') || text.includes('zonatmo.com') || text.includes('nhentai') || text.includes('mangadex'))) {
                     lastClipboard = text;
-                    // setUrl(text); // Auto-download handles clearing or setting URL if needed, but handleStartDownload needs the text if we pass it directly
-                    // We don't need to setUrl if we are auto starting, but visually it might be nice to see?
-                    // handleStartDownload clears it on success.
-                    // Let's passed it directly.
 
-                    showToast(t('download.pastedFromClipboard'), 'info');
-                    handleStartDownload(text);
+                    // Hitomi Series Detection: Don't auto-start, just paste.
+                    const isHitomi = text.includes('hitomi.la');
+                    const isHitomiSeries = isHitomi && (
+                        text.includes('/artist/') ||
+                        text.includes('/series/') ||
+                        text.includes('/tag/') ||
+                        text.includes('/character/') ||
+                        text.includes('/group/') ||
+                        text.includes('index-')
+                    );
+
+                    if (isHitomiSeries) {
+                        setUrl(text);
+                        showToast(t('download.pastedFromClipboard'), 'info');
+                    } else {
+                        showToast(t('download.pastedFromClipboard'), 'info');
+                        handleStartDownload(text);
+                    }
                 }
             } catch (err) {
                 // Clipboard access might be denied
