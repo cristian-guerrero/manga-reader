@@ -275,6 +275,35 @@ export const peachTheme: Theme = {
     },
 };
 
+export const ichigoTheme: Theme = {
+    id: 'ichigo',
+    name: 'Ichigo',
+    isDark: false,
+    colors: {
+        accent: '#6a2f27',
+        accentHover: '#854d47',
+        accentGlow: 'rgba(106, 47, 39, 0.3)',
+
+        surfacePrimary: '#fae8f0',
+        surfaceSecondary: '#f5dce6',
+        surfaceTertiary: '#edd0dd',
+        surfaceElevated: '#ffffff',
+        surfaceOverlay: 'rgba(250, 232, 240, 0.98)',
+
+        titlebarBg: '#f5dce6',
+        titlebarText: '#4a1f1b',
+
+        textPrimary: '#6a2f27',
+        textSecondary: '#854d47',
+        textMuted: '#9e6d6d',
+        textDisabled: '#dbbfb8',
+
+        border: 'rgba(106, 47, 39, 0.1)',
+        borderHover: 'rgba(106, 47, 39, 0.2)',
+        borderFocus: 'rgba(106, 47, 39, 0.5)',
+    },
+};
+
 // All built-in themes
 export const builtInThemes: Theme[] = [
     darkTheme,
@@ -285,6 +314,7 @@ export const builtInThemes: Theme[] = [
     lavenderTheme,
     mintTheme,
     peachTheme,
+    ichigoTheme,
 ];
 
 // ============================================================================

@@ -123,7 +123,18 @@
         "totalPages": "{{count}} pages",
         "error": "Error: {{message}}",
         "openFolder": "Open Folder",
-        "pastedFromClipboard": "URL pasted from clipboard"
+        "openFolder": "Open Folder",
+        "pastedFromClipboard": "URL pasted from clipboard",
+        "help": {
+            "title": "How to use",
+            "supportedSites": "Supported Sites",
+            "instructions": "Instructions",
+            "step1": "Paste a valid manga/doujin URL in the input field.",
+            "step2": "Click 'Download'. For series, select the chapters you want.",
+            "clipboard": "Clipboard Monitor",
+            "clipboardDesc": "Enable 'Auto Clipboard Monitoring' to automatically detect copied URLs from supported sites.",
+            "supportedList": "Hitomi.la, Nhentai, ManhwaWeb, ZonaTMO, MangaDex"
+        }
     },
     "settings": {
         "title": "Settings",
@@ -171,7 +182,8 @@
         "amoled": "AMOLED Black",
         "lavender": "Lavender Dream",
         "mint": "Mint Fresh",
-        "peach": "Peach Blossom"
+        "peach": "Peach Blossom",
+        "ichigo": "Ichigo"
     },
     "errors": {
         "loadFailed": "Failed to load",

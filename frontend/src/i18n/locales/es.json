@@ -122,7 +122,18 @@
         "totalPages": "{{count}} páginas",
         "error": "Error: {{message}}",
         "openFolder": "Abrir Carpeta",
-        "pastedFromClipboard": "URL pegada desde el portapapeles"
+        "openFolder": "Abrir Carpeta",
+        "pastedFromClipboard": "URL pegada desde el portapapeles",
+        "help": {
+            "title": "Cómo usar",
+            "supportedSites": "Sitios Soportados",
+            "instructions": "Instrucciones",
+            "step1": "Pega una URL válida de manga/doujin en el campo de texto.",
+            "step2": "Haz clic en 'Descargar'. Para series, selecciona los capítulos que deseas.",
+            "clipboard": "Monitor de Portapapeles",
+            "clipboardDesc": "Activa 'Monitoreo Automático' para detectar automáticamente URLs copiadas de sitios soportados.",
+            "supportedList": "Hitomi.la, Nhentai, ManhwaWeb, ZonaTMO, MangaDex"
+        }
     },
     "settings": {
         "title": "Configuración",
@@ -154,7 +165,8 @@
         "amoled": "AMOLED Negro",
         "lavender": "Sueño Lavanda",
         "mint": "Menta Fresca",
-        "peach": "Flor de Durazno"
+        "peach": "Flor de Durazno",
+        "ichigo": "Ichigo"
     },
     "errors": {
         "loadFailed": "Error al cargar",

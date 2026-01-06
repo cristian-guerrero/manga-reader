@@ -283,18 +283,32 @@ export const DownloadPage: React.FC = () => {
         setSelectedChapters(newSelected);
     };
 
-    // Helper to check if "Select All" checkmark should be active for the current view
-    const isAllDisplayedSelected = displayedChapters.length > 0 && displayedChapters.every((c: any) => selectedChapters.has(c.ID));
+    // Help Dialog State
+    const [isHelpOpen, setIsHelpOpen] = useState(false);
 
     return (
         <div className="flex flex-col h-full animate-fade-in p-8 overflow-y-auto relative">
-            <header className="mb-8">
-                <h1 className="text-3xl font-bold mb-2" style={{ color: 'var(--color-text-primary)' }}>
-                    {t('download.title')}
-                </h1>
-                <p style={{ color: 'var(--color-text-secondary)' }}>
-                    {t('home.subtitle')}
-                </p>
+            <header className="mb-8 flex justify-between items-start">
+                <div>
+                    <h1 className="text-3xl font-bold mb-2" style={{ color: 'var(--color-text-primary)' }}>
+                        {t('download.title')}
+                    </h1>
+                    <p style={{ color: 'var(--color-text-secondary)' }}>
+                        {t('home.subtitle')}
+                    </p>
+                </div>
+                <button
+                    onClick={() => setIsHelpOpen(true)}
+                    className="p-2 rounded-full hover:bg-white/10 transition-colors"
+                    title={t('download.help.title')}
+                    style={{ color: 'var(--color-text-secondary)' }}
+                >
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                    </svg>
+                </button>
             </header>
 
             {/* Input Section */}
@@ -564,6 +578,70 @@ export const DownloadPage: React.FC = () => {
                     )}
                 </div>
             </section>
+
+            {/* Help Dialog */}
+            {isHelpOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in" onClick={() => setIsHelpOpen(false)}>
+                    <div className="card w-full max-w-md p-6 shadow-2xl animate-scale-in" onClick={(e) => e.stopPropagation()} style={{ backgroundColor: 'var(--color-surface-elevated)' }}>
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="text-xl font-bold" style={{ color: 'var(--color-text-primary)' }}>
+                                {t('download.help.title')}
+                            </h3>
+                            <button
+                                onClick={() => setIsHelpOpen(false)}
+                                className="p-1 rounded hover:bg-white/10 transition-colors"
+                                style={{ color: 'var(--color-text-secondary)' }}
+                            >
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M18 6L6 18M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        <div className="space-y-6">
+                            {/* Supported Sites */}
+                            <div>
+                                <h4 className="font-semibold text-sm uppercase tracking-wider mb-2" style={{ color: 'var(--color-text-secondary)' }}>
+                                    {t('download.help.supportedSites')}
+                                </h4>
+                                <div className="p-3 rounded bg-white/5 border border-white/10 text-sm" style={{ color: 'var(--color-text-primary)' }}>
+                                    {t('download.help.supportedList')}
+                                </div>
+                            </div>
+
+                            {/* Instructions */}
+                            <div>
+                                <h4 className="font-semibold text-sm uppercase tracking-wider mb-2" style={{ color: 'var(--color-text-secondary)' }}>
+                                    {t('download.help.instructions')}
+                                </h4>
+                                <ul className="list-disc pl-5 space-y-2 text-sm" style={{ color: 'var(--color-text-primary)' }}>
+                                    <li>{t('download.help.step1')}</li>
+                                    <li>{t('download.help.step2')}</li>
+                                </ul>
+                            </div>
+
+                            {/* Clipboard */}
+                            <div>
+                                <h4 className="font-semibold text-sm uppercase tracking-wider mb-2" style={{ color: 'var(--color-text-secondary)' }}>
+                                    {t('download.help.clipboard')}
+                                </h4>
+                                <p className="text-sm" style={{ color: 'var(--color-text-primary)' }}>
+                                    {t('download.help.clipboardDesc')}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="mt-8 flex justify-end">
+                            <button
+                                onClick={() => setIsHelpOpen(false)}
+                                className="btn btn-primary px-6"
+                            >
+                                {t('common.close')}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Series Selection Modal */}
             {isSeriesModalOpen && seriesInfo && (
