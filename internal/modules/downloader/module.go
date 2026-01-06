@@ -132,9 +132,14 @@ func (m *Module) runDownload(job persistence.DownloadJob, info *SiteInfo) {
 			m.notifyUpdate()
 			return
 		default:
+			// Add a small delay between requests to avoid rate limiting
+			if i > 0 && info.DownloadDelay > 0 {
+				time.Sleep(info.DownloadDelay)
+			}
+
 			err := downloadFile(img.URL, filepath.Join(downloadDir, img.Filename), img.Headers)
 			if err != nil {
-				// Retry once or fail? Let's fail for now.
+				// Retry is handled inside downloadFile, if it still fails, we fail the job
 				m.failJob(job.ID, fmt.Sprintf("Failed to download page %d: %v", i+1, err))
 				return
 			}
@@ -177,37 +182,62 @@ func sanitizeFilename(name string) string {
 
 func downloadFile(url string, path string, headers map[string]string) error {
 	client := &http.Client{}
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return err
-	}
+	var lastErr error
 
-	// Add headers
-	if headers != nil {
-		for k, v := range headers {
-			req.Header.Set(k, v)
+	// Retry configuration
+	maxRetries := 3
+	baseDelay := 2 * time.Second
+
+	for attempt := 0; attempt <= maxRetries; attempt++ {
+		if attempt > 0 {
+			// Exponential backoff: 2s, 4s, 8s
+			sleepDuration := baseDelay * time.Duration(1<<uint(attempt-1))
+			time.Sleep(sleepDuration)
 		}
-	} else {
-		// Default headers if none provided (legacy behavior mostly)
-		req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0")
+
+		req, err := http.NewRequest("GET", url, nil)
+		if err != nil {
+			return err // Fatal error building request
+		}
+
+		// Add headers
+		if headers != nil {
+			for k, v := range headers {
+				req.Header.Set(k, v)
+			}
+		} else {
+			req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0")
+		}
+
+		resp, err := client.Do(req)
+		if err != nil {
+			lastErr = err
+			continue // Network error, retry
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode == http.StatusOK {
+			// Success
+			out, err := os.Create(path)
+			if err != nil {
+				return err // File system error
+			}
+			defer out.Close()
+
+			_, err = io.Copy(out, resp.Body)
+			return err
+		}
+
+		// Handle non-200 status codes
+		lastErr = fmt.Errorf("bad status: %s", resp.Status)
+
+		// If it's a 503 or 429, we definitely want to retry.
+		// For others (like 404), maybe not, but simple retry mechanism for now covers transient issues.
+		// If 404, usually retrying won't help, but keeping it simple.
+		if resp.StatusCode != http.StatusServiceUnavailable && resp.StatusCode != http.StatusTooManyRequests {
+			// Optional: break here if we strictly don't want to retry 404s
+		}
 	}
 
-	resp, err := client.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("bad status: %s", resp.Status)
-	}
-
-	out, err := os.Create(path)
-	if err != nil {
-		return err
-	}
-	defer out.Close()
-
-	_, err = io.Copy(out, resp.Body)
-	return err
+	return fmt.Errorf("failed after %d retries: %v", maxRetries, lastErr)
 }

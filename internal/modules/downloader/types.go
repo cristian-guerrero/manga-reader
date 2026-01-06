@@ -1,5 +1,7 @@
 package downloader
 
+import "time"
+
 type ImageDownload struct {
 	URL      string
 	Filename string
@@ -8,10 +10,11 @@ type ImageDownload struct {
 }
 
 type SiteInfo struct {
-	SeriesName  string
-	ChapterName string
-	Images      []ImageDownload
-	SiteID      string
+	SeriesName    string
+	ChapterName   string
+	Images        []ImageDownload
+	SiteID        string
+	DownloadDelay time.Duration
 }
 
 type DownloaderInterface interface {

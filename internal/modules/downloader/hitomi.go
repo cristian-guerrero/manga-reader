@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type HitomiDownloader struct {
@@ -208,9 +209,10 @@ func (d *HitomiDownloader) GetImages(url string) (*SiteInfo, error) {
 
 	fullTitle := fmt.Sprintf("%s [%s]", gallery.Title, galleryID)
 	return &SiteInfo{
-		SeriesName:  fullTitle,
-		ChapterName: "",
-		Images:      images,
-		SiteID:      d.GetSiteID(),
+		SeriesName:    fullTitle,
+		ChapterName:   "",
+		Images:        images,
+		SiteID:        d.GetSiteID(),
+		DownloadDelay: 500 * time.Millisecond,
 	}, nil
 }
