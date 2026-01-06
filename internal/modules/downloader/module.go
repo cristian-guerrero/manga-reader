@@ -35,6 +35,7 @@ func NewModule(pm *persistence.DownloaderManager, sm *persistence.SettingsManage
 			&HitomiDownloader{},
 			&ManhwaWebDownloader{},
 			&ZonaTMODownloader{},
+			&MangaDexDownloader{},
 		},
 	}
 }
