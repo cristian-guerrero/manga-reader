@@ -1,7 +1,6 @@
 package downloader
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -20,6 +19,9 @@ func (d *ZonaTMODownloader) GetSiteID() string {
 }
 
 func (d *ZonaTMODownloader) GetImages(viewerURL string) (*SiteInfo, error) {
+	// Force cascade mode for easier parsing
+	viewerURL = strings.Replace(viewerURL, "/paginated", "/cascade", 1)
+
 	client := &http.Client{}
 	req, _ := http.NewRequest("GET", viewerURL, nil)
 	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0")
@@ -33,51 +35,88 @@ func (d *ZonaTMODownloader) GetImages(viewerURL string) (*SiteInfo, error) {
 	body, _ := io.ReadAll(resp.Body)
 	bodyStr := string(body)
 
-	// Extract window.dirPath
-	reDirPath := regexp.MustCompile(`window\.dirPath\s*=\s*'(.*?)'`)
-	matchPath := reDirPath.FindStringSubmatch(bodyStr)
-	if len(matchPath) < 2 {
-		return nil, fmt.Errorf("could not find dirPath")
-	}
-	dirPath := matchPath[1]
-
-	// Extract window.images array
-	reImages := regexp.MustCompile(`window\.images\s*=\s*(\[.*?\])`)
-	matchImages := reImages.FindStringSubmatch(bodyStr)
-	if len(matchImages) < 2 {
-		return nil, fmt.Errorf("could not find images array")
-	}
-
-	var filenames []string
-	if err := json.Unmarshal([]byte(matchImages[1]), &filenames); err != nil {
-		return nil, err
-	}
-
 	seriesName := "Unknown"
 	chapterName := "Chapter"
 
-	// Try to get title from HTML
-	reTitle := regexp.MustCompile(`<title>(.*?)</title>`)
-	if matchTitle := reTitle.FindStringSubmatch(bodyStr); len(matchTitle) > 1 {
-		title := matchTitle[1]
-		parts := strings.Split(title, "|")
-		if len(parts) > 0 {
-			chapterName = strings.TrimSpace(parts[0])
+	// Extract Series Name from <h1>
+	reSeries := regexp.MustCompile(`(?s)<h1>(.*?)</h1>`)
+	if match := reSeries.FindStringSubmatch(bodyStr); len(match) > 1 {
+		seriesName = strings.TrimSpace(match[1])
+	}
+
+	// Extract Chapter Name from <h2>
+	reChapter := regexp.MustCompile(`(?s)<h2>(.*?)</h2>`)
+	if match := reChapter.FindStringSubmatch(bodyStr); len(match) > 1 {
+		// The h2 often contains "Chapter X Subido por ...". cleaning it might be good but let's take it raw or split
+		// Based on HTML: <h2> Capítulo 168.00 Subido por ...
+		fullTitle := strings.TrimSpace(match[1])
+		// Replace newlines and tabs with spaces to make it a single line string for easier processing
+		fullTitle = strings.Join(strings.Fields(fullTitle), " ")
+
+		if idx := strings.Index(fullTitle, "Subido por"); idx != -1 {
+			chapterName = strings.TrimSpace(fullTitle[:idx])
+		} else {
+			chapterName = fullTitle
 		}
 	}
 
-	images := make([]ImageDownload, len(filenames))
-	for i, name := range filenames {
-		ext := "jpg"
-		if idx := strings.LastIndex(name, "."); idx != -1 {
-			ext = name[idx+1:]
-		}
+	// Extract Images from <img ... class="viewer-img" ... data-src="...">
+	// The order of attributes might vary, so we look for class="viewer-img" and capture data-src
+	// A robust regex for this specific case where we saw the output:
+	// <img src="..." ... data-src="URL" class="viewer-img" ...>
+	// We can iterate over all img tags and check for class="viewer-img"
+	reImg := regexp.MustCompile(`<img[^>]+class=["']viewer-img["'][^>]*>`)
+	reDataSrc := regexp.MustCompile(`data-src=["'](.*?)["']`)
 
-		images[i] = ImageDownload{
-			URL:      dirPath + name,
-			Filename: fmt.Sprintf("%03d.%s", i+1, ext),
-			Index:    i,
+	imgMatches := reImg.FindAllString(bodyStr, -1)
+	if len(imgMatches) == 0 {
+		// Try alternative order or just data-src with viewer-img class check implicitly if above fails
+		// Let's try to just find all data-src inside tags that look like they might be viewer images if the strict class check fails?
+		// But the grep output showed `class="viewer-img"` exists.
+		// Let's try a simpler regex that captures data-src from the whole file if they are unique enough,
+		// or stick to the tag parsing.
+		// Attempting a slightly looser tag match in case attributes are reordered
+		// We want data-src value where the tag also contains class="viewer-img"
+		// Since regex validation on HTML is tricky, let's just find all `data-src` if we are confident they are the manga images.
+		// The grep showed `data-src` is on the viewer images. Let's trust that mainly.
+		// But let's refine: find `data-src="..."`
+	}
+
+	var images []ImageDownload
+	// Refined approach: Find all strings that look like valid image tags with viewer-img class
+	// Because regex cannot easily handle "tag with attribute A AND attribute B in any order",
+	// we will find all `data-src` URLs and assume they are the images if existing logic fails?
+	// No, that's risky.
+	// Let's iterate over all `<img ...>` tags and check if they contain `viewer-img` and `data-src`.
+	reTag := regexp.MustCompile(`<img[^>]+>`)
+	allTags := reTag.FindAllString(bodyStr, -1)
+
+	for _, tag := range allTags {
+		if strings.Contains(tag, "viewer-img") {
+			matchSrc := reDataSrc.FindStringSubmatch(tag)
+			if len(matchSrc) > 1 {
+				imgURL := matchSrc[1]
+
+				// Determine extension
+				ext := "jpg"
+				if idx := strings.LastIndex(imgURL, "."); idx != -1 {
+					ext = imgURL[idx+1:]
+				}
+
+				images = append(images, ImageDownload{
+					URL:      imgURL,
+					Filename: fmt.Sprintf("%03d.%s", len(images)+1, ext),
+					Index:    len(images),
+					Headers: map[string]string{
+						"Referer": "https://zonatmo.com/",
+					},
+				})
+			}
 		}
+	}
+
+	if len(images) == 0 {
+		return nil, fmt.Errorf("no images found")
 	}
 
 	return &SiteInfo{
