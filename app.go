@@ -154,9 +154,16 @@ func (a *App) startup(ctx context.Context) {
 
 	// Restore window position
 	settings := a.settings.Get()
+	// Validation: Windows often sets coordinates to -32000 when minimized.
+	// We ensure coordinates are within a reasonable visible range.
 	if settings.WindowX != -1 && settings.WindowY != -1 {
-		fmt.Printf("[App] Restoring window position: (%v, %v)\n", settings.WindowX, settings.WindowY)
-		runtime.WindowSetPosition(ctx, settings.WindowX, settings.WindowY)
+		if settings.WindowX > -10000 && settings.WindowY > -10000 {
+			fmt.Printf("[App] Restoring window position: (%v, %v)\n", settings.WindowX, settings.WindowY)
+			runtime.WindowSetPosition(ctx, settings.WindowX, settings.WindowY)
+		} else {
+			fmt.Printf("[App] Invalid window position detected (%v, %v), ignoring restoration.\n", settings.WindowX, settings.WindowY)
+			// Optional: Reset in settings? Not strictly necessary as next save will overwrite
+		}
 	}
 }
 

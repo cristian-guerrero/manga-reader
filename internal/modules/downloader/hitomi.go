@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -124,7 +125,47 @@ type HitomiGallery struct {
 		HasWebp int    `json:"haswebp"`
 		Name    string `json:"name"`
 	} `json:"files"`
-	Title string `json:"title"`
+	Title         string `json:"title"`
+	Language      string `json:"language"`
+	LanguageLocal string `json:"language_localname"`
+}
+
+func mapHitomiLanguageToCode(lang string) string {
+	lang = strings.ToLower(lang)
+	switch lang {
+	case "japanese":
+		return "ja"
+	case "english":
+		return "en"
+	case "spanish":
+		return "es"
+	case "chinese":
+		return "zh"
+	case "korean":
+		return "ko"
+	case "french":
+		return "fr"
+	case "german":
+		return "de"
+	case "italian":
+		return "it"
+	case "portuguese":
+		return "pt"
+	case "russian":
+		return "ru"
+	case "indonesian":
+		return "id"
+	case "vietnamese":
+		return "vi"
+	case "polish":
+		return "pl"
+	case "ukrainian":
+		return "uk"
+	case "turkish":
+		return "tr"
+	default:
+		return lang // Return as is if unknown (will be shown with globe icon)
+	}
 }
 
 func (d *HitomiDownloader) GetImages(url string) (*SiteInfo, error) {
@@ -153,26 +194,9 @@ func (d *HitomiDownloader) GetImages(url string) (*SiteInfo, error) {
 	}
 	galleryID := matchID[1]
 
-	// Fetch gallery info using the CDN domain
-	client := &http.Client{}
-	jsonURL := fmt.Sprintf("https://%s/galleries/%s.js", d.cdnDomain, galleryID)
-	req, _ := http.NewRequest("GET", jsonURL, nil)
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0")
-	req.Header.Set("Referer", "https://hitomi.la/")
-
-	resp, err := client.Do(req)
+	// Fetch gallery info
+	gallery, err := d.fetchGalleryData(galleryID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch gallery info from %s: %v", jsonURL, err)
-	}
-	defer resp.Body.Close()
-
-	body, _ := io.ReadAll(resp.Body)
-	bodyStr := string(body)
-	// Remove "var galleryinfo = " prefix
-	bodyStr = strings.TrimPrefix(bodyStr, "var galleryinfo = ")
-
-	var gallery HitomiGallery
-	if err := json.Unmarshal([]byte(bodyStr), &gallery); err != nil {
 		return nil, err
 	}
 
@@ -230,6 +254,45 @@ func (d *HitomiDownloader) GetImages(url string) (*SiteInfo, error) {
 	}, nil
 }
 
+func (d *HitomiDownloader) fetchGalleryData(galleryID string) (*HitomiGallery, error) {
+	// Ensure CDN domain is available
+	if d.cdnDomain == "" {
+		// Provide a fallback default if not yet initialized, though RefreshGG should have been called.
+		// For bulk title fetching, we might not have called RefreshGG yet.
+		// Let's use the known new default.
+		d.cdnDomain = "ltn.gold-usergeneratedcontent.net"
+	}
+
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+	jsonURL := fmt.Sprintf("https://%s/galleries/%s.js", d.cdnDomain, galleryID)
+	req, _ := http.NewRequest("GET", jsonURL, nil)
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0")
+	req.Header.Set("Referer", "https://hitomi.la/")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch gallery info: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		return nil, fmt.Errorf("status %d", resp.StatusCode)
+	}
+
+	body, _ := io.ReadAll(resp.Body)
+	bodyStr := string(body)
+	// Remove "var galleryinfo = " prefix
+	bodyStr = strings.TrimPrefix(bodyStr, "var galleryinfo = ")
+
+	var gallery HitomiGallery
+	if err := json.Unmarshal([]byte(bodyStr), &gallery); err != nil {
+		return nil, err
+	}
+	return &gallery, nil
+}
+
 func (d *HitomiDownloader) getArbitraryList(url string) (*SiteInfo, error) {
 	client := &http.Client{}
 
@@ -237,12 +300,30 @@ func (d *HitomiDownloader) getArbitraryList(url string) (*SiteInfo, error) {
 	page := 1
 
 	// Extract title/artist name from URL for SeriesName
-	// e.g., /artist/tsuyatsuya-all.html
+	// e.g., /artist/tsuyatsuya-all.html -> Tsuyatsuya
+	// e.g., /artist/tsuyatsuya-spanish.html -> Tsuyatsuya (Spanish)
 	seriesName := "Hitomi Collection"
 	parts := strings.Split(url, "/")
 	if len(parts) > 0 {
 		lastPart := parts[len(parts)-1] // tsuyatsuya-all.html
 		name := strings.TrimSuffix(lastPart, ".html")
+
+		// Handle language suffixes for display name
+		if strings.HasSuffix(name, "-all") {
+			name = strings.TrimSuffix(name, "-all")
+		} else {
+			// Check for other common languages
+			langs := []string{"-spanish", "-english", "-japanese", "-chinese", "-korean", "-french", "-german"}
+			for _, lang := range langs {
+				if strings.HasSuffix(name, lang) {
+					baseName := strings.TrimSuffix(name, lang)
+					langName := strings.TrimPrefix(lang, "-")
+					name = fmt.Sprintf("%s (%s)", baseName, strings.Title(langName))
+					break
+				}
+			}
+		}
+
 		name = strings.ReplaceAll(name, "-", " ")
 		name = strings.Title(name)
 		seriesName = name
@@ -470,8 +551,59 @@ func (d *HitomiDownloader) getNozomiList(url string) (*SiteInfo, error) {
 		})
 	}
 
+	// Fetch Titles in Parallel with limits
+	// Limit to first 50 items for speed to avoid long wait times on large artist lists
+	limit := 50
+	if len(chapters) < limit {
+		limit = len(chapters)
+	}
+
+	if limit > 0 {
+		// Use a semaphore to limit concurrency
+		semaphore := make(chan struct{}, 20) // Limit to 20 concurrent requests
+		var wg sync.WaitGroup
+
+		fmt.Printf("Fetching titles for %d galleries (limited from %d)...\n", limit, len(chapters))
+
+		for i := 0; i < limit; i++ {
+			wg.Add(1)
+			go func(idx int) {
+				defer wg.Done()
+
+				semaphore <- struct{}{}        // Acquire token
+				defer func() { <-semaphore }() // Release token
+
+				id := chapters[idx].ID
+				meta, err := d.fetchGalleryData(id)
+				if err == nil {
+					// Update title and language
+					chapters[idx].Name = meta.Title
+					if meta.Language != "" {
+						chapters[idx].Language = mapHitomiLanguageToCode(meta.Language)
+					}
+				}
+			}(i)
+		}
+
+		wg.Wait()
+	}
+
 	seriesName := strings.ReplaceAll(name, "-", " ")
 	seriesName = strings.Title(seriesName)
+
+	// Beautify Series Name if possible
+	if strings.Contains(seriesName, " All") {
+		seriesName = strings.ReplaceAll(seriesName, " All", "")
+	} else {
+		langs := []string{"Spanish", "English", "Japanese", "Chinese", "Korean", "French", "German"}
+		for _, lang := range langs {
+			if strings.Contains(seriesName, " "+lang) {
+				baseName := strings.ReplaceAll(seriesName, " "+lang, "")
+				seriesName = fmt.Sprintf("%s (%s)", baseName, lang)
+				break
+			}
+		}
+	}
 
 	return &SiteInfo{
 		SeriesName: seriesName,

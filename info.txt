@@ -142,7 +142,10 @@ caracteristicas adicionales 7:
 - cuado sea una seria mostrar el nombre de la serie y los capitulos que se van descargando en forma de lista (anidada para que se sepa
     que es de una serie y el estado de capitulos individuales)
 
-    
 - cuando se le muestre el dialog de descarga de serie mostrar la cantidad de capitulos
 - cuando se muestre el dialog de descarga de serie mostrar dos selects para que se pueda elejir de que capitulo a que 
     capitulo se quiere descargar 
+- en mangadex se permite seleccionar el idioma de la serie
+
+------------------------------------------------
+- validar en linux si esta funcionando correctamente el monitoreo de clipboard
