@@ -298,9 +298,11 @@ export function applyTheme(theme: Theme): void {
     const root = document.documentElement;
     const { colors } = theme;
 
-    // Set theme attribute for CSS selectors
-    root.setAttribute('data-theme', theme.isDark ? 'dark' : 'light');
+    // Set theme attribute for CSS selectors and color-scheme for native widgets
+    const themeMode = theme.isDark ? 'dark' : 'light';
+    root.setAttribute('data-theme', themeMode);
     root.setAttribute('data-theme-id', theme.id);
+    root.style.colorScheme = themeMode;
 
     // Apply all color variables
     root.style.setProperty('--color-accent', colors.accent);

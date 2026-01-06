@@ -88,7 +88,7 @@ export function SettingsPage() {
                                 <button
                                     key={themeOption.id}
                                     onClick={() => handleThemeChange(themeOption.id)}
-                                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all hover:scale-105 active:scale-95 ${theme === themeOption.id ? 'ring-2 ring-offset-2' : ''
+                                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all hover:scale-105 active:scale-95 ${theme === themeOption.id ? 'shadow-lg brightness-110' : ''
                                         }`}
                                     style={{
                                         backgroundColor: theme === themeOption.id
@@ -99,6 +99,7 @@ export function SettingsPage() {
                                             : 'var(--color-text-secondary)',
                                         '--tw-ring-color': 'var(--color-accent)',
                                         '--tw-ring-offset-color': 'var(--color-surface-primary)',
+                                        border: 'none',
                                     } as React.CSSProperties}
                                 >
                                     {t(`themes.${themeOption.id}`)}
@@ -408,7 +409,7 @@ function ModeButton({
     return (
         <button
             onClick={onClick}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all hover:scale-105 active:scale-95 ${active ? 'ring-2 ring-offset-2' : ''}`}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all hover:scale-105 active:scale-95 ${active ? 'shadow-md brightness-110' : ''}`}
             style={{
                 backgroundColor: active
                     ? 'var(--color-accent)'
@@ -416,6 +417,7 @@ function ModeButton({
                 color: active ? 'white' : 'var(--color-text-secondary)',
                 '--tw-ring-color': 'var(--color-accent)',
                 '--tw-ring-offset-color': 'var(--color-surface-primary)',
+                border: 'none',
             } as React.CSSProperties}
         >
             {label}
