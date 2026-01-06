@@ -1,6 +1,8 @@
 package downloader
 
 import (
+	"bytes"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -126,6 +128,17 @@ type HitomiGallery struct {
 }
 
 func (d *HitomiDownloader) GetImages(url string) (*SiteInfo, error) {
+	if strings.Contains(url, "/artist/") || strings.Contains(url, "/series/") || strings.Contains(url, "/tag/") || strings.Contains(url, "/character/") || strings.Contains(url, "/group/") || strings.Contains(url, "index-") {
+		// Try regex first (for titles), then fallback to nozomi
+		info, err := d.getArbitraryList(url)
+		if err == nil && len(info.Chapters) > 0 {
+			return info, nil
+		}
+
+		// If scraping failed (empty list), try nozomi
+		return d.getNozomiList(url)
+	}
+
 	if d.gg == nil {
 		if err := d.RefreshGG(url); err != nil {
 			return nil, err
@@ -214,5 +227,256 @@ func (d *HitomiDownloader) GetImages(url string) (*SiteInfo, error) {
 		Images:        images,
 		SiteID:        d.GetSiteID(),
 		DownloadDelay: 500 * time.Millisecond,
+	}, nil
+}
+
+func (d *HitomiDownloader) getArbitraryList(url string) (*SiteInfo, error) {
+	client := &http.Client{}
+
+	allChapters := []ChapterInfo{}
+	page := 1
+
+	// Extract title/artist name from URL for SeriesName
+	// e.g., /artist/tsuyatsuya-all.html
+	seriesName := "Hitomi Collection"
+	parts := strings.Split(url, "/")
+	if len(parts) > 0 {
+		lastPart := parts[len(parts)-1] // tsuyatsuya-all.html
+		name := strings.TrimSuffix(lastPart, ".html")
+		name = strings.ReplaceAll(name, "-", " ")
+		name = strings.Title(name)
+		seriesName = name
+	}
+
+	reLink := regexp.MustCompile(`<a href="/galleries/(\d+)\.html"[^>]*>(.*?)</a>`)
+	reTitle := regexp.MustCompile(`<h1><a href="[^"]*">([^<]*)</a></h1>`)
+
+	for {
+		// Hitomi uses ?page=1 (1-based)
+		targetURL := url
+		if strings.Contains(url, "?") {
+			targetURL = fmt.Sprintf("%s&page=%d", url, page)
+		} else {
+			targetURL = fmt.Sprintf("%s?page=%d", url, page)
+		}
+
+		req, _ := http.NewRequest("GET", targetURL, nil)
+		req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0")
+
+		resp, err := client.Do(req)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch page %d: %v", page, err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode == 404 {
+			break
+		}
+
+		body, _ := io.ReadAll(resp.Body)
+		bodyStr := string(body)
+
+		// Find gallery links
+		// The structure is usually .gallery-content -> a href="/galleries/ID.html" -> text or h1
+		// We can scan for /galleries/(\d+).html and try to extract title nearby
+		// A simple but effective way without DOM parser:
+		// Look for <div class="...-content"> blocks
+		// Inside them find <a href="/galleries/123.html">Title</a>
+
+		// Since we don't have a DOM parser, let's use a simpler regex that captures the link and roughly the title.
+		// On Hitomi artist pages, the title is often inside an h1 tag within the link, or just text.
+		// Matches: <a href="/galleries/12345.html">...<h1>Title</h1>...</a> or similar variations.
+		// Let's iterate over matches of the gallery link.
+
+		matches := reLink.FindAllStringSubmatch(bodyStr, -1)
+
+		// If no matches found in the first page, maybe it's effectively empty or structure changed
+		if len(matches) == 0 && page == 1 {
+			// Try a broader regex just for IDs if the structure is complex
+			reSimpleID := regexp.MustCompile(`/galleries/(\d+)\.html`)
+			matchesSimple := reSimpleID.FindAllStringSubmatch(bodyStr, -1)
+			if len(matchesSimple) == 0 {
+				return nil, fmt.Errorf("no galleries found on artist page")
+			}
+			// We found IDs but simpler regex, proceed with empty names or try to fetch
+			for _, m := range matchesSimple {
+				id := m[1]
+				// Deduplicate helper
+				exists := false
+				for _, c := range allChapters {
+					if c.ID == id {
+						exists = true
+						break
+					}
+				}
+				if !exists {
+					allChapters = append(allChapters, ChapterInfo{
+						ID:   id,
+						Name: fmt.Sprintf("Gallery %s", id), // Placeholder
+						URL:  fmt.Sprintf("https://hitomi.la/galleries/%s.html", id),
+					})
+				}
+			}
+		} else if len(matches) > 0 {
+			for _, m := range matches {
+				id := m[1]
+				rawContent := m[2] // This might contain HTML tags like <h1>...</h1>
+
+				// Extract clean title from rawContent
+				title := ""
+				titleMatch := reTitle.FindStringSubmatch(rawContent)
+				if len(titleMatch) > 1 {
+					title = titleMatch[1]
+				} else {
+					// Strip all tags
+					reTags := regexp.MustCompile(`<[^>]*>`)
+					title = reTags.ReplaceAllString(rawContent, "")
+				}
+				title = strings.TrimSpace(title)
+				if title == "" {
+					title = fmt.Sprintf("Gallery %s", id)
+				}
+
+				// Deduplicate
+				exists := false
+				for _, c := range allChapters {
+					if c.ID == id {
+						exists = true
+						break
+					}
+				}
+				if !exists {
+					allChapters = append(allChapters, ChapterInfo{
+						ID:   id,
+						Name: title,
+						URL:  fmt.Sprintf("https://hitomi.la/galleries/%s.html", id),
+					})
+				}
+			}
+		} else {
+			// No matches on page > 1, assume end of pagination
+			break
+		}
+
+		// Safety break for too many pages or if we keep finding the same stuff
+		if page > 50 {
+			break
+		}
+		page++
+	}
+
+	return &SiteInfo{
+		SeriesName: seriesName,
+		Type:       "series",
+		Chapters:   allChapters,
+		SiteID:     d.GetSiteID(),
+	}, nil
+}
+
+func (d *HitomiDownloader) getNozomiList(url string) (*SiteInfo, error) {
+	// Convert URL to nozomi URL
+	// https://hitomi.la/artist/tsuyatsuya-all.html -> https://ltn.hitomi.la/ids/artist/tsuyatsuya-all.nozomi
+
+	parts := strings.Split(url, "/")
+	if len(parts) < 2 {
+		return nil, fmt.Errorf("invalid url structure")
+	}
+
+	// Extract type and name
+	// url: .../TYPE/NAME.html
+	// We need to support: artist, series, tag, character, group
+
+	var typeName, name string
+
+	if strings.Contains(url, "/artist/") {
+		typeName = "artist"
+	} else if strings.Contains(url, "/series/") {
+		typeName = "series"
+	} else if strings.Contains(url, "/tag/") {
+		typeName = "tag"
+	} else if strings.Contains(url, "/character/") {
+		typeName = "character"
+	} else if strings.Contains(url, "/group/") {
+		typeName = "group"
+	} else {
+		return nil, fmt.Errorf("unsupported url type for nozomi fetch")
+	}
+
+	// Find name in URL parts
+	for i, part := range parts {
+		if part == typeName && i+1 < len(parts) {
+			name = parts[i+1]
+			break
+		}
+	}
+
+	name = strings.TrimSuffix(name, ".html")
+	if name == "" {
+		return nil, fmt.Errorf("could not extract name from url")
+	}
+
+	// Updated Hitomi.la nozomi location (2025)
+	// pattern: https://ltn.gold-usergeneratedcontent.net/{type}/{name}.nozomi
+	// The /ids/ path segment is removed on the new domain.
+	nozomiURL := fmt.Sprintf("https://ltn.gold-usergeneratedcontent.net/%s/%s.nozomi", typeName, name)
+
+	client := &http.Client{}
+	req, _ := http.NewRequest("GET", nozomiURL, nil)
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0")
+	req.Header.Set("Referer", "https://hitomi.la/")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch nozomi file: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		return nil, fmt.Errorf("nozomi file returned status %d", resp.StatusCode)
+	}
+
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse Big Endian 32-bit Integers
+	if len(data)%4 != 0 {
+		// Log warning but proceed?
+	}
+
+	count := len(data) / 4
+	chapters := make([]ChapterInfo, 0, count)
+
+	// Process in reverse? Hitomi usually lists newest first in nozomi??
+	// Actually nozomi is usually sorted by ID desc? Or unordered?
+	// We'll read them sequentially.
+
+	// Create a reader
+	r := bytes.NewReader(data)
+	var id int32
+
+	for i := 0; i < count; i++ {
+		if err := binary.Read(r, binary.BigEndian, &id); err != nil {
+			break
+		}
+
+		idStr := fmt.Sprintf("%d", id)
+
+		chapters = append(chapters, ChapterInfo{
+			ID:   idStr,
+			Name: fmt.Sprintf("Gallery %s", idStr), // No title available in nozomi
+			URL:  fmt.Sprintf("https://hitomi.la/galleries/%s.html", idStr),
+		})
+	}
+
+	seriesName := strings.ReplaceAll(name, "-", " ")
+	seriesName = strings.Title(seriesName)
+
+	return &SiteInfo{
+		SeriesName: seriesName,
+		Type:       "series",
+		Chapters:   chapters,
+		SiteID:     d.GetSiteID(),
 	}, nil
 }
