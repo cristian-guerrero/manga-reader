@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useToast } from '../common/Toast';
@@ -123,16 +123,18 @@ export const DownloadPage: React.FC = () => {
     }, [url, showToast, t]);
 
     // Clipboard monitoring logic
+    // Clipboard monitoring logic
+    const lastClipboard = useRef('');
+
     useEffect(() => {
         if (!settings.clipboardAutoMonitor) return;
 
-        let lastClipboard = '';
         const interval = setInterval(async () => {
             try {
                 const text = await navigator.clipboard.readText();
                 // Check if it's a valid URL format (starts with http) and contains known domains
-                if (text && text !== lastClipboard && text.startsWith('http') && (text.includes('hitomi.la') || text.includes('manhwaweb.com') || text.includes('zonatmo.com') || text.includes('nhentai') || text.includes('mangadex'))) {
-                    lastClipboard = text;
+                if (text && text !== lastClipboard.current && text.startsWith('http') && (text.includes('hitomi.la') || text.includes('manhwaweb.com') || text.includes('zonatmo.com') || text.includes('nhentai') || text.includes('mangadex'))) {
+                    lastClipboard.current = text;
 
                     // Hitomi Series Detection: Don't auto-start, just paste.
                     const isHitomi = text.includes('hitomi.la');
