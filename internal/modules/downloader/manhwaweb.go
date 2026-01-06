@@ -11,15 +11,18 @@ import (
 type ManhwaWebDownloader struct{}
 
 type ManhwaChapter struct {
+	Name    string `json:"name"`
 	Chapter struct {
-		Img []string `json:"img"`
+		Img     []string `json:"img"`
+		Chapter float64  `json:"chapter"`
 	} `json:"chapter"`
 }
 
 type ManhwaSeriesResponse struct {
-	ID       string `json:"_id"`
-	NameEsp  string `json:"name_esp"`
-	Chapters []struct {
+	ID          string `json:"_id"`
+	NameEsp     string `json:"name_esp"`
+	TheRealName string `json:"the_real_name"`
+	Chapters    []struct {
 		Chapter float64 `json:"chapter"`
 		Link    string  `json:"link"`
 	} `json:"chapters"`
@@ -68,11 +71,16 @@ func (d *ManhwaWebDownloader) getSeries(url string) (*SiteInfo, error) {
 		return nil, err
 	}
 
+	seriesName := data.NameEsp
+	if seriesName == "" {
+		seriesName = data.TheRealName
+	}
+
 	var chapters []ChapterInfo
 	for _, ch := range data.Chapters {
 		chapters = append(chapters, ChapterInfo{
 			ID:   fmt.Sprintf("%v", ch.Chapter),
-			Name: fmt.Sprintf("Chapter %v", ch.Chapter),
+			Name: fmt.Sprintf("%s %v", seriesName, ch.Chapter),
 			URL:  ch.Link,
 		})
 	}
@@ -83,7 +91,7 @@ func (d *ManhwaWebDownloader) getSeries(url string) (*SiteInfo, error) {
 	}
 
 	return &SiteInfo{
-		SeriesName: data.NameEsp,
+		SeriesName: seriesName,
 		SiteID:     d.GetSiteID(),
 		Type:       "series",
 		Chapters:   chapters,
@@ -120,14 +128,17 @@ func (d *ManhwaWebDownloader) getChapter(url string) (*SiteInfo, error) {
 		return nil, err
 	}
 
-	seriesName := "Unknown"
-	chapterName := slug
-
-	// Try to extract series name from slug
-	slugParts := strings.Split(slug, "_")
-	if len(slugParts) > 0 {
-		seriesName = strings.ReplaceAll(slugParts[0], "-", " ")
+	seriesName := data.Name
+	if seriesName == "" {
+		seriesName = "Unknown"
+		// Try to extract series name from slug fallback
+		slugParts := strings.Split(slug, "_")
+		if len(slugParts) > 0 {
+			seriesName = strings.ReplaceAll(slugParts[0], "-", " ")
+		}
 	}
+
+	chapterName := fmt.Sprintf("%s %v", seriesName, data.Chapter.Chapter)
 
 	// Filter out empty URLs
 	var images []ImageDownload
