@@ -4,6 +4,7 @@ type ImageDownload struct {
 	URL      string
 	Filename string
 	Index    int
+	Headers  map[string]string
 }
 
 type SiteInfo struct {

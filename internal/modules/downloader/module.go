@@ -36,6 +36,7 @@ func NewModule(pm *persistence.DownloaderManager, sm *persistence.SettingsManage
 			&ManhwaWebDownloader{},
 			&ZonaTMODownloader{},
 			&MangaDexDownloader{},
+			&NHentaiDownloader{},
 		},
 	}
 }
@@ -131,7 +132,7 @@ func (m *Module) runDownload(job persistence.DownloadJob, info *SiteInfo) {
 			m.notifyUpdate()
 			return
 		default:
-			err := downloadFile(img.URL, filepath.Join(downloadDir, img.Filename))
+			err := downloadFile(img.URL, filepath.Join(downloadDir, img.Filename), img.Headers)
 			if err != nil {
 				// Retry once or fail? Let's fail for now.
 				m.failJob(job.ID, fmt.Sprintf("Failed to download page %d: %v", i+1, err))
@@ -174,16 +175,22 @@ func sanitizeFilename(name string) string {
 	return strings.TrimSpace(res)
 }
 
-func downloadFile(url string, path string) error {
+func downloadFile(url string, path string, headers map[string]string) error {
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return err
 	}
 
-	// Add headers required by some sites (e.g., Hitomi)
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0")
-	req.Header.Set("Referer", "https://hitomi.la/")
+	// Add headers
+	if headers != nil {
+		for k, v := range headers {
+			req.Header.Set(k, v)
+		}
+	} else {
+		// Default headers if none provided (legacy behavior mostly)
+		req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0")
+	}
 
 	resp, err := client.Do(req)
 	if err != nil {

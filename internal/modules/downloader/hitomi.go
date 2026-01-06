@@ -199,12 +199,17 @@ func (d *HitomiDownloader) GetImages(url string) (*SiteInfo, error) {
 			URL:      imageURL,
 			Filename: fmt.Sprintf("%03d.%s", i+1, ext),
 			Index:    i,
+			Headers: map[string]string{
+				"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0",
+				"Referer":    "https://hitomi.la/",
+			},
 		}
 	}
 
+	fullTitle := fmt.Sprintf("%s [%s]", gallery.Title, galleryID)
 	return &SiteInfo{
-		SeriesName:  gallery.Title,
-		ChapterName: galleryID,
+		SeriesName:  fullTitle,
+		ChapterName: "",
 		Images:      images,
 		SiteID:      d.GetSiteID(),
 	}, nil
