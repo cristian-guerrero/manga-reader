@@ -85,28 +85,9 @@ export const DownloadPage: React.FC = () => {
         return () => unoff();
     }, [loadHistory]);
 
-    // Clipboard monitoring logic
-    useEffect(() => {
-        if (!settings.clipboardAutoMonitor) return;
 
-        let lastClipboard = '';
-        const interval = setInterval(async () => {
-            try {
-                const text = await navigator.clipboard.readText();
-                if (text && text !== lastClipboard && (text.includes('hitomi.la') || text.includes('manhwaweb.com') || text.includes('zonatmo.com'))) {
-                    lastClipboard = text;
-                    setUrl(text);
-                    showToast(t('download.pastedFromClipboard'), 'info');
-                }
-            } catch (err) {
-                // Clipboard access might be denied
-            }
-        }, 2000);
 
-        return () => clearInterval(interval);
-    }, [settings.clipboardAutoMonitor, t, showToast]);
-
-    const handleStartDownload = async (inputUrl?: string) => {
+    const handleStartDownload = useCallback(async (inputUrl?: string) => {
         const urlToDownload = inputUrl || url;
         if (!urlToDownload) return;
 
@@ -116,8 +97,6 @@ export const DownloadPage: React.FC = () => {
             const info = await (AppBackend as any).FetchMangaInfo(urlToDownload);
 
             if (info.Type === 'series') {
-                setSeriesInfo(info);
-                // Select all by default
                 setSeriesInfo(info);
                 // Start with empty selection so user must choose
                 setSelectedChapters(new Set());
@@ -141,7 +120,33 @@ export const DownloadPage: React.FC = () => {
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [url, showToast, t]);
+
+    // Clipboard monitoring logic
+    useEffect(() => {
+        if (!settings.clipboardAutoMonitor) return;
+
+        let lastClipboard = '';
+        const interval = setInterval(async () => {
+            try {
+                const text = await navigator.clipboard.readText();
+                if (text && text !== lastClipboard && (text.includes('hitomi.la') || text.includes('manhwaweb.com') || text.includes('zonatmo.com') || text.includes('nhentai') || text.includes('mangadex'))) {
+                    lastClipboard = text;
+                    // setUrl(text); // Auto-download handles clearing or setting URL if needed, but handleStartDownload needs the text if we pass it directly
+                    // We don't need to setUrl if we are auto starting, but visually it might be nice to see?
+                    // handleStartDownload clears it on success.
+                    // Let's passed it directly.
+
+                    showToast(t('download.pastedFromClipboard'), 'info');
+                    handleStartDownload(text);
+                }
+            } catch (err) {
+                // Clipboard access might be denied
+            }
+        }, 2000);
+
+        return () => clearInterval(interval);
+    }, [settings.clipboardAutoMonitor, t, showToast, handleStartDownload]);
 
     const handleDownloadSeries = async () => {
         if (!seriesInfo) return;
