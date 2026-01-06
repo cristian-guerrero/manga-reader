@@ -21,16 +21,32 @@ type Module struct {
 	sm         *persistence.SettingsManager
 	algorithms []DownloaderInterface
 	activeJobs sync.Map // map[string]*activeJob
+
+	// Queue management
+	queueLock      sync.Mutex
+	queues         map[string][]*queuedJob // map[siteID]queue
+	activeCounts   map[string]int          // map[siteID]count
+	maxConcurrency map[string]int          // map[siteID]limit (0 = unlimited)
 }
 
 type activeJob struct {
 	cancel context.CancelFunc
 }
 
+type queuedJob struct {
+	job  persistence.DownloadJob
+	info *SiteInfo
+}
+
 func NewModule(pm *persistence.DownloaderManager, sm *persistence.SettingsManager) *Module {
 	return &Module{
-		pm: pm,
-		sm: sm,
+		pm:           pm,
+		sm:           sm,
+		queues:       make(map[string][]*queuedJob),
+		activeCounts: make(map[string]int),
+		maxConcurrency: map[string]int{
+			"hitomi.la": 1, // todo pendiente que este numero puede se mayor, por ahora solo 1
+		},
 		algorithms: []DownloaderInterface{
 			&HitomiDownloader{},
 			&ManhwaWebDownloader{},
@@ -104,20 +120,39 @@ func (m *Module) StartDownload(url string) (string, error) {
 		Site:        algo.GetSiteID(),
 		SeriesName:  info.SeriesName,
 		ChapterName: info.ChapterName,
-		Status:      persistence.StatusPending,
+		Status:      persistence.StatusPending, // Initially pending
 		Progress:    0,
 		TotalPages:  len(info.Images),
 		CreatedAt:   time.Now(),
 	}
 	m.pm.AddJob(job)
 
-	// Start async download
-	go m.runDownload(job, info)
+	// Check concurrency limits
+	m.queueLock.Lock()
+	defer m.queueLock.Unlock()
+
+	siteID := algo.GetSiteID()
+	limit := m.maxConcurrency[siteID]
+	active := m.activeCounts[siteID]
+
+	// If limit is 0 (unlimited) or active count is below limit, start immediately
+	if limit == 0 || active < limit {
+		m.activeCounts[siteID]++
+		go m.runDownload(job, info)
+	} else {
+		// Queue the job
+		m.queues[siteID] = append(m.queues[siteID], &queuedJob{job: job, info: info})
+		// Job remains in Pending status in persistence
+		fmt.Printf("[Downloader] Queued job %s for site %s (Active: %d, Limit: %d)\n", jobID, siteID, active, limit)
+	}
 
 	return jobID, nil
 }
 
 func (m *Module) runDownload(job persistence.DownloadJob, info *SiteInfo) {
+	// Ensure we decrease active count and process next in queue when done
+	defer m.finalizeJob(job.Site)
+
 	ctx, cancel := context.WithCancel(context.Background())
 	m.activeJobs.Store(job.ID, &activeJob{cancel: cancel})
 	defer m.activeJobs.Delete(job.ID)
@@ -182,6 +217,29 @@ func (m *Module) failJob(id string, err string) {
 		"error":  err,
 	})
 	m.notifyUpdate()
+}
+
+func (m *Module) finalizeJob(siteID string) {
+	m.queueLock.Lock()
+	defer m.queueLock.Unlock()
+
+	m.activeCounts[siteID]--
+	if m.activeCounts[siteID] < 0 {
+		m.activeCounts[siteID] = 0 // Should not happen
+	}
+
+	// Check if there are pending jobs
+	queue := m.queues[siteID]
+	if len(queue) > 0 {
+		// Pop first
+		next := queue[0]
+		m.queues[siteID] = queue[1:]
+
+		// Start it
+		m.activeCounts[siteID]++
+		fmt.Printf("[Downloader] Starting queued job %s for site %s\n", next.job.ID, siteID)
+		go m.runDownload(next.job, next.info)
+	}
 }
 
 func (m *Module) notifyUpdate() {
