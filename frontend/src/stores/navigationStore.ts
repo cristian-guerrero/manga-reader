@@ -57,7 +57,7 @@ export const useNavigationStore = create<NavigationStoreState>((set, get) => ({
         });
 
         // Save main pages to settings for startup restore
-        const mainPages = ['home', 'folders', 'series', 'history', 'settings'];
+        const mainPages = ['home', 'folders', 'series', 'history', 'download', 'settings'];
         if (mainPages.includes(page)) {
             // @ts-ignore - Dynamic import to avoid circular dependency
             import('./settingsStore').then(({ useSettingsStore }) => {

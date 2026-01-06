@@ -4,7 +4,7 @@ import { useNavigationStore } from '../../stores/navigationStore';
 
 // Icons
 interface NavItem {
-    id: 'home' | 'explorer' | 'history' | 'folders' | 'series' | 'settings';
+    id: 'home' | 'explorer' | 'history' | 'folders' | 'series' | 'download' | 'settings';
     icon: JSX.Element;
     labelKey: string;
 }
@@ -55,6 +55,13 @@ const ExplorerIcon = () => (
         <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
     </svg>
 );
+const DownloadIcon = () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+        <polyline points="7 10 12 15 17 10" />
+        <line x1="12" y1="15" x2="12" y2="3" />
+    </svg>
+);
 
 const navItems: NavItem[] = [
     { id: 'home', icon: <HomeIcon />, labelKey: 'navigation.home' },
@@ -62,6 +69,7 @@ const navItems: NavItem[] = [
     { id: 'history', icon: <HistoryIcon />, labelKey: 'navigation.history' },
     { id: 'folders', icon: <FolderIcon />, labelKey: 'navigation.folders' },
     { id: 'series', icon: <SeriesIcon />, labelKey: 'navigation.series' },
+    { id: 'download', icon: <DownloadIcon />, labelKey: 'navigation.download' },
     { id: 'settings', icon: <SettingsIcon />, labelKey: 'navigation.settings' },
 ];
 

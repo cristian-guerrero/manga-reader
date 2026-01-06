@@ -29,6 +29,7 @@ interface SettingsState extends Settings {
     setEnabledMenuItems: (items: Record<string, boolean>) => void;
     toggleMenuItem: (item: string) => void;
     updateBackend: (key: string, value: any) => Promise<void>;
+    updateSettings: (updates: Partial<Settings>) => void;
 
     // Persistence
     loadSettings: () => Promise<void>;
@@ -146,6 +147,12 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         console.log(`[SettingsStore] Toggling menu item: ${item} -> ${!currentValue}`);
         set({ enabledMenuItems: newItems });
         updateBackend('enabledMenuItems', newItems);
+    },
+    updateSettings: (updates) => {
+        set(updates);
+        Object.entries(updates).forEach(([key, value]) => {
+            get().updateBackend(key, value);
+        });
     },
 
     updateBackend: async (key: string, value: any) => {

@@ -87,6 +87,60 @@ export namespace persistence {
 	        this.imageCount = source["imageCount"];
 	    }
 	}
+	export class DownloadJob {
+	    id: string;
+	    url: string;
+	    site: string;
+	    seriesName: string;
+	    chapterName: string;
+	    status: string;
+	    progress: number;
+	    totalPages: number;
+	    error?: string;
+	    // Go type: time
+	    createdAt: any;
+	    // Go type: time
+	    completedAt?: any;
+	    path: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new DownloadJob(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.url = source["url"];
+	        this.site = source["site"];
+	        this.seriesName = source["seriesName"];
+	        this.chapterName = source["chapterName"];
+	        this.status = source["status"];
+	        this.progress = source["progress"];
+	        this.totalPages = source["totalPages"];
+	        this.error = source["error"];
+	        this.createdAt = this.convertValues(source["createdAt"], null);
+	        this.completedAt = this.convertValues(source["completedAt"], null);
+	        this.path = source["path"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class FolderInfo {
 	    path: string;
 	    name: string;
@@ -135,6 +189,32 @@ export namespace persistence {
 	        this.lastRead = source["lastRead"];
 	    }
 	}
+	export class ImageInfo {
+	    path: string;
+	    thumbnailUrl: string;
+	    imageUrl: string;
+	    name: string;
+	    extension: string;
+	    size: number;
+	    index: number;
+	    modTime: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new ImageInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.path = source["path"];
+	        this.thumbnailUrl = source["thumbnailUrl"];
+	        this.imageUrl = source["imageUrl"];
+	        this.name = source["name"];
+	        this.extension = source["extension"];
+	        this.size = source["size"];
+	        this.index = source["index"];
+	        this.modTime = source["modTime"];
+	    }
+	}
 	export class Settings {
 	    language: string;
 	    theme: string;
@@ -158,6 +238,8 @@ export namespace persistence {
 	    windowMaximized: boolean;
 	    lastPage: string;
 	    enabledMenuItems: Record<string, boolean>;
+	    downloadPath: string;
+	    clipboardAutoMonitor: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new Settings(source);
@@ -187,6 +269,8 @@ export namespace persistence {
 	        this.windowMaximized = source["windowMaximized"];
 	        this.lastPage = source["lastPage"];
 	        this.enabledMenuItems = source["enabledMenuItems"];
+	        this.downloadPath = source["downloadPath"];
+	        this.clipboardAutoMonitor = source["clipboardAutoMonitor"];
 	    }
 	}
 
@@ -260,7 +344,6 @@ export namespace series {
 	    name: string;
 	    coverImage: string;
 	    addedAt: string;
-	    chapters: persistence.ChapterInfo[];
 	    isTemporary: boolean;
 	    thumbnailUrl: string;
 	    chapters: ChapterWithURLs[];
@@ -276,7 +359,6 @@ export namespace series {
 	        this.name = source["name"];
 	        this.coverImage = source["coverImage"];
 	        this.addedAt = source["addedAt"];
-	        this.chapters = this.convertValues(source["chapters"], persistence.ChapterInfo);
 	        this.isTemporary = source["isTemporary"];
 	        this.thumbnailUrl = source["thumbnailUrl"];
 	        this.chapters = this.convertValues(source["chapters"], ChapterWithURLs);
@@ -299,37 +381,6 @@ export namespace series {
 		    }
 		    return a;
 		}
-	}
-
-}
-
-export namespace struct { Path string "json:\"path\""; ThumbnailURL string "json:\"thumbnailUrl\""; ImageURL string "json:\"imageUrl\""; Name string "json:\"name\""; Extension string "json:\"extension\""; Size int64 "json:\"size\""; Index int "json:\"index\""; ModTime int64 "json:\"modTime\"" } {
-	
-	export class  {
-	    path: string;
-	    thumbnailUrl: string;
-	    imageUrl: string;
-	    name: string;
-	    extension: string;
-	    size: number;
-	    index: number;
-	    modTime: number;
-	
-	    static createFrom(source: any = {}) {
-	        return new (source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.path = source["path"];
-	        this.thumbnailUrl = source["thumbnailUrl"];
-	        this.imageUrl = source["imageUrl"];
-	        this.name = source["name"];
-	        this.extension = source["extension"];
-	        this.size = source["size"];
-	        this.index = source["index"];
-	        this.modTime = source["modTime"];
-	    }
 	}
 
 }

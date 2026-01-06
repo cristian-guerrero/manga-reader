@@ -17,13 +17,21 @@ import (
 
 // SeriesEntryWithURLs is a SeriesEntry with added URL fields for the frontend
 type SeriesEntryWithURLs struct {
-	persistence.SeriesEntry
+	ID           string            `json:"id"`
+	Path         string            `json:"path"`
+	Name         string            `json:"name"`
+	CoverImage   string            `json:"coverImage"`
+	AddedAt      string            `json:"addedAt"`
+	IsTemporary  bool              `json:"isTemporary"`
 	ThumbnailURL string            `json:"thumbnailUrl"`
 	Chapters     []ChapterWithURLs `json:"chapters"`
 }
 
 type ChapterWithURLs struct {
-	persistence.ChapterInfo
+	Path         string `json:"path"`
+	Name         string `json:"name"`
+	CoverImage   string `json:"coverImage"`
+	ImageCount   int    `json:"imageCount"`
 	ThumbnailURL string `json:"thumbnailUrl"`
 }
 
@@ -147,7 +155,10 @@ func (m *Module) GetSeries() []SeriesEntryWithURLs {
 			}
 
 			chapters[j] = ChapterWithURLs{
-				ChapterInfo:  entry.Chapters[j],
+				Path:         entry.Chapters[j].Path,
+				Name:         entry.Chapters[j].Name,
+				CoverImage:   entry.Chapters[j].CoverImage,
+				ImageCount:   entry.Chapters[j].ImageCount,
 				ThumbnailURL: fmt.Sprintf("%s/thumbnails?did=%s&fid=%s", baseURL, dirHash, url.QueryEscape(fid)),
 			}
 		}
@@ -159,7 +170,12 @@ func (m *Module) GetSeries() []SeriesEntryWithURLs {
 
 		dirHash := m.fileLoader.RegisterDirectory(filepath.Dir(entry.CoverImage))
 		result[i] = SeriesEntryWithURLs{
-			SeriesEntry:  entry,
+			ID:           entry.ID,
+			Path:         entry.Path,
+			Name:         entry.Name,
+			CoverImage:   entry.CoverImage,
+			AddedAt:      entry.AddedAt,
+			IsTemporary:  entry.IsTemporary,
 			ThumbnailURL: fmt.Sprintf("%s/thumbnails?did=%s&fid=%s", baseURL, dirHash, url.QueryEscape(filepath.Base(entry.CoverImage))),
 			Chapters:     chapters,
 		}

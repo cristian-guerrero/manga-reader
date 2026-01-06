@@ -26,7 +26,7 @@
         "history": "History",
         "folders": "Folders",
         "series": "Series",
-        "settings": "Settings",
+        "download": "Downloads",
         "settings": "Settings",
         "viewer": "Viewer",
         "explorer": "Explorer"
@@ -104,6 +104,26 @@
         "confirmReset": "Reset image order to original?",
         "dragToReorder": "Drag to reorder",
         "orderSaved": "Order saved"
+    },
+    "download": {
+        "title": "Download Manager",
+        "urlPlaceholder": "Paste manga URL here...",
+        "startDownload": "Download",
+        "autoMonitor": "Auto Clipboard Monitoring",
+        "downloadHistory": "Download History",
+        "clearHistory": "Clear History",
+        "noDownloads": "No active or recent downloads",
+        "statusPending": "Pending",
+        "statusRunning": "Downloading",
+        "statusCompleted": "Completed",
+        "statusFailed": "Failed",
+        "statusCancelled": "Cancelled",
+        "selectPath": "Change Download Folder",
+        "defaultPath": "Default Folder",
+        "totalPages": "{{count}} pages",
+        "error": "Error: {{message}}",
+        "openFolder": "Open Folder",
+        "pastedFromClipboard": "URL pasted from clipboard"
     },
     "settings": {
         "title": "Settings",

@@ -11,8 +11,19 @@ type FolderInfo struct {
 	LastModified string `json:"lastModified,omitempty"`
 }
 
-// AddFolderResult represents the result of adding a folder
 type AddFolderResult struct {
 	Path     string `json:"path"`
 	IsSeries bool   `json:"isSeries"`
+}
+
+// ImageInfo represents information about an image for frontend consumption
+type ImageInfo struct {
+	Path         string `json:"path"`
+	ThumbnailURL string `json:"thumbnailUrl"`
+	ImageURL     string `json:"imageUrl"`
+	Name         string `json:"name"`
+	Extension    string `json:"extension"`
+	Size         int64  `json:"size"`
+	Index        int    `json:"index"`
+	ModTime      int64  `json:"modTime"`
 }

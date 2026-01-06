@@ -18,6 +18,10 @@ export function AddSeries(arg1, arg2, arg3) {
   return window['go']['main']['App']['AddSeries'](arg1, arg2, arg3);
 }
 
+export function ClearDownloadHistory() {
+  return window['go']['main']['App']['ClearDownloadHistory']();
+}
+
 export function ClearHistory() {
   return window['go']['main']['App']['ClearHistory']();
 }
@@ -44,6 +48,10 @@ export function GetBaseFolders() {
 
 export function GetChapterNavigation(arg1) {
   return window['go']['main']['App']['GetChapterNavigation'](arg1);
+}
+
+export function GetDownloadHistory() {
+  return window['go']['main']['App']['GetDownloadHistory']();
 }
 
 export function GetFolderInfo(arg1) {
@@ -98,12 +106,20 @@ export function IsSeries(arg1) {
   return window['go']['main']['App']['IsSeries'](arg1);
 }
 
+export function OpenInFileManager(arg1) {
+  return window['go']['main']['App']['OpenInFileManager'](arg1);
+}
+
 export function PreloadThumbnails(arg1) {
   return window['go']['main']['App']['PreloadThumbnails'](arg1);
 }
 
 export function RemoveBaseFolder(arg1) {
   return window['go']['main']['App']['RemoveBaseFolder'](arg1);
+}
+
+export function RemoveDownloadJob(arg1) {
+  return window['go']['main']['App']['RemoveDownloadJob'](arg1);
 }
 
 export function RemoveHistory(arg1) {
@@ -140,6 +156,10 @@ export function SaveWindowState() {
 
 export function SelectFolder() {
   return window['go']['main']['App']['SelectFolder']();
+}
+
+export function StartDownload(arg1) {
+  return window['go']['main']['App']['StartDownload'](arg1);
 }
 
 export function UpdateSettings(arg1) {

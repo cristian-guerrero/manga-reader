@@ -49,6 +49,10 @@ type Settings struct {
 	LastPage string `json:"lastPage"`
 	// Enabled menu items
 	EnabledMenuItems map[string]bool `json:"enabledMenuItems"`
+	// Download path
+	DownloadPath string `json:"downloadPath"`
+	// Clipboard auto monitor
+	ClipboardAutoMonitor bool `json:"clipboardAutoMonitor"`
 }
 
 // DefaultSettings returns the default settings
@@ -83,7 +87,10 @@ func DefaultSettings() *Settings {
 			"series":   true,
 			"explorer": true,
 			"settings": true,
+			"download": true,
 		},
+		DownloadPath:         "", // empty means default
+		ClipboardAutoMonitor: false,
 	}
 }
 
@@ -258,6 +265,14 @@ func (sm *SettingsManager) Update(updates map[string]interface{}) error {
 					}
 				}
 				sm.settings.EnabledMenuItems = newMap
+			}
+		case "downloadPath":
+			if v, ok := value.(string); ok {
+				sm.settings.DownloadPath = v
+			}
+		case "clipboardAutoMonitor":
+			if v, ok := value.(bool); ok {
+				sm.settings.ClipboardAutoMonitor = v
 			}
 		}
 

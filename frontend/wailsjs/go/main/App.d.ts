@@ -12,6 +12,8 @@ export function AddHistory(arg1:persistence.HistoryEntry):Promise<void>;
 
 export function AddSeries(arg1:string,arg2:Array<persistence.FolderInfo>,arg3:boolean):Promise<persistence.AddFolderResult>;
 
+export function ClearDownloadHistory():Promise<void>;
+
 export function ClearHistory():Promise<void>;
 
 export function ClearLibrary():Promise<void>;
@@ -26,6 +28,8 @@ export function GetBaseFolders():Promise<Array<explorer.BaseFolderEntry>>;
 
 export function GetChapterNavigation(arg1:string):Promise<series.ChapterNavigation>;
 
+export function GetDownloadHistory():Promise<Array<persistence.DownloadJob>>;
+
 export function GetFolderInfo(arg1:string):Promise<persistence.FolderInfo>;
 
 export function GetHistory():Promise<Array<persistence.HistoryEntry>>;
@@ -34,7 +38,7 @@ export function GetHistoryEntry(arg1:string):Promise<persistence.HistoryEntry>;
 
 export function GetImageOrder(arg1:string):Promise<Array<string>>;
 
-export function GetImages(arg1:string):Promise<Array<any>>;
+export function GetImages(arg1:string):Promise<Array<persistence.ImageInfo>>;
 
 export function GetLibrary():Promise<Array<persistence.FolderInfo>>;
 
@@ -52,9 +56,13 @@ export function HasCustomOrder(arg1:string):Promise<boolean>;
 
 export function IsSeries(arg1:string):Promise<boolean>;
 
+export function OpenInFileManager(arg1:string):Promise<void>;
+
 export function PreloadThumbnails(arg1:Array<string>):Promise<void>;
 
 export function RemoveBaseFolder(arg1:string):Promise<void>;
+
+export function RemoveDownloadJob(arg1:string):Promise<void>;
 
 export function RemoveHistory(arg1:string):Promise<void>;
 
@@ -73,6 +81,8 @@ export function SaveSettings(arg1:persistence.Settings):Promise<void>;
 export function SaveWindowState():Promise<void>;
 
 export function SelectFolder():Promise<string>;
+
+export function StartDownload(arg1:string):Promise<string>;
 
 export function UpdateSettings(arg1:Record<string, any>):Promise<void>;
 

@@ -25,6 +25,7 @@
         "history": "Historial",
         "folders": "Carpetas",
         "series": "Series",
+        "download": "Descargas",
         "settings": "Configuración",
         "viewer": "Visor"
     },
@@ -102,6 +103,26 @@
         "confirmReset": "¿Restablecer el orden de imágenes al original?",
         "dragToReorder": "Arrastra para reordenar",
         "orderSaved": "Orden guardado"
+    },
+    "download": {
+        "title": "Gestor de Descargas",
+        "urlPlaceholder": "Pega la URL del manga aquí...",
+        "startDownload": "Descargar",
+        "autoMonitor": "Monitoreo Automático de Portapapeles",
+        "downloadHistory": "Historial de Descargas",
+        "clearHistory": "Limpiar Historial",
+        "noDownloads": "No hay descargas activas o recientes",
+        "statusPending": "Pendiente",
+        "statusRunning": "Descargando",
+        "statusCompleted": "Completado",
+        "statusFailed": "Fallido",
+        "statusCancelled": "Cancelado",
+        "selectPath": "Cambiar Carpeta de Descargas",
+        "defaultPath": "Carpeta por Defecto",
+        "totalPages": "{{count}} páginas",
+        "error": "Error: {{message}}",
+        "openFolder": "Abrir Carpeta",
+        "pastedFromClipboard": "URL pegada desde el portapapeles"
     },
     "settings": {
         "title": "Configuración",

@@ -13,6 +13,7 @@ import { HistoryPage } from './components/browser/HistoryPage';
 import { ExplorerPage } from './components/browser/ExplorerPage';
 import { ThumbnailsPage } from './components/browser/ThumbnailsPage';
 import { SettingsPage } from './components/settings/SettingsPage';
+import { DownloadPage } from './components/downloader/DownloadPage';
 import { useNavigationStore } from './stores/navigationStore';
 import { useSettingsStore } from './stores/settingsStore';
 import { usePanicMode } from './hooks/usePanicMode';
@@ -116,6 +117,8 @@ function renderPage(page: string, params: Record<string, string>): React.ReactNo
             return <ThumbnailsPage folderPath={params.folder} />;
         case 'explorer':
             return <ExplorerPage />;
+        case 'download':
+            return <DownloadPage />;
         default:
             return <HomePage />;
     }
@@ -146,7 +149,7 @@ function App() {
             const lastPage = useSettingsStore.getState().lastPage;
             if (lastPage && lastPage !== 'home') {
                 // Only restore main pages, not viewer or other temporary pages
-                const mainPages = ['home', 'folders', 'series', 'history', 'settings'];
+                const mainPages = ['home', 'folders', 'series', 'history', 'download', 'settings'];
                 if (mainPages.includes(lastPage)) {
                     useNavigationStore.getState().navigate(lastPage as any);
                 }

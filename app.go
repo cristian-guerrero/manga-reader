@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"manga-visor/internal/fileloader"
+	"manga-visor/internal/modules/downloader"
 	"manga-visor/internal/modules/explorer"
 	"manga-visor/internal/modules/history"
 	"manga-visor/internal/modules/library"
@@ -11,6 +12,7 @@ import (
 	"manga-visor/internal/persistence"
 	"manga-visor/internal/thumbnails"
 	"net/url"
+	"os/exec"
 	"path/filepath"
 	"sort"
 
@@ -29,10 +31,11 @@ type App struct {
 	imgServer  *fileloader.ImageServer
 
 	// Modules
-	libraryMod  *library.Module
-	seriesMod   *series.Module
-	historyMod  *history.Module
-	explorerMod *explorer.Module
+	libraryMod    *library.Module
+	seriesMod     *series.Module
+	historyMod    *history.Module
+	explorerMod   *explorer.Module
+	downloaderMod *downloader.Module
 }
 
 // NewApp creates a new App application struct
@@ -47,6 +50,7 @@ func NewApp() *App {
 	libraryManager := persistence.NewLibraryManager()
 	seriesManager := persistence.NewSeriesManager()
 	ordersManager := persistence.NewOrdersManager()
+	downloaderPersist := persistence.NewDownloaderManager()
 
 	// Image Server (if needed by modules for URL generation)
 	// We might need to initialize it here or pass nil and set it up later if it depends on port finding?
@@ -66,19 +70,21 @@ func NewApp() *App {
 	// We MUST reconstruct or add setter.
 	// Since I added `imgServer` to `NewModule` args, I pass nil here.
 	eMod := explorer.NewModule(fileLoader, nil)
+	dMod := downloader.NewModule(downloaderPersist, settings)
 
 	// Dependency injection (Circular dependency resolution)
 	lMod.SetSeriesModule(sMod)
 
 	return &App{
-		settings:    settings,
-		orders:      ordersManager,
-		fileLoader:  fileLoader,
-		thumbGen:    thumbGen,
-		libraryMod:  lMod,
-		seriesMod:   sMod,
-		historyMod:  hMod,
-		explorerMod: eMod,
+		settings:      settings,
+		orders:        ordersManager,
+		fileLoader:    fileLoader,
+		thumbGen:      thumbGen,
+		libraryMod:    lMod,
+		seriesMod:     sMod,
+		historyMod:    hMod,
+		explorerMod:   eMod,
+		downloaderMod: dMod,
 	}
 }
 
@@ -104,6 +110,8 @@ func (a *App) startup(ctx context.Context) {
 
 	a.explorerMod.SetContext(ctx)
 	a.explorerMod.SetImageServer(a.imgServer)
+
+	a.downloaderMod.SetContext(ctx)
 
 	// We need to inject the server address into modules so they can generate URLs
 	// This requires updating the modules to accept the server/address or reconstructing them (which is checking).
@@ -332,16 +340,7 @@ func (a *App) SelectFolder() (string, error) {
 // I should define `GetImages` in `App` that delegates or uses `fileloader` directly + generates URLs.
 // This logic was in `app.go` before.
 
-func (a *App) GetImages(path string) ([]struct {
-	Path         string `json:"path"`
-	ThumbnailURL string `json:"thumbnailUrl"`
-	ImageURL     string `json:"imageUrl"`
-	Name         string `json:"name"`
-	Extension    string `json:"extension"`
-	Size         int64  `json:"size"`
-	Index        int    `json:"index"`
-	ModTime      int64  `json:"modTime"`
-}, error) {
+func (a *App) GetImages(path string) ([]persistence.ImageInfo, error) {
 	// Re-implementing GetImages here using shared logic or duplicating it for now to avoid breaking changes
 	// Ideally this should be in a shared service.
 
@@ -379,30 +378,12 @@ func (a *App) GetImages(path string) ([]struct {
 
 	// struct defined inline below
 
-	// Use anonymous struct matching the return signature
-	result := make([]struct {
-		Path         string `json:"path"`
-		ThumbnailURL string `json:"thumbnailUrl"`
-		ImageURL     string `json:"imageUrl"`
-		Name         string `json:"name"`
-		Extension    string `json:"extension"`
-		Size         int64  `json:"size"`
-		Index        int    `json:"index"`
-		ModTime      int64  `json:"modTime"`
-	}, len(images))
+	// Use named struct matching the return signature
+	result := make([]persistence.ImageInfo, len(images))
 
 	for i, img := range images {
 		relPath, _ := filepath.Rel(folderPath, img.Path)
-		result[i] = struct {
-			Path         string `json:"path"`
-			ThumbnailURL string `json:"thumbnailUrl"`
-			ImageURL     string `json:"imageUrl"`
-			Name         string `json:"name"`
-			Extension    string `json:"extension"`
-			Size         int64  `json:"size"`
-			Index        int    `json:"index"`
-			ModTime      int64  `json:"modTime"`
-		}{
+		result[i] = persistence.ImageInfo{
 			Path:         img.Path,
 			ThumbnailURL: fmt.Sprintf("%s/thumbnails?did=%s&fid=%s", baseURL, dirHash, url.QueryEscape(relPath)),
 			ImageURL:     fmt.Sprintf("%s/images?did=%s&fid=%s", baseURL, dirHash, url.QueryEscape(relPath)),
@@ -546,4 +527,31 @@ func (a *App) PreloadThumbnails(imagePaths []string) {
 
 func (a *App) ClearThumbnailCache() error {
 	return a.thumbGen.ClearCache()
+}
+
+// =============================================================================
+// Downloader Methods (Delegated)
+// =============================================================================
+
+func (a *App) StartDownload(url string) (string, error) {
+	return a.downloaderMod.StartDownload(url)
+}
+
+func (a *App) GetDownloadHistory() []persistence.DownloadJob {
+	return a.downloaderMod.GetHistory()
+}
+
+func (a *App) ClearDownloadHistory() {
+	a.downloaderMod.ClearHistory()
+}
+
+func (a *App) RemoveDownloadJob(id string) {
+	a.downloaderMod.RemoveJob(id)
+}
+
+// OpenInFileManager opens a path in the system's file manager
+func (a *App) OpenInFileManager(path string) error {
+	// Use xdg-open on Linux
+	cmd := exec.Command("xdg-open", path)
+	return cmd.Start()
 }

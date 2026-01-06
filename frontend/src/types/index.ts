@@ -106,6 +106,10 @@ export interface Settings {
     lastPage: string;
     /** Enabled menu items */
     enabledMenuItems: Record<string, boolean>;
+    /** Download path */
+    downloadPath: string;
+    /** Clipboard auto monitor */
+    clipboardAutoMonitor: boolean;
 }
 
 
@@ -135,8 +139,11 @@ export const DEFAULT_SETTINGS: Settings = {
         'folders': true,
         'series': true,
         'explorer': true,
+        'download': true,
         'settings': true
     },
+    downloadPath: '',
+    clipboardAutoMonitor: false,
 };
 
 
@@ -192,6 +199,7 @@ export type PageType =
     | 'series-details'
     | 'thumbnails'
     | 'explorer'
+    | 'download'
     | 'settings';
 
 export interface NavigationState {
