@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigationStore } from '../stores/navigationStore';
 import { EventsOn, EventsOff } from '../../wailsjs/runtime';
+import { Button } from './common/Button';
 
 // Icons
 const FolderPlusIcon = () => (
@@ -205,12 +206,13 @@ export function HomePage() {
                             </div>
 
                             <div className="flex gap-4 w-full">
-                                <button
+                                <Button
                                     onClick={() => handleContinue(historyEntries[0].folderPath)}
-                                    className="flex-1 btn-primary py-3 text-lg shadow-lg shadow-accent/20 transition-transform hover:scale-[1.02] active:scale-[0.98]"
+                                    variant="primary"
+                                    className="flex-1 py-3 text-lg shadow-lg shadow-accent/20"
                                 >
                                     Continue Reading
-                                </button>
+                                </Button>
 
                                 <button
                                     onClick={(e) => handleRemoveHistory(historyEntries[0].folderPath, e)}
@@ -342,10 +344,12 @@ export function HomePage() {
                     </p>
 
                     {/* CTA Button */}
-                    <button
+                    {/* CTA Button */}
+                    <Button
                         onClick={handleSelectFolder}
-                        className="group flex items-center gap-3 px-8 py-4 rounded-xl text-white font-semibold text-lg
-                     transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] animate-slide-in-right"
+                        variant="primary"
+                        size="lg"
+                        className="group gap-3 px-8 py-4 rounded-xl text-lg animate-slide-in-right"
                         style={{
                             background: 'var(--gradient-accent)',
                             boxShadow: 'var(--shadow-md)',
@@ -359,7 +363,7 @@ export function HomePage() {
                         >
                             <ArrowRightIcon />
                         </div>
-                    </button>
+                    </Button>
                 </div>
             )}
 

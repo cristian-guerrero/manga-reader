@@ -356,7 +356,22 @@ export function applyTheme(theme: Theme): void {
     root.style.setProperty('--color-border', colors.border);
     root.style.setProperty('--color-border-hover', colors.borderHover);
     root.style.setProperty('--color-border-focus', colors.borderFocus);
+
+    // Apply composite variables that rely on theme colors
+    root.style.setProperty('--gradient-accent', `linear-gradient(135deg, ${colors.accent} 0%, ${colors.accentHover} 100%)`);
+    root.style.setProperty('--gradient-glow', `radial-gradient(ellipse at center, ${colors.accentGlow} 0%, transparent 70%)`);
+
+    // Convert hex to rgb for rgba usage if needed, or simple string replacement if possible.
+    // For inner glow, we need a very transparent version of accent.
+    // Simplest way is to reuse accentGlow which is 0.4 opacity, or approximate it.
+    // Or we can rely on color-mix if supported, but let's stick to safe CSS or simple string manip if we want to be fancy.
+    // For now, let's update shadow-inner-glow using accentGlow but maybe we need a dedicated variable for low opacity.
+    // Since we don't have hex-to-rgb helper here easily without adding code, let's skip complex alpha manip for now 
+    // and rely on existing variables where possible.
+    // However, index.css has a hardcoded rgba for inner-glow. Let's override it here if we want it to match.
+    // We can assume accentGlow is correct hue.
 }
+
 
 /**
  * Get theme by ID

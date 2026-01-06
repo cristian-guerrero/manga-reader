@@ -1,5 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { Button } from './Button';
 
 interface ConfirmDialogProps {
     isOpen: boolean;
@@ -62,22 +63,21 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
                 </p>
 
                 <div className="flex justify-end gap-3">
-                    <button
+                    <Button
                         onClick={onClose}
-                        className="btn px-4 bg-transparent border border-white/10 hover:bg-white/5"
-                        style={{ color: 'var(--color-text-primary)' }}
+                        variant="ghost"
+                        className="border border-white/10 hover:bg-white/5"
                     >
                         {cancelText || t('common.cancel') || 'Cancel'}
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                         onClick={onConfirm}
-                        className={`btn px-6 text-white border-0 bg-${accentColor}-500 hover:bg-${accentColor}-600`}
-                        style={{
-                            backgroundColor: accentHex, // Explicit style fallback for Tailwind dynamic classes might need safelist or this inline style
-                        }}
+                        variant={isDestructive ? 'danger' : 'primary'}
+                        className={!isDestructive ? `bg-${accentColor}-500 hover:bg-${accentColor}-600` : ''}
+                        style={!isDestructive ? { backgroundColor: accentHex } : undefined}
                     >
                         {confirmText || t('common.confirm') || 'Confirm'}
-                    </button>
+                    </Button>
                 </div>
             </div>
         </div>

@@ -2,6 +2,9 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useToast } from '../common/Toast';
+import { Button } from '../common/Button';
+import { Toggle } from '../common/Toggle';
+import { HelpDialog } from '../common/HelpDialog';
 import { EventsOn } from '../../../wailsjs/runtime/runtime';
 import * as AppBackend from '../../../wailsjs/go/main/App';
 import { downloader } from '../../../wailsjs/go/models';
@@ -297,18 +300,18 @@ export const DownloadPage: React.FC = () => {
                         {t('home.subtitle')}
                     </p>
                 </div>
-                <button
+                <Button
                     onClick={() => setIsHelpOpen(true)}
-                    className="p-2 rounded-full hover:bg-white/10 transition-colors"
+                    variant="ghost"
+                    className="p-2 rounded-full hover:bg-white/10"
                     title={t('download.help.title')}
-                    style={{ color: 'var(--color-text-secondary)' }}
                 >
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <circle cx="12" cy="12" r="10"></circle>
                         <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
                         <line x1="12" y1="17" x2="12.01" y2="17"></line>
                     </svg>
-                </button>
+                </Button>
             </header>
 
             {/* Input Section */}
@@ -322,27 +325,27 @@ export const DownloadPage: React.FC = () => {
                         className="input flex-1"
                         onKeyDown={(e) => e.key === 'Enter' && handleStartDownload()}
                     />
-                    <button
+                    <Button
                         onClick={() => handleStartDownload()}
                         disabled={isLoading || !url}
-                        className="btn btn-primary px-8"
+                        variant="primary"
+                        className="px-8"
+                        isLoading={isLoading}
                     >
-                        {isLoading ? t('common.processing') : t('download.startDownload')}
-                    </button>
+                        {t('download.startDownload')}
+                    </Button>
                 </div>
 
                 <div className="flex items-center gap-4">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                            type="checkbox"
+                    <div className="flex items-center gap-2">
+                        <Toggle
                             checked={settings.clipboardAutoMonitor}
-                            onChange={(e) => updateSettings({ clipboardAutoMonitor: e.target.checked })}
-                            className="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                            onChange={(val) => updateSettings({ clipboardAutoMonitor: val })}
                         />
-                        <span className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+                        <span className="text-sm cursor-pointer" onClick={() => updateSettings({ clipboardAutoMonitor: !settings.clipboardAutoMonitor })} style={{ color: 'var(--color-text-secondary)' }}>
                             {t('download.autoMonitor')}
                         </span>
-                    </label>
+                    </div>
 
                     <div className="h-4 w-px bg-gray-700 mx-2" />
 
@@ -371,13 +374,14 @@ export const DownloadPage: React.FC = () => {
                         {t('download.downloadHistory')}
                     </h2>
                     {history.length > 0 && (
-                        <button
+                        <Button
                             onClick={handleClearHistory}
-                            className="text-sm font-medium hover:text-red-400 transition-colors"
-                            style={{ color: 'var(--color-text-secondary)' }}
+                            variant="ghost"
+                            size="sm"
+                            className="text-sm font-medium hover:text-red-400 hover:bg-transparent px-0"
                         >
                             {t('download.clearHistory')}
-                        </button>
+                        </Button>
                     )}
                 </div>
 
@@ -555,16 +559,14 @@ export const DownloadPage: React.FC = () => {
 
                                                         {job.status === 'completed' && job.path && (
                                                             <div className="flex gap-2 mt-2">
-                                                                <button
-                                                                    className="text-xs font-semibold px-3 py-1.5 rounded transition-colors"
-                                                                    style={{
-                                                                        backgroundColor: 'var(--color-accent)',
-                                                                        color: 'white'
-                                                                    }}
+                                                                <Button
                                                                     onClick={(e) => { e.stopPropagation(); (AppBackend as any).OpenInFileManager(job.path); }}
+                                                                    variant="primary"
+                                                                    size="sm"
+                                                                    className="px-3 py-1.5 text-xs font-semibold"
                                                                 >
                                                                     {t('download.openFolder')}
-                                                                </button>
+                                                                </Button>
                                                             </div>
                                                         )}
                                                     </div>
@@ -580,68 +582,39 @@ export const DownloadPage: React.FC = () => {
             </section>
 
             {/* Help Dialog */}
-            {isHelpOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in" onClick={() => setIsHelpOpen(false)}>
-                    <div className="card w-full max-w-md p-6 shadow-2xl animate-scale-in" onClick={(e) => e.stopPropagation()} style={{ backgroundColor: 'var(--color-surface-elevated)' }}>
-                        <div className="flex justify-between items-center mb-6">
-                            <h3 className="text-xl font-bold" style={{ color: 'var(--color-text-primary)' }}>
-                                {t('download.help.title')}
-                            </h3>
-                            <button
-                                onClick={() => setIsHelpOpen(false)}
-                                className="p-1 rounded hover:bg-white/10 transition-colors"
-                                style={{ color: 'var(--color-text-secondary)' }}
-                            >
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M18 6L6 18M6 6l12 12" />
-                                </svg>
-                            </button>
-                        </div>
-
-                        <div className="space-y-6">
-                            {/* Supported Sites */}
-                            <div>
-                                <h4 className="font-semibold text-sm uppercase tracking-wider mb-2" style={{ color: 'var(--color-text-secondary)' }}>
-                                    {t('download.help.supportedSites')}
-                                </h4>
-                                <div className="p-3 rounded bg-white/5 border border-white/10 text-sm" style={{ color: 'var(--color-text-primary)' }}>
-                                    {t('download.help.supportedList')}
-                                </div>
-                            </div>
-
-                            {/* Instructions */}
-                            <div>
-                                <h4 className="font-semibold text-sm uppercase tracking-wider mb-2" style={{ color: 'var(--color-text-secondary)' }}>
-                                    {t('download.help.instructions')}
-                                </h4>
-                                <ul className="list-disc pl-5 space-y-2 text-sm" style={{ color: 'var(--color-text-primary)' }}>
-                                    <li>{t('download.help.step1')}</li>
-                                    <li>{t('download.help.step2')}</li>
-                                </ul>
-                            </div>
-
-                            {/* Clipboard */}
-                            <div>
-                                <h4 className="font-semibold text-sm uppercase tracking-wider mb-2" style={{ color: 'var(--color-text-secondary)' }}>
-                                    {t('download.help.clipboard')}
-                                </h4>
-                                <p className="text-sm" style={{ color: 'var(--color-text-primary)' }}>
-                                    {t('download.help.clipboardDesc')}
-                                </p>
-                            </div>
-                        </div>
-
-                        <div className="mt-8 flex justify-end">
-                            <button
-                                onClick={() => setIsHelpOpen(false)}
-                                className="btn btn-primary px-6"
-                            >
-                                {t('common.close')}
-                            </button>
-                        </div>
+            <HelpDialog
+                isOpen={isHelpOpen}
+                onClose={() => setIsHelpOpen(false)}
+                title={t('download.help.title')}
+            >
+                <div>
+                    <h4 className="font-semibold text-sm uppercase tracking-wider mb-2" style={{ color: 'var(--color-text-secondary)' }}>
+                        {t('download.help.supportedSites')}
+                    </h4>
+                    <div className="p-3 rounded bg-white/5 border border-white/10 text-sm" style={{ color: 'var(--color-text-primary)' }}>
+                        {t('download.help.supportedList')}
                     </div>
                 </div>
-            )}
+
+                <div>
+                    <h4 className="font-semibold text-sm uppercase tracking-wider mb-2" style={{ color: 'var(--color-text-secondary)' }}>
+                        {t('download.help.instructions')}
+                    </h4>
+                    <ul className="list-disc pl-5 space-y-2 text-sm" style={{ color: 'var(--color-text-primary)' }}>
+                        <li>{t('download.help.step1')}</li>
+                        <li>{t('download.help.step2')}</li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h4 className="font-semibold text-sm uppercase tracking-wider mb-2" style={{ color: 'var(--color-text-secondary)' }}>
+                        {t('download.help.clipboard')}
+                    </h4>
+                    <p className="text-sm" style={{ color: 'var(--color-text-primary)' }}>
+                        {t('download.help.clipboardDesc')}
+                    </p>
+                </div>
+            </HelpDialog>
 
             {/* Series Selection Modal */}
             {isSeriesModalOpen && seriesInfo && (
@@ -738,20 +711,21 @@ export const DownloadPage: React.FC = () => {
                         </div>
 
                         <div className="p-4 flex justify-end gap-3" style={{ backgroundColor: 'var(--color-surface-secondary)' }}>
-                            <button
+                            <Button
                                 onClick={() => setIsSeriesModalOpen(false)}
-                                className="px-4 py-2 rounded transition hover:bg-white/10"
-                                style={{ color: 'var(--color-text-primary)' }}
+                                variant="ghost"
+                                className="px-4 hover:bg-white/10"
                             >
                                 Cancel
-                            </button>
-                            <button
+                            </Button>
+                            <Button
                                 onClick={handleDownloadSeries}
-                                className="btn btn-primary px-6"
+                                variant="primary"
+                                className="px-6"
                                 disabled={selectedChapters.size === 0}
                             >
                                 Download Selected ({selectedChapters.size})
-                            </button>
+                            </Button>
                         </div>
                     </div>
                 </div>

@@ -118,8 +118,9 @@
   --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
   --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
   --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.15);
-  --shadow-glow: 0 0 30px rgba(124, 58, 237, 0.2);
-  --shadow-inner-glow: inset 0 0 30px rgba(124, 58, 237, 0.03);
+  --shadow-glow: 0 0 30px var(--color-accent-glow);
+  --shadow-inner-glow: inset 0 0 30px color-mix(in srgb, var(--color-accent), transparent 95%);
+  --shadow-inner-glow-color: color-mix(in srgb, var(--color-accent), transparent 90%);
 }
 
 /* =============================================================================
