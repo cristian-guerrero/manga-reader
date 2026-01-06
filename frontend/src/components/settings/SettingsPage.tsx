@@ -129,7 +129,7 @@ export function SettingsPage() {
                         description={t('settings.menuItemsDesc')}
                     >
                         <div className="grid grid-cols-2 gap-3 mt-2">
-                            {['home', 'explorer', 'history', 'folders', 'series'].map((item) => {
+                            {['home', 'explorer', 'history', 'folders', 'series', 'download'].map((item) => {
                                 const isSettings = item === 'settings';
                                 const isEnabled = enabledMenuItems?.[item] !== false;
 
