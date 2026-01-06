@@ -42,6 +42,10 @@ export function ExploreFolder(arg1) {
   return window['go']['main']['App']['ExploreFolder'](arg1);
 }
 
+export function FetchMangaInfo(arg1) {
+  return window['go']['main']['App']['FetchMangaInfo'](arg1);
+}
+
 export function GetBaseFolders() {
   return window['go']['main']['App']['GetBaseFolders']();
 }

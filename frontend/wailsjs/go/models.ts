@@ -1,3 +1,88 @@
+export namespace downloader {
+	
+	export class ChapterInfo {
+	    ID: string;
+	    Name: string;
+	    URL: string;
+	    Date: string;
+	    ScanGroup: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ChapterInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ID = source["ID"];
+	        this.Name = source["Name"];
+	        this.URL = source["URL"];
+	        this.Date = source["Date"];
+	        this.ScanGroup = source["ScanGroup"];
+	    }
+	}
+	export class ImageDownload {
+	    URL: string;
+	    Filename: string;
+	    Index: number;
+	    Headers: Record<string, string>;
+	
+	    static createFrom(source: any = {}) {
+	        return new ImageDownload(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.URL = source["URL"];
+	        this.Filename = source["Filename"];
+	        this.Index = source["Index"];
+	        this.Headers = source["Headers"];
+	    }
+	}
+	export class SiteInfo {
+	    SeriesName: string;
+	    ChapterName: string;
+	    Images: ImageDownload[];
+	    SiteID: string;
+	    DownloadDelay: number;
+	    Type: string;
+	    Chapters: ChapterInfo[];
+	
+	    static createFrom(source: any = {}) {
+	        return new SiteInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.SeriesName = source["SeriesName"];
+	        this.ChapterName = source["ChapterName"];
+	        this.Images = this.convertValues(source["Images"], ImageDownload);
+	        this.SiteID = source["SiteID"];
+	        this.DownloadDelay = source["DownloadDelay"];
+	        this.Type = source["Type"];
+	        this.Chapters = this.convertValues(source["Chapters"], ChapterInfo);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+
+}
+
 export namespace explorer {
 	
 	export class BaseFolderEntry {

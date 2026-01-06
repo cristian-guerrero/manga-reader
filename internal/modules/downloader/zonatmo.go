@@ -19,12 +19,18 @@ func (d *ZonaTMODownloader) GetSiteID() string {
 }
 
 func (d *ZonaTMODownloader) GetImages(viewerURL string) (*SiteInfo, error) {
-	// Force cascade mode for easier parsing
-	viewerURL = strings.Replace(viewerURL, "/paginated", "/cascade", 1)
+	// Check if it is a series URL
+	isSeries := strings.Contains(viewerURL, "/library/manga/")
+
+	if !isSeries {
+		// Force cascade mode for easier parsing
+		viewerURL = strings.Replace(viewerURL, "/paginated", "/cascade", 1)
+	}
 
 	client := &http.Client{}
 	req, _ := http.NewRequest("GET", viewerURL, nil)
 	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0")
+	req.Header.Set("Referer", "https://zonatmo.com/")
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -32,8 +38,26 @@ func (d *ZonaTMODownloader) GetImages(viewerURL string) (*SiteInfo, error) {
 	}
 	defer resp.Body.Close()
 
+	// Check if we were redirected to a paginated view
+	finalURL := resp.Request.URL.String()
+	if strings.Contains(finalURL, "/paginated") {
+		cascadeURL := strings.Replace(finalURL, "/paginated", "/cascade", 1)
+		return d.GetImages(cascadeURL)
+	}
+
 	body, _ := io.ReadAll(resp.Body)
 	bodyStr := string(body)
+
+	// Check for meta refresh redirect (seen in view_uploads links)
+	reRedirect := regexp.MustCompile(`(?i)<meta\s+http-equiv="refresh"\s+content="[^"]*url='?([^"']*)'?`)
+	if match := reRedirect.FindStringSubmatch(bodyStr); len(match) > 1 {
+		redirectURL := match[1]
+		return d.GetImages(redirectURL)
+	}
+
+	if isSeries {
+		return d.parseSeries(bodyStr, viewerURL)
+	}
 
 	seriesName := "Unknown"
 	chapterName := "Chapter"
@@ -124,5 +148,87 @@ func (d *ZonaTMODownloader) GetImages(viewerURL string) (*SiteInfo, error) {
 		ChapterName: chapterName,
 		Images:      images,
 		SiteID:      d.GetSiteID(),
+	}, nil
+}
+
+func (d *ZonaTMODownloader) parseSeries(html string, url string) (*SiteInfo, error) {
+	// Extract Series Name
+	seriesName := "Unknown Series"
+
+	// Try standard TMO h1 or h2 with class 'element-title'
+	reTitleClass := regexp.MustCompile(`(?s)<[hH][12][^>]*class="[^"]*element-title[^"]*"[^>]*>(.*?)</[hH][12]>`)
+	if match := reTitleClass.FindStringSubmatch(html); len(match) > 1 {
+		seriesName = match[1]
+	} else {
+		// Fallback to <title> tag
+		reTitleTag := regexp.MustCompile(`(?s)<title>(.*?)</title>`)
+		if match := reTitleTag.FindStringSubmatch(html); len(match) > 1 {
+			title := strings.TrimSpace(match[1])
+			// Title often has " - SubManga" or similar suffix
+			if idx := strings.Index(title, " - "); idx != -1 {
+				seriesName = title[:idx]
+			} else {
+				seriesName = title
+			}
+		}
+	}
+
+	// Clean up any HTML tags in the title (e.g. <small> year </small>)
+	reTags := regexp.MustCompile(`<[^>]*>`)
+	seriesName = reTags.ReplaceAllString(seriesName, "")
+	seriesName = strings.TrimSpace(seriesName)
+
+	var chapters []ChapterInfo
+
+	blocks := strings.Split(html, "upload-link")
+	for i, block := range blocks {
+		if i == 0 {
+			continue
+		} // skip preamble
+
+		// Find Chapter Name
+		reName := regexp.MustCompile(`Cap[íi]tulo\s+[\d\.]+|One\s+Shot`)
+		nameMatch := reName.FindString(block)
+		if nameMatch == "" {
+			continue
+		}
+		chapterName := strings.TrimSpace(nameMatch)
+
+		// Find Collapsible ID
+		reID := regexp.MustCompile(`collapseChapter\('([^']+)'\)`)
+		idMatch := reID.FindStringSubmatch(block)
+		if len(idMatch) < 2 {
+			continue
+		}
+		collapsibleID := idMatch[1]
+
+		// Find view_uploads link inside the specific collapsible div
+		reLink := regexp.MustCompile(`href="(https://zonatmo\.com/view_uploads/\d+)"`)
+		linkMatch := reLink.FindStringSubmatch(block)
+
+		// Verify presence of id="collapsibleID"
+		if !strings.Contains(block, `id="`+collapsibleID+`"`) {
+			continue
+		}
+
+		if len(linkMatch) > 1 {
+			url := linkMatch[1]
+			// Use the ID from the URL as ID
+			parts := strings.Split(url, "/")
+			id := parts[len(parts)-1]
+
+			chapters = append(chapters, ChapterInfo{
+				ID:   id,
+				Name: chapterName,
+				URL:  url,
+			})
+		}
+	}
+
+	return &SiteInfo{
+		SeriesName: seriesName,
+		SiteID:     d.GetSiteID(),
+		Type:       "series",
+		Chapters:   chapters,
 	}, nil
 }

@@ -57,6 +57,22 @@ func (m *Module) RemoveJob(id string) {
 	m.pm.RemoveJob(id)
 }
 
+func (m *Module) FetchMangaInfo(url string) (*SiteInfo, error) {
+	var algo DownloaderInterface
+	for _, a := range m.algorithms {
+		if a.CanHandle(url) {
+			algo = a
+			break
+		}
+	}
+
+	if algo == nil {
+		return nil, fmt.Errorf("no algorithm found for this URL")
+	}
+
+	return algo.GetImages(url)
+}
+
 func (m *Module) StartDownload(url string) (string, error) {
 	var algo DownloaderInterface
 	for _, a := range m.algorithms {
@@ -73,6 +89,10 @@ func (m *Module) StartDownload(url string) (string, error) {
 	info, err := algo.GetImages(url)
 	if err != nil {
 		return "", err
+	}
+
+	if info.Type == "series" {
+		return "", fmt.Errorf("this is a series URL, use FetchMangaInfo to select chapters")
 	}
 
 	jobID := fmt.Sprintf("%d", time.Now().UnixNano())

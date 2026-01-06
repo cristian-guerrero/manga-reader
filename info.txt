@@ -130,3 +130,19 @@ caracteristicas adicionales 7:
 - validar que nuevas dependencias se necesitan (si es necesario) de los nuevos algoritmos propuestos (hitomi.la, zontatmo, manhwaweb)
 - esta funcionalidad debe ser independiente de los otros modulos y no interrumpir con su funcionamiento
 - debe existir un boton que permita abrir la carpeta con el explorador de archivos del sistema (find location)
+
+-------------------------------------------------------------
+- mejoras y carateristicas adicionales para el modulo de downloader:
+- Poder descargar mangas completos de zonatmo.com (mostrar un mensaje al usuario informandole que se va a descaregar todos los
+    capitulos de la serie) link de ejemplo https://zonatmo.com/library/manga/87200/sonobisquedollwakoiwosuruchu
+
+- Poder descargar mangas completos de manhwaweb (mostrar un mensaje al usuario informandole que se va a descaregar todos los
+    capitulos de la serie) link de ejemplo: https://manhwaweb.com/manhwa/el-asesino-de-la-luna-a-la-deriva-_1711604095685
+
+- cuado sea una seria mostrar el nombre de la serie y los capitulos que se van descargando en forma de lista (anidada para que se sepa
+    que es de una serie y el estado de capitulos individuales)
+
+    
+- cuando se le muestre el dialog de descarga de serie mostrar la cantidad de capitulos
+- cuando se muestre el dialog de descarga de serie mostrar dos selects para que se pueda elejir de que capitulo a que 
+    capitulo se quiere descargar 

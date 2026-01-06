@@ -549,6 +549,10 @@ func (a *App) RemoveDownloadJob(id string) {
 	a.downloaderMod.RemoveJob(id)
 }
 
+func (a *App) FetchMangaInfo(url string) (*downloader.SiteInfo, error) {
+	return a.downloaderMod.FetchMangaInfo(url)
+}
+
 // OpenInFileManager opens a path in the system's file manager
 func (a *App) OpenInFileManager(path string) error {
 	// Use xdg-open on Linux
