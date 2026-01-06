@@ -118,8 +118,9 @@ export const DownloadPage: React.FC = () => {
             if (info.Type === 'series') {
                 setSeriesInfo(info);
                 // Select all by default
-                const allIds = new Set(info.Chapters.map((c: any) => c.ID)) as Set<string>;
-                setSelectedChapters(allIds);
+                setSeriesInfo(info);
+                // Start with empty selection so user must choose
+                setSelectedChapters(new Set());
                 setIsSeriesModalOpen(true);
                 setUrl(''); // Clear input
             } else {
@@ -202,15 +203,67 @@ export const DownloadPage: React.FC = () => {
         setSelectedChapters(newSet);
     };
 
+
+    // Language Helper
+    const getLanguageFlag = (langCode: string) => {
+        const map: { [key: string]: string } = {
+            'en': '🇬🇧',
+            'es': '🇪🇸',
+            'es-la': '🇲🇽',
+            'ja': '🇯🇵',
+            'ko': '🇰🇷',
+            'zh': '🇨🇳',
+            'fr': '🇫🇷',
+            'it': '🇮🇹',
+            'de': '🇩🇪',
+            'pt': '🇵🇹',
+            'pt-br': '🇧🇷',
+            'ru': '🇷🇺',
+            'tr': '🇹🇷',
+            'id': '🇮🇩',
+            'vi': '🇻🇳',
+            'pl': '🇵🇱',
+            'uk': '🇺🇦',
+        };
+        return map[langCode] || langCode || '🌐';
+    };
+
+    const [filterLanguage, setFilterLanguage] = useState<string>('all');
+
+    const availableLanguages = useMemo(() => {
+        if (!seriesInfo) return [];
+        // Extract unique languages
+        const langs = new Set(seriesInfo.Chapters.map((c: any) => c.Language).filter(Boolean));
+        return Array.from(langs).sort();
+    }, [seriesInfo]);
+
+    const displayedChapters = useMemo(() => {
+        if (!seriesInfo) return [];
+        if (filterLanguage === 'all') return seriesInfo.Chapters;
+        return seriesInfo.Chapters.filter((c: any) => c.Language === filterLanguage);
+    }, [seriesInfo, filterLanguage]);
+
     const toggleAllChapters = () => {
         if (!seriesInfo) return;
-        if (selectedChapters.size === seriesInfo.Chapters.length) {
-            setSelectedChapters(new Set());
-        } else {
-            const allIds = new Set(seriesInfo.Chapters.map((c: any) => c.ID)) as Set<string>;
-            setSelectedChapters(allIds);
-        }
+
+        // check if all currently displayed are selected
+        const allDisplayedSelected = displayedChapters.every((c: any) => selectedChapters.has(c.ID));
+
+        const newSelected = new Set(selectedChapters);
+
+        displayedChapters.forEach((c: any) => {
+            if (allDisplayedSelected) {
+                newSelected.delete(c.ID);
+            } else {
+                newSelected.add(c.ID);
+            }
+        });
+
+        setSelectedChapters(newSelected);
     };
+
+    // Helper to check if "Select All" checkmark should be active for the current view
+    const isAllDisplayedSelected = displayedChapters.length > 0 && displayedChapters.every((c: any) => selectedChapters.has(c.ID));
 
     return (
         <div className="flex flex-col h-full animate-fade-in p-8 overflow-y-auto relative">
@@ -426,9 +479,9 @@ export const DownloadPage: React.FC = () => {
                                                             </div>
                                                             <div className="flex items-center gap-3">
                                                                 <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${job.status === 'completed' ? 'bg-green-500/20 text-green-400' :
-                                                                        job.status === 'failed' ? 'bg-red-500/20 text-red-400' :
-                                                                            job.status === 'running' ? 'bg-blue-500/20 text-blue-400 animate-pulse' :
-                                                                                'bg-gray-500/20 text-gray-400'
+                                                                    job.status === 'failed' ? 'bg-red-500/20 text-red-400' :
+                                                                        job.status === 'running' ? 'bg-blue-500/20 text-blue-400 animate-pulse' :
+                                                                            'bg-gray-500/20 text-gray-400'
                                                                     }`}>
                                                                     {t(`download.status${job.status.charAt(0).toUpperCase() + job.status.slice(1)}`)}
                                                                 </span>
@@ -494,39 +547,82 @@ export const DownloadPage: React.FC = () => {
             {/* Series Selection Modal */}
             {isSeriesModalOpen && seriesInfo && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-8">
-                    <div className="card w-full max-w-2xl max-h-full flex flex-col p-0 overflow-hidden shadow-2xl">
-                        <div className="p-4 border-b border-gray-700 flex justify-between items-center bg-gray-800">
-                            <h3 className="text-xl font-bold">{seriesInfo.SeriesName}</h3>
-                            <button onClick={() => setIsSeriesModalOpen(false)} className="text-gray-400 hover:text-white">
+                    <div className="card w-full max-w-2xl max-h-full flex flex-col p-0 overflow-hidden shadow-2xl" style={{ backgroundColor: 'var(--color-surface-elevated)' }}>
+                        <div className="p-4 border-b flex justify-between items-center" style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-surface-secondary)' }}>
+                            <h3 className="text-xl font-bold" style={{ color: 'var(--color-text-primary)' }}>{seriesInfo.SeriesName}</h3>
+                            <button onClick={() => setIsSeriesModalOpen(false)} style={{ color: 'var(--color-text-secondary)' }} className="hover:text-white transition-colors">
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                     <path d="M18 6L6 18M6 6l12 12" />
                                 </svg>
                             </button>
                         </div>
 
-                        <div className="p-4 flex gap-4 bg-gray-900/50">
-                            <div className="text-sm text-gray-400 flex-1">
-                                {seriesInfo.Chapters.length} chapters found
+                        <div className="p-4 flex gap-4 items-center justify-between border-b" style={{ backgroundColor: 'var(--color-surface-secondary)', borderColor: 'var(--color-border)' }}>
+                            {/* Language Filter */}
+                            <div className="flex items-center gap-2">
+                                <span className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>Language:</span>
+                                <select
+                                    className="text-sm rounded border px-2 py-1 outline-none"
+                                    style={{
+                                        backgroundColor: 'var(--color-surface-tertiary)',
+                                        color: 'var(--color-text-primary)',
+                                        borderColor: 'var(--color-border)'
+                                    }}
+                                    value={filterLanguage}
+                                    onChange={(e) => setFilterLanguage(e.target.value)}
+                                >
+                                    <option value="all">All Languages 🌐</option>
+                                    {availableLanguages.map(lang => (
+                                        <option key={lang} value={lang}>
+                                            {getLanguageFlag(lang as string)} {lang}
+                                        </option>
+                                    ))}
+                                </select>
                             </div>
-                            <button onClick={toggleAllChapters} className="text-sm text-accent hover:underline">
-                                {selectedChapters.size === seriesInfo.Chapters.length ? "Deselect All" : "Select All"}
-                            </button>
+
+                            <div className="flex items-center gap-4">
+                                <div className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+                                    {displayedChapters.length} chapters
+                                </div>
+                                <button onClick={toggleAllChapters} className="text-sm font-medium hover:underline" style={{ color: 'var(--color-accent)' }}>
+                                    {isAllDisplayedSelected ? "Deselect All" : "Select All"}
+                                </button>
+                            </div>
                         </div>
 
-                        <div className="flex-1 overflow-y-auto p-4 space-y-2 bg-gray-900 border-t border-b border-gray-700">
-                            {seriesInfo.Chapters.map((chapter: any) => (
-                                <label key={chapter.ID} className="flex items-center gap-3 p-2 hover:bg-gray-800 rounded cursor-pointer transition-colors">
+                        <div className="flex-1 overflow-y-auto p-4 space-y-2" style={{ backgroundColor: 'var(--color-surface-primary)' }}>
+                            {displayedChapters.map((chapter: any) => (
+                                <label key={chapter.ID} className="flex items-center gap-3 p-2 rounded cursor-pointer transition-colors group hover:bg-white/5">
                                     <input
                                         type="checkbox"
                                         checked={selectedChapters.has(chapter.ID)}
                                         onChange={() => toggleChapter(chapter.ID)}
-                                        className="w-5 h-5 rounded border-gray-500 text-purple-600 focus:ring-purple-500 bg-gray-700"
+                                        className="w-5 h-5 rounded border bg-transparent"
+                                        style={{
+                                            borderColor: 'var(--color-text-secondary)',
+                                            accentColor: 'var(--color-accent)'
+                                        }}
                                     />
                                     <div className="flex-1">
-                                        <div className="font-medium text-gray-200">{chapter.Name}</div>
-                                        <div className="text-xs text-gray-500">{chapter.Date}</div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-xl" title={chapter.Language}>
+                                                {getLanguageFlag(chapter.Language)}
+                                            </span>
+                                            <div className="font-medium transition-colors" style={{ color: 'var(--color-text-primary)' }}>
+                                                {chapter.Name}
+                                            </div>
+                                        </div>
+                                        <div className="text-xs flex gap-2" style={{ color: 'var(--color-text-secondary)' }}>
+                                            <span>{chapter.Date ? new Date(chapter.Date).toLocaleDateString() : ''}</span>
+                                            {chapter.ScanGroup && (
+                                                <>
+                                                    <span>•</span>
+                                                    <span>{chapter.ScanGroup}</span>
+                                                </>
+                                            )}
+                                        </div>
                                     </div>
-                                    <a href={chapter.URL} target="_blank" rel="noreferrer" className="text-gray-500 hover:text-accent p-1" onClick={(e) => e.stopPropagation()}>
+                                    <a href={chapter.URL} target="_blank" rel="noreferrer" className="opacity-0 group-hover:opacity-100 transition-opacity p-1" style={{ color: 'var(--color-text-secondary)' }} onClick={(e) => e.stopPropagation()}>
                                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                             <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
                                             <polyline points="15 3 21 3 21 9" />
@@ -537,10 +633,11 @@ export const DownloadPage: React.FC = () => {
                             ))}
                         </div>
 
-                        <div className="p-4 bg-gray-800 flex justify-end gap-3">
+                        <div className="p-4 flex justify-end gap-3" style={{ backgroundColor: 'var(--color-surface-secondary)' }}>
                             <button
                                 onClick={() => setIsSeriesModalOpen(false)}
-                                className="px-4 py-2 rounded text-gray-300 hover:bg-gray-700 transition"
+                                className="px-4 py-2 rounded transition hover:bg-white/10"
+                                style={{ color: 'var(--color-text-primary)' }}
                             >
                                 Cancel
                             </button>
@@ -558,3 +655,4 @@ export const DownloadPage: React.FC = () => {
         </div>
     );
 };
+

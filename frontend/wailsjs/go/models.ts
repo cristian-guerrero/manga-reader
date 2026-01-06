@@ -6,6 +6,7 @@ export namespace downloader {
 	    URL: string;
 	    Date: string;
 	    ScanGroup: string;
+	    Language: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new ChapterInfo(source);
@@ -18,6 +19,7 @@ export namespace downloader {
 	        this.URL = source["URL"];
 	        this.Date = source["Date"];
 	        this.ScanGroup = source["ScanGroup"];
+	        this.Language = source["Language"];
 	    }
 	}
 	export class ImageDownload {

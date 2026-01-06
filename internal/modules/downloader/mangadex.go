@@ -27,9 +27,10 @@ type mangaDexChapterResponse struct {
 	Data   struct {
 		ID         string `json:"id"`
 		Attributes struct {
-			Volume  string `json:"volume"`
-			Chapter string `json:"chapter"`
-			Title   string `json:"title"`
+			Volume             string `json:"volume"`
+			Chapter            string `json:"chapter"`
+			Title              string `json:"title"`
+			TranslatedLanguage string `json:"translatedLanguage"`
 		} `json:"attributes"`
 		Relationships []struct {
 			ID   string `json:"id"`
@@ -47,6 +48,27 @@ type mangaDexMangaResponse struct {
 	} `json:"data"`
 }
 
+type mangaDexFeedResponse struct {
+	Result string `json:"result"`
+	Data   []struct {
+		ID         string `json:"id"`
+		Attributes struct {
+			Volume             string `json:"volume"`
+			Chapter            string `json:"chapter"`
+			Title              string `json:"title"`
+			TranslatedLanguage string `json:"translatedLanguage"`
+			PublishAt          string `json:"publishAt"`
+		} `json:"attributes"`
+		Relationships []struct {
+			ID   string `json:"id"`
+			Type string `json:"type"`
+		} `json:"relationships"`
+	} `json:"data"`
+	Total  int `json:"total"`
+	Limit  int `json:"limit"`
+	Offset int `json:"offset"`
+}
+
 func (d *MangaDexDownloader) CanHandle(url string) bool {
 	return strings.Contains(url, "mangadex.org")
 }
@@ -60,8 +82,35 @@ func (d *MangaDexDownloader) GetImages(url string) (*SiteInfo, error) {
 	// Example: https://mangadex.org/chapter/d8176d81-0f14-4d5a-9d0b-fc56b3933cce
 	reUUID := regexp.MustCompile(`/chapter/([0-9a-f-]{36})`)
 	match := reUUID.FindStringSubmatch(url)
+
+	reTitleUUID := regexp.MustCompile(`/title/([0-9a-f-]{36})`)
+	matchTitle := reTitleUUID.FindStringSubmatch(url)
+
+	if len(matchTitle) >= 2 {
+		// It's a series
+		mangaID := matchTitle[1]
+		client := &http.Client{}
+
+		mangaInfo, err := d.getMangaInfo(client, mangaID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get manga info: %v", err)
+		}
+
+		chapters, err := d.getMangaChapters(client, mangaID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get chapters: %v", err)
+		}
+
+		return &SiteInfo{
+			SeriesName: d.extractTitle(mangaInfo.Data.Attributes.Title),
+			Type:       "series",
+			Chapters:   chapters, // All chapters, multi-language
+			SiteID:     d.GetSiteID(),
+		}, nil
+	}
+
 	if len(match) < 2 {
-		return nil, fmt.Errorf("could not extract chapter ID from URL")
+		return nil, fmt.Errorf("could not extract chapter ID or manga ID from URL")
 	}
 	chapterID := match[1]
 
@@ -122,6 +171,11 @@ func (d *MangaDexDownloader) GetImages(url string) (*SiteInfo, error) {
 	}
 	if chapterInfo.Data.Attributes.Title != "" {
 		chapterName = fmt.Sprintf("%s - %s", chapterName, chapterInfo.Data.Attributes.Title)
+	}
+
+	// Append language code
+	if lang := chapterInfo.Data.Attributes.TranslatedLanguage; lang != "" {
+		chapterName = fmt.Sprintf("%s [%s]", chapterName, lang)
 	}
 
 	return &SiteInfo{

@@ -15,6 +15,7 @@ type ChapterInfo struct {
 	URL       string
 	Date      string
 	ScanGroup string
+	Language  string
 }
 
 type SiteInfo struct {
