@@ -29,7 +29,7 @@
     "navigation": {
         "home": "Inicio",
         "history": "Historial",
-        "folders": "Carpetas",
+        "oneShot": "One shot",
         "series": "Series",
         "download": "Descargas",
         "settings": "Configuración",
@@ -66,8 +66,8 @@
         "prevChapter": "Capítulo Anterior",
         "nextChapter": "Capítulo Siguiente"
     },
-    "folders": {
-        "title": "Carpetas",
+    "oneShot": {
+        "title": "One shot",
         "selectFolder": "Seleccionar Carpeta",
         "addFolder": "Agregar Carpeta",
         "removeFolder": "Quitar Carpeta",

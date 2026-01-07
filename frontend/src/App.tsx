@@ -6,7 +6,7 @@ import { useEffect, Suspense, useState, useCallback } from 'react';
 import { MainLayout } from './components/layout/MainLayout';
 import { HomePage } from './components/HomePage';
 import { ViewerPage } from './components/viewers/ViewerPage';
-import { FoldersPage } from './components/browser/FoldersPage';
+import { OneShotPage } from './components/browser/OneShotPage';
 import { SeriesPage } from './components/browser/SeriesPage';
 import { SeriesDetailsPage } from './components/browser/SeriesDetailsPage';
 import { HistoryPage } from './components/browser/HistoryPage';
@@ -105,8 +105,8 @@ function renderPage(page: string, params: Record<string, string>): React.ReactNo
             return <ViewerPage folderPath={params.folder} />;
         case 'history':
             return <HistoryPage />;
-        case 'folders':
-            return <FoldersPage />;
+        case 'oneShot':
+            return <OneShotPage />;
         case 'series':
             return <SeriesPage />;
         case 'series-details':
@@ -149,7 +149,7 @@ function App() {
             const lastPage = useSettingsStore.getState().lastPage;
             if (lastPage && lastPage !== 'home') {
                 // Only restore main pages, not viewer or other temporary pages
-                const mainPages = ['home', 'folders', 'series', 'history', 'download', 'settings'];
+                const mainPages = ['home', 'oneShot', 'series', 'history', 'download', 'settings'];
                 if (mainPages.includes(lastPage)) {
                     useNavigationStore.getState().navigate(lastPage as any);
                 }

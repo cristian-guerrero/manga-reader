@@ -143,7 +143,7 @@ export function HomePage() {
     };
 
     const handleSelectFolder = async () => {
-        navigate('folders');
+        navigate('oneShot');
     };
 
     return (

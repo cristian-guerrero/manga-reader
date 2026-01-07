@@ -62,7 +62,7 @@ export function MainLayout({ children }: MainLayoutProps) {
                                 }
                             } catch (error) {
                                 console.error('Failed to add folder:', error);
-                                showToast(t('folders.addFailed'), 'error');
+                                showToast(t('oneShot.addFailed'), 'error');
                             }
                         } else {
                             // @ts-ignore

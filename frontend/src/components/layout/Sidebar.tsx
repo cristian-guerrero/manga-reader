@@ -5,7 +5,7 @@ import { Tooltip } from '../common/Tooltip';
 
 // Icons
 interface NavItem {
-    id: 'home' | 'explorer' | 'history' | 'folders' | 'series' | 'download' | 'settings';
+    id: 'home' | 'explorer' | 'history' | 'oneShot' | 'series' | 'download' | 'settings';
     icon: JSX.Element;
     labelKey: string;
 }
@@ -30,9 +30,13 @@ const HistoryIcon = () => (
     </svg>
 );
 
-const FolderIcon = () => (
+const OneShotIcon = () => (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+        <line x1="8" y1="7" x2="16" y2="7" />
+        <line x1="8" y1="11" x2="16" y2="11" />
+        <line x1="8" y1="15" x2="12" y2="15" />
     </svg>
 );
 
@@ -68,7 +72,7 @@ const navItems: NavItem[] = [
     { id: 'home', icon: <HomeIcon />, labelKey: 'navigation.home' },
     { id: 'explorer', icon: <ExplorerIcon />, labelKey: 'navigation.explorer' },
     { id: 'history', icon: <HistoryIcon />, labelKey: 'navigation.history' },
-    { id: 'folders', icon: <FolderIcon />, labelKey: 'navigation.folders' },
+    { id: 'oneShot', icon: <OneShotIcon />, labelKey: 'navigation.oneShot' },
     { id: 'series', icon: <SeriesIcon />, labelKey: 'navigation.series' },
     { id: 'download', icon: <DownloadIcon />, labelKey: 'navigation.download' },
     { id: 'settings', icon: <SettingsIcon />, labelKey: 'navigation.settings' },

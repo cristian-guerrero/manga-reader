@@ -277,7 +277,7 @@ export const SettingsPage: React.FC = () => {
                             description={t('settings.menuItemsDesc', 'Toggle visibility of sidebar menu items')}
                         >
                             <div className="grid grid-cols-2 gap-3 mt-2">
-                                {['home', 'explorer', 'history', 'folders', 'series', 'download'].map((item) => {
+                                {['home', 'explorer', 'history', 'oneShot', 'series', 'download'].map((item) => {
                                     const isSettings = item === 'settings';
                                     const isEnabled = enabledMenuItems?.[item] !== false;
 

@@ -7,9 +7,13 @@ import { Tooltip } from '../common/Tooltip';
 import { FolderInfo } from '../../types';
 
 // Icons
-const FolderIcon = () => (
-    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+const OneShotIcon = () => (
+    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+        <line x1="8" y1="7" x2="16" y2="7" />
+        <line x1="8" y1="11" x2="16" y2="11" />
+        <line x1="8" y1="15" x2="12" y2="15" />
     </svg>
 );
 
@@ -48,25 +52,45 @@ const ImageIcon = () => (
 );
 
 
-export function FoldersPage() {
+export function OneShotPage() {
     const { folders, setFolders, setIsProcessing, navigate } = useNavigationStore();
     const { t } = useTranslation();
     const { showToast } = useToast();
     const [isLoading, setIsLoading] = useState(true);
     const [thumbnails, setThumbnails] = useState<Record<string, string>>({});
 
-    // Sorting state with persistence
+    // Sorting state with persistence - migrate from old keys
     const [sortBy, setSortBy] = useState<'name' | 'date'>(() => {
-        return (localStorage.getItem('folders_sortBy') as 'name' | 'date') || 'name';
+        // Try new key first, then old key for migration
+        const newValue = localStorage.getItem('oneShot_sortBy');
+        if (newValue) return newValue as 'name' | 'date';
+        const oldValue = localStorage.getItem('folders_sortBy');
+        if (oldValue) {
+            // Migrate old value to new key
+            localStorage.setItem('oneShot_sortBy', oldValue);
+            localStorage.removeItem('folders_sortBy');
+            return oldValue as 'name' | 'date';
+        }
+        return 'name';
     });
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>(() => {
-        return (localStorage.getItem('folders_sortOrder') as 'asc' | 'desc') || 'asc';
+        // Try new key first, then old key for migration
+        const newValue = localStorage.getItem('oneShot_sortOrder');
+        if (newValue) return newValue as 'asc' | 'desc';
+        const oldValue = localStorage.getItem('folders_sortOrder');
+        if (oldValue) {
+            // Migrate old value to new key
+            localStorage.setItem('oneShot_sortOrder', oldValue);
+            localStorage.removeItem('folders_sortOrder');
+            return oldValue as 'asc' | 'desc';
+        }
+        return 'asc';
     });
 
     // Save sort preference
     useEffect(() => {
-        localStorage.setItem('folders_sortBy', sortBy);
-        localStorage.setItem('folders_sortOrder', sortOrder);
+        localStorage.setItem('oneShot_sortBy', sortBy);
+        localStorage.setItem('oneShot_sortOrder', sortOrder);
     }, [sortBy, sortOrder]);
 
     // Load folders from settings/library
@@ -106,12 +130,12 @@ export function FoldersPage() {
 
     const loadFolders = async (retryCount = 0) => {
         setIsLoading(true);
-        console.log(`[FoldersPage] Loading folders (attempt ${retryCount + 1})...`);
+        console.log(`[OneShotPage] Loading folders (attempt ${retryCount + 1})...`);
         try {
             // @ts-ignore - Wails generated bindings
             const app = window.go?.main?.App;
             if (!app) {
-                console.log('[FoldersPage] Wails bindings not found');
+                console.log('[OneShotPage] Wails bindings not found');
                 if (retryCount < 3) {
                     setTimeout(() => loadFolders(retryCount + 1), 500);
                     return;
@@ -120,7 +144,7 @@ export function FoldersPage() {
             }
 
             const library = await app.GetLibrary();
-            console.log(`[FoldersPage] Library received: ${library?.length || 0} items`);
+            console.log(`[OneShotPage] Library received: ${library?.length || 0} items`);
 
             if (library && Array.isArray(library)) {
                 const folderData = library.map((entry: any) => ({
@@ -144,7 +168,7 @@ export function FoldersPage() {
                 setThumbnails(initialThumbs);
             }
         } catch (error) {
-            console.error('[FoldersPage] Failed to load folders:', error);
+            console.error('[OneShotPage] Failed to load folders:', error);
         } finally {
             setIsLoading(false);
         }
@@ -211,7 +235,7 @@ export function FoldersPage() {
     };
 
     const handleClearAll = async () => {
-        if (!window.confirm(t('folders.confirmClear'))) return;
+        if (!window.confirm(t('oneShot.confirmClear'))) return;
         try {
             // @ts-ignore
             await window.go?.main?.App?.ClearLibrary();
@@ -248,7 +272,7 @@ export function FoldersPage() {
                         className="text-2xl font-bold"
                         style={{ color: 'var(--color-text-primary)' }}
                     >
-                        {t('folders.title')}
+                        {t('oneShot.title')}
                     </h1>
 
                     {/* Sort Controls */}
@@ -283,7 +307,7 @@ export function FoldersPage() {
                             className="btn-ghost text-red-500 flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-red-500/10 transition-transform hover:scale-105 active:scale-95"
                         >
                             <TrashIcon />
-                            {t('folders.clearAll')}
+                            {t('oneShot.clearAll')}
                         </button>
                     )}
                     <button
@@ -291,7 +315,7 @@ export function FoldersPage() {
                         className="btn-primary flex items-center gap-2 transition-transform hover:scale-105 active:scale-95"
                     >
                         <PlusIcon />
-                        {t('folders.addFolder')}
+                        {t('oneShot.addFolder')}
                     </button>
                 </div>
             </div>
@@ -325,19 +349,19 @@ export function FoldersPage() {
                         className="text-lg font-medium mb-2"
                         style={{ color: 'var(--color-text-secondary)' }}
                     >
-                        {t('folders.noFolders')}
+                        {t('oneShot.noFolders')}
                     </p>
                     <p
                         className="text-sm mb-4"
                         style={{ color: 'var(--color-text-muted)' }}
                     >
-                        {t('folders.dragDrop')}
+                        {t('oneShot.dragDrop')}
                     </p>
                     <button
                         onClick={handleSelectFolder}
                         className="btn-secondary transition-transform hover:scale-105 active:scale-95"
                     >
-                        {t('folders.selectFolder')}
+                        {t('oneShot.selectFolder')}
                     </button>
                 </div>
             ) : (
@@ -371,7 +395,7 @@ export function FoldersPage() {
                                             className="animate-pulse"
                                             style={{ color: 'var(--color-text-muted)' }}
                                         >
-                                            <FolderIcon />
+                                            <OneShotIcon />
                                         </div>
                                     </div>
                                 )}
@@ -399,13 +423,13 @@ export function FoldersPage() {
                                         className="text-lg font-semibold"
                                         style={{ color: 'white' }}
                                     >
-                                        {t('folders.openFolder')}
+                                        {t('oneShot.openFolder')}
                                     </span>
                                 </div>
 
                                 {/* Remove button */}
                                 <div className="absolute top-2 right-2 z-20 opacity-0 group-hover/card:opacity-100 transition-all">
-                                    <Tooltip content={t('folders.removeFolder')} placement="left">
+                                    <Tooltip content={t('oneShot.removeFolder')} placement="left">
                                         <button
                                             onClick={(e) => handleRemoveFolder(folder, e)}
                                             className="p-2 rounded-full hover:scale-110 active:scale-90"
@@ -413,7 +437,7 @@ export function FoldersPage() {
                                                 backgroundColor: 'rgba(239, 68, 68, 0.9)',
                                                 color: 'white',
                                             }}
-                                            aria-label={t('folders.removeFolder')}
+                                            aria-label={t('oneShot.removeFolder')}
                                         >
                                             <TrashIcon />
                                         </button>
@@ -435,7 +459,7 @@ export function FoldersPage() {
                                 >
                                     <ImageIcon />
                                     <span>
-                                        {folder.imageCount} {t('folders.images')}
+                                        {folder.imageCount} {t('oneShot.images')}
                                     </span>
                                 </div>
                             </div>
@@ -448,4 +472,4 @@ export function FoldersPage() {
     );
 }
 
-export default FoldersPage;
+export default OneShotPage;

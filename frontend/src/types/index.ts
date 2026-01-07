@@ -140,7 +140,7 @@ export const DEFAULT_SETTINGS: Settings = {
     enabledMenuItems: {
         'home': true,
         'history': true,
-        'folders': true,
+        'oneShot': true,
         'series': true,
         'explorer': true,
         'download': true,
@@ -199,7 +199,7 @@ export type PageType =
     | 'home'
     | 'viewer'
     | 'history'
-    | 'folders'
+    | 'oneShot'
     | 'series'
     | 'series-details'
     | 'thumbnails'

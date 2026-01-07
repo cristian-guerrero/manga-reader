@@ -30,7 +30,7 @@
     "navigation": {
         "home": "Home",
         "history": "History",
-        "folders": "Folders",
+        "oneShot": "One shot",
         "series": "Series",
         "download": "Downloads",
         "settings": "Settings",
@@ -65,8 +65,8 @@
         "prevChapter": "Previous Chapter",
         "nextChapter": "Next Chapter"
     },
-    "folders": {
-        "title": "Folders",
+    "oneShot": {
+        "title": "One shot",
         "selectFolder": "Select Folder",
         "addFolder": "Add Folder",
         "removeFolder": "Remove Folder",
