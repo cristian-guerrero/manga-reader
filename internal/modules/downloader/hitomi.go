@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
@@ -180,6 +181,10 @@ func (d *HitomiDownloader) GetImages(url string) (*SiteInfo, error) {
 		return d.getNozomiList(url)
 	}
 
+	if strings.Contains(url, "search.html") {
+		return d.handleSearchURL(url)
+	}
+
 	if d.gg == nil {
 		if err := d.RefreshGG(url); err != nil {
 			return nil, err
@@ -252,6 +257,100 @@ func (d *HitomiDownloader) GetImages(url string) (*SiteInfo, error) {
 		SiteID:        d.GetSiteID(),
 		DownloadDelay: 500 * time.Millisecond,
 	}, nil
+}
+
+func (d *HitomiDownloader) handleSearchURL(rawURL string) (*SiteInfo, error) {
+	// Parse URL
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return nil, fmt.Errorf("invalid url: %v", err)
+	}
+
+	// query is formatted like: ?q=artist:menoko language:spanish
+	// Hitomi encodes it properly in the 'q' parameter usually, or just straight in the path if copied from browser?
+	// Browser URL: https://hitomi.la/search.html?menoko%20language:spanish (actually often it's just query list)
+	// But the user provided: search.html?artist%3Amenoko%20language%3Aspanish
+	// Let's parse the query keys.
+
+	// Hitomi search query is usually in the key itself if no value, or just part of the string?
+	// Actually, Hitomi uses the entire query string as the search terms sometimes if encoded weirdly,
+	// but standard use is ?q=term or just terms.
+	// Wait, the user example is: https://hitomi.la/search.html?artist%3Amenoko%20language%3Aspanish
+	// `artist%3Amenoko%20language%3Aspanish` is the query string. It's not `?q=...`
+	// So we need to look at u.RawQuery
+
+	queryParts := strings.Split(u.RawQuery, "%20") // Split by space if encoded
+	if len(queryParts) == 1 {
+		queryParts = strings.Split(u.RawQuery, "&") // or &?
+	}
+	// Fallback: fully decode first
+	decodedQuery, _ := url.QueryUnescape(u.RawQuery)
+	// Split by space
+	parts := strings.Fields(decodedQuery)
+
+	var typeName, name, language string
+	language = "all" // Default
+
+	// Parse parts
+	// format: key:value
+	for _, part := range parts {
+		if strings.Contains(part, ":") {
+			kv := strings.SplitN(part, ":", 2)
+			key := kv[0]
+			val := kv[1]
+
+			switch key {
+			case "artist":
+				typeName = "artist"
+				name = val
+			case "series":
+				typeName = "series"
+				name = val
+			case "group":
+				typeName = "group"
+				name = val
+			case "character":
+				typeName = "character"
+				name = val
+			case "tag":
+				typeName = "tag"
+				name = val
+			case "language":
+				language = val
+			}
+		} else {
+			// Assume it's a generic search term? generic search not supported by nozomi easily unless we search index.
+			// For now, only support structured queries as requested.
+		}
+	}
+
+	if typeName == "" || name == "" {
+		return nil, fmt.Errorf("unsupported search query: must contain a specific type (artist, series, group, character, tag) and name")
+	}
+
+	// Construct target URL
+	// https://hitomi.la/artist/menoko-spanish.html
+	// https://hitomi.la/artist/menoko-all.html
+
+	suffix := "-all"
+	if language != "all" {
+		suffix = "-" + language
+	}
+
+	// Clean name (spaces to hyphens might be needed?)
+	// Hitomi usually uses hyphens for spaces in names
+	name = strings.ReplaceAll(name, " ", "-")
+	name = strings.ReplaceAll(name, "_", "-") // Just in case
+
+	targetURL := fmt.Sprintf("https://hitomi.la/%s/%s%s.html", typeName, name, suffix)
+
+	// Use existing handlers
+	// Try scraping first for better titles
+	info, err := d.getArbitraryList(targetURL)
+	if err == nil && len(info.Chapters) > 0 {
+		return info, nil
+	}
+	return d.getNozomiList(targetURL)
 }
 
 func (d *HitomiDownloader) fetchGalleryData(galleryID string) (*HitomiGallery, error) {
