@@ -54,25 +54,30 @@ jobs:
       - name: Compilar App
         run: |
           wails build -platform ${{ matrix.platform }}
+          if [ "${{ matrix.os }}" == "macos-latest" ]; then
+            cd build/bin
+            # En macOS el build genera una carpeta .app, hay que comprimirla para el release
+            zip -r manga-visor2-macos.zip *.app
+            # Eliminamos la carpeta para que no interfiera con la subida de archivos
+            rm -rf *.app
+          fi
 
       - name: Comprimir Código Fuente (ZIP)
         if: strategy.job-index == 0
         run: |
-          git archive -o source-code.zip HEAD
+          git archive -o build/bin/source-code.zip HEAD
 
       - name: Comprimir Código Fuente (TAR.GZ)
         if: strategy.job-index == 0
         run: |
-          git archive -o source-code.tar.gz HEAD
+          git archive -o build/bin/source-code.tar.gz HEAD
 
       - name: Crear Release en GitHub
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
-          files: |
-            build/bin/*
-            source-code.zip
-            source-code.tar.gz
+          files: build/bin/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
 
