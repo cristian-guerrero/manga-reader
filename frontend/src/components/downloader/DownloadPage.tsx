@@ -168,7 +168,9 @@ export const DownloadPage: React.FC = () => {
                         text.includes('/tag/') ||
                         text.includes('/character/') ||
                         text.includes('/group/') ||
-                        text.includes('index-')
+                        text.includes('index-') ||
+                        text.includes('search.html') ||
+                        text.includes('?q=')
                     );
 
                     if (isHitomiSeries) {
