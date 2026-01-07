@@ -3,11 +3,11 @@ import { useTranslation } from 'react-i18next';
 import { useNavigationStore } from '../../stores/navigationStore';
 import { useToast } from '../common/Toast';
 import { EventsOn, EventsOff } from '../../../wailsjs/runtime';
-import { Tooltip } from '../common/Tooltip';
 import { SortControls } from '../common/SortControls';
 import { GridItem } from '../common/GridItem';
 import { GridContainer } from '../common/GridContainer';
 import { SearchBar } from '../common/SearchBar';
+import { LibraryCard } from '../common/LibraryCard';
 import { FolderInfo } from '../../types';
 
 // Icons
@@ -379,102 +379,30 @@ export function OneShotPage() {
                 <GridContainer>
                     {sortedFolders.map((folder) => (
                         <GridItem key={folder.path}>
-                            <div
-                                onClick={() => handleOpenFolder(folder)}
-                                className="group/card relative rounded-xl overflow-hidden cursor-pointer hover-lift shadow-sm hover:border-accent transition-all animate-slide-up"
-                                style={{
-                                    backgroundColor: 'var(--color-surface-secondary)',
-                                    border: '1px solid var(--color-border)',
-                                }}
-                            >
-                            {/* Cover image */}
-                            <div
-                                className="aspect-[3/4] relative overflow-hidden"
-                                style={{ backgroundColor: 'var(--color-surface-tertiary)' }}
-                            >
-                                {thumbnails[folder.path] ? (
-                                    <img
-                                        src={thumbnails[folder.path]}
-                                        alt={folder.name}
-                                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                                    />
-                                ) : (
-                                    <div className="flex items-center justify-center h-full">
-                                        <div
-                                            className="animate-pulse"
-                                            style={{ color: 'var(--color-text-muted)' }}
-                                        >
-                                            <OneShotIcon />
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* Archive Badge */}
-                                {folder.isTemporary && (
-                                    <div
-                                        className="absolute top-2 left-2 px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider z-10 shadow-lg border border-white/10"
-                                        style={{
-                                            backgroundColor: 'rgba(56, 189, 248, 0.9)', // Sky 400
-                                            color: 'white',
-                                            backdropFilter: 'blur(4px)'
-                                        }}
-                                    >
-                                        {t('common.archive') || 'Archive'}
-                                    </div>
-                                )}
-
-                                {/* Overlay on hover */}
-                                <div
-                                    className="absolute inset-0 opacity-0 group-hover/card:opacity-100 transition-opacity duration-300 flex items-center justify-center pointer-events-none"
-                                    style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
-                                >
+                            <LibraryCard
+                                id={folder.path}
+                                name={folder.name}
+                                thumbnail={thumbnails[folder.path]}
+                                isTemporary={folder.isTemporary}
+                                count={folder.imageCount}
+                                countLabel={t('oneShot.images')}
+                                countIcon={<ImageIcon />}
+                                onOpen={() => handleOpenFolder(folder)}
+                                onRemove={(e) => handleRemoveFolder(folder, e)}
+                                overlayContent={
                                     <span
                                         className="text-lg font-semibold"
                                         style={{ color: 'white' }}
                                     >
                                         {t('oneShot.openFolder')}
                                     </span>
-                                </div>
-
-                                {/* Remove button */}
-                                <div className="absolute top-2 right-2 z-20 opacity-0 group-hover/card:opacity-100 transition-all">
-                                    <Tooltip content={t('oneShot.removeFolder')} placement="left">
-                                        <button
-                                            onClick={(e) => handleRemoveFolder(folder, e)}
-                                            className="p-2 rounded-full hover:scale-110 active:scale-90"
-                                            style={{
-                                                backgroundColor: 'rgba(239, 68, 68, 0.9)',
-                                                color: 'white',
-                                            }}
-                                            aria-label={t('oneShot.removeFolder')}
-                                        >
-                                            <TrashIcon />
-                                        </button>
-                                    </Tooltip>
-                                </div>
-                            </div>
-
-                            {/* Info */}
-                            <div className="p-4">
-                                <Tooltip content={folder.name} placement="top" className="w-full justify-start">
-                                    <h3
-                                        className="font-semibold truncate mb-1 w-full"
-                                        style={{ color: 'var(--color-text-primary)' }}
-                                    >
-                                        {folder.name}
-                                    </h3>
-                                </Tooltip>
-                                <div
-                                    className="flex items-center gap-1 text-sm"
-                                    style={{ color: 'var(--color-text-muted)' }}
-                                >
-                                    <ImageIcon />
-                                    <span>
-                                        {folder.imageCount} {t('oneShot.images')}
-                                    </span>
-                                </div>
-                            </div>
-                            </div>
+                                }
+                                fallbackIcon={<OneShotIcon />}
+                                archiveLabel={t('common.archive') || 'Archive'}
+                                removeLabel={t('oneShot.removeFolder')}
+                                playLabel={t('oneShot.openFolder')}
+                                variant="unified"
+                            />
                         </GridItem>
                     ))}
                 </GridContainer>
