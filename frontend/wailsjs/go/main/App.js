@@ -166,8 +166,8 @@ export function SelectFolder() {
   return window['go']['main']['App']['SelectFolder']();
 }
 
-export function StartDownload(arg1) {
-  return window['go']['main']['App']['StartDownload'](arg1);
+export function StartDownload(arg1, arg2, arg3) {
+  return window['go']['main']['App']['StartDownload'](arg1, arg2, arg3);
 }
 
 export function UpdateSettings(arg1) {

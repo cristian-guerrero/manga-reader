@@ -116,7 +116,7 @@ func (m *Module) FetchMangaInfo(url string) (*SiteInfo, error) {
 	return algo.GetImages(url)
 }
 
-func (m *Module) StartDownload(url string) (string, error) {
+func (m *Module) StartDownload(url string, overrideSeries string, overrideChapter string) (string, error) {
 	var algo DownloaderInterface
 	for _, a := range m.algorithms {
 		if a.CanHandle(url) {
@@ -179,6 +179,14 @@ func (m *Module) StartDownload(url string) (string, error) {
 
 	if info.Type == "series" {
 		return "", fmt.Errorf("this is a series URL, use FetchMangaInfo to select chapters")
+	}
+
+	// Apply overrides if provided
+	if overrideSeries != "" {
+		info.SeriesName = overrideSeries
+	}
+	if overrideChapter != "" {
+		info.ChapterName = overrideChapter
 	}
 
 	var jobID string

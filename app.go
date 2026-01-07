@@ -561,8 +561,8 @@ func (a *App) ClearThumbnailCache() error {
 // Downloader Methods (Delegated)
 // =============================================================================
 
-func (a *App) StartDownload(url string) (string, error) {
-	return a.downloaderMod.StartDownload(url)
+func (a *App) StartDownload(url string, overrideSeries string, overrideChapter string) (string, error) {
+	return a.downloaderMod.StartDownload(url, overrideSeries, overrideChapter)
 }
 
 func (a *App) GetDownloadHistory() []persistence.DownloadJob {

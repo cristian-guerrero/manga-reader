@@ -52,20 +52,41 @@ export const DownloadPage: React.FC = () => {
 
     const groupedHistory = useMemo(() => {
         const items: Array<{ type: 'single'; job: DownloadJob } | { type: 'series'; name: string; jobs: DownloadJob[] }> = [];
-        const processedSeries = new Set<string>();
+        const seriesMap = new Map<string, DownloadJob[]>();
+        const singles: DownloadJob[] = [];
 
         history.forEach((job) => {
             const sName = job.seriesName;
             if (sName && sName !== 'Unknown Series' && sName !== 'Unknown') {
-                if (processedSeries.has(sName)) return;
-                processedSeries.add(sName);
-                const seriesJobs = history.filter(j => j.seriesName === sName);
-                items.push({ type: 'series', name: sName, jobs: seriesJobs });
+                if (!seriesMap.has(sName)) {
+                    seriesMap.set(sName, []);
+                }
+                seriesMap.get(sName)!.push(job);
             } else {
-                items.push({ type: 'single', job });
+                singles.push(job);
             }
         });
-        return items;
+
+        // Process seriesMap
+        seriesMap.forEach((jobs, name) => {
+            if (jobs.length === 1) {
+                items.push({ type: 'single', job: jobs[0] });
+            } else {
+                items.push({ type: 'series', name, jobs });
+            }
+        });
+
+        // Add singles
+        singles.forEach(job => {
+            items.push({ type: 'single', job });
+        });
+
+        // Sort by createdAt desc to match original history order
+        return items.sort((a, b) => {
+            const timeA = a.type === 'single' ? new Date(a.job.createdAt).getTime() : Math.max(...a.jobs.map(j => new Date(j.createdAt).getTime()));
+            const timeB = b.type === 'single' ? new Date(b.job.createdAt).getTime() : Math.max(...b.jobs.map(j => new Date(j.createdAt).getTime()));
+            return timeB - timeA;
+        });
     }, [history]);
 
     const loadHistory = useCallback(async () => {
@@ -107,7 +128,7 @@ export const DownloadPage: React.FC = () => {
                 setUrl(''); // Clear input
             } else {
                 // It's a single chapter, start download directly
-                await AppBackend.StartDownload(urlToDownload);
+                await (AppBackend as any).StartDownload(urlToDownload, "", "");
                 setUrl('');
                 showToast(t('common.success'), 'success');
             }
@@ -162,7 +183,7 @@ export const DownloadPage: React.FC = () => {
             } catch (err) {
                 // Clipboard access might be denied
             }
-        }, 2000);
+        }, 1000);// prueba Auto Clipboard Monitoring 1 segundo
 
         return () => clearInterval(interval);
     }, [settings.clipboardAutoMonitor, t, showToast, handleStartDownload]);
@@ -184,7 +205,7 @@ export const DownloadPage: React.FC = () => {
         for (const chapter of chaptersToDownload) {
             try {
                 // Add small delay to avoid overwhelming
-                await AppBackend.StartDownload(chapter.URL);
+                await (AppBackend as any).StartDownload(chapter.URL, seriesInfo.SeriesName, chapter.Name);
                 started++;
             } catch (err) {
                 console.error(`Failed to start download for ${chapter.Name}:`, err);
