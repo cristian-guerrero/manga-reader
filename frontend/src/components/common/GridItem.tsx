@@ -14,7 +14,7 @@ interface GridItemProps {
 export function GridItem({ children, onClick, className = '', style }: GridItemProps) {
     return (
         <div
-            className={`w-full max-w-[200px] ${className}`}
+            className={`w-[200px] ${className}`}
             onClick={onClick}
             style={style}
         >

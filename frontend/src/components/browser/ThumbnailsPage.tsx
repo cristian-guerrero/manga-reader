@@ -20,6 +20,8 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useNavigationStore } from '../../stores/navigationStore';
+import { GridContainer } from '../common/GridContainer';
+import { GridItem } from '../common/GridItem';
 
 // Icons
 const ResetIcon = () => (
@@ -414,17 +416,18 @@ export function ThumbnailsPage({ folderPath }: ThumbnailsPageProps) {
                             items={images.map((img) => img.path)}
                             strategy={rectSortingStrategy}
                         >
-                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                            <GridContainer variant="thumbnails">
                                 {images.map((image, index) => (
-                                    <SortableItem
-                                        key={image.path}
-                                        image={image}
-                                        index={index}
-                                        thumbnail={thumbnails[image.path]}
-                                        onImageClick={handleImageClick}
-                                    />
+                                    <GridItem key={image.path}>
+                                        <SortableItem
+                                            image={image}
+                                            index={index}
+                                            thumbnail={thumbnails[image.path]}
+                                            onImageClick={handleImageClick}
+                                        />
+                                    </GridItem>
                                 ))}
-                            </div>
+                            </GridContainer>
                         </SortableContext>
 
                         {/* Drag overlay */}
