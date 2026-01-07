@@ -3,7 +3,7 @@
  */
 
 import { create } from 'zustand';
-import { PageType, NavigationState } from '../types';
+import { PageType, NavigationState, FolderInfo } from '../types';
 
 interface HistoryEntry {
     page: PageType;
@@ -13,6 +13,10 @@ interface HistoryEntry {
 interface NavigationStoreState extends NavigationState {
     // History stack
     history: HistoryEntry[];
+
+    // Library State
+    folders: FolderInfo[];
+    setFolders: (folders: FolderInfo[] | ((prev: FolderInfo[]) => FolderInfo[])) => void;
 
     // Actions
     navigate: (page: PageType, params?: Record<string, string>) => void;
@@ -42,6 +46,7 @@ export const useNavigationStore = create<NavigationStoreState>((set, get) => ({
     history: [{ page: 'home', params: {} }],
     isPanicMode: false,
     isProcessing: false,
+    folders: [],
 
     // Actions
     navigate: (page, params = {}) => {
@@ -147,5 +152,13 @@ export const useNavigationStore = create<NavigationStoreState>((set, get) => ({
                 [folderPath]: position,
             },
         }));
+    },
+
+    setFolders: (folders) => {
+        if (typeof folders === 'function') {
+            set((state) => ({ folders: folders(state.folders) }));
+        } else {
+            set({ folders });
+        }
     },
 }));

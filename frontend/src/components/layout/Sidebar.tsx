@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useNavigationStore } from '../../stores/navigationStore';
+import { Tooltip } from '../common/Tooltip';
 
 // Icons
 interface NavItem {
@@ -159,47 +160,36 @@ function NavButton({ item, isActive, isCollapsed, onClick }: NavButtonProps) {
     const { t } = useTranslation();
 
     return (
-        <button
-            onClick={onClick}
-            className="relative flex items-center w-full h-11 px-3 rounded-lg transition-all group active:scale-[0.98]"
-            style={{
-                backgroundColor: isActive ? 'var(--color-accent)' : 'rgba(0, 0, 0, 0)',
-                color: isActive ? 'white' : 'var(--color-text-secondary)',
-            }}
+        <Tooltip
+            content={isCollapsed ? t(item.labelKey) : ''}
+            placement="right"
+            className="w-full"
         >
-            {/* Icon */}
-            <div
-                className="flex-shrink-0 transition-transform duration-200 group-hover:scale-110"
+            <button
+                onClick={onClick}
+                className="relative flex items-center w-full h-11 px-3 rounded-lg transition-all group active:scale-[0.98]"
+                style={{
+                    backgroundColor: isActive ? 'var(--color-accent)' : 'rgba(0, 0, 0, 0)',
+                    color: isActive ? 'white' : 'var(--color-text-secondary)',
+                }}
             >
-                {item.icon}
-            </div>
-
-            {/* Label */}
-            {!isCollapsed && (
-                <span
-                    className="ml-3 text-sm font-medium truncate animate-fade-in"
-                >
-                    {t(item.labelKey)}
-                </span>
-            )}
-
-            {/* Tooltip for collapsed state */}
-            {isCollapsed && (
+                {/* Icon */}
                 <div
-                    className="absolute left-full ml-2 px-3 py-1.5 text-sm font-medium rounded-lg 
-                     opacity-0 invisible group-hover:opacity-100 group-hover:visible
-                     transition-all duration-200 z-50 whitespace-nowrap"
-                    style={{
-                        backgroundColor: 'var(--color-surface-elevated)',
-                        color: 'var(--color-text-primary)',
-                        boxShadow: 'var(--shadow-lg)',
-                        border: '1px solid var(--color-border)',
-                    }}
+                    className="flex-shrink-0 transition-transform duration-200 group-hover:scale-110"
                 >
-                    {t(item.labelKey)}
+                    {item.icon}
                 </div>
-            )}
-        </button>
+
+                {/* Label */}
+                {!isCollapsed && (
+                    <span
+                        className="ml-3 text-sm font-medium truncate animate-fade-in"
+                    >
+                        {t(item.labelKey)}
+                    </span>
+                )}
+            </button>
+        </Tooltip>
     );
 }
 

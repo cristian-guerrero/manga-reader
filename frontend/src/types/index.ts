@@ -36,6 +36,8 @@ export interface FolderInfo {
     thumbnailUrl?: string;
     /** Last modified timestamp */
     lastModified: string;
+    /** Whether it's a temporary archive folder */
+    isTemporary?: boolean;
 }
 
 // ============================================================================

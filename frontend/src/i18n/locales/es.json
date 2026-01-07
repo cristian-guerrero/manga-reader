@@ -18,7 +18,12 @@
         "reset": "Restablecer",
         "processing": "Procesando...",
         "pleaseWait": "Por favor espera mientras preparamos tu contenido",
-        "archive": "Archivo"
+        "archive": "Archivo",
+        "minimize": "Minimizar",
+        "maximize": "Maximizar",
+        "restore": "Restaurar",
+        "ascending": "Ascendente",
+        "descending": "Descendente"
     },
     "navigation": {
         "home": "Inicio",

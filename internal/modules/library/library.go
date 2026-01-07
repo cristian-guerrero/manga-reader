@@ -149,13 +149,16 @@ func (m *Module) GetLibrary() []persistence.FolderInfo {
 	for _, entry := range entries {
 		info, err := m.GetFolderInfo(entry.FolderPath)
 		if err == nil {
+			// Preserve AddedAt from library entry as LastModified
+			info.LastModified = entry.AddedAt
 			result = append(result, *info)
 		} else {
 			result = append(result, persistence.FolderInfo{
-				Path:       entry.FolderPath,
-				Name:       entry.FolderName,
-				ImageCount: entry.TotalImages,
-				CoverImage: entry.CoverImage,
+				Path:         entry.FolderPath,
+				Name:         entry.FolderName,
+				ImageCount:   entry.TotalImages,
+				CoverImage:   entry.CoverImage,
+				LastModified: entry.AddedAt,
 			})
 		}
 	}

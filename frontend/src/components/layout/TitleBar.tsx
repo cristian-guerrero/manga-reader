@@ -5,6 +5,7 @@
 
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Tooltip } from '../common/Tooltip';
 
 // Icons
 const MinimizeIcon = () => (
@@ -94,7 +95,7 @@ export function TitleBar({ title }: TitleBarProps) {
 
     return (
         <header
-            className="flex items-center justify-between h-10 px-3 select-none theme-transition"
+            className="flex items-center justify-between h-10 select-none theme-transition"
             style={{
                 backgroundColor: 'rgba(0, 0, 0, 0)',
                 color: 'var(--color-titlebar-text)',
@@ -104,7 +105,7 @@ export function TitleBar({ title }: TitleBarProps) {
             onDoubleClick={handleMaximize}
         >
             {/* App Logo and Title - Draggable */}
-            <div className="flex items-center gap-2 flex-1 drag h-full">
+            <div className="flex items-center gap-2 flex-1 drag h-full pl-3">
                 {/* Logo */}
                 <div
                     className="flex items-center justify-center w-5 h-5 rounded transition-transform hover:scale-110 active:scale-95"
@@ -129,42 +130,48 @@ export function TitleBar({ title }: TitleBarProps) {
             </div>
 
             {/* Window Controls */}
-            <div className="flex items-center gap-0.5 no-drag">
+            <div className="flex items-center h-full no-drag">
                 {/* Minimize */}
-                <button
-                    onClick={handleMinimize}
-                    className="flex items-center justify-center w-8 h-8 rounded transition-all hover:bg-surface-tertiary hover:text-text-primary active:scale-95"
-                    style={{
-                        color: 'var(--color-text-secondary)',
-                    }}
-                    aria-label="Minimize"
-                >
-                    <MinimizeIcon />
-                </button>
+                <Tooltip content={t('common.minimize') || "Minimize"} placement="bottom">
+                    <button
+                        onClick={handleMinimize}
+                        className="flex items-center justify-center w-12 h-full transition-colors hover:bg-surface-tertiary hover:text-text-primary"
+                        style={{
+                            color: 'var(--color-text-secondary)',
+                        }}
+                        aria-label="Minimize"
+                    >
+                        <MinimizeIcon />
+                    </button>
+                </Tooltip>
 
                 {/* Maximize/Restore */}
-                <button
-                    onClick={handleMaximize}
-                    className="flex items-center justify-center w-8 h-8 rounded transition-all hover:bg-surface-tertiary hover:text-text-primary active:scale-95"
-                    style={{
-                        color: 'var(--color-text-secondary)',
-                    }}
-                    aria-label={isMaximized ? 'Restore' : 'Maximize'}
-                >
-                    {isMaximized ? <RestoreIcon /> : <MaximizeIcon />}
-                </button>
+                <Tooltip content={isMaximized ? (t('common.restore') || "Restore") : (t('common.maximize') || "Maximize")} placement="bottom">
+                    <button
+                        onClick={handleMaximize}
+                        className="flex items-center justify-center w-12 h-full transition-colors hover:bg-surface-tertiary hover:text-text-primary"
+                        style={{
+                            color: 'var(--color-text-secondary)',
+                        }}
+                        aria-label={isMaximized ? 'Restore' : 'Maximize'}
+                    >
+                        {isMaximized ? <RestoreIcon /> : <MaximizeIcon />}
+                    </button>
+                </Tooltip>
 
                 {/* Close */}
-                <button
-                    onClick={handleClose}
-                    className="flex items-center justify-center w-8 h-8 rounded transition-all hover:bg-red-600 hover:text-white active:scale-95"
-                    style={{
-                        color: 'var(--color-text-secondary)',
-                    }}
-                    aria-label="Close"
-                >
-                    <CloseIcon />
-                </button>
+                <Tooltip content={t('common.close') || "Close"} placement="bottom">
+                    <button
+                        onClick={handleClose}
+                        className="flex items-center justify-center w-12 h-full transition-colors hover:bg-red-600 hover:text-white"
+                        style={{
+                            color: 'var(--color-text-secondary)',
+                        }}
+                        aria-label="Close"
+                    >
+                        <CloseIcon />
+                    </button>
+                </Tooltip>
             </div>
         </header>
     );

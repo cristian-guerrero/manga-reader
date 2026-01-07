@@ -19,7 +19,12 @@
         "off": "Off",
         "processing": "Processing...",
         "pleaseWait": "Please wait while we prepare your content",
-        "archive": "Archive"
+        "archive": "Archive",
+        "minimize": "Minimize",
+        "maximize": "Maximize",
+        "restore": "Restore",
+        "ascending": "Ascending",
+        "descending": "Descending"
     },
     "navigation": {
         "home": "Home",
