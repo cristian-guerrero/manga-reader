@@ -9,6 +9,7 @@ import { ChapterInfo, SeriesEntry } from '../../types';
 import { Tooltip } from '../common/Tooltip';
 import { SortControls } from '../common/SortControls';
 import { GridContainer } from '../common/GridContainer';
+import { SearchBar } from '../common/SearchBar';
 
 // Icons
 const ChevronLeftIcon = () => (
@@ -61,6 +62,7 @@ export function SeriesDetailsPage({ seriesPath }: SeriesDetailsPageProps) {
     const [series, setSeries] = useState<SeriesEntry | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [thumbnails, setThumbnails] = useState<Record<string, string>>({});
+    const [searchQuery, setSearchQuery] = useState('');
 
     // Sorting state - initialized with series preferences
     const [sortBy, setSortBy] = useState<'name' | 'pages'>(() => {
@@ -140,8 +142,14 @@ export function SeriesDetailsPage({ seriesPath }: SeriesDetailsPageProps) {
         navigate('viewer', { folder: path });
     };
 
-    // Sort chapters
-    const sortedChapters = series ? [...series.chapters].sort((a, b) => {
+    // Filter and sort chapters
+    const filteredChapters = series ? series.chapters.filter(chapter => {
+        if (!searchQuery.trim()) return true;
+        const query = searchQuery.toLowerCase();
+        return chapter.name.toLowerCase().includes(query);
+    }) : [];
+
+    const sortedChapters = filteredChapters.sort((a, b) => {
         let res = 0;
         if (sortBy === 'name') {
             res = a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
@@ -150,7 +158,7 @@ export function SeriesDetailsPage({ seriesPath }: SeriesDetailsPageProps) {
             res = a.imageCount - b.imageCount;
         }
         return sortOrder === 'asc' ? res : -res;
-    }) : [];
+    });
 
 
     if (isLoading) {
@@ -183,42 +191,65 @@ export function SeriesDetailsPage({ seriesPath }: SeriesDetailsPageProps) {
     return (
         <div className="h-full overflow-auto p-6" style={{ backgroundColor: 'var(--color-surface-primary)' }}>
             {/* Header */}
-            <div className="flex items-center justify-between mb-8">
-                <div className="flex items-center gap-4">
-                    <button
-                        onClick={goBack}
-                        className="p-2 rounded-lg transition-all hover:bg-white/5 hover:scale-110 active:scale-90"
-                        style={{ color: 'var(--color-text-secondary)' }}
-                    >
-                        <ChevronLeftIcon />
-                    </button>
-                    <div>
-                        <h1 className="text-2xl font-bold" style={{ color: 'var(--color-text-primary)' }}>
-                            {series.name}
-                        </h1>
-                        <p className="text-sm opacity-60" style={{ color: 'var(--color-text-muted)' }}>
-                            {series.path}
-                        </p>
+            <div className="mb-8">
+                <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-4">
+                        <button
+                            onClick={goBack}
+                            className="p-2 rounded-lg transition-all hover:bg-white/5 hover:scale-110 active:scale-90"
+                            style={{ color: 'var(--color-text-secondary)' }}
+                        >
+                            <ChevronLeftIcon />
+                        </button>
+                        <div>
+                            <h1 className="text-2xl font-bold" style={{ color: 'var(--color-text-primary)' }}>
+                                {series.name}
+                            </h1>
+                            <p className="text-sm opacity-60" style={{ color: 'var(--color-text-muted)' }}>
+                                {series.path}
+                            </p>
+                        </div>
                     </div>
+
+                    {/* Sort Controls */}
+                    <SortControls
+                        sortBy={sortBy}
+                        sortOrder={sortOrder}
+                        onSortByChange={(value) => setSortBy(value as 'name' | 'pages')}
+                        onSortOrderChange={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
+                        options={[
+                            { value: 'name', label: 'Name' },
+                            { value: 'pages', label: 'Pages' }
+                        ]}
+                        show={series.chapters && series.chapters.length > 0}
+                    />
                 </div>
 
-                {/* Sort Controls */}
-                <SortControls
-                    sortBy={sortBy}
-                    sortOrder={sortOrder}
-                    onSortByChange={(value) => setSortBy(value as 'name' | 'pages')}
-                    onSortOrderChange={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
-                    options={[
-                        { value: 'name', label: 'Name' },
-                        { value: 'pages', label: 'Pages' }
-                    ]}
-                    show={series.chapters && series.chapters.length > 0}
-                />
+                {/* Search Bar */}
+                {series.chapters && series.chapters.length > 0 && (
+                    <div>
+                        <SearchBar
+                            placeholder={t('series.searchChapterPlaceholder') || 'Search chapters by name...'}
+                            onSearch={setSearchQuery}
+                            className="max-w-md"
+                        />
+                    </div>
+                )}
             </div>
 
             {/* Chapters Grid */}
-            <GridContainer variant="chapters" gap="lg">
-                {sortedChapters.map((chapter: ChapterInfo) => (
+            {sortedChapters.length === 0 && searchQuery.trim() ? (
+                <div className="flex flex-col items-center justify-center py-20 text-center">
+                    <p className="text-lg font-medium mb-2" style={{ color: 'var(--color-text-secondary)' }}>
+                        {t('common.noResults')}
+                    </p>
+                    <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
+                        {t('series.noChaptersFound') || `No chapters found matching "${searchQuery}"`}
+                    </p>
+                </div>
+            ) : (
+                <GridContainer variant="chapters" gap="lg">
+                    {sortedChapters.map((chapter: ChapterInfo) => (
                     <div
                         key={chapter.path}
                         onClick={() => handleOpenChapter(chapter.path)}
@@ -248,18 +279,21 @@ export function SeriesDetailsPage({ seriesPath }: SeriesDetailsPageProps) {
                             </div>
                         </div>
 
-                        <h3
-                            className="font-bold truncate group-hover:text-accent transition-colors"
-                            style={{ color: 'var(--color-text-primary)' }}
-                        >
-                            {chapter.name}
-                        </h3>
+                        <Tooltip content={chapter.name} placement="top" className="w-full justify-start">
+                            <h3
+                                className="font-bold truncate group-hover:text-accent transition-colors w-full"
+                                style={{ color: 'var(--color-text-primary)' }}
+                            >
+                                {chapter.name}
+                            </h3>
+                        </Tooltip>
                         <p className="text-xs opacity-60" style={{ color: 'var(--color-text-muted)' }}>
                             {chapter.imageCount} pages
                         </p>
                     </div>
                 ))}
             </GridContainer>
+            )}
         </div>
     );
 }

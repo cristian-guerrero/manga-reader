@@ -80,7 +80,9 @@
         "noFolders": "No folders added yet",
         "dragDrop": "Drag and drop or click to select",
         "addFailed": "Failed to add folder",
-        "foldersAdded": "{{count}} folders added to library"
+        "foldersAdded": "{{count}} folders added to library",
+        "searchPlaceholder": "Search folders by name...",
+        "noFoldersFound": "No folders found matching your search"
     },
     "series": {
         "title": "Series",
@@ -91,7 +93,10 @@
         "chapters": "chapters",
         "noSeries": "No series added yet",
         "openSeries": "View Chapters",
-        "chapterCount": "{{count}} Chapters"
+        "chapterCount": "{{count}} Chapters",
+        "searchPlaceholder": "Search series by name...",
+        "searchChapterPlaceholder": "Search chapters by name...",
+        "noChaptersFound": "No chapters found matching your search"
     },
     "history": {
         "title": "Reading History",

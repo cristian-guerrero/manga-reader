@@ -11,6 +11,7 @@ import { Tooltip } from '../common/Tooltip';
 import { SortControls } from '../common/SortControls';
 import { GridItem } from '../common/GridItem';
 import { GridContainer } from '../common/GridContainer';
+import { SearchBar } from '../common/SearchBar';
 
 // Icons
 const SeriesIcon = () => (
@@ -57,6 +58,7 @@ export function SeriesPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [thumbnails, setThumbnails] = useState<Record<string, string>>({});
     const [history, setHistory] = useState<any[]>([]);
+    const [searchQuery, setSearchQuery] = useState('');
 
     // Sorting state with persistence
     const [sortBy, setSortBy] = useState<'name' | 'date'>(() => {
@@ -230,8 +232,14 @@ export function SeriesPage() {
         }
     };
 
-    // Sort series
-    const sortedSeries = [...series].sort((a, b) => {
+    // Filter and sort series
+    const filteredSeries = series.filter(item => {
+        if (!searchQuery.trim()) return true;
+        const query = searchQuery.toLowerCase();
+        return item.name.toLowerCase().includes(query);
+    });
+
+    const sortedSeries = filteredSeries.sort((a, b) => {
         let res = 0;
         if (sortBy === 'name') {
             res = a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
@@ -251,47 +259,60 @@ export function SeriesPage() {
             style={{ backgroundColor: 'var(--color-surface-primary)' }}
         >
             {/* Header */}
-            <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-4">
-                    <h1
-                        className="text-2xl font-bold"
-                        style={{ color: 'var(--color-text-primary)' }}
-                    >
-                        {t('series.title')}
-                    </h1>
-
-                    {/* Sort Controls */}
-                    <SortControls
-                        sortBy={sortBy}
-                        sortOrder={sortOrder}
-                        onSortByChange={(value) => setSortBy(value as 'name' | 'date')}
-                        onSortOrderChange={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
-                        options={[
-                            { value: 'name', label: 'Name' },
-                            { value: 'date', label: 'Date' }
-                        ]}
-                        show={series.length > 0}
-                    />
-                </div>
-
-                <div className="flex items-center gap-2">
-                    {series.length > 0 && (
-                        <button
-                            onClick={handleClearAll}
-                            className="btn-ghost text-red-500 flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-red-500/10 transition-transform hover:scale-105 active:scale-95"
+            <div className="mb-6">
+                <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-4">
+                        <h1
+                            className="text-2xl font-bold"
+                            style={{ color: 'var(--color-text-primary)' }}
                         >
-                            <TrashIcon />
-                            {t('series.clearAll')}
+                            {t('series.title')}
+                        </h1>
+
+                        {/* Sort Controls */}
+                        <SortControls
+                            sortBy={sortBy}
+                            sortOrder={sortOrder}
+                            onSortByChange={(value) => setSortBy(value as 'name' | 'date')}
+                            onSortOrderChange={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
+                            options={[
+                                { value: 'name', label: 'Name' },
+                                { value: 'date', label: 'Date' }
+                            ]}
+                            show={series.length > 0}
+                        />
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        {series.length > 0 && (
+                            <button
+                                onClick={handleClearAll}
+                                className="btn-ghost text-red-500 flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-red-500/10 transition-transform hover:scale-105 active:scale-95"
+                            >
+                                <TrashIcon />
+                                {t('series.clearAll')}
+                            </button>
+                        )}
+                        <button
+                            onClick={handleSelectFolder}
+                            className="btn-primary flex items-center gap-2 transition-transform hover:scale-105 active:scale-95"
+                        >
+                            <PlusIcon />
+                            {t('series.addSeries')}
                         </button>
-                    )}
-                    <button
-                        onClick={handleSelectFolder}
-                        className="btn-primary flex items-center gap-2 transition-transform hover:scale-105 active:scale-95"
-                    >
-                        <PlusIcon />
-                        {t('series.addSeries')}
-                    </button>
+                    </div>
                 </div>
+                
+                {/* Search Bar */}
+                {series.length > 0 && (
+                    <div className="mt-4">
+                        <SearchBar
+                            placeholder={t('series.searchPlaceholder') || 'Search series by name...'}
+                            onSearch={setSearchQuery}
+                            className="max-w-md"
+                        />
+                    </div>
+                )}
             </div>
 
             {/* Series grid */}
@@ -336,110 +357,121 @@ export function SeriesPage() {
                 <GridContainer>
                     {sortedSeries.map((item) => (
                         <GridItem key={item.path}>
-                            <div
-                                onClick={() => handleOpenSeries(item)}
-                                className="group/card relative rounded-xl overflow-hidden cursor-pointer hover-lift shadow-sm transition-all hover:border-accent animate-slide-up"
-                                style={{
-                                    backgroundColor: 'var(--color-surface-secondary)',
-                                    border: '1px solid var(--color-border)',
-                                }}
-                            >
-                            {/* Cover image */}
-                            <div
-                                className="aspect-[3/4] relative overflow-hidden"
-                                style={{ backgroundColor: 'var(--color-surface-tertiary)' }}
-                            >
-                                {thumbnails[item.id] ? (
-                                    <img
-                                        src={thumbnails[item.id]}
-                                        alt={item.name}
-                                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                                    />
-                                ) : (
-                                    <div className="flex items-center justify-center h-full">
+                            <div className="flex flex-col group/card">
+                                <div
+                                    onClick={() => handleOpenSeries(item)}
+                                    className="relative rounded-t-xl overflow-hidden cursor-pointer hover-lift shadow-sm transition-all hover:border-accent animate-slide-up"
+                                    style={{
+                                        backgroundColor: 'var(--color-surface-secondary)',
+                                        border: '1px solid var(--color-border)',
+                                        borderBottom: 'none',
+                                    }}
+                                >
+                                    {/* Cover image */}
+                                    <div
+                                        className="aspect-[3/4] relative overflow-hidden"
+                                        style={{ backgroundColor: 'var(--color-surface-tertiary)' }}
+                                    >
+                                        {thumbnails[item.id] ? (
+                                            <img
+                                                src={thumbnails[item.id]}
+                                                alt={item.name}
+                                                className="w-full h-full object-cover transition-transform duration-300 group-hover/card:scale-105"
+                                            />
+                                        ) : (
+                                            <div className="flex items-center justify-center h-full">
+                                                <div
+                                                    className="animate-pulse"
+                                                    style={{ color: 'var(--color-text-muted)' }}
+                                                >
+                                                    <SeriesIcon />
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Archive Badge */}
+                                        {item.isTemporary && (
+                                            <div
+                                                className="absolute top-2 left-2 px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider z-10 shadow-lg border border-white/10"
+                                                style={{
+                                                    backgroundColor: 'rgba(56, 189, 248, 0.9)', // Sky 400
+                                                    color: 'white',
+                                                    backdropFilter: 'blur(4px)'
+                                                }}
+                                            >
+                                                {t('common.archive') || 'Archive'}
+                                            </div>
+                                        )}
+
+                                        {/* Overlay on hover - Play Button */}
                                         <div
-                                            className="animate-pulse"
-                                            style={{ color: 'var(--color-text-muted)' }}
+                                            className="absolute inset-0 opacity-0 group-hover/card:opacity-100 transition-opacity duration-300 flex items-center justify-center p-4 bg-black/40 pointer-events-none"
                                         >
-                                            <SeriesIcon />
+                                            <button
+                                                onClick={(e) => handlePlaySeries(item, e)}
+                                                className="w-16 h-16 rounded-full flex items-center justify-center text-white shadow-2xl backdrop-blur-md transition-all hover:scale-110 hover:bg-accent-hover active:scale-90 pointer-events-auto"
+                                                style={{ backgroundColor: 'var(--color-accent)' }}
+                                            >
+                                                <PlayIcon />
+                                            </button>
+
+                                            <div className="absolute bottom-4 text-white font-medium text-sm">
+                                                {t('series.openSeries')}
+                                            </div>
+                                        </div>
+
+                                        {/* Remove button */}
+                                        <div className="absolute top-2 right-2 z-20 opacity-0 group-hover/card:opacity-100 transition-all">
+                                            <Tooltip content={t('series.removeSeries')} placement="left">
+                                                <button
+                                                    onClick={(e) => handleRemoveSeries(item, e)}
+                                                    className="p-2 rounded-full hover:scale-110 active:scale-90"
+                                                    style={{
+                                                        backgroundColor: 'rgba(239, 68, 68, 0.9)',
+                                                        color: 'white',
+                                                    }}
+                                                    aria-label={t('series.removeSeries')}
+                                                >
+                                                    <TrashIcon />
+                                                </button>
+                                            </Tooltip>
                                         </div>
                                     </div>
-                                )}
-
-                                {/* Archive Badge */}
-                                {item.isTemporary && (
-                                    <div
-                                        className="absolute top-2 left-2 px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider z-10 shadow-lg border border-white/10"
-                                        style={{
-                                            backgroundColor: 'rgba(56, 189, 248, 0.9)', // Sky 400
-                                            color: 'white',
-                                            backdropFilter: 'blur(4px)'
-                                        }}
-                                    >
-                                        {t('common.archive') || 'Archive'}
-                                    </div>
-                                )}
-
-                                {/* Overlay on hover - Play Button */}
-                                <div
-                                    className="absolute inset-0 opacity-0 group-hover/card:opacity-100 transition-opacity duration-300 flex items-center justify-center p-4 bg-black/40 pointer-events-none"
-                                >
-                                    <button
-                                        onClick={(e) => handlePlaySeries(item, e)}
-                                        className="w-16 h-16 rounded-full flex items-center justify-center text-white shadow-2xl backdrop-blur-md transition-all hover:scale-110 hover:bg-accent-hover active:scale-90 pointer-events-auto"
-                                        style={{ backgroundColor: 'var(--color-accent)' }}
-                                    >
-                                        <PlayIcon />
-                                    </button>
-
-                                    <div className="absolute bottom-4 text-white font-medium text-sm">
-                                        {t('series.openSeries')}
-                                    </div>
                                 </div>
 
-                                {/* Remove button */}
-                                <div className="absolute top-2 right-2 z-20 opacity-0 group-hover/card:opacity-100 transition-all">
-                                    <Tooltip content={t('series.removeSeries')} placement="left">
-                                        <button
-                                            onClick={(e) => handleRemoveSeries(item, e)}
-                                            className="p-2 rounded-full hover:scale-110 active:scale-90"
-                                            style={{
-                                                backgroundColor: 'rgba(239, 68, 68, 0.9)',
-                                                color: 'white',
-                                            }}
-                                            aria-label={t('series.removeSeries')}
+                                {/* Info - Outside overflow-hidden container */}
+                                <div 
+                                    className="p-4 rounded-b-xl"
+                                    style={{ 
+                                        backgroundColor: 'var(--color-surface-secondary)',
+                                        border: '1px solid var(--color-border)',
+                                        borderTop: 'none',
+                                    }}
+                                >
+                                    <Tooltip content={item.name} placement="bottom">
+                                        <h3
+                                            className="font-semibold truncate mb-1 cursor-default"
+                                            style={{ color: 'var(--color-text-primary)' }}
                                         >
-                                            <TrashIcon />
-                                        </button>
+                                            {item.name}
+                                        </h3>
                                     </Tooltip>
+                                    <div
+                                        className="flex items-center gap-1 text-sm"
+                                        style={{ color: 'var(--color-text-muted)' }}
+                                    >
+                                        <BookIcon />
+                                        <span>
+                                            {t('series.chapterCount', { count: item.chapters?.length || 0 })}
+                                        </span>
+                                    </div>
                                 </div>
-                            </div>
-
-                            {/* Info */}
-                            <div className="p-4">
-                                <h3
-                                    className="font-semibold truncate mb-1"
-                                    style={{ color: 'var(--color-text-primary)' }}
-                                >
-                                    {item.name}
-                                </h3>
-                                <div
-                                    className="flex items-center gap-1 text-sm"
-                                    style={{ color: 'var(--color-text-muted)' }}
-                                >
-                                    <BookIcon />
-                                    <span>
-                                        {t('series.chapterCount', { count: item.chapters?.length || 0 })}
-                                    </span>
-                                </div>
-                            </div>
                             </div>
                         </GridItem>
                     ))}
                 </GridContainer>
-            )
-            }
-        </div >
+            )}
+        </div>
     );
 }
 

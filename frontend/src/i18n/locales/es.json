@@ -81,7 +81,9 @@
         "noFolders": "No hay carpetas agregadas",
         "dragDrop": "Arrastra o haz clic para seleccionar",
         "addFailed": "Error al añadir carpeta",
-        "foldersAdded": "{{count}} carpetas añadidas a la librería"
+        "foldersAdded": "{{count}} carpetas añadidas a la librería",
+        "searchPlaceholder": "Buscar carpetas por nombre...",
+        "noFoldersFound": "No se encontraron carpetas que coincidan con tu búsqueda"
     },
     "series": {
         "title": "Series",
@@ -92,7 +94,10 @@
         "chapters": "capítulos",
         "noSeries": "No hay series agregadas",
         "openSeries": "Ver Capítulos",
-        "chapterCount": "{{count}} Capítulos"
+        "chapterCount": "{{count}} Capítulos",
+        "searchPlaceholder": "Buscar series por nombre...",
+        "searchChapterPlaceholder": "Buscar capítulos por nombre...",
+        "noChaptersFound": "No se encontraron capítulos que coincidan con tu búsqueda"
     },
     "history": {
         "title": "Historial de Lectura",

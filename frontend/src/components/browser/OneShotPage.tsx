@@ -7,6 +7,7 @@ import { Tooltip } from '../common/Tooltip';
 import { SortControls } from '../common/SortControls';
 import { GridItem } from '../common/GridItem';
 import { GridContainer } from '../common/GridContainer';
+import { SearchBar } from '../common/SearchBar';
 import { FolderInfo } from '../../types';
 
 // Icons
@@ -50,6 +51,7 @@ export function OneShotPage() {
     const { showToast } = useToast();
     const [isLoading, setIsLoading] = useState(true);
     const [thumbnails, setThumbnails] = useState<Record<string, string>>({});
+    const [searchQuery, setSearchQuery] = useState('');
 
     // Sorting state with persistence - migrate from old keys
     const [sortBy, setSortBy] = useState<'name' | 'date'>(() => {
@@ -237,8 +239,14 @@ export function OneShotPage() {
         }
     };
 
-    // Sort folders
-    const sortedFolders = [...folders].sort((a, b) => {
+    // Filter and sort folders
+    const filteredFolders = folders.filter(folder => {
+        if (!searchQuery.trim()) return true;
+        const query = searchQuery.toLowerCase();
+        return folder.name.toLowerCase().includes(query);
+    });
+
+    const sortedFolders = filteredFolders.sort((a, b) => {
         let res = 0;
         if (sortBy === 'name') {
             res = a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
@@ -258,47 +266,60 @@ export function OneShotPage() {
             style={{ backgroundColor: 'var(--color-surface-primary)' }}
         >
             {/* Header */}
-            <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-4">
-                    <h1
-                        className="text-2xl font-bold"
-                        style={{ color: 'var(--color-text-primary)' }}
-                    >
-                        {t('oneShot.title')}
-                    </h1>
-
-                    {/* Sort Controls */}
-                    <SortControls
-                        sortBy={sortBy}
-                        sortOrder={sortOrder}
-                        onSortByChange={(value) => setSortBy(value as 'name' | 'date')}
-                        onSortOrderChange={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
-                        options={[
-                            { value: 'name', label: 'Name' },
-                            { value: 'date', label: 'Date' }
-                        ]}
-                        show={folders.length > 0}
-                    />
-                </div>
-
-                <div className="flex items-center gap-2">
-                    {folders.length > 0 && (
-                        <button
-                            onClick={handleClearAll}
-                            className="btn-ghost text-red-500 flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-red-500/10 transition-transform hover:scale-105 active:scale-95"
+            <div className="mb-6">
+                <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-4">
+                        <h1
+                            className="text-2xl font-bold"
+                            style={{ color: 'var(--color-text-primary)' }}
                         >
-                            <TrashIcon />
-                            {t('oneShot.clearAll')}
+                            {t('oneShot.title')}
+                        </h1>
+
+                        {/* Sort Controls */}
+                        <SortControls
+                            sortBy={sortBy}
+                            sortOrder={sortOrder}
+                            onSortByChange={(value) => setSortBy(value as 'name' | 'date')}
+                            onSortOrderChange={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
+                            options={[
+                                { value: 'name', label: 'Name' },
+                                { value: 'date', label: 'Date' }
+                            ]}
+                            show={folders.length > 0}
+                        />
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        {folders.length > 0 && (
+                            <button
+                                onClick={handleClearAll}
+                                className="btn-ghost text-red-500 flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-red-500/10 transition-transform hover:scale-105 active:scale-95"
+                            >
+                                <TrashIcon />
+                                {t('oneShot.clearAll')}
+                            </button>
+                        )}
+                        <button
+                            onClick={handleSelectFolder}
+                            className="btn-primary flex items-center gap-2 transition-transform hover:scale-105 active:scale-95"
+                        >
+                            <PlusIcon />
+                            {t('oneShot.addFolder')}
                         </button>
-                    )}
-                    <button
-                        onClick={handleSelectFolder}
-                        className="btn-primary flex items-center gap-2 transition-transform hover:scale-105 active:scale-95"
-                    >
-                        <PlusIcon />
-                        {t('oneShot.addFolder')}
-                    </button>
+                    </div>
                 </div>
+
+                {/* Search Bar */}
+                {folders.length > 0 && (
+                    <div>
+                        <SearchBar
+                            placeholder={t('oneShot.searchPlaceholder') || 'Search folders by name...'}
+                            onSearch={setSearchQuery}
+                            className="max-w-md"
+                        />
+                    </div>
+                )}
             </div>
 
             {/* Folders grid */}
@@ -344,6 +365,15 @@ export function OneShotPage() {
                     >
                         {t('oneShot.selectFolder')}
                     </button>
+                </div>
+            ) : sortedFolders.length === 0 && searchQuery.trim() ? (
+                <div className="flex flex-col items-center justify-center py-20 text-center">
+                    <p className="text-lg font-medium mb-2" style={{ color: 'var(--color-text-secondary)' }}>
+                        {t('common.noResults')}
+                    </p>
+                    <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
+                        {t('oneShot.noFoldersFound') || `No folders found matching "${searchQuery}"`}
+                    </p>
                 </div>
             ) : (
                 <GridContainer>
@@ -426,12 +456,14 @@ export function OneShotPage() {
 
                             {/* Info */}
                             <div className="p-4">
-                                <h3
-                                    className="font-semibold truncate mb-1"
-                                    style={{ color: 'var(--color-text-primary)' }}
-                                >
-                                    {folder.name}
-                                </h3>
+                                <Tooltip content={folder.name} placement="top" className="w-full justify-start">
+                                    <h3
+                                        className="font-semibold truncate mb-1 w-full"
+                                        style={{ color: 'var(--color-text-primary)' }}
+                                    >
+                                        {folder.name}
+                                    </h3>
+                                </Tooltip>
                                 <div
                                     className="flex items-center gap-1 text-sm"
                                     style={{ color: 'var(--color-text-muted)' }}
@@ -446,9 +478,8 @@ export function OneShotPage() {
                         </GridItem>
                     ))}
                 </GridContainer>
-            )
-            }
-        </div >
+            )}
+        </div>
     );
 }
 
