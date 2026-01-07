@@ -8,6 +8,7 @@ import { useNavigationStore } from '../../stores/navigationStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useToast } from '../common/Toast';
 import { ConfirmDialog } from '../common/ConfirmDialog';
+import { Tooltip } from '../common/Tooltip';
 import { GridContainer } from '../common/GridContainer';
 import { GridItem } from '../common/GridItem';
 import { EventsOn, EventsOff } from '../../../wailsjs/runtime';
@@ -240,37 +241,41 @@ export function HistoryPage() {
                         <>
                             {/* View mode toggle */}
                             <div className="flex items-center bg-surface-tertiary rounded-lg p-1 border border-white/5">
-                                <button
-                                    onClick={() => setViewMode('list')}
-                                    className={`p-1.5 rounded transition-colors ${
-                                        viewMode === 'list'
-                                            ? 'bg-accent text-white'
-                                            : 'text-text-secondary hover:text-text-primary hover:bg-white/10'
-                                    }`}
-                                    title={t('history.listView') || 'List View'}
-                                >
-                                    <ListIcon />
-                                </button>
-                                <button
-                                    onClick={() => setViewMode('grid')}
-                                    className={`p-1.5 rounded transition-colors ${
-                                        viewMode === 'grid'
-                                            ? 'bg-accent text-white'
-                                            : 'text-text-secondary hover:text-text-primary hover:bg-white/10'
-                                    }`}
-                                    title={t('history.gridView') || 'Grid View'}
-                                >
-                                    <GridIcon />
-                                </button>
+                                <Tooltip content={t('history.listView') || 'List View'} placement="bottom">
+                                    <button
+                                        onClick={() => setViewMode('list')}
+                                        className={`p-1.5 rounded transition-colors ${
+                                            viewMode === 'list'
+                                                ? 'bg-accent text-white'
+                                                : 'text-text-secondary hover:text-text-primary hover:bg-white/10'
+                                        }`}
+                                    >
+                                        <ListIcon />
+                                    </button>
+                                </Tooltip>
+                                <Tooltip content={t('history.gridView') || 'Grid View'} placement="bottom">
+                                    <button
+                                        onClick={() => setViewMode('grid')}
+                                        className={`p-1.5 rounded transition-colors ${
+                                            viewMode === 'grid'
+                                                ? 'bg-accent text-white'
+                                                : 'text-text-secondary hover:text-text-primary hover:bg-white/10'
+                                        }`}
+                                    >
+                                        <GridIcon />
+                                    </button>
+                                </Tooltip>
                             </div>
-                            <button
-                                onClick={handleClearAllClick}
-                                className="btn-ghost text-sm flex items-center gap-2 transition-transform hover:scale-105 active:scale-95"
-                                style={{ color: '#ef4444' }}
-                            >
-                                <TrashIcon />
-                                {t('history.clearHistory')}
-                            </button>
+                            <Tooltip content={t('history.clearHistory')} placement="bottom">
+                                <button
+                                    onClick={handleClearAllClick}
+                                    className="btn-ghost text-sm flex items-center gap-2 transition-transform hover:scale-105 active:scale-95"
+                                    style={{ color: '#ef4444' }}
+                                >
+                                    <TrashIcon />
+                                    {t('history.clearHistory')}
+                                </button>
+                            </Tooltip>
                         </>
                     )}
                 </div>
@@ -372,7 +377,7 @@ export function HistoryPage() {
                                 >
                                     <div
                                         className="w-10 h-10 rounded-full flex items-center justify-center transition-transform hover:scale-110"
-                                        style={{ backgroundColor: 'var(--color-accent)' }}
+                                        style={{ backgroundColor: 'var(--color-accent)', color: 'white' }}
                                     >
                                         <PlayIcon />
                                     </div>
@@ -427,16 +432,18 @@ export function HistoryPage() {
                                     {formatDate(entry.lastRead)}
                                 </span>
 
-                                <button
-                                    onClick={(e) => handleRemove(entry, e)}
-                                    className="p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500/10 active:scale-90"
-                                    style={{
-                                        backgroundColor: 'var(--color-surface-tertiary)',
-                                        color: '#ef4444',
-                                    }}
-                                >
-                                    <TrashIcon />
-                                </button>
+                                <Tooltip content={t('history.remove') || 'Remove'} placement="left">
+                                    <button
+                                        onClick={(e) => handleRemove(entry, e)}
+                                        className="p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500/10 active:scale-90"
+                                        style={{
+                                            backgroundColor: 'var(--color-surface-tertiary)',
+                                            color: '#ef4444',
+                                        }}
+                                    >
+                                        <TrashIcon />
+                                    </button>
+                                </Tooltip>
                             </div>
                         </div>
                     ))}
@@ -478,7 +485,7 @@ export function HistoryPage() {
                                     >
                                         <div
                                             className="w-16 h-16 rounded-full flex items-center justify-center transition-transform hover:scale-110 shadow-2xl backdrop-blur-md"
-                                            style={{ backgroundColor: 'var(--color-accent)' }}
+                                            style={{ backgroundColor: 'var(--color-accent)', color: 'white' }}
                                         >
                                             <PlayIcon />
                                         </div>
@@ -486,17 +493,19 @@ export function HistoryPage() {
 
                                     {/* Remove button */}
                                     <div className="absolute top-2 right-2 z-20 opacity-0 group-hover/card:opacity-100 transition-all">
-                                        <button
-                                            onClick={(e) => handleRemove(entry, e)}
-                                            className="p-2 rounded-full hover:scale-110 active:scale-90"
-                                            style={{
-                                                backgroundColor: 'rgba(239, 68, 68, 0.9)',
-                                                color: 'white',
-                                            }}
-                                            aria-label={t('history.remove') || 'Remove'}
-                                        >
-                                            <TrashIcon />
-                                        </button>
+                                        <Tooltip content={t('history.remove') || 'Remove'} placement="left">
+                                            <button
+                                                onClick={(e) => handleRemove(entry, e)}
+                                                className="p-2 rounded-full hover:scale-110 active:scale-90"
+                                                style={{
+                                                    backgroundColor: 'rgba(239, 68, 68, 0.9)',
+                                                    color: 'white',
+                                                }}
+                                                aria-label={t('history.remove') || 'Remove'}
+                                            >
+                                                <TrashIcon />
+                                            </button>
+                                        </Tooltip>
                                     </div>
 
                                     {/* Progress overlay */}

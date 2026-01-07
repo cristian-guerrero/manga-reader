@@ -316,7 +316,7 @@ export const DownloadPage: React.FC = () => {
                         {t('download.title')}
                     </h1>
                     <p style={{ color: 'var(--color-text-secondary)' }}>
-                        {t('home.subtitle')}
+                        {t('download.subtitle')}
                     </p>
                 </div>
                 <Tooltip content={t('download.help.title')} placement="left">

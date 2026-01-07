@@ -64,7 +64,8 @@
         "thumbnails": "Miniaturas",
         "imageInfo": "Info de Imagen",
         "prevChapter": "Capítulo Anterior",
-        "nextChapter": "Capítulo Siguiente"
+        "nextChapter": "Capítulo Siguiente",
+        "goToStart": "Ir al Inicio"
     },
     "oneShot": {
         "title": "One shot",
@@ -117,6 +118,7 @@
     },
     "download": {
         "title": "Gestor de Descargas",
+        "subtitle": "Descarga tus mangas favoritos para tenerlos disponibles offline",
         "urlPlaceholder": "Pega la URL del manga aquí...",
         "startDownload": "Descargar",
         "autoMonitor": "Monitoreo Automático de Portapapeles",

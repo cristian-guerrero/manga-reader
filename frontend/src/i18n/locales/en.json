@@ -63,7 +63,8 @@
         "thumbnails": "Thumbnails",
         "imageInfo": "Image Info",
         "prevChapter": "Previous Chapter",
-        "nextChapter": "Next Chapter"
+        "nextChapter": "Next Chapter",
+        "goToStart": "Go to Start"
     },
     "oneShot": {
         "title": "One shot",
@@ -116,6 +117,7 @@
     },
     "download": {
         "title": "Download Manager",
+        "subtitle": "Download your favorite mangas to have them available offline",
         "urlPlaceholder": "Paste manga URL here...",
         "startDownload": "Download",
         "autoMonitor": "Auto Clipboard Monitoring",

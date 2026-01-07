@@ -1,8 +1,10 @@
 import { useEffect, useState, useCallback } from 'react';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
+import { useTranslation } from 'react-i18next';
 import { useViewerStore } from '../../stores/viewerStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useKeyboardNav } from '../../hooks/useKeyboardNav';
+import { Tooltip } from '../common/Tooltip';
 
 interface LateralViewerProps {
     images: Array<{
@@ -234,36 +236,41 @@ interface NavigationButtonProps {
 }
 
 function NavigationButton({ direction, onClick, disabled }: NavigationButtonProps) {
+    const { t } = useTranslation();
     const isPrev = direction === 'prev';
+    const tooltipContent = isPrev ? (t('shortcuts.prevPage') || 'Previous Page') : (t('shortcuts.nextPage') || 'Next Page');
 
     return (
-        <button
-            onClick={onClick}
-            disabled={disabled}
-            className="absolute z-10 flex items-center justify-center w-12 h-24 rounded-lg transition-all hover:scale-105 hover:bg-accent active:scale-95"
-            style={{
-                [isPrev ? 'left' : 'right']: '1rem',
-                backgroundColor: 'var(--color-surface-overlay)',
-                color: 'var(--color-text-primary)',
-                border: '1px solid var(--color-border)',
-                opacity: disabled ? 0.3 : 1,
-                cursor: disabled ? 'not-allowed' : 'pointer',
-            }}
-        >
-            <svg
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                style={{ transform: isPrev ? 'none' : 'rotate(180deg)' }}
-            >
-                <polyline points="15 18 9 12 15 6" />
-            </svg>
-        </button>
+        <div className="absolute z-20" style={{ [isPrev ? 'left' : 'right']: '1rem' }}>
+            <Tooltip content={tooltipContent} placement={isPrev ? 'right' : 'left'}>
+                <button
+                    onClick={onClick}
+                    disabled={disabled}
+                    className="flex items-center justify-center w-12 h-24 rounded-lg transition-all hover:scale-105 hover:bg-accent active:scale-95"
+                    style={{
+                        backgroundColor: 'var(--color-surface-overlay)',
+                        color: 'var(--color-text-primary)',
+                        border: '1px solid var(--color-border)',
+                        opacity: disabled ? 0.3 : 1,
+                        cursor: disabled ? 'not-allowed' : 'pointer',
+                    }}
+                >
+                    <svg
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        style={{ transform: isPrev ? 'none' : 'rotate(180deg)' }}
+                    >
+                        <polyline points="15 18 9 12 15 6" />
+                    </svg>
+                </button>
+            </Tooltip>
+        </div>
     );
 }
 

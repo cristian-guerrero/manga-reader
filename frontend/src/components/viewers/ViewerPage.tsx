@@ -9,6 +9,7 @@ import { LateralViewer } from './LateralViewer';
 import { useViewerStore } from '../../stores/viewerStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useNavigationStore } from '../../stores/navigationStore';
+import { Tooltip } from '../common/Tooltip';
 import { ImageInfo, FolderInfo } from '../../types';
 
 // Icons
@@ -418,13 +419,16 @@ export function ViewerPage({ folderPath }: ViewerPageProps) {
             >
                 {/* Left side */}
                 <div className="flex items-center gap-2">
-                    <button
-                        onClick={goBack}
-                        className="btn-icon btn-ghost hover:scale-110 active:scale-90 transition-transform"
-                        title={t('common.back')}
-                    >
-                        <BackIcon />
-                    </button>
+                    <div className="relative z-20">
+                        <Tooltip content={t('common.back')} placement="bottom">
+                            <button
+                                onClick={goBack}
+                                className="btn-icon btn-ghost hover:scale-110 active:scale-90 transition-transform"
+                            >
+                                <BackIcon />
+                            </button>
+                        </Tooltip>
+                    </div>
                     <div className="flex flex-col">
                         <span
                             className="text-sm font-medium truncate max-w-xs"
@@ -446,61 +450,73 @@ export function ViewerPage({ folderPath }: ViewerPageProps) {
                 {/* Right side */}
                 <div className="flex items-center gap-2">
                     {/* Thumbnails */}
-                    <button
-                        onClick={() => navigate('thumbnails', { folder: currentFolder.path })}
-                        className="btn-icon btn-ghost hover:scale-110 active:scale-90 transition-transform"
-                        title={t('viewer.thumbnails') || 'Thumbnails'}
-                    >
-                        <GridIcon />
-                    </button>
+                    <div className="relative z-20">
+                        <Tooltip content={t('viewer.thumbnails') || 'Thumbnails'} placement="bottom">
+                            <button
+                                onClick={() => navigate('thumbnails', { folder: currentFolder.path })}
+                                className="btn-icon btn-ghost hover:scale-110 active:scale-90 transition-transform"
+                            >
+                                <GridIcon />
+                            </button>
+                        </Tooltip>
+                    </div>
 
                     {/* Mode Toggle */}
-                    <button
-                        onClick={toggleMode}
-                        className="btn-icon btn-ghost hover:scale-110 active:scale-90 transition-transform"
-                        title={mode === 'vertical' ? t('viewer.lateral') : t('viewer.vertical')}
-                    >
-                        {mode === 'vertical' ? <LateralIcon /> : <VerticalIcon />}
-                    </button>
+                    <div className="relative z-20">
+                        <Tooltip content={mode === 'vertical' ? t('viewer.lateral') : t('viewer.vertical')} placement="bottom">
+                            <button
+                                onClick={toggleMode}
+                                className="btn-icon btn-ghost hover:scale-110 active:scale-90 transition-transform"
+                            >
+                                {mode === 'vertical' ? <LateralIcon /> : <VerticalIcon />}
+                            </button>
+                        </Tooltip>
+                    </div>
 
                     {/* Go to Start */}
-                    <button
-                        onClick={handleGoToStart}
-                        className="btn-icon btn-ghost hover:scale-110 active:scale-90 transition-transform"
-                        title={t('viewer.goToStart') || 'Go to Start'}
-                    >
-                        <SkipBackIcon />
-                    </button>
+                    <div className="relative z-20">
+                        <Tooltip content={t('viewer.goToStart') || 'Go to Start'} placement="bottom">
+                            <button
+                                onClick={handleGoToStart}
+                                className="btn-icon btn-ghost hover:scale-110 active:scale-90 transition-transform"
+                            >
+                                <SkipBackIcon />
+                            </button>
+                        </Tooltip>
+                    </div>
 
                     {/* Width slider (vertical mode only) */}
                     {mode === 'vertical' && (
-                        <div className="relative">
-                            <button
-                                onClick={() => setShowWidthSlider(!showWidthSlider)}
-                                className="btn-icon btn-ghost hover:scale-110 active:scale-90 transition-transform"
-                                title={t('viewer.width')}
-                            >
-                                <span className="text-xs font-bold">{verticalWidth}%</span>
-                            </button>
+                        <div className="relative z-20">
+                            <div className="relative">
+                                <Tooltip content={t('viewer.width')} placement="bottom">
+                                    <button
+                                        onClick={() => setShowWidthSlider(!showWidthSlider)}
+                                        className="btn-icon btn-ghost hover:scale-110 active:scale-90 transition-transform"
+                                    >
+                                        <span className="text-xs font-bold">{verticalWidth}%</span>
+                                    </button>
+                                </Tooltip>
 
-                            {showWidthSlider && (
-                                <div
-                                    className="absolute top-full right-0 mt-2 p-4 rounded-lg animate-slide-down w-80"
-                                    style={{
-                                        backgroundColor: 'var(--color-surface-elevated)',
-                                        border: '1px solid var(--color-border)',
-                                    }}
-                                >
-                                    <input
-                                        type="range"
-                                        min="30"
-                                        max="100"
-                                        value={verticalWidth}
-                                        onChange={(e) => setVerticalWidth(Number(e.target.value))}
-                                        className="w-full"
-                                    />
-                                </div>
-                            )}
+                                {showWidthSlider && (
+                                    <div
+                                        className="absolute top-full right-0 mt-2 p-4 rounded-lg animate-slide-down w-80 z-50"
+                                        style={{
+                                            backgroundColor: 'var(--color-surface-elevated)',
+                                            border: '1px solid var(--color-border)',
+                                        }}
+                                    >
+                                        <input
+                                            type="range"
+                                            min="30"
+                                            max="100"
+                                            value={verticalWidth}
+                                            onChange={(e) => setVerticalWidth(Number(e.target.value))}
+                                            className="w-full"
+                                        />
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     )}
                 </div>
