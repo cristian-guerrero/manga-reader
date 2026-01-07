@@ -56,39 +56,46 @@ export const DownloadPage: React.FC = () => {
     const groupedHistory = useMemo(() => {
         const items: Array<{ type: 'single'; job: DownloadJob } | { type: 'series'; name: string; jobs: DownloadJob[] }> = [];
         const seriesMap = new Map<string, DownloadJob[]>();
-        const singles: DownloadJob[] = [];
+        const individualItems: Array<{ type: 'single'; job: DownloadJob }> = [];
+        const seriesItems: Array<{ type: 'series'; name: string; jobs: DownloadJob[] }> = [];
 
+        // Process all jobs
         history.forEach((job) => {
+            // Always add as individual item
+            individualItems.push({ type: 'single', job });
+            
+            // Also track completed jobs for series grouping
             const sName = job.seriesName;
-            if (sName && sName !== 'Unknown Series' && sName !== 'Unknown') {
+            if (job.status === 'completed' && sName && sName !== 'Unknown Series' && sName !== 'Unknown') {
                 if (!seriesMap.has(sName)) {
                     seriesMap.set(sName, []);
                 }
                 seriesMap.get(sName)!.push(job);
-            } else {
-                singles.push(job);
             }
         });
 
-        // Process seriesMap
+        // Add all individual items
+        items.push(...individualItems);
+
+        // Then add series groups (only if 2+ completed chapters) as additional items
         seriesMap.forEach((jobs, name) => {
-            if (jobs.length === 1) {
-                items.push({ type: 'single', job: jobs[0] });
-            } else {
-                items.push({ type: 'series', name, jobs });
+            if (jobs.length >= 2) {
+                seriesItems.push({ type: 'series', name, jobs });
             }
         });
 
-        // Add singles
-        singles.forEach(job => {
-            items.push({ type: 'single', job });
-        });
+        // Add series items
+        items.push(...seriesItems);
 
-        // Sort by createdAt desc to match original history order
+        // Sort everything chronologically by creation date (newest first)
         return items.sort((a, b) => {
-            const timeA = a.type === 'single' ? new Date(a.job.createdAt).getTime() : Math.max(...a.jobs.map(j => new Date(j.createdAt).getTime()));
-            const timeB = b.type === 'single' ? new Date(b.job.createdAt).getTime() : Math.max(...b.jobs.map(j => new Date(j.createdAt).getTime()));
-            return timeB - timeA;
+            const timeA = a.type === 'single' 
+                ? new Date(a.job.createdAt).getTime() 
+                : Math.max(...a.jobs.map(j => new Date(j.createdAt).getTime()));
+            const timeB = b.type === 'single' 
+                ? new Date(b.job.createdAt).getTime() 
+                : Math.max(...b.jobs.map(j => new Date(j.createdAt).getTime()));
+            return timeB - timeA; // Newest first
         });
     }, [history]);
 
@@ -131,9 +138,21 @@ export const DownloadPage: React.FC = () => {
                 setUrl(''); // Clear input
             } else {
                 // It's a single chapter, start download directly
-                await (AppBackend as any).StartDownload(urlToDownload, "", "");
+                const jobId = await (AppBackend.StartDownload(urlToDownload, "", ""));
                 setUrl('');
-                showToast(t('common.success'), 'success');
+                
+                // Reload history to get the latest state
+                await loadHistory();
+                
+                // Check if the job already existed and was completed
+                const jobs = await AppBackend.GetDownloadHistory();
+                const existingJob = jobs.find((j: any) => j.id === jobId);
+                
+                if (existingJob && existingJob.status === 'completed') {
+                    showToast(t('download.alreadyDownloaded') || 'Already downloaded', 'info');
+                } else {
+                    showToast(t('common.success'), 'success');
+                }
             }
         } catch (err: any) {
             // If FetchMangaInfo fails (e.g. unknown URL type or network error), 
@@ -199,17 +218,44 @@ export const DownloadPage: React.FC = () => {
         setIsSeriesModalOpen(false);
 
         let started = 0;
+        let alreadyDownloaded = 0;
+        const jobIds: string[] = [];
+        
         for (const chapter of chaptersToDownload) {
             try {
-                // Add small delay to avoid overwhelming
-                await (AppBackend as any).StartDownload(chapter.URL, seriesInfo.SeriesName, chapter.Name);
+                const jobId = await (AppBackend as any).StartDownload(chapter.URL, seriesInfo.SeriesName, chapter.Name);
+                jobIds.push(jobId);
                 started++;
             } catch (err) {
                 console.error(`Failed to start download for ${chapter.Name}:`, err);
             }
         }
 
-        showToast(`Started ${started} downloads`, 'success');
+        // Reload history to get the latest state
+        await loadHistory();
+        
+        // Check which jobs were already completed
+        const jobs = await AppBackend.GetDownloadHistory();
+        for (const jobId of jobIds) {
+            const job = jobs.find((j: any) => j.id === jobId);
+            if (job && job.status === 'completed') {
+                alreadyDownloaded++;
+            }
+        }
+
+        if (alreadyDownloaded > 0 && alreadyDownloaded === started) {
+            showToast(t('download.allAlreadyDownloaded') || 'All chapters already downloaded', 'info');
+        } else if (alreadyDownloaded > 0) {
+            showToast(`${started - alreadyDownloaded} new, ${alreadyDownloaded} already downloaded`, 'info');
+        } else {
+            showToast(`Started ${started} downloads`, 'success');
+        }
+        
+        // Auto-expand the series to show the downloaded chapters
+        if (seriesInfo.SeriesName && seriesInfo.SeriesName !== 'Unknown Series' && seriesInfo.SeriesName !== 'Unknown') {
+            setExpandedSeries(prev => new Set([...prev, seriesInfo.SeriesName]));
+        }
+        
         setIsLoading(false);
         setSeriesInfo(null);
     };

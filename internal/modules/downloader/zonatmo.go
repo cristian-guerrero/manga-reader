@@ -10,6 +10,26 @@ import (
 
 type ZonaTMODownloader struct{}
 
+func normalizeZonaTMOSeriesName(raw string) string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return raw
+	}
+
+	// Remove HTML tags but keep their text content
+	reTags := regexp.MustCompile(`<[^>]*>`)
+	raw = reTags.ReplaceAllString(raw, "")
+	raw = strings.TrimSpace(raw)
+
+	// ZonaTMO sometimes appends the year like "(2025)" and occasionally a trailing ":".
+	// We normalize by removing that trailing year suffix so series + chapter downloads
+	// produce the same folder name.
+	reTrailingYear := regexp.MustCompile(`\(\s*\d{4}\s*\)\s*:?\s*$`)
+	raw = reTrailingYear.ReplaceAllString(raw, "")
+
+	return strings.TrimSpace(raw)
+}
+
 func (d *ZonaTMODownloader) CanHandle(url string) bool {
 	return strings.Contains(url, "zonatmo.com") || strings.Contains(url, "tmofans.com")
 }
@@ -65,7 +85,7 @@ func (d *ZonaTMODownloader) GetImages(viewerURL string) (*SiteInfo, error) {
 	// Extract Series Name from <h1>
 	reSeries := regexp.MustCompile(`(?s)<h1>(.*?)</h1>`)
 	if match := reSeries.FindStringSubmatch(bodyStr); len(match) > 1 {
-		seriesName = strings.TrimSpace(match[1])
+		seriesName = normalizeZonaTMOSeriesName(match[1])
 	}
 
 	// Extract Chapter Name from <h2>
@@ -173,10 +193,8 @@ func (d *ZonaTMODownloader) parseSeries(html string, url string) (*SiteInfo, err
 		}
 	}
 
-	// Clean up any HTML tags in the title (e.g. <small> year </small>)
-	reTags := regexp.MustCompile(`<[^>]*>`)
-	seriesName = reTags.ReplaceAllString(seriesName, "")
-	seriesName = strings.TrimSpace(seriesName)
+	// Normalize title so series + chapter downloads produce the same folder name
+	seriesName = normalizeZonaTMOSeriesName(seriesName)
 
 	var chapters []ChapterInfo
 

@@ -138,6 +138,8 @@
         "playSeries": "Play Series",
         "addedToLibrary": "Added to library",
         "addedToSeries": "Series added to library",
+        "alreadyDownloaded": "Already downloaded",
+        "allAlreadyDownloaded": "All chapters already downloaded",
         "pastedFromClipboard": "URL pasted from clipboard",
         "help": {
             "title": "How to use",

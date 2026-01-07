@@ -139,6 +139,8 @@
         "playSeries": "Ver Serie",
         "addedToLibrary": "Agregado a la librería",
         "addedToSeries": "Serie agregada a la librería",
+        "alreadyDownloaded": "Ya descargado",
+        "allAlreadyDownloaded": "Todos los capítulos ya están descargados",
         "pastedFromClipboard": "URL pegada desde el portapapeles",
         "help": {
             "title": "Cómo usar",

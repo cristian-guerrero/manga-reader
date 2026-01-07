@@ -146,6 +146,8 @@ func (m *Module) StartDownload(url string, overrideSeries string, overrideChapte
 	if existingJob != nil {
 		if existingJob.Status == persistence.StatusCompleted {
 			fmt.Printf("[Downloader] URL already completed: %s\n", url)
+			// Notify frontend that this download already exists
+			m.notifyUpdate()
 			return existingJob.ID, nil
 		}
 
