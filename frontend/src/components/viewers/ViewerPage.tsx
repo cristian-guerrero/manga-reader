@@ -147,7 +147,15 @@ export function ViewerPage({ folderPath }: ViewerPageProps) {
                     let targetIndex = 0;
                     let targetScroll = 0;
 
-                    if (historyEntry) {
+                    // Check for explicit start index from navigation params (e.g. from Thumbnails)
+                    const navParams = useNavigationStore.getState().params;
+                    const explicitStartIndex = navParams && navParams.startIndex ? parseInt(navParams.startIndex, 10) : -1;
+
+                    if (explicitStartIndex >= 0 && explicitStartIndex < imgs.length) {
+                        targetIndex = explicitStartIndex;
+                        console.log(`[ViewerPage] Starting from requested index: ${targetIndex}`);
+                    } else if (historyEntry) {
+                        // Fallback to history if no explicit start index
                         if (historyEntry.lastImageIndex < imgs.length) {
                             targetIndex = historyEntry.lastImageIndex;
                             console.log(`[ViewerPage] Resuming from history index: ${targetIndex}`);
@@ -477,7 +485,7 @@ export function ViewerPage({ folderPath }: ViewerPageProps) {
 
                             {showWidthSlider && (
                                 <div
-                                    className="absolute top-full right-0 mt-2 p-4 rounded-lg animate-slide-down"
+                                    className="absolute top-full right-0 mt-2 p-4 rounded-lg animate-slide-down w-80"
                                     style={{
                                         backgroundColor: 'var(--color-surface-elevated)',
                                         border: '1px solid var(--color-border)',
@@ -489,7 +497,7 @@ export function ViewerPage({ folderPath }: ViewerPageProps) {
                                         max="100"
                                         value={verticalWidth}
                                         onChange={(e) => setVerticalWidth(Number(e.target.value))}
-                                        className="w-32"
+                                        className="w-full"
                                     />
                                 </div>
                             )}

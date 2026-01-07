@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
     DndContext,
@@ -86,6 +86,76 @@ export function ThumbnailsPage({ folderPath }: ThumbnailsPageProps) {
             coordinateGetter: sortableKeyboardCoordinates,
         })
     );
+
+    // Scroll preservation
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
+    const { thumbnailScrollPositions, setThumbnailScrollPosition } = useNavigationStore();
+    const hasRestoredScroll = useRef<string | null>(null);
+
+    // Restore scroll position
+    useEffect(() => {
+        if (!folderPath || isLoading || images.length === 0) return;
+
+        // Only restore scroll once per folder load session
+        if (hasRestoredScroll.current === folderPath) return;
+
+        const savedPosition = thumbnailScrollPositions[folderPath];
+        if (savedPosition !== undefined && savedPosition > 0 && scrollContainerRef.current) {
+            console.log(`[ThumbnailsPage] Attempting to restore scroll to ${savedPosition} for ${folderPath}`);
+
+            // Multiple attempts to ensure layout is ready
+            let attempts = 0;
+            const maxAttempts = 10; // Increased attempts
+
+            const tryRestore = () => {
+                const container = scrollContainerRef.current;
+                if (!container) return;
+
+                // Check if we can actually scroll to that position yet
+                // The scrollHeight must be large enough to reach savedPosition
+                const maxScroll = container.scrollHeight - container.clientHeight;
+                if (maxScroll >= savedPosition || attempts >= maxAttempts) {
+                    container.scrollTop = savedPosition;
+                    if (container.scrollTop > 0 || savedPosition === 0) {
+                        console.log(`[ThumbnailsPage] Restored scroll to ${container.scrollTop} after ${attempts + 1} attempts`);
+                        hasRestoredScroll.current = folderPath;
+                    } else if (attempts < maxAttempts) {
+                        // Still 0 but we wanted more, keep trying
+                        attempts++;
+                        setTimeout(tryRestore, 50 + (attempts * 20));
+                    }
+                } else {
+                    attempts++;
+                    // Exponential backoff-ish
+                    setTimeout(tryRestore, 50 + (attempts * 20));
+                }
+            };
+
+            setTimeout(tryRestore, 50);
+        } else {
+            // Even if no saved position or position is 0, mark as "restored"
+            hasRestoredScroll.current = folderPath;
+        }
+    }, [folderPath, isLoading, images.length, thumbnailScrollPositions]);
+
+    // Reset restoration flag when folder changes
+    useEffect(() => {
+        if (folderPath !== hasRestoredScroll.current) {
+            hasRestoredScroll.current = null;
+        }
+    }, [folderPath]);
+
+    // Proactive scroll saving
+    const handleScroll = useCallback(() => {
+        const container = scrollContainerRef.current;
+        if (container && folderPath && !isLoading && images.length > 0) {
+            const currentPos = container.scrollTop;
+            // Only save if it's been restored or we are moving away from 0
+            if (hasRestoredScroll.current === folderPath) {
+                setThumbnailScrollPosition(folderPath, currentPos);
+            }
+        }
+    }, [folderPath, isLoading, images.length, setThumbnailScrollPosition]);
 
     // Load images
     useEffect(() => {
@@ -230,6 +300,12 @@ export function ThumbnailsPage({ folderPath }: ThumbnailsPageProps) {
 
     const handleImageClick = (index: number) => {
         if (folderPath) {
+            // Explicitly save scroll position before navigating
+            if (scrollContainerRef.current) {
+                const pos = scrollContainerRef.current.scrollTop;
+                console.log(`[ThumbnailsPage] Saving scroll position (click): ${pos}`);
+                setThumbnailScrollPosition(folderPath, pos);
+            }
             navigate('viewer', { folder: folderPath, startIndex: String(index) });
         }
     };
@@ -312,7 +388,11 @@ export function ThumbnailsPage({ folderPath }: ThumbnailsPageProps) {
             </div>
 
             {/* Thumbnail grid */}
-            <div className="flex-1 overflow-auto p-6">
+            <div
+                ref={scrollContainerRef}
+                onScroll={handleScroll}
+                className="flex-1 overflow-auto p-6"
+            >
                 {isLoading ? (
                     <div className="flex items-center justify-center h-full">
                         <div

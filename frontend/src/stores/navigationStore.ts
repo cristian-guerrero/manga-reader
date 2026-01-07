@@ -28,6 +28,10 @@ interface NavigationStoreState extends NavigationState {
     // Processing mode (e.g. ZIP extraction)
     isProcessing: boolean;
     setIsProcessing: (isProcessing: boolean) => void;
+
+    // Thumbnail scroll state
+    thumbnailScrollPositions: Record<string, number>;
+    setThumbnailScrollPosition: (folderPath: string, position: number) => void;
 }
 
 export const useNavigationStore = create<NavigationStoreState>((set, get) => ({
@@ -132,5 +136,16 @@ export const useNavigationStore = create<NavigationStoreState>((set, get) => ({
 
     setIsProcessing: (isProcessing) => {
         set({ isProcessing });
+    },
+
+    // Thumbnail scroll state
+    thumbnailScrollPositions: {},
+    setThumbnailScrollPosition: (folderPath, position) => {
+        set((state) => ({
+            thumbnailScrollPositions: {
+                ...state.thumbnailScrollPositions,
+                [folderPath]: position,
+            },
+        }));
     },
 }));
