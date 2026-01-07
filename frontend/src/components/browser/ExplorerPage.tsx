@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigationStore } from '../../stores/navigationStore';
 import { useToast } from '../common/Toast';
@@ -9,6 +9,18 @@ const TrashIcon = () => (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
         <polyline points="3 6 5 6 21 6" />
         <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+    </svg>
+);
+
+const SortAscIcon = () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M3 6h18M6 12h12M9 18h6" />
+    </svg>
+);
+
+const SortDescIcon = () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M3 18h18M6 12h12M9 6h6" />
     </svg>
 );
 
@@ -76,6 +88,33 @@ function LazyImage({ src, alt, className }: { src: string; alt: string; classNam
     );
 }
 
+// Helper functions for sort preferences per path
+const getSortPreferences = (path: string | null) => {
+    const key = path || 'root';
+    try {
+        const stored = localStorage.getItem('explorer_sortPreferences');
+        if (stored) {
+            const prefs = JSON.parse(stored);
+            return prefs[key] || { sortBy: 'name', sortOrder: 'asc' };
+        }
+    } catch (e) {
+        console.error('Failed to load sort preferences', e);
+    }
+    return { sortBy: 'name', sortOrder: 'asc' };
+};
+
+const saveSortPreferences = (path: string | null, sortBy: 'name' | 'date', sortOrder: 'asc' | 'desc') => {
+    const key = path || 'root';
+    try {
+        const stored = localStorage.getItem('explorer_sortPreferences');
+        const prefs = stored ? JSON.parse(stored) : {};
+        prefs[key] = { sortBy, sortOrder };
+        localStorage.setItem('explorer_sortPreferences', JSON.stringify(prefs));
+    } catch (e) {
+        console.error('Failed to save sort preferences', e);
+    }
+};
+
 export function ExplorerPage() {
     const { t } = useTranslation();
     const { navigate } = useNavigationStore();
@@ -86,6 +125,32 @@ export function ExplorerPage() {
     const [pathHistory, setPathHistory] = useState<string[]>([]);
     const [entries, setEntries] = useState<ExplorerEntry[]>([]);
     const [loading, setLoading] = useState(false);
+
+    // Sorting state - initialized with root preferences
+    const [sortBy, setSortBy] = useState<'name' | 'date'>(() => {
+        return getSortPreferences(null).sortBy;
+    });
+    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>(() => {
+        return getSortPreferences(null).sortOrder;
+    });
+
+    // Track if preferences have been loaded for current path
+    const preferencesLoadedRef = useRef(false);
+
+    // Load sort preferences when path changes
+    useEffect(() => {
+        const prefs = getSortPreferences(currentPath);
+        setSortBy(prefs.sortBy);
+        setSortOrder(prefs.sortOrder);
+        preferencesLoadedRef.current = true;
+    }, [currentPath]);
+
+    // Save sort preference when it changes (but only after initial load)
+    useEffect(() => {
+        if (preferencesLoadedRef.current) {
+            saveSortPreferences(currentPath, sortBy, sortOrder);
+        }
+    }, [sortBy, sortOrder, currentPath]);
 
     // Initial load
     useEffect(() => {
@@ -200,17 +265,45 @@ export function ExplorerPage() {
         }
     };
 
+    // Sort base folders
+    const sortedBaseFolders = [...baseFolders].sort((a, b) => {
+        let res = 0;
+        if (sortBy === 'name') {
+            res = a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
+        } else {
+            // Date sort - use addedAt for base folders
+            const dateA = a.addedAt ? new Date(a.addedAt).getTime() : 0;
+            const dateB = b.addedAt ? new Date(b.addedAt).getTime() : 0;
+            res = dateA - dateB;
+        }
+        return sortOrder === 'asc' ? res : -res;
+    });
+
+    // Sort entries (directory view)
+    const sortedEntries = [...entries].sort((a, b) => {
+        let res = 0;
+        if (sortBy === 'name') {
+            res = a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
+        } else {
+            // Date sort - use lastModified for entries
+            const dateA = a.lastModified || 0;
+            const dateB = b.lastModified || 0;
+            res = dateA - dateB;
+        }
+        return sortOrder === 'asc' ? res : -res;
+    });
+
     return (
         <div className="p-6 h-full flex flex-col">
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-4">
                     {currentPath && (
-                        <Tooltip content={t('common.back') || "Back"} placement="right">
+                        <Tooltip content={t('common.back')} placement="right">
                             <button
                                 onClick={handleBack}
                                 className="p-2 rounded-full hover:bg-white/10 transition-all opacity-100 translate-x-0"
-                                aria-label={t('common.back') || "Back"}
+                                aria-label={t('common.back')}
                             >
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                     <path d="M19 12H5M12 19l-7-7 7-7" />
@@ -219,8 +312,32 @@ export function ExplorerPage() {
                         </Tooltip>
                     )}
                     <h1 className="text-3xl font-bold tracking-tight text-shadow">
-                        {currentPath ? currentPath.split(/[\\/]/).pop() : (t('explorer.title') || 'Explorer')}
+                        {currentPath ? currentPath.split(/[\\/]/).pop() : t('explorer.title')}
                     </h1>
+
+                    {/* Sort Controls */}
+                    {((!currentPath && baseFolders.length > 0) || (currentPath && entries.length > 0)) && (
+                        <div className="flex items-center bg-surface-tertiary rounded-lg p-1 border border-white/5">
+                            <select
+                                value={sortBy}
+                                onChange={(e) => setSortBy(e.target.value as 'name' | 'date')}
+                                className="bg-transparent text-sm border-none focus:ring-0 cursor-pointer pl-2 pr-8 text-text-secondary hover:text-text-primary"
+                                style={{ outline: 'none' }}
+                            >
+                                <option value="name">Name</option>
+                                <option value="date">Date</option>
+                            </select>
+                            <div className="w-px h-4 bg-white/10 mx-1" />
+                            <Tooltip content={sortOrder === 'asc' ? t('common.ascending') : t('common.descending')} placement="bottom">
+                                <button
+                                    onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
+                                    className="p-1.5 rounded hover:bg-white/10 text-text-secondary hover:text-text-primary transition-colors"
+                                >
+                                    {sortOrder === 'asc' ? <SortAscIcon /> : <SortDescIcon />}
+                                </button>
+                            </Tooltip>
+                        </div>
+                    )}
                 </div>
 
                 {!currentPath && (
@@ -229,7 +346,7 @@ export function ExplorerPage() {
                         className="btn-primary transition-transform hover:scale-105 active:scale-95"
                     >
                         <span className="mr-2">+</span>
-                        {t('explorer.addBaseFolder') || 'Add Base Folder'}
+                        {t('explorer.addBaseFolder')}
                     </button>
                 )}
             </div>
@@ -238,7 +355,7 @@ export function ExplorerPage() {
             <div className="flex-1 overflow-y-auto pr-2">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                     {/* Base Folders View */}
-                    {!currentPath && baseFolders.map((folder) => (
+                    {!currentPath && sortedBaseFolders.map((folder) => (
                         <div
                             key={folder.path}
                             className="group/card relative bg-surface-secondary rounded-xl overflow-hidden border border-white/5 hover:border-accent/50 transition-all hover:shadow-lg cursor-pointer animate-scale-in"
@@ -283,7 +400,7 @@ export function ExplorerPage() {
                     ))}
 
                     {/* Directory View */}
-                    {currentPath && entries.map((entry) => (
+                    {currentPath && sortedEntries.map((entry) => (
                         <div
                             key={entry.path}
                             className="group/card relative bg-surface-secondary rounded-xl overflow-hidden border border-white/5 hover:border-accent/50 transition-all hover:shadow-lg cursor-pointer animate-scale-in"
