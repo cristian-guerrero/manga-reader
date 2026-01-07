@@ -170,6 +170,7 @@ body.window-rounded #root {
    Scrollbar Styling
    ============================================================================= */
 
+/* ::-webkit-scrollbar settings ... */
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;
@@ -181,19 +182,31 @@ body.window-rounded #root {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, var(--color-accent) 0%, var(--color-primary-700) 100%);
+  background: linear-gradient(180deg, var(--color-accent) 0%, var(--color-accent-hover) 100%);
   border-radius: 5px;
   border: 2px solid var(--color-surface-secondary);
+  min-height: 60px !important;
+  min-width: 60px !important;
+}
+
+::-webkit-scrollbar-thumb:vertical {
+  min-height: 60px !important;
+}
+
+::-webkit-scrollbar-thumb:horizontal {
+  min-width: 60px !important;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, var(--color-accent-hover) 0%, var(--color-primary-600) 100%);
+  background: var(--color-accent-hover);
 }
 
-/* Firefox */
-* {
-  scrollbar-width: thin;
-  scrollbar-color: var(--color-accent) var(--color-surface-secondary);
+/* Firefox support - we keep it for non-webkit browsers but ensure it doesn't break webkit */
+@supports not selector(::-webkit-scrollbar) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-accent) var(--color-surface-secondary);
+  }
 }
 
 /* =============================================================================
