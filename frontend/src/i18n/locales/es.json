@@ -8,6 +8,7 @@
         "confirm": "Confirmar",
         "save": "Guardar",
         "delete": "Eliminar",
+        "remove": "Quitar",
         "edit": "Editar",
         "close": "Cerrar",
         "back": "Atrás",
@@ -174,6 +175,17 @@
         "confirmClearCache": "Esto eliminará todo el historial, datos guardados, descargas y datos de uso de la aplicación. La configuración se conservará. ¿Estás seguro?",
         "clearCacheSuccess": "¡Caché borrado exitosamente!",
         "clearCacheError": "Error al borrar caché. Por favor reinicia la app e intenta nuevamente."
+    },
+    "explorer": {
+        "title": "Explorador",
+        "addBaseFolder": "Agregar Carpeta Base",
+        "folderAdded": "Carpeta agregada al explorador",
+        "addFailed": "Error al agregar carpeta base",
+        "folderRemoved": "Carpeta base eliminada",
+        "loadFailed": "Error al cargar directorio",
+        "noFolders": "No hay carpetas base agregadas",
+        "startMessage": "Agrega una carpeta base para comenzar a explorar tus archivos recursivamente.",
+        "openInViewer": "Abrir en Visor"
     },
     "themes": {
         "dark": "Oscuro",

@@ -4,6 +4,14 @@ import { useNavigationStore } from '../../stores/navigationStore';
 import { useToast } from '../common/Toast';
 import { Tooltip } from '../common/Tooltip';
 
+// Icons
+const TrashIcon = () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <polyline points="3 6 5 6 21 6" />
+        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+    </svg>
+);
+
 // Interfaces for backend data
 interface BaseFolder {
     path: string;
@@ -255,17 +263,17 @@ export function ExplorerPage() {
                                 </div>
                             )}
 
-                            <Tooltip content={t('common.remove') || "Remove"} placement="left" className="absolute top-2 right-2 z-10">
-                                <button
-                                    onClick={(e) => handleRemoveBaseFolder(folder.path, e)}
-                                    className="p-2 rounded-full bg-red-500/20 text-red-500 opacity-0 group-hover/card:opacity-100 transition-opacity hover:bg-red-500/40 backdrop-blur-md"
-                                    aria-label={t('common.remove') || "Remove"}
-                                >
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                        <path d="M18 6L6 18M6 6l12 12" />
-                                    </svg>
-                                </button>
-                            </Tooltip>
+                            <div className="absolute top-2 right-2 z-20">
+                                <Tooltip content={t('common.remove')} placement="left">
+                                    <button
+                                        onClick={(e) => handleRemoveBaseFolder(folder.path, e)}
+                                        className="p-2 rounded-full bg-red-500/20 text-red-500 opacity-0 group-hover/card:opacity-100 transition-opacity hover:bg-red-500/40 backdrop-blur-md"
+                                        aria-label={t('common.remove')}
+                                    >
+                                        <TrashIcon />
+                                    </button>
+                                </Tooltip>
+                            </div>
 
                             <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/90 to-transparent">
                                 <h3 className="font-semibold text-white truncate text-shadow-sm" title={folder.path}>{folder.name}</h3>
@@ -305,11 +313,11 @@ export function ExplorerPage() {
                                         {entry.isDirectory ? (entry.hasImages ? `${entry.imageCount} images` : 'Folder') : 'File'}
                                     </span>
                                     {entry.hasImages && (
-                                        <Tooltip content={t('explorer.openInViewer') || "Open in Viewer"} placement="left" className="z-10">
+                                        <Tooltip content={t('explorer.openInViewer')} placement="left" className="z-10">
                                             <button
                                                 onClick={(e) => handleOpenInViewer(entry.path, e)}
                                                 className="p-1.5 rounded-full bg-accent text-white hover:bg-accent-hover transform hover:scale-110 transition-all opacity-0 group-hover/card:opacity-100"
-                                                aria-label={t('explorer.openInViewer') || "Open in Viewer"}
+                                                aria-label={t('explorer.openInViewer')}
                                             >
                                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                                                     <path d="M8 5v14l11-7z" />

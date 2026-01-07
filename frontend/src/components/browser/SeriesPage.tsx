@@ -419,19 +419,21 @@ export function SeriesPage() {
                                 </div>
 
                                 {/* Remove button */}
-                                <Tooltip content={t('series.removeSeries')} placement="left" className="absolute top-2 right-2 z-10 opacity-0 group-hover/card:opacity-100 transition-all">
-                                    <button
-                                        onClick={(e) => handleRemoveSeries(item, e)}
-                                        className="p-2 rounded-full hover:scale-110 active:scale-90"
-                                        style={{
-                                            backgroundColor: 'rgba(239, 68, 68, 0.9)',
-                                            color: 'white',
-                                        }}
-                                        aria-label={t('series.removeSeries')}
-                                    >
-                                        <TrashIcon />
-                                    </button>
-                                </Tooltip>
+                                <div className="absolute top-2 right-2 z-20 opacity-0 group-hover/card:opacity-100 transition-all">
+                                    <Tooltip content={t('series.removeSeries')} placement="left">
+                                        <button
+                                            onClick={(e) => handleRemoveSeries(item, e)}
+                                            className="p-2 rounded-full hover:scale-110 active:scale-90"
+                                            style={{
+                                                backgroundColor: 'rgba(239, 68, 68, 0.9)',
+                                                color: 'white',
+                                            }}
+                                            aria-label={t('series.removeSeries')}
+                                        >
+                                            <TrashIcon />
+                                        </button>
+                                    </Tooltip>
+                                </div>
                             </div>
 
                             {/* Info */}

@@ -8,6 +8,7 @@
         "confirm": "Confirm",
         "save": "Save",
         "delete": "Delete",
+        "remove": "Remove",
         "edit": "Edit",
         "close": "Close",
         "back": "Back",
@@ -190,7 +191,8 @@
         "folderRemoved": "Base folder removed",
         "loadFailed": "Failed to load directory",
         "noFolders": "No base folders added",
-        "startMessage": "Add a base folder to start exploring your files recursively."
+        "startMessage": "Add a base folder to start exploring your files recursively.",
+        "openInViewer": "Open in Viewer"
     },
     "themes": {
         "dark": "Dark",
