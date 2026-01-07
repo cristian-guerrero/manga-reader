@@ -148,47 +148,39 @@ export const DownloadPage: React.FC = () => {
 
     // Clipboard monitoring logic
     // Clipboard monitoring logic
-    const lastClipboard = useRef('');
-
+    // Clipboard monitoring logic (Backend Driven)
     useEffect(() => {
-        if (!settings.clipboardAutoMonitor) return;
+        // Backend now handles the polling and checks the settings.
+        // We just listen for the event.
 
-        const interval = setInterval(async () => {
-            try {
-                const text = await navigator.clipboard.readText();
-                // Check if it's a valid URL format (starts with http) and contains known domains
-                if (text && text !== lastClipboard.current && text.startsWith('http') && (text.includes('hitomi.la') || text.includes('manhwaweb.com') || text.includes('zonatmo.com') || text.includes('nhentai') || text.includes('mangadex'))) {
-                    lastClipboard.current = text;
+        const unoff = EventsOn('clipboard_url_detected', (text: string) => {
+            if (!text) return;
 
-                    // Hitomi Series Detection: Don't auto-start, just paste.
-                    const isHitomi = text.includes('hitomi.la');
-                    const isHitomiSeries = isHitomi && (
-                        text.includes('/artist/') ||
-                        text.includes('/series/') ||
-                        text.includes('/tag/') ||
-                        text.includes('/character/') ||
-                        text.includes('/group/') ||
-                        text.includes('index-') ||
-                        text.includes('search.html') ||
-                        text.includes('?q=')
-                    );
+            // Hitomi Series Detection: Don't auto-start, just paste.
+            const isHitomi = text.includes('hitomi.la');
+            const isHitomiSeries = isHitomi && (
+                text.includes('/artist/') ||
+                text.includes('/series/') ||
+                text.includes('/tag/') ||
+                text.includes('/character/') ||
+                text.includes('/group/') ||
+                text.includes('index-') ||
+                text.includes('search.html') ||
+                text.includes('?q=')
+            );
 
-                    if (isHitomiSeries) {
-                        setUrl(text);
-                        showToast(t('download.pastedFromClipboard'), 'info');
-                    } else {
-                        setUrl(text);
-                        showToast(t('download.pastedFromClipboard'), 'info');
-                        handleStartDownload(text);
-                    }
-                }
-            } catch (err) {
-                // Clipboard access might be denied
+            if (isHitomiSeries) {
+                setUrl(text);
+                showToast(t('download.pastedFromClipboard'), 'info');
+            } else {
+                setUrl(text);
+                showToast(t('download.pastedFromClipboard'), 'info');
+                handleStartDownload(text);
             }
-        }, 1000);// prueba Auto Clipboard Monitoring 1 segundo
+        });
 
-        return () => clearInterval(interval);
-    }, [settings.clipboardAutoMonitor, t, showToast, handleStartDownload]);
+        return () => unoff();
+    }, [t, showToast, handleStartDownload]);
 
     const handleDownloadSeries = async () => {
         if (!seriesInfo) return;

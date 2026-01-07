@@ -59,6 +59,7 @@ func NewModule(pm *persistence.DownloaderManager, sm *persistence.SettingsManage
 
 func (m *Module) SetContext(ctx context.Context) {
 	m.ctx = ctx
+	m.StartClipboardMonitor()
 }
 
 func (m *Module) GetHistory() []persistence.DownloadJob {
