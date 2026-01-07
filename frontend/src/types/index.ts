@@ -110,6 +110,8 @@ export interface Settings {
     downloadPath: string;
     /** Clipboard auto monitor */
     clipboardAutoMonitor: boolean;
+    /** Per-theme accent colors { themeId: color } */
+    themeAccents: Record<string, string>;
 }
 
 
@@ -144,6 +146,7 @@ export const DEFAULT_SETTINGS: Settings = {
     },
     downloadPath: '',
     clipboardAutoMonitor: false,
+    themeAccents: {},
 };
 
 

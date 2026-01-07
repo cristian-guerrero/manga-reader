@@ -10,6 +10,7 @@ interface SettingsState extends Settings {
     // Actions
     setLanguage: (language: string) => void;
     setTheme: (themeId: string) => void;
+    setAccentColor: (color: string) => void;
     setViewerMode: (mode: Settings['viewerMode']) => void;
     setVerticalWidth: (width: number) => void;
     setLateralMode: (mode: Settings['lateralMode']) => void;
@@ -48,10 +49,37 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     },
 
     setTheme: (themeId) => {
+        const state = get();
         const theme = getThemeById(themeId) || darkTheme;
-        applyTheme(theme);
+
+        // Get accent for this specific theme
+        const themeAccent = state.themeAccents?.[themeId];
+
+        applyTheme(theme, themeAccent);
         set({ theme: themeId });
         get().updateBackend('theme', themeId);
+    },
+
+    setAccentColor: (accentColor) => {
+        const state = get();
+        const currentThemeId = state.theme;
+        const theme = getThemeById(currentThemeId) || darkTheme;
+
+        // If empty string or 'default', assume they want the theme default (remove from map)
+        const isDefault = (accentColor === '' || accentColor === 'default');
+
+        const newAccents = { ...(state.themeAccents || {}) };
+        if (isDefault) {
+            delete newAccents[currentThemeId];
+        } else {
+            newAccents[currentThemeId] = accentColor;
+        }
+
+        const effectiveAccent = isDefault ? undefined : accentColor;
+
+        applyTheme(theme, effectiveAccent);
+        set({ themeAccents: newAccents });
+        get().updateBackend('themeAccents', newAccents);
     },
 
     setViewerMode: (viewerMode) => {
@@ -173,7 +201,8 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
 
                 // Apply theme
                 const theme = getThemeById(settings.theme) || darkTheme;
-                applyTheme(theme);
+                const accent = settings.themeAccents?.[settings.theme];
+                applyTheme(theme, accent);
             }
         } catch (error) {
             console.error('Failed to load settings:', error);
@@ -202,6 +231,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     resetSettings: () => {
         set(DEFAULT_SETTINGS);
         const theme = getThemeById(DEFAULT_SETTINGS.theme) || darkTheme;
+        // Default settings has empty themeAccents
         applyTheme(theme);
         get().saveSettings();
     },

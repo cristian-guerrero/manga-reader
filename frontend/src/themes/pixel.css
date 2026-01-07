@@ -1,0 +1,67 @@
+/* Pixel Retro Theme Overrides */
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+/* Apply only when the pixel theme is active */
+[data-theme-id="pixel"] {
+    --font-family-pixel: 'Press Start 2P', cursive;
+    /* We don't override the global font family to avoid breaking layout heavily, 
+       but we can apply it to specific headers or generally if the user wants full immersion */
+    
+    /* Hard edges for everything */
+    --border-radius-sm: 0px !important;
+    --border-radius-md: 0px !important;
+    --border-radius-lg: 0px !important;
+    --border-radius-xl: 0px !important;
+    --border-radius-full: 0px !important;
+}
+
+[data-theme-id="pixel"] body {
+    /* Optional: Apply pixel font to body if desired, or just headers */
+    /* font-family: var(--font-family-pixel); */
+    image-rendering: pixelated;
+}
+
+[data-theme-id="pixel"] * {
+    border-radius: 0 !important;
+}
+
+/* Blocky Pixel Borders for buttons, cards and inputs */
+[data-theme-id="pixel"] button,
+[data-theme-id="pixel"] input,
+[data-theme-id="pixel"] .pixel-border {
+    border-width: 2px !important;
+    border-style: solid !important;
+    box-shadow: 
+        inset -2px -2px 0px 0px rgba(0,0,0,0.2),
+        2px 2px 0px 0px rgba(0,0,0,0.1) !important;
+}
+
+[data-theme-id="pixel"] button:active {
+    transform: translate(2px, 2px);
+    box-shadow: none !important;
+}
+
+/* Custom Scrollbar for Pixel */
+[data-theme-id="pixel"] ::-webkit-scrollbar {
+    width: 12px;
+}
+
+[data-theme-id="pixel"] ::-webkit-scrollbar-track {
+    background: var(--color-surface-secondary);
+    border-left: 2px solid var(--color-border);
+}
+
+[data-theme-id="pixel"] ::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    border: 2px solid var(--color-surface-secondary);
+}
+
+/* Specific component overrides if needed */
+[data-theme-id="pixel"] .icon-button {
+    border: 2px solid transparent !important;
+}
+
+[data-theme-id="pixel"] .icon-button:hover {
+    border-color: var(--color-accent) !important;
+    background: transparent !important;
+}

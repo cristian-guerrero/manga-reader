@@ -3,6 +3,9 @@
  * Centralized theme management with support for custom user themes
  */
 
+// Import pixel theme CSS
+import './pixel.css';
+
 export interface ThemeColors {
     // Accent
     accent: string;
@@ -38,6 +41,73 @@ export interface Theme {
     isDark: boolean;
     colors: ThemeColors;
 }
+
+// ============================================================================
+// Utility Functions
+// ============================================================================
+
+/**
+ * Adjust color brightness
+ * @param hex Hex color code
+ * @param percent Percentage to adjust (-100 to 100)
+ */
+export function adjustColorBrightness(hex: string, percent: number): string {
+    // Strip the hash if it exists
+    hex = hex.replace(/^\s*#|\s*$/g, '');
+
+    // Convert 3-char hex to 6-char
+    if (hex.length === 3) {
+        hex = hex.replace(/(.)/g, '$1$1');
+    }
+
+    const r = parseInt(hex.substr(0, 2), 16);
+    const g = parseInt(hex.substr(2, 2), 16);
+    const b = parseInt(hex.substr(4, 2), 16);
+
+    return '#' +
+        ((0 | (1 << 8) + r + (256 - r) * percent / 100).toString(16)).substr(1) +
+        ((0 | (1 << 8) + g + (256 - g) * percent / 100).toString(16)).substr(1) +
+        ((0 | (1 << 8) + b + (256 - b) * percent / 100).toString(16)).substr(1);
+}
+
+/**
+ * Convert Hex to RGBA
+ * @param hex Hex color code
+ * @param alpha Alpha value (0 to 1)
+ */
+export function hexToRgba(hex: string, alpha: number): string {
+    // Strip the hash if it exists
+    hex = hex.replace(/^\s*#|\s*$/g, '');
+
+    // Convert 3-char hex to 6-char
+    if (hex.length === 3) {
+        hex = hex.replace(/(.)/g, '$1$1');
+    }
+
+    const r = parseInt(hex.substr(0, 2), 16);
+    const g = parseInt(hex.substr(2, 2), 16);
+    const b = parseInt(hex.substr(4, 2), 16);
+
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+// ============================================================================
+// ACCENT COLORS
+// ============================================================================
+
+export const ACCENT_COLORS = [
+    { id: 'default', name: 'Theme Default', color: 'transparent' },
+    { id: 'violet', name: 'Violet', color: '#8b5cf6' },
+    { id: 'blue', name: 'Blue', color: '#3b82f6' },
+    { id: 'green', name: 'Emerald', color: '#10b981' },
+    { id: 'orange', name: 'Orange', color: '#f97316' },
+    { id: 'pink', name: 'Pink', color: '#ec4899' },
+    { id: 'red', name: 'Red', color: '#ef4444' },
+    { id: 'cyan', name: 'Cyan', color: '#06b6d4' },
+    { id: 'ichigo', name: 'Ichigo Red', color: '#6a2f27' },
+    { id: 'cyber', name: 'Cyber Neon', color: '#d946ef' }, // Cyberpunk accent
+    { id: 'pixel', name: 'Pixel Red', color: '#ff004d' }, // Pixel accent
+];
 
 // ============================================================================
 // Built-in Themes
@@ -304,17 +374,78 @@ export const ichigoTheme: Theme = {
     },
 };
 
+// New Themes from ngrok-like
+export const cyberpunkTheme: Theme = {
+    id: 'cyberpunk',
+    name: 'Cyberpunk',
+    isDark: true,
+    colors: {
+        accent: '#d946ef', // fuchsia-500
+        accentHover: '#f0abfc', // fuchsia-300
+        accentGlow: 'rgba(217, 70, 239, 0.6)',
+
+        surfacePrimary: '#1a0a2e', // Deep purple-black
+        surfaceSecondary: '#2d1b4e', // Dark purple
+        surfaceTertiary: '#3d2566', // Medium purple
+        surfaceElevated: '#3d2566',
+        surfaceOverlay: 'rgba(26, 10, 46, 0.95)',
+
+        titlebarBg: '#2d1b4e',
+        titlebarText: '#f5d0fe',
+
+        textPrimary: '#f5d0fe', // fuchsia-200
+        textSecondary: '#e879f9', // fuchsia-400
+        textMuted: '#c084fc', // purple-400
+        textDisabled: '#86198f',
+
+        border: '#581c87', // purple-800
+        borderHover: '#701a75', // fuchsia-800
+        borderFocus: 'rgba(217, 70, 239, 0.7)',
+    },
+};
+
+export const pixelTheme: Theme = {
+    id: 'pixel',
+    name: 'Pixel Retro',
+    isDark: true,
+    colors: {
+        accent: '#ff004d',
+        accentHover: '#ff3366',
+        accentGlow: 'rgba(255, 0, 77, 0.5)',
+
+        surfacePrimary: '#1a1a1a',
+        surfaceSecondary: '#242424',
+        surfaceTertiary: '#333333',
+        surfaceElevated: '#404040',
+        surfaceOverlay: 'rgba(26, 26, 26, 0.95)',
+
+        titlebarBg: '#242424',
+        titlebarText: '#ffffff',
+
+        textPrimary: '#ffffff',
+        textSecondary: '#d4d4d4',
+        textMuted: '#999999',
+        textDisabled: '#666666',
+
+        border: '#ffffff', // High contrast border
+        borderHover: '#ff004d',
+        borderFocus: 'rgba(255, 0, 77, 0.5)',
+    },
+};
+
 // All built-in themes
 export const builtInThemes: Theme[] = [
     darkTheme,
     lightTheme,
     midnightTheme,
     sakuraTheme,
+    ichigoTheme,
+    cyberpunkTheme,
+    pixelTheme,
     amoledTheme,
     lavenderTheme,
     mintTheme,
     peachTheme,
-    ichigoTheme,
 ];
 
 // ============================================================================
@@ -326,7 +457,7 @@ import { generateThemedIcon } from '../utils/iconGenerator';
 /**
  * Apply a theme to the document by setting CSS variables
  */
-export async function applyTheme(theme: Theme): Promise<void> {
+export async function applyTheme(theme: Theme, customAccentColor?: string): Promise<void> {
     const root = document.documentElement;
     const { colors } = theme;
 
@@ -336,10 +467,21 @@ export async function applyTheme(theme: Theme): Promise<void> {
     root.setAttribute('data-theme-id', theme.id);
     root.style.colorScheme = themeMode;
 
+    // Resolve accent colors (custom overrides theme)
+    let accent = colors.accent;
+    let accentHover = colors.accentHover;
+    let accentGlow = colors.accentGlow;
+
+    if (customAccentColor) {
+        accent = customAccentColor;
+        accentHover = adjustColorBrightness(customAccentColor, 15); // Lighten by 15%
+        accentGlow = hexToRgba(customAccentColor, 0.4);
+    }
+
     // Apply all color variables
-    root.style.setProperty('--color-accent', colors.accent);
-    root.style.setProperty('--color-accent-hover', colors.accentHover);
-    root.style.setProperty('--color-accent-glow', colors.accentGlow);
+    root.style.setProperty('--color-accent', accent);
+    root.style.setProperty('--color-accent-hover', accentHover);
+    root.style.setProperty('--color-accent-glow', accentGlow);
 
     root.style.setProperty('--color-surface-primary', colors.surfacePrimary);
     root.style.setProperty('--color-surface-secondary', colors.surfaceSecondary);
@@ -360,12 +502,24 @@ export async function applyTheme(theme: Theme): Promise<void> {
     root.style.setProperty('--color-border-focus', colors.borderFocus);
 
     // Apply composite variables that rely on theme colors
-    root.style.setProperty('--gradient-accent', `linear-gradient(135deg, ${colors.accent} 0%, ${colors.accentHover} 100%)`);
-    root.style.setProperty('--gradient-glow', `radial-gradient(ellipse at center, ${colors.accentGlow} 0%, transparent 70%)`);
+    root.style.setProperty('--gradient-accent', `linear-gradient(135deg, ${accent} 0%, ${accentHover} 100%)`);
+    root.style.setProperty('--gradient-glow', `radial-gradient(ellipse at center, ${accentGlow} 0%, transparent 70%)`);
 
     // Dynamic Taskbar Icon (Windows)
     try {
-        const iconData = await generateThemedIcon(theme);
+        // If we have a custom accent, we might want to regenerate the icon with that accent
+        // But for now, we'll pass the base theme. 
+        // TODO: Pass overrides to icon generator if needed.
+        const iconData = await generateThemedIcon({
+            ...theme,
+            colors: {
+                ...theme.colors,
+                accent,
+                accentHover,
+                accentGlow
+            }
+        });
+
         // @ts-ignore
         if (window.go && window.go.main && window.go.main.App && window.go.main.App.UpdateTaskbarIcon) {
             // @ts-ignore
@@ -411,4 +565,7 @@ export default {
     applyTheme,
     getThemeById,
     parseCustomTheme,
+    ACCENT_COLORS,
+    adjustColorBrightness,
+    hexToRgba
 };

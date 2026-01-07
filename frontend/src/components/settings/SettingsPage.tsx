@@ -1,27 +1,28 @@
-/**
- * SettingsPage - Application settings and preferences
- */
-
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useState } from 'react';
 import { useSettingsStore } from '../../stores/settingsStore';
+import { builtInThemes, ACCENT_COLORS } from '../../themes';
+import {
+    Palette,
+    Trash2,
+    RefreshCcw,
+    RotateCcw
+} from 'lucide-react';
+import { Button } from '../common/Button';
 import { useToast } from '../common/Toast';
 import { ConfirmDialog } from '../common/ConfirmDialog';
-import { Button } from '../common/Button';
 import { Toggle } from '../common/Toggle';
 import { SectionHeader } from '../common/SectionHeader';
 import { HelpDialog } from '../common/HelpDialog';
-import { builtInThemes, applyTheme, getThemeById } from '../../themes';
 import { languages, changeLanguage } from '../../i18n';
 
-export function SettingsPage() {
-    console.log("[SettingsPage] Rendering with enabledMenuItems:", useSettingsStore.getState().enabledMenuItems);
+export const SettingsPage: React.FC = () => {
     const { t } = useTranslation();
     const {
+        theme: currentThemeId,
+        setTheme,
         language,
         setLanguage,
-        theme,
-        setTheme,
         viewerMode,
         setViewerMode,
         verticalWidth,
@@ -30,58 +31,47 @@ export function SettingsPage() {
         setLateralMode,
         readingDirection,
         setReadingDirection,
-        panicKey,
+        resetSettings,
+        enableHistory,
+        setEnableHistory,
+        processDroppedFolders,
+        setProcessDroppedFolders,
+        // clearHistory, // Backend handles this via wails
+        themeAccents,
+        setAccentColor,
+        toggleMenuItem,
+        enabledMenuItems,
         preloadImages,
         setPreloadImages,
         preloadCount,
         setPreloadCount,
         showImageInfo,
         setShowImageInfo,
-        enableHistory,
-        setEnableHistory,
         minImageSize,
         setMinImageSize,
-        processDroppedFolders,
-        setProcessDroppedFolders,
-        resetSettings,
-        enabledMenuItems,
-        toggleMenuItem,
-
+        panicKey
     } = useSettingsStore();
 
     const { showToast } = useToast();
-    const [isHelpOpen, setIsHelpOpen] = useState(false);
-    const [isClearCacheOpen, setIsClearCacheOpen] = useState(false);
     const [isResetOpen, setIsResetOpen] = useState(false);
+    const [isClearCacheOpen, setIsClearCacheOpen] = useState(false);
+    const [isHelpOpen, setIsHelpOpen] = useState(false);
 
+    // Filter themes to show in the UI
+    const themes = builtInThemes;
+
+    // Derive current accent color for the active theme
+    const currentAccentColor = themeAccents?.[currentThemeId];
 
     const handleLanguageChange = (newLang: string) => {
         setLanguage(newLang);
         changeLanguage(newLang as any);
     };
 
-    const handleThemeChange = (themeId: string) => {
-        setTheme(themeId);
-        const newTheme = getThemeById(themeId);
-        if (newTheme) {
-            applyTheme(newTheme);
-        }
-    };
-
-    const handleResetClick = () => {
-        setIsResetOpen(true);
-    };
-
-    const confirmReset = () => {
+    const handleResetSettings = () => {
         resetSettings();
         setIsResetOpen(false);
-        showToast(t('settings.resetSuccess') || 'Settings reset to defaults', 'success');
-    };
-
-
-
-    const handleClearCacheClick = () => {
-        setIsClearCacheOpen(true);
+        showToast(t('settings.resetSuccess') || 'Settings restored to defaults', 'success');
     };
 
     const confirmClearCache = async () => {
@@ -89,26 +79,20 @@ export function SettingsPage() {
             // @ts-ignore
             await window.go?.main?.App?.ClearAllData();
             setIsClearCacheOpen(false);
-            showToast(t('settings.clearCacheSuccess'), 'success');
+            showToast(t('settings.clearCacheSuccess') || 'Cache cleared successfully', 'success');
         } catch (error) {
             console.error("Failed to clear cache:", error);
-            showToast(t('settings.clearCacheError'), 'error');
+            showToast(t('settings.clearCacheError') || 'Failed to clear cache', 'error');
         }
     };
 
     return (
-        <div
-            className="h-full overflow-auto p-6"
-            style={{ backgroundColor: 'var(--color-surface-primary)' }}
-        >
-            <div className="max-w-2xl mx-auto space-y-8 animate-fade-in">
+        <div className="h-full overflow-auto p-6" style={{ backgroundColor: 'var(--color-surface-primary)' }}>
+            <div className="max-w-3xl mx-auto pb-24 animate-fade-in space-y-8">
                 {/* Header */}
-                <div className="flex justify-between items-center">
-                    <h1
-                        className="text-2xl font-bold"
-                        style={{ color: 'var(--color-text-primary)' }}
-                    >
-                        {t('settings.title')}
+                <div className="flex justify-between items-center mb-8">
+                    <h1 className="text-3xl font-bold text-gradient">
+                        {t('settings.title', 'Settings')}
                     </h1>
                     <button
                         onClick={() => setIsHelpOpen(true)}
@@ -126,75 +110,203 @@ export function SettingsPage() {
 
                 {/* Appearance Section */}
                 <section className="animate-slide-up" style={{ animationDelay: '0.1s' }}>
-                    <SectionHeader title={t('settings.appearance')} />
+                    <div className="flex items-center gap-3 mb-6">
+                        <Palette className="w-6 h-6 text-accent" />
+                        <h2 className="text-xl font-semibold" style={{ color: 'var(--color-text-primary)' }}>{t('settings.appearance', 'Appearance')}</h2>
+                    </div>
 
-                    {/* Theme */}
-                    <SettingRow label={t('settings.theme')}>
-                        <div className="flex flex-wrap gap-2">
-                            {builtInThemes.map((themeOption) => (
-                                <Button
-                                    key={themeOption.id}
-                                    onClick={() => handleThemeChange(themeOption.id)}
-                                    variant={theme === themeOption.id ? 'primary' : 'secondary'}
-                                    size="sm"
-                                >
-                                    {t(`themes.${themeOption.id}`)}
-                                </Button>
-                            ))}
-                        </div>
-                    </SettingRow>
-
-                    {/* Language */}
-                    <SettingRow label={t('settings.language')}>
-                        <select
-                            value={language}
-                            onChange={(e) => handleLanguageChange(e.target.value)}
-                            className="input w-48"
-                        >
-                            {languages.map((lang) => (
-                                <option key={lang.code} value={lang.code}>
-                                    {lang.nativeName}
-                                </option>
-                            ))}
-                        </select>
-                    </SettingRow>
-
-                    {/* Menu Items */}
-                    <SettingRow
-                        label={t('settings.menuItems')}
-                        description={t('settings.menuItemsDesc')}
-                    >
-                        <div className="grid grid-cols-2 gap-3 mt-2">
-                            {['home', 'explorer', 'history', 'folders', 'series', 'download'].map((item) => {
-                                const isSettings = item === 'settings';
-                                const isEnabled = enabledMenuItems?.[item] !== false;
-
-                                return (
-                                    <div
-                                        key={item}
-                                        className={`flex items-center space-x-3 p-2 rounded-lg transition-colors ${isSettings ? 'opacity-80 cursor-default' : 'hover:bg-white/5 cursor-pointer'
-                                            }`}
-                                        onClick={() => !isSettings && toggleMenuItem(item)}
+                    <div className="card p-6 space-y-8" style={{ backgroundColor: 'var(--color-surface-secondary)', borderRadius: 'var(--radius-lg)' }}>
+                        {/* Theme Selection */}
+                        <div>
+                            <label className="block text-sm font-medium mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+                                {t('settings.theme', 'Base Theme')}
+                            </label>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                                {themes.map((theme) => (
+                                    <button
+                                        key={theme.id}
+                                        onClick={() => setTheme(theme.id)}
+                                        className={`
+                                            group relative overflow-hidden rounded-xl border-2 transition-all duration-300
+                                            ${currentThemeId === theme.id
+                                                ? 'border-accent ring-2 ring-accent/20 scale-[1.02]'
+                                                : 'border-border hover:border-accent/50 hover:scale-[1.01]'
+                                            }
+                                        `}
+                                        style={{
+                                            borderColor: currentThemeId === theme.id ? 'var(--color-accent)' : 'var(--color-border)'
+                                        }}
                                     >
-                                        <Toggle
-                                            checked={isEnabled}
-                                            onChange={() => toggleMenuItem(item)}
-                                            disabled={isSettings}
-                                        />
-                                        <span className="text-sm font-medium select-none" style={{ color: 'var(--color-text-secondary)' }}>
-                                            {t(`navigation.${item}`)}
-                                            {isSettings && <span className="ml-1 opacity-50 text-[10px]">({t('common.alwaysOn') || 'Always On'})</span>}
-                                        </span>
-                                    </div>
-                                );
-                            })}
+                                        {/* Preview */}
+                                        <div className="h-24 w-full relative" style={{ backgroundColor: theme.colors.surfacePrimary }}>
+                                            {/* Title bar preview */}
+                                            <div className="absolute top-0 left-0 right-0 h-4 flex items-center px-2 gap-1"
+                                                style={{ backgroundColor: theme.colors.titlebarBg }}>
+                                                <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: theme.colors.textDisabled }}></div>
+                                                <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: theme.colors.textDisabled }}></div>
+                                            </div>
+
+                                            {/* Content preview */}
+                                            <div className="absolute top-8 left-3 right-3 h-2 rounded-sm"
+                                                style={{ backgroundColor: theme.colors.surfaceTertiary }}></div>
+                                            <div className="absolute top-12 left-3 right-8 h-2 rounded-sm"
+                                                style={{ backgroundColor: theme.colors.surfaceTertiary }}></div>
+
+                                            {/* Accent preview */}
+                                            <div className="absolute bottom-3 right-3 w-8 h-8 rounded-lg shadow-lg flex items-center justify-center"
+                                                style={{ backgroundColor: theme.colors.accent }}>
+                                                <div className="w-3 h-3 bg-white/20 rounded-full"></div>
+                                            </div>
+                                        </div>
+
+                                        {/* Label */}
+                                        <div className="px-3 py-2 text-xs font-medium text-center truncate"
+                                            style={{ backgroundColor: theme.colors.surfaceSecondary, color: theme.colors.textPrimary }}>
+                                            {theme.name}
+                                        </div>
+
+                                        {/* Active Indicator */}
+                                        {currentThemeId === theme.id && (
+                                            <div className="absolute top-2 right-2 w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: 'var(--color-accent)' }}></div>
+                                        )}
+                                    </button>
+                                ))}
+                            </div>
                         </div>
-                    </SettingRow>
+
+                        {/* Accent Color Selection */}
+                        <div>
+                            <label className="block text-sm font-medium mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+                                {t('settings.accentColor', 'Accent Color')}
+                            </label>
+                            <div className="flex flex-wrap gap-3">
+                                {/* Default / Reset */}
+                                <button
+                                    onClick={() => setAccentColor('default')}
+                                    className={`
+                                        w-10 h-10 rounded-full border-2 flex items-center justify-center transition-all
+                                        ${!currentAccentColor
+                                            ? 'ring-2 ring-offset-2 scale-110'
+                                            : 'hover:scale-105'
+                                        }
+                                    `}
+                                    style={{
+                                        background: 'conic-gradient(from 180deg, #ef4444, #eab308, #22c55e, #06b6d4, #3b82f6, #d946ef, #ef4444)',
+                                        borderColor: !currentAccentColor ? 'var(--color-text-primary)' : 'var(--color-border)'
+                                    }}
+                                    title={t('settings.accentDefault', 'Default Theme Accent')}
+                                >
+                                    {!currentAccentColor && <div className="w-3 h-3 rounded-full bg-white shadow-sm" />}
+                                </button>
+
+                                {/* Preset Colors */}
+                                {ACCENT_COLORS.filter(c => c.id !== 'default').map((color) => (
+                                    <button
+                                        key={color.id}
+                                        onClick={() => setAccentColor(color.color)}
+                                        className={`
+                                            w-10 h-10 rounded-full border-2 flex items-center justify-center transition-all
+                                            ${currentAccentColor === color.color
+                                                ? 'scale-110'
+                                                : 'border-transparent hover:scale-105'
+                                            }
+                                        `}
+                                        style={{
+                                            backgroundColor: color.color,
+                                            borderColor: currentAccentColor === color.color ? 'var(--color-text-primary)' : 'transparent',
+                                            boxShadow: currentAccentColor === color.color ? `0 0 10px ${color.color}66` : 'none'
+                                        }}
+                                        title={color.name}
+                                    >
+                                        {currentAccentColor === color.color && (
+                                            <div className="w-3 h-3 rounded-full bg-white/90" />
+                                        )}
+                                    </button>
+                                ))}
+
+                                {/* Custom Color Picker */}
+                                <div className="relative group">
+                                    <input
+                                        type="color"
+                                        value={currentAccentColor || '#ffffff'}
+                                        onChange={(e) => setAccentColor(e.target.value)}
+                                        className="opacity-0 absolute inset-0 w-full h-full cursor-pointer z-10 rounded-full"
+                                    />
+                                    <div className={`
+                                        w-10 h-10 rounded-full border-2 flex items-center justify-center transition-all
+                                        group-hover:border-accent
+                                    `}
+                                        style={{
+                                            backgroundColor: 'var(--color-surface-tertiary)',
+                                            borderColor: 'var(--color-border)'
+                                        }}>
+                                        <Palette className="w-4 h-4 text-text-muted group-hover:text-accent" style={{ color: 'var(--color-text-secondary)' }} />
+                                    </div>
+                                </div>
+                            </div>
+                            <p className="mt-2 text-xs" style={{ color: 'var(--color-text-muted)' }}>
+                                {t('settings.accentHint', 'Select a preset or use the picker for a custom color. The "Default" option uses the base theme\'s defined accent.')}
+                            </p>
+                        </div>
+
+                        {/* Language */}
+                        <SettingRow label={t('settings.language')}>
+                            <select
+                                value={language}
+                                onChange={(e) => handleLanguageChange(e.target.value)}
+                                className="input-field w-full sm:w-64"
+                                style={{
+                                    backgroundColor: 'var(--color-surface-tertiary)',
+                                    color: 'var(--color-text-primary)',
+                                    borderColor: 'var(--color-border)',
+                                    padding: '0.5rem',
+                                    borderRadius: '0.5rem'
+                                }}
+                            >
+                                {languages.map((lang) => (
+                                    <option key={lang.code} value={lang.code}>
+                                        {lang.nativeName}
+                                    </option>
+                                ))}
+                            </select>
+                        </SettingRow>
+
+                        {/* Menu Items */}
+                        <SettingRow
+                            label={t('settings.menuItems', 'Menu Items')}
+                            description={t('settings.menuItemsDesc', 'Toggle visibility of sidebar menu items')}
+                        >
+                            <div className="grid grid-cols-2 gap-3 mt-2">
+                                {['home', 'explorer', 'history', 'folders', 'series', 'download'].map((item) => {
+                                    const isSettings = item === 'settings';
+                                    const isEnabled = enabledMenuItems?.[item] !== false;
+
+                                    return (
+                                        <div
+                                            key={item}
+                                            className={`flex items-center space-x-3 p-2 rounded-lg transition-colors ${isSettings ? 'opacity-80 cursor-default' : 'hover:bg-white/5 cursor-pointer'}`}
+                                            onClick={() => !isSettings && toggleMenuItem(item)}
+                                        >
+                                            <Toggle
+                                                checked={isEnabled}
+                                                onChange={() => toggleMenuItem(item)}
+                                                disabled={isSettings}
+                                            />
+                                            <span className="text-sm font-medium select-none" style={{ color: 'var(--color-text-secondary)' }}>
+                                                {t(`navigation.${item}`)}
+                                                {isSettings && <span className="ml-1 opacity-50 text-[10px]">({t('common.alwaysOn') || 'Always On'})</span>}
+                                            </span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </SettingRow>
+                    </div>
                 </section>
 
                 {/* Viewer Section */}
                 <section className="animate-slide-up" style={{ animationDelay: '0.2s' }}>
-                    <SectionHeader title={t('settings.viewer')} />
+                    <SectionHeader title={t('settings.viewer', 'Viewer')} />
 
                     {/* Default Mode */}
                     <SettingRow label={t('settings.defaultMode')}>
@@ -300,9 +412,9 @@ export function SettingsPage() {
 
                 {/* Advanced Section */}
                 <section className="animate-slide-up" style={{ animationDelay: '0.4s' }}>
-                    <SectionHeader title={t('settings.advanced')} />
+                    <SectionHeader title={t('settings.advanced', 'Advanced')} />
 
-                    <SettingRow label={t('settings.preloadImages')}>
+                    <SettingRow label={t('settings.preloadImages', 'Preload Images')}>
                         <Toggle
                             checked={preloadImages}
                             onChange={setPreloadImages}
@@ -311,7 +423,7 @@ export function SettingsPage() {
 
                     {
                         preloadImages && (
-                            <SettingRow label={t('settings.preloadCount')}>
+                            <SettingRow label={t('settings.preloadCount', 'Preload Count')}>
                                 <div className="flex items-center gap-4">
                                     <input
                                         type="range"
@@ -332,7 +444,7 @@ export function SettingsPage() {
                         )
                     }
 
-                    <SettingRow label={t('settings.showImageInfo')}>
+                    <SettingRow label={t('settings.showImageInfo', 'Show Image Info')}>
                         <Toggle
                             checked={showImageInfo}
                             onChange={setShowImageInfo}
@@ -364,7 +476,7 @@ export function SettingsPage() {
                                 className="text-sm font-medium w-16 text-right"
                                 style={{ color: 'var(--color-text-secondary)' }}
                             >
-                                {minImageSize > 0 ? `${minImageSize} KB` : t('common.off')}
+                                {minImageSize > 0 ? `${minImageSize} KB` : t('common.off', 'Off')}
                             </span>
                         </div>
                     </SettingRow>
@@ -381,17 +493,19 @@ export function SettingsPage() {
                 <section className="animate-slide-up space-y-4" style={{ animationDelay: '0.5s' }}>
                     <div className="grid grid-cols-2 gap-4">
                         <Button
-                            onClick={handleResetClick}
+                            onClick={() => setIsResetOpen(true)}
                             variant="outline"
                             className="border-orange-500/30 text-orange-500 hover:bg-orange-500/10"
+                            icon={<RotateCcw className="w-4 h-4" />}
                         >
                             {t('settings.resetSettings')}
                         </Button>
 
                         <Button
-                            onClick={handleClearCacheClick}
+                            onClick={() => setIsClearCacheOpen(true)}
                             variant="outline"
                             className="border-red-500/30 text-red-500 hover:bg-red-500/10"
+                            icon={<Trash2 className="w-4 h-4" />}
                         >
                             {t('settings.clearAllCache')}
                         </Button>
@@ -403,7 +517,7 @@ export function SettingsPage() {
             <ConfirmDialog
                 isOpen={isResetOpen}
                 onClose={() => setIsResetOpen(false)}
-                onConfirm={confirmReset}
+                onConfirm={handleResetSettings}
                 title={t('settings.resetSettings')}
                 message={t('settings.confirmReset')}
                 isDestructive={false}
@@ -442,54 +556,19 @@ export function SettingsPage() {
                 onClose={() => setIsHelpOpen(false)}
                 title={t('settings.help.title')}
             >
-                {/* Appearance */}
                 <div>
                     <h4 className="font-semibold text-sm uppercase tracking-wider mb-2 flex items-center gap-2" style={{ color: 'var(--color-accent)' }}>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <circle cx="12" cy="12" r="10" />
-                            <circle cx="12" cy="12" r="4" />
-                            <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
-                        </svg>
-                        {t('settings.help.appearance')}
+                        <Palette className="w-4 h-4" />
+                        {t('settings.help.appearance', 'Appearance')}
                     </h4>
                     <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-                        {t('settings.help.appearanceDesc')}
-                    </p>
-                </div>
-
-                {/* Viewer */}
-                <div>
-                    <h4 className="font-semibold text-sm uppercase tracking-wider mb-2 flex items-center gap-2" style={{ color: 'var(--color-accent)' }}>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
-                            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
-                        </svg>
-                        {t('settings.help.viewer')}
-                    </h4>
-                    <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-                        {t('settings.help.viewerDesc')}
-                    </p>
-                </div>
-
-                {/* Advanced */}
-                <div>
-                    <h4 className="font-semibold text-sm uppercase tracking-wider mb-2 flex items-center gap-2" style={{ color: 'var(--color-accent)' }}>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <circle cx="12" cy="12" r="3" />
-                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
-                        </svg>
-                        {t('settings.help.advanced')}
-                    </h4>
-                    <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-                        {t('settings.help.advancedDesc')}
+                        {t('settings.help.appearanceDesc', 'Customize the look and feel of the application. Change themes and accent colors.')}
                     </p>
                 </div>
             </HelpDialog>
         </div>
     );
-}
-
-// Section header component removed (using shared component)
+};
 
 // Setting row component
 function SettingRow({
@@ -523,7 +602,5 @@ function SettingRow({
         </div>
     );
 }
-
-// ModeButton and Toggle removed (using shared components)
 
 export default SettingsPage;
