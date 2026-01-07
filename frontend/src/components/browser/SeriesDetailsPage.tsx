@@ -8,6 +8,7 @@ import { useNavigationStore } from '../../stores/navigationStore';
 import { ChapterInfo, SeriesEntry } from '../../types';
 import { Tooltip } from '../common/Tooltip';
 import { SortControls } from '../common/SortControls';
+import { GridContainer } from '../common/GridContainer';
 
 // Icons
 const ChevronLeftIcon = () => (
@@ -216,9 +217,7 @@ export function SeriesDetailsPage({ seriesPath }: SeriesDetailsPageProps) {
             </div>
 
             {/* Chapters Grid */}
-            <div
-                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6 animate-fade-in"
-            >
+            <GridContainer variant="chapters" gap="lg">
                 {sortedChapters.map((chapter: ChapterInfo) => (
                     <div
                         key={chapter.path}
@@ -260,7 +259,7 @@ export function SeriesDetailsPage({ seriesPath }: SeriesDetailsPageProps) {
                         </p>
                     </div>
                 ))}
-            </div>
+            </GridContainer>
         </div>
     );
 }

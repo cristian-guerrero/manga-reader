@@ -9,6 +9,8 @@ import { EventsOn, EventsOff } from '../../../wailsjs/runtime';
 import { SeriesEntry } from '../../types';
 import { Tooltip } from '../common/Tooltip';
 import { SortControls } from '../common/SortControls';
+import { GridItem } from '../common/GridItem';
+import { GridContainer } from '../common/GridContainer';
 
 // Icons
 const SeriesIcon = () => (
@@ -331,19 +333,17 @@ export function SeriesPage() {
                     </button>
                 </div>
             ) : (
-                <div
-                    className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 animate-fade-in"
-                >
+                <GridContainer>
                     {sortedSeries.map((item) => (
-                        <div
-                            key={item.path}
-                            onClick={() => handleOpenSeries(item)}
-                            className="group/card relative rounded-xl overflow-hidden cursor-pointer hover-lift shadow-sm transition-all hover:border-accent animate-slide-up"
-                            style={{
-                                backgroundColor: 'var(--color-surface-secondary)',
-                                border: '1px solid var(--color-border)',
-                            }}
-                        >
+                        <GridItem key={item.path}>
+                            <div
+                                onClick={() => handleOpenSeries(item)}
+                                className="group/card relative rounded-xl overflow-hidden cursor-pointer hover-lift shadow-sm transition-all hover:border-accent animate-slide-up"
+                                style={{
+                                    backgroundColor: 'var(--color-surface-secondary)',
+                                    border: '1px solid var(--color-border)',
+                                }}
+                            >
                             {/* Cover image */}
                             <div
                                 className="aspect-[3/4] relative overflow-hidden"
@@ -433,9 +433,10 @@ export function SeriesPage() {
                                     </span>
                                 </div>
                             </div>
-                        </div>
+                            </div>
+                        </GridItem>
                     ))}
-                </div>
+                </GridContainer>
             )
             }
         </div >

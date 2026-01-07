@@ -4,6 +4,8 @@ import { useNavigationStore } from '../../stores/navigationStore';
 import { useToast } from '../common/Toast';
 import { Tooltip } from '../common/Tooltip';
 import { SortControls } from '../common/SortControls';
+import { GridItem } from '../common/GridItem';
+import { GridContainer } from '../common/GridContainer';
 
 // Icons
 const TrashIcon = () => (
@@ -332,14 +334,14 @@ export function ExplorerPage() {
 
             {/* Content */}
             <div className="flex-1 overflow-y-auto pr-2">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                <GridContainer>
                     {/* Base Folders View */}
                     {!currentPath && sortedBaseFolders.map((folder) => (
-                        <div
-                            key={folder.path}
-                            className="group/card relative bg-surface-secondary rounded-xl overflow-hidden border border-white/5 hover:border-accent/50 transition-all hover:shadow-lg cursor-pointer animate-scale-in"
-                            onClick={() => handleItemClick(folder)}
-                        >
+                        <GridItem key={folder.path}>
+                            <div
+                                className="group/card relative bg-surface-secondary rounded-xl overflow-hidden border border-white/5 hover:border-accent/50 transition-all hover:shadow-lg cursor-pointer animate-scale-in"
+                                onClick={() => handleItemClick(folder)}
+                            >
                             {folder.hasImages && folder.thumbnailUrl ? (
                                 <div className="aspect-[2/3] w-full relative overflow-hidden">
                                     <LazyImage
@@ -375,16 +377,17 @@ export function ExplorerPage() {
                                 <h3 className="font-semibold text-white truncate text-shadow-sm" title={folder.path}>{folder.name}</h3>
                                 <p className="text-xs text-white/60 truncate mt-1 font-mono opacity-80">{folder.path}</p>
                             </div>
-                        </div>
+                            </div>
+                        </GridItem>
                     ))}
 
                     {/* Directory View */}
                     {currentPath && sortedEntries.map((entry) => (
-                        <div
-                            key={entry.path}
-                            className="group/card relative bg-surface-secondary rounded-xl overflow-hidden border border-white/5 hover:border-accent/50 transition-all hover:shadow-lg cursor-pointer animate-scale-in"
-                            onClick={() => handleItemClick(entry)}
-                        >
+                        <GridItem key={entry.path}>
+                            <div
+                                className="group/card relative bg-surface-secondary rounded-xl overflow-hidden border border-white/5 hover:border-accent/50 transition-all hover:shadow-lg cursor-pointer animate-scale-in"
+                                onClick={() => handleItemClick(entry)}
+                            >
                             {entry.hasImages && entry.coverImage ? (
                                 <div className="aspect-[2/3] w-full relative overflow-hidden">
                                     <LazyImage
@@ -423,9 +426,10 @@ export function ExplorerPage() {
                                     )}
                                 </div>
                             </div>
-                        </div>
+                            </div>
+                        </GridItem>
                     ))}
-                </div>
+                </GridContainer>
 
                 {!currentPath && baseFolders.length === 0 && (
                     <div className="h-full flex flex-col items-center justify-center text-text-secondary opacity-60">

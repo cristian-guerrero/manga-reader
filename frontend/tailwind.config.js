@@ -7,6 +7,10 @@ export default {
   darkMode: 'class',
   theme: {
     extend: {
+      screens: {
+        '3xl': '1920px',
+        '4xl': '2560px',
+      },
       colors: {
         // Custom colors that can be overridden by CSS variables
         primary: {

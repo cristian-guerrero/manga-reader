@@ -306,7 +306,10 @@ export const DownloadPage: React.FC = () => {
     const [isHelpOpen, setIsHelpOpen] = useState(false);
 
     return (
-        <div className="flex flex-col h-full animate-fade-in p-8 overflow-y-auto relative">
+        <div
+            className="h-full overflow-auto p-6 animate-fade-in"
+            style={{ backgroundColor: 'var(--color-surface-primary)' }}
+        >
             <header className="mb-8 flex justify-between items-start">
                 <div>
                     <h1 className="text-3xl font-bold mb-2" style={{ color: 'var(--color-text-primary)' }}>

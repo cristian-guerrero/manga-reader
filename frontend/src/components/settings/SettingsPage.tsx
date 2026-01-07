@@ -88,7 +88,7 @@ export const SettingsPage: React.FC = () => {
 
     return (
         <div className="h-full overflow-auto p-6" style={{ backgroundColor: 'var(--color-surface-primary)' }}>
-            <div className="max-w-3xl mx-auto pb-24 animate-fade-in space-y-8">
+            <div className="max-w-6xl mx-auto pb-24 animate-fade-in space-y-8">
                 {/* Header */}
                 <div className="flex justify-between items-center mb-8">
                     <h1 className="text-3xl font-bold text-gradient">

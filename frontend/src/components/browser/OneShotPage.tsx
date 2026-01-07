@@ -5,6 +5,8 @@ import { useToast } from '../common/Toast';
 import { EventsOn, EventsOff } from '../../../wailsjs/runtime';
 import { Tooltip } from '../common/Tooltip';
 import { SortControls } from '../common/SortControls';
+import { GridItem } from '../common/GridItem';
+import { GridContainer } from '../common/GridContainer';
 import { FolderInfo } from '../../types';
 
 // Icons
@@ -344,19 +346,17 @@ export function OneShotPage() {
                     </button>
                 </div>
             ) : (
-                <div
-                    className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 animate-fade-in"
-                >
+                <GridContainer>
                     {sortedFolders.map((folder) => (
-                        <div
-                            key={folder.path}
-                            onClick={() => handleOpenFolder(folder)}
-                            className="group/card relative rounded-xl overflow-hidden cursor-pointer hover-lift shadow-sm hover:border-accent transition-all animate-slide-up"
-                            style={{
-                                backgroundColor: 'var(--color-surface-secondary)',
-                                border: '1px solid var(--color-border)',
-                            }}
-                        >
+                        <GridItem key={folder.path}>
+                            <div
+                                onClick={() => handleOpenFolder(folder)}
+                                className="group/card relative rounded-xl overflow-hidden cursor-pointer hover-lift shadow-sm hover:border-accent transition-all animate-slide-up"
+                                style={{
+                                    backgroundColor: 'var(--color-surface-secondary)',
+                                    border: '1px solid var(--color-border)',
+                                }}
+                            >
                             {/* Cover image */}
                             <div
                                 className="aspect-[3/4] relative overflow-hidden"
@@ -442,9 +442,10 @@ export function OneShotPage() {
                                     </span>
                                 </div>
                             </div>
-                        </div>
+                            </div>
+                        </GridItem>
                     ))}
-                </div>
+                </GridContainer>
             )
             }
         </div >
