@@ -2,10 +2,11 @@
  * SeriesDetailsPage - Display chapters of a specific series
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigationStore } from '../../stores/navigationStore';
 import { ChapterInfo, SeriesEntry } from '../../types';
+import { Tooltip } from '../common/Tooltip';
 
 // Icons
 const ChevronLeftIcon = () => (
@@ -22,9 +23,46 @@ const ImageIcon = () => (
     </svg>
 );
 
+const SortAscIcon = () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M3 6h18M6 12h12M9 18h6" />
+    </svg>
+);
+
+const SortDescIcon = () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M3 18h18M6 12h12M9 6h6" />
+    </svg>
+);
+
 interface SeriesDetailsPageProps {
     seriesPath: string;
 }
+
+// Helper functions for sort preferences per series
+const getSeriesSortPreferences = (seriesPath: string) => {
+    try {
+        const stored = localStorage.getItem('seriesDetails_sortPreferences');
+        if (stored) {
+            const prefs = JSON.parse(stored);
+            return prefs[seriesPath] || { sortBy: 'name', sortOrder: 'asc' };
+        }
+    } catch (e) {
+        console.error('Failed to load sort preferences', e);
+    }
+    return { sortBy: 'name', sortOrder: 'asc' };
+};
+
+const saveSeriesSortPreferences = (seriesPath: string, sortBy: 'name' | 'pages', sortOrder: 'asc' | 'desc') => {
+    try {
+        const stored = localStorage.getItem('seriesDetails_sortPreferences');
+        const prefs = stored ? JSON.parse(stored) : {};
+        prefs[seriesPath] = { sortBy, sortOrder };
+        localStorage.setItem('seriesDetails_sortPreferences', JSON.stringify(prefs));
+    } catch (e) {
+        console.error('Failed to save sort preferences', e);
+    }
+};
 
 export function SeriesDetailsPage({ seriesPath }: SeriesDetailsPageProps) {
     const { t } = useTranslation();
@@ -32,6 +70,34 @@ export function SeriesDetailsPage({ seriesPath }: SeriesDetailsPageProps) {
     const [series, setSeries] = useState<SeriesEntry | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [thumbnails, setThumbnails] = useState<Record<string, string>>({});
+
+    // Sorting state - initialized with series preferences
+    const [sortBy, setSortBy] = useState<'name' | 'pages'>(() => {
+        const prefs = getSeriesSortPreferences(seriesPath);
+        // Migrate old 'date' to 'pages' if exists
+        return prefs.sortBy === 'date' ? 'pages' : (prefs.sortBy === 'pages' ? 'pages' : 'name');
+    });
+    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>(() => {
+        return getSeriesSortPreferences(seriesPath).sortOrder;
+    });
+
+    // Track if preferences have been loaded for current series
+    const preferencesLoadedRef = useRef(false);
+
+    // Load sort preferences when series changes
+    useEffect(() => {
+        const prefs = getSeriesSortPreferences(seriesPath);
+        setSortBy(prefs.sortBy);
+        setSortOrder(prefs.sortOrder);
+        preferencesLoadedRef.current = true;
+    }, [seriesPath]);
+
+    // Save sort preference when it changes (but only after initial load)
+    useEffect(() => {
+        if (preferencesLoadedRef.current) {
+            saveSeriesSortPreferences(seriesPath, sortBy, sortOrder);
+        }
+    }, [sortBy, sortOrder, seriesPath]);
 
     useEffect(() => {
         loadSeriesDetails();
@@ -83,6 +149,18 @@ export function SeriesDetailsPage({ seriesPath }: SeriesDetailsPageProps) {
         navigate('viewer', { folder: path });
     };
 
+    // Sort chapters
+    const sortedChapters = series ? [...series.chapters].sort((a, b) => {
+        let res = 0;
+        if (sortBy === 'name') {
+            res = a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
+        } else {
+            // Sort by page count (imageCount)
+            res = a.imageCount - b.imageCount;
+        }
+        return sortOrder === 'asc' ? res : -res;
+    }) : [];
+
 
     if (isLoading) {
         return (
@@ -114,29 +192,55 @@ export function SeriesDetailsPage({ seriesPath }: SeriesDetailsPageProps) {
     return (
         <div className="h-full overflow-auto p-6" style={{ backgroundColor: 'var(--color-surface-primary)' }}>
             {/* Header */}
-            <div className="flex items-center gap-4 mb-8">
-                <button
-                    onClick={goBack}
-                    className="p-2 rounded-lg transition-all hover:bg-white/5 hover:scale-110 active:scale-90"
-                    style={{ color: 'var(--color-text-secondary)' }}
-                >
-                    <ChevronLeftIcon />
-                </button>
-                <div>
-                    <h1 className="text-2xl font-bold" style={{ color: 'var(--color-text-primary)' }}>
-                        {series.name}
-                    </h1>
-                    <p className="text-sm opacity-60" style={{ color: 'var(--color-text-muted)' }}>
-                        {series.path}
-                    </p>
+            <div className="flex items-center justify-between mb-8">
+                <div className="flex items-center gap-4">
+                    <button
+                        onClick={goBack}
+                        className="p-2 rounded-lg transition-all hover:bg-white/5 hover:scale-110 active:scale-90"
+                        style={{ color: 'var(--color-text-secondary)' }}
+                    >
+                        <ChevronLeftIcon />
+                    </button>
+                    <div>
+                        <h1 className="text-2xl font-bold" style={{ color: 'var(--color-text-primary)' }}>
+                            {series.name}
+                        </h1>
+                        <p className="text-sm opacity-60" style={{ color: 'var(--color-text-muted)' }}>
+                            {series.path}
+                        </p>
+                    </div>
                 </div>
+
+                {/* Sort Controls */}
+                {series.chapters && series.chapters.length > 0 && (
+                    <div className="flex items-center bg-surface-tertiary rounded-lg p-1 border border-white/5">
+                            <select
+                            value={sortBy}
+                            onChange={(e) => setSortBy(e.target.value as 'name' | 'pages')}
+                            className="bg-transparent text-sm border-none focus:ring-0 cursor-pointer pl-2 pr-8 text-text-secondary hover:text-text-primary"
+                            style={{ outline: 'none' }}
+                        >
+                            <option value="name">Name</option>
+                            <option value="pages">Pages</option>
+                        </select>
+                        <div className="w-px h-4 bg-white/10 mx-1" />
+                        <Tooltip content={sortOrder === 'asc' ? t('common.ascending') : t('common.descending')} placement="bottom">
+                            <button
+                                onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
+                                className="p-1.5 rounded hover:bg-white/10 text-text-secondary hover:text-text-primary transition-colors"
+                            >
+                                {sortOrder === 'asc' ? <SortAscIcon /> : <SortDescIcon />}
+                            </button>
+                        </Tooltip>
+                    </div>
+                )}
             </div>
 
             {/* Chapters Grid */}
             <div
                 className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6 animate-fade-in"
             >
-                {series.chapters.map((chapter: ChapterInfo) => (
+                {sortedChapters.map((chapter: ChapterInfo) => (
                     <div
                         key={chapter.path}
                         onClick={() => handleOpenChapter(chapter.path)}
