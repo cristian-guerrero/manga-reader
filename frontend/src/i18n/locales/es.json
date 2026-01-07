@@ -135,7 +135,10 @@
         "totalPages": "{{count}} páginas",
         "error": "Error: {{message}}",
         "openFolder": "Abrir Carpeta",
-        "openFolder": "Abrir Carpeta",
+        "playInViewer": "Ver",
+        "playSeries": "Ver Serie",
+        "addedToLibrary": "Agregado a la librería",
+        "addedToSeries": "Serie agregada a la librería",
         "pastedFromClipboard": "URL pegada desde el portapapeles",
         "help": {
             "title": "Cómo usar",

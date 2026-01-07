@@ -134,7 +134,10 @@
         "totalPages": "{{count}} pages",
         "error": "Error: {{message}}",
         "openFolder": "Open Folder",
-        "openFolder": "Open Folder",
+        "playInViewer": "Play",
+        "playSeries": "Play Series",
+        "addedToLibrary": "Added to library",
+        "addedToSeries": "Series added to library",
         "pastedFromClipboard": "URL pasted from clipboard",
         "help": {
             "title": "How to use",

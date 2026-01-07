@@ -8,9 +8,11 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -286,7 +288,11 @@ func (m *Module) runDownload(job persistence.DownloadJob, info *SiteInfo) {
 			return
 		default:
 			// Check if file already exists (Resume capability)
-			destPath := filepath.Join(downloadDir, img.Filename)
+			destFilename := sanitizeFilename(img.Filename)
+			if destFilename == "" {
+				destFilename = fmt.Sprintf("page_%04d", i+1)
+			}
+			destPath := filepath.Join(downloadDir, destFilename)
 			if fInfo, err := os.Stat(destPath); err == nil && fInfo.Size() > 0 {
 				fmt.Printf("[Downloader] Skipping existing file: %s\n", img.Filename)
 				m.pm.UpdateJob(job.ID, map[string]interface{}{"progress": i + 1})
@@ -356,13 +362,49 @@ func (m *Module) notifyUpdate() {
 }
 
 func sanitizeFilename(name string) string {
-	// Simple sanitization
-	invalid := []string{"/", "\\", ":", "*", "?", "\"", "<", ">", "|"}
-	res := name
-	for _, char := range invalid {
-		res = strings.ReplaceAll(res, char, "_")
+	if name == "" {
+		return ""
 	}
-	return strings.TrimSpace(res)
+
+	// Replace invalid characters (including control chars)
+	invalidPattern := regexp.MustCompile(`[\/\\:\*\?"<>\|\x00-\x1F]`)
+	res := invalidPattern.ReplaceAllString(name, "_")
+
+	// Normalize whitespace and NBSP
+	res = strings.ReplaceAll(res, "\u00A0", " ")
+	res = strings.Join(strings.Fields(res), " ") // collapse multiple spaces
+
+	// Trim spaces and dots which are not allowed at the end in Windows
+	res = strings.Trim(res, " .")
+
+	// Avoid reserved device names on Windows
+	lower := strings.ToLower(res)
+	switch lower {
+	case "con", "prn", "aux", "nul",
+		"com1", "com2", "com3", "com4", "com5", "com6", "com7", "com8", "com9",
+		"lpt1", "lpt2", "lpt3", "lpt4", "lpt5", "lpt6", "lpt7", "lpt8", "lpt9":
+		res = "_" + res
+	}
+
+	// Ensure non-empty
+	if res == "" {
+		return ""
+	}
+
+	// Truncate segment length to keep paths safe (helps avoid Windows MAX_PATH)
+	const maxRunes = 80
+	if utf8.RuneCountInString(res) > maxRunes {
+		// Truncate by runes, preserving extension if present
+		ext := filepath.Ext(res)
+		base := strings.TrimSuffix(res, ext)
+		if utf8.RuneCountInString(base) > maxRunes {
+			baseRunes := []rune(base)
+			base = string(baseRunes[:maxRunes])
+		}
+		res = strings.TrimRight(base, " .") + ext
+	}
+
+	return res
 }
 
 func downloadFile(url string, path string, headers map[string]string) error {

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSettingsStore } from '../../stores/settingsStore';
+import { useNavigationStore } from '../../stores/navigationStore';
 import { useToast } from '../common/Toast';
 import { Button } from '../common/Button';
 import { Toggle } from '../common/Toggle';
@@ -29,6 +30,7 @@ export const DownloadPage: React.FC = () => {
     const { showToast } = useToast();
     const settings = useSettingsStore();
     const { updateSettings } = settings;
+    const navigate = useNavigationStore((state) => state.navigate);
     const [url, setUrl] = useState('');
     const [history, setHistory] = useState<DownloadJob[]>([]);
     const [isLoading, setIsLoading] = useState(false);
@@ -220,6 +222,50 @@ export const DownloadPage: React.FC = () => {
     const handleRemoveJob = async (id: string) => {
         await AppBackend.RemoveDownloadJob(id);
         loadHistory();
+    };
+
+    const handlePlayDownload = async (job: DownloadJob) => {
+        if (!job.path) return;
+        
+        try {
+            const addedPath = await (AppBackend as any).AddDownloadedFolder(job.path);
+            showToast(t('download.addedToLibrary'), 'success');
+            
+            // Navigate to viewer - use 'folder' parameter as expected by App.tsx router
+            navigate('viewer', { folder: addedPath });
+        } catch (err: any) {
+            showToast(err.toString(), 'error');
+        }
+    };
+
+    const handlePlaySeries = async (jobs: DownloadJob[]) => {
+        // Find a completed job to get the series path
+        const completedJob = jobs.find(j => j.status === 'completed' && j.path);
+        if (!completedJob?.path) {
+            showToast('No completed chapters to play', 'error');
+            return;
+        }
+        
+        try {
+            const seriesPath = await (AppBackend as any).AddDownloadedSeries(completedJob.path);
+            showToast(t('download.addedToSeries'), 'success');
+            
+            // Navigate to series details
+            navigate('series-details', { series: seriesPath });
+        } catch (err: any) {
+            showToast(err.toString(), 'error');
+        }
+    };
+
+    const getSeriesPath = (jobs: DownloadJob[]): string | null => {
+        // Find a completed job to get the series path (parent folder)
+        const completedJob = jobs.find(j => j.status === 'completed' && j.path);
+        if (!completedJob?.path) return null;
+        
+        // Get parent directory (series folder)
+        const pathParts = completedJob.path.split(/[\\/]/);
+        pathParts.pop(); // Remove chapter folder
+        return pathParts.join('\\'); // Use Windows path separator
     };
 
     const handleSelectPath = async () => {
@@ -478,11 +524,26 @@ export const DownloadPage: React.FC = () => {
 
                                         {job.status === 'completed' && job.path && (
                                             <div className="flex gap-2 mt-2">
+                                                <Tooltip content={t('download.playInViewer')} placement="top">
+                                                    <button
+                                                        className="text-xs font-semibold px-3 py-1.5 rounded transition-colors flex items-center gap-2"
+                                                        style={{
+                                                            backgroundColor: 'var(--color-accent)',
+                                                            color: 'white'
+                                                        }}
+                                                        onClick={() => handlePlayDownload(job)}
+                                                    >
+                                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                                                            <path d="M8 5v14l11-7z"/>
+                                                        </svg>
+                                                        {t('download.playInViewer')}
+                                                    </button>
+                                                </Tooltip>
                                                 <button
                                                     className="text-xs font-semibold px-3 py-1.5 rounded transition-colors"
                                                     style={{
-                                                        backgroundColor: 'var(--color-accent)',
-                                                        color: 'white'
+                                                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                                                        color: 'var(--color-text-primary)'
                                                     }}
                                                     onClick={() => (AppBackend as any).OpenInFileManager(job.path)}
                                                 >
@@ -522,7 +583,44 @@ export const DownloadPage: React.FC = () => {
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-2">
-                                                {/* Optional: Add clear all for series? */}
+                                                {/* Play Series Button - only show if at least one chapter is completed */}
+                                                {finishedCount > 0 && (
+                                                    <Tooltip content={t('download.playSeries')} placement="left">
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); handlePlaySeries(jobs); }}
+                                                            className="text-xs font-semibold px-3 py-1.5 rounded transition-colors flex items-center gap-2"
+                                                            style={{
+                                                                backgroundColor: 'var(--color-accent)',
+                                                                color: 'white'
+                                                            }}
+                                                        >
+                                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                                                                <path d="M8 5v14l11-7z"/>
+                                                            </svg>
+                                                            {t('download.playSeries')}
+                                                        </button>
+                                                    </Tooltip>
+                                                )}
+
+                                                {/* Open series folder */}
+                                                {finishedCount > 0 && (
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            const seriesPath = getSeriesPath(jobs);
+                                                            if (seriesPath) {
+                                                                (AppBackend as any).OpenInFileManager(seriesPath);
+                                                            }
+                                                        }}
+                                                        className="text-xs font-semibold px-3 py-1.5 rounded transition-colors"
+                                                        style={{
+                                                            backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                                                            color: 'var(--color-text-primary)'
+                                                        }}
+                                                    >
+                                                        {t('download.openFolder')}
+                                                    </button>
+                                                )}
                                             </div>
                                         </div>
 
@@ -592,14 +690,31 @@ export const DownloadPage: React.FC = () => {
 
                                                         {job.status === 'completed' && job.path && (
                                                             <div className="flex gap-2 mt-2">
-                                                                <Button
+                                                                <Tooltip content={t('download.playInViewer')} placement="top">
+                                                                    <button
+                                                                        onClick={(e) => { e.stopPropagation(); handlePlayDownload(job); }}
+                                                                        className="text-xs font-semibold px-3 py-1.5 rounded transition-colors flex items-center gap-2"
+                                                                        style={{
+                                                                            backgroundColor: 'var(--color-accent)',
+                                                                            color: 'white'
+                                                                        }}
+                                                                    >
+                                                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                                                                            <path d="M8 5v14l11-7z"/>
+                                                                        </svg>
+                                                                        {t('download.playInViewer')}
+                                                                    </button>
+                                                                </Tooltip>
+                                                                <button
                                                                     onClick={(e) => { e.stopPropagation(); (AppBackend as any).OpenInFileManager(job.path); }}
-                                                                    variant="primary"
-                                                                    size="sm"
-                                                                    className="px-3 py-1.5 text-xs font-semibold"
+                                                                    className="text-xs font-semibold px-3 py-1.5 rounded transition-colors"
+                                                                    style={{
+                                                                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                                                                        color: 'var(--color-text-primary)'
+                                                                    }}
                                                                 >
                                                                     {t('download.openFolder')}
-                                                                </Button>
+                                                                </button>
                                                             </div>
                                                         )}
                                                     </div>

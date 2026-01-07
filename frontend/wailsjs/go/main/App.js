@@ -6,6 +6,14 @@ export function AddBaseFolder(arg1) {
   return window['go']['main']['App']['AddBaseFolder'](arg1);
 }
 
+export function AddDownloadedFolder(arg1) {
+  return window['go']['main']['App']['AddDownloadedFolder'](arg1);
+}
+
+export function AddDownloadedSeries(arg1) {
+  return window['go']['main']['App']['AddDownloadedSeries'](arg1);
+}
+
 export function AddFolder(arg1) {
   return window['go']['main']['App']['AddFolder'](arg1);
 }

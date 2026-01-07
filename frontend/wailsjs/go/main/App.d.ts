@@ -7,6 +7,10 @@ import {series} from '../models';
 
 export function AddBaseFolder(arg1:string):Promise<void>;
 
+export function AddDownloadedFolder(arg1:string):Promise<string>;
+
+export function AddDownloadedSeries(arg1:string):Promise<string>;
+
 export function AddFolder(arg1:string):Promise<persistence.AddFolderResult>;
 
 export function AddHistory(arg1:persistence.HistoryEntry):Promise<void>;

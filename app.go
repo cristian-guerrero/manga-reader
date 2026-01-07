@@ -12,6 +12,7 @@ import (
 	"manga-visor/internal/persistence"
 	"manga-visor/internal/thumbnails"
 	"net/url"
+	"os"
 	"os/exec"
 	"path/filepath"
 	stdruntime "runtime"
@@ -596,6 +597,60 @@ func (a *App) OpenInFileManager(path string) error {
 		cmd = exec.Command("xdg-open", path)
 	}
 	return cmd.Start()
+}
+
+// AddDownloadedFolder adds a downloaded folder (chapter) to OneShot and returns the path
+// Used when clicking Play on an individual chapter in the download manager
+func (a *App) AddDownloadedFolder(downloadPath string) (string, error) {
+	// Check if the path exists
+	info, err := os.Stat(downloadPath)
+	if err != nil {
+		return "", fmt.Errorf("path not found: %v", err)
+	}
+	if !info.IsDir() {
+		downloadPath = filepath.Dir(downloadPath)
+	}
+
+	// Add the specific folder/chapter to oneshot
+	_, err = a.libraryMod.AddFolder(downloadPath)
+	if err != nil {
+		return "", err
+	}
+	return downloadPath, nil
+}
+
+// AddDownloadedSeries adds a downloaded series (parent folder with chapters) to Series
+// Used when clicking Play on a series header in the download manager
+func (a *App) AddDownloadedSeries(chapterPath string) (string, error) {
+	// Get the parent folder (series folder)
+	seriesPath := filepath.Dir(chapterPath)
+	
+	// Check if the series path exists
+	info, err := os.Stat(seriesPath)
+	if err != nil {
+		return "", fmt.Errorf("series path not found: %v", err)
+	}
+	if !info.IsDir() {
+		return "", fmt.Errorf("series path is not a directory")
+	}
+
+	// Get subfolders (chapters)
+	subfolders, err := a.libraryMod.GetSubfolders(seriesPath)
+	if err != nil {
+		return "", err
+	}
+
+	if len(subfolders) == 0 {
+		return "", fmt.Errorf("no chapters found in series folder")
+	}
+
+	// Add as series
+	_, err = a.seriesMod.AddSeries(seriesPath, subfolders, false)
+	if err != nil {
+		return "", err
+	}
+	
+	return seriesPath, nil
 }
 
 // ClearAllData wipes all application data (cache, history, library, etc.)

@@ -95,17 +95,14 @@ export function TitleBar({ title }: TitleBarProps) {
 
     return (
         <header
-            className="flex items-center justify-between h-10 select-none theme-transition"
+            className="flex items-center justify-between h-10 select-none theme-transition wails-drag"
             style={{
                 backgroundColor: 'rgba(0, 0, 0, 0)',
                 color: 'var(--color-titlebar-text)',
-                // @ts-ignore
-                '--wails-draggable': 'drag',
             }}
-            onDoubleClick={handleMaximize}
         >
             {/* App Logo and Title - Draggable */}
-            <div className="flex items-center gap-2 flex-1 drag h-full pl-3">
+            <div className="flex items-center gap-2 flex-1 drag h-full pl-3" onDoubleClick={handleMaximize}>
                 {/* Logo */}
                 <div
                     className="flex items-center justify-center w-5 h-5 rounded transition-transform hover:scale-110 active:scale-95"
@@ -132,10 +129,10 @@ export function TitleBar({ title }: TitleBarProps) {
             {/* Window Controls */}
             <div className="flex items-center h-full no-drag">
                 {/* Minimize */}
-                <Tooltip content={t('common.minimize') || "Minimize"} placement="bottom" className="h-full">
+                <Tooltip content={t('common.minimize') || "Minimize"} placement="bottom" className="h-full no-drag">
                     <button
                         onClick={handleMinimize}
-                        className="flex items-center justify-center w-12 h-full transition-colors hover:bg-surface-tertiary hover:text-text-primary"
+                        className="flex items-center justify-center w-12 h-full transition-colors hover:bg-surface-tertiary hover:text-text-primary no-drag"
                         style={{
                             color: 'var(--color-text-secondary)',
                         }}
@@ -146,10 +143,10 @@ export function TitleBar({ title }: TitleBarProps) {
                 </Tooltip>
 
                 {/* Maximize/Restore */}
-                <Tooltip content={isMaximized ? (t('common.restore') || "Restore") : (t('common.maximize') || "Maximize")} placement="bottom" className="h-full">
+                <Tooltip content={isMaximized ? (t('common.restore') || "Restore") : (t('common.maximize') || "Maximize")} placement="bottom" className="h-full no-drag">
                     <button
                         onClick={handleMaximize}
-                        className="flex items-center justify-center w-12 h-full transition-colors hover:bg-surface-tertiary hover:text-text-primary"
+                        className="flex items-center justify-center w-12 h-full transition-colors hover:bg-surface-tertiary hover:text-text-primary no-drag"
                         style={{
                             color: 'var(--color-text-secondary)',
                         }}
@@ -160,10 +157,10 @@ export function TitleBar({ title }: TitleBarProps) {
                 </Tooltip>
 
                 {/* Close */}
-                <Tooltip content={t('common.close') || "Close"} placement="bottom" className="h-full">
+                <Tooltip content={t('common.close') || "Close"} placement="bottom" className="h-full no-drag">
                     <button
                         onClick={handleClose}
-                        className="flex items-center justify-center w-12 h-full transition-colors hover:bg-red-600 hover:text-white"
+                        className="flex items-center justify-center w-12 h-full transition-colors hover:bg-red-600 hover:text-white no-drag"
                         style={{
                             color: 'var(--color-text-secondary)',
                         }}
