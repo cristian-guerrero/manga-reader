@@ -25,7 +25,11 @@
         "maximize": "Maximize",
         "restore": "Restore",
         "ascending": "Ascending",
-        "descending": "Descending"
+        "descending": "Descending",
+        "name": "Name",
+        "date": "Date",
+        "pages": "pages",
+        "noFolderSelected": "No folder selected"
     },
     "navigation": {
         "home": "Home",
@@ -96,7 +100,10 @@
         "chapterCount": "{{count}} Chapters",
         "searchPlaceholder": "Search series by name...",
         "searchChapterPlaceholder": "Search chapters by name...",
-        "noChaptersFound": "No chapters found matching your search"
+        "noChaptersFound": "No chapters found matching your search",
+        "pagesLabel": "pages",
+        "seriesNotFound": "Series not found",
+        "readNow": "Read Now"
     },
     "history": {
         "title": "Reading History",
@@ -207,7 +214,12 @@
         "loadFailed": "Failed to load directory",
         "noFolders": "No base folders added",
         "startMessage": "Add a base folder to start exploring your files recursively.",
-        "openInViewer": "Open in Viewer"
+        "openInViewer": "Open in Viewer",
+        "folder": "Folder",
+        "file": "File",
+        "images": "images",
+        "noFoldersAdded": "No folders added yet",
+        "addFolderToStart": "Add a base folder to start exploring"
     },
     "themes": {
         "dark": "Dark",

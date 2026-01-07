@@ -179,7 +179,7 @@ export function SeriesDetailsPage({ seriesPath }: SeriesDetailsPageProps) {
         return (
             <div className="flex flex-col items-center justify-center h-full p-6 text-center">
                 <p className="text-xl font-semibold mb-4" style={{ color: 'var(--color-text-secondary)' }}>
-                    Series not found
+                    {t('series.seriesNotFound')}
                 </p>
                 <button onClick={goBack} className="btn-primary">
                     {t('common.back')}
@@ -218,8 +218,8 @@ export function SeriesDetailsPage({ seriesPath }: SeriesDetailsPageProps) {
                         onSortByChange={(value) => setSortBy(value as 'name' | 'pages')}
                         onSortOrderChange={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
                         options={[
-                            { value: 'name', label: 'Name' },
-                            { value: 'pages', label: 'Pages' }
+                            { value: 'name', label: t('common.name') },
+                            { value: 'pages', label: t('common.pages') }
                         ]}
                         show={series.chapters && series.chapters.length > 0}
                     />
@@ -274,7 +274,7 @@ export function SeriesDetailsPage({ seriesPath }: SeriesDetailsPageProps) {
                             {/* Overlay */}
                             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                 <span className="bg-accent text-white px-4 py-2 rounded-full font-bold shadow-lg transform translate-y-4 group-hover:translate-y-0 transition-transform">
-                                    Read Now
+                                    {t('series.readNow')}
                                 </span>
                             </div>
                         </div>
@@ -288,7 +288,7 @@ export function SeriesDetailsPage({ seriesPath }: SeriesDetailsPageProps) {
                             </h3>
                         </Tooltip>
                         <p className="text-xs opacity-60" style={{ color: 'var(--color-text-muted)' }}>
-                            {chapter.imageCount} pages
+                            {chapter.imageCount} {t('series.pagesLabel')}
                         </p>
                     </div>
                 ))}

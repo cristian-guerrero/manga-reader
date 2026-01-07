@@ -276,8 +276,8 @@ export function SeriesPage() {
                             onSortByChange={(value) => setSortBy(value as 'name' | 'date')}
                             onSortOrderChange={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
                             options={[
-                                { value: 'name', label: 'Name' },
-                                { value: 'date', label: 'Date' }
+                                { value: 'name', label: t('common.name') },
+                                { value: 'date', label: t('common.date') }
                             ]}
                             show={series.length > 0}
                         />

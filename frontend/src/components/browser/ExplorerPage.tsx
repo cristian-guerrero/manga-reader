@@ -314,8 +314,8 @@ export function ExplorerPage() {
                         onSortByChange={(value) => setSortBy(value as 'name' | 'date')}
                         onSortOrderChange={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
                         options={[
-                            { value: 'name', label: 'Name' },
-                            { value: 'date', label: 'Date' }
+                            { value: 'name', label: t('common.name') },
+                            { value: 'date', label: t('common.date') }
                         ]}
                         show={Boolean((!currentPath && baseFolders.length > 0) || (currentPath && entries.length > 0))}
                     />
@@ -409,7 +409,7 @@ export function ExplorerPage() {
                                 <h3 className="font-semibold text-white truncate text-shadow-sm">{entry.name}</h3>
                                 <div className="flex items-center justify-between mt-1">
                                     <span className="text-xs text-white/70">
-                                        {entry.isDirectory ? (entry.hasImages ? `${entry.imageCount} images` : 'Folder') : 'File'}
+                                        {entry.isDirectory ? (entry.hasImages ? `${entry.imageCount} ${t('explorer.images')}` : t('explorer.folder')) : t('explorer.file')}
                                     </span>
                                     {entry.hasImages && (
                                         <Tooltip content={t('explorer.openInViewer')} placement="left" className="z-10">
@@ -436,8 +436,8 @@ export function ExplorerPage() {
                         <svg className="w-24 h-24 mb-4 text-surface-tertiary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
                             <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
                         </svg>
-                        <p className="text-lg">No folders added yet</p>
-                        <p className="text-sm mt-1">Add a base folder to start exploring</p>
+                        <p className="text-lg">{t('explorer.noFoldersAdded')}</p>
+                        <p className="text-sm mt-1">{t('explorer.addFolderToStart')}</p>
                     </div>
                 )}
             </div>

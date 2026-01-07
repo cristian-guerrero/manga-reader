@@ -319,7 +319,7 @@ export function ThumbnailsPage({ folderPath }: ThumbnailsPageProps) {
     if (!folderPath) {
         return (
             <div className="flex flex-col items-center justify-center h-full gap-4">
-                <p style={{ color: 'var(--color-text-muted)' }}>No folder selected</p>
+                <p style={{ color: 'var(--color-text-muted)' }}>{t('common.noFolderSelected')}</p>
                 <button
                     onClick={goBack}
                     className="btn-secondary transition-transform hover:scale-[1.02] active:scale-[0.98]"

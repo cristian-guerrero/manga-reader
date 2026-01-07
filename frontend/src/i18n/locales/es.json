@@ -24,7 +24,11 @@
         "maximize": "Maximizar",
         "restore": "Restaurar",
         "ascending": "Ascendente",
-        "descending": "Descendente"
+        "descending": "Descendente",
+        "name": "Nombre",
+        "date": "Fecha",
+        "pages": "páginas",
+        "noFolderSelected": "No hay carpeta seleccionada"
     },
     "navigation": {
         "home": "Inicio",
@@ -97,7 +101,10 @@
         "chapterCount": "{{count}} Capítulos",
         "searchPlaceholder": "Buscar series por nombre...",
         "searchChapterPlaceholder": "Buscar capítulos por nombre...",
-        "noChaptersFound": "No se encontraron capítulos que coincidan con tu búsqueda"
+        "noChaptersFound": "No se encontraron capítulos que coincidan con tu búsqueda",
+        "pagesLabel": "páginas",
+        "seriesNotFound": "Serie no encontrada",
+        "readNow": "Leer Ahora"
     },
     "history": {
         "title": "Historial de Lectura",
@@ -202,7 +209,12 @@
         "loadFailed": "Error al cargar directorio",
         "noFolders": "No hay carpetas base agregadas",
         "startMessage": "Agrega una carpeta base para comenzar a explorar tus archivos recursivamente.",
-        "openInViewer": "Abrir en Visor"
+        "openInViewer": "Abrir en Visor",
+        "folder": "Carpeta",
+        "file": "Archivo",
+        "images": "imágenes",
+        "noFoldersAdded": "No hay carpetas agregadas aún",
+        "addFolderToStart": "Agrega una carpeta base para comenzar a explorar"
     },
     "themes": {
         "dark": "Oscuro",
