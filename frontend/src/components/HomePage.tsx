@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigationStore } from '../stores/navigationStore';
 import { EventsOn, EventsOff } from '../../wailsjs/runtime';
 import { Button } from './common/Button';
+import { Tooltip } from './common/Tooltip';
 
 // Icons
 const FolderPlusIcon = () => (
@@ -214,13 +215,15 @@ export function HomePage() {
                                     Continue Reading
                                 </Button>
 
-                                <button
-                                    onClick={(e) => handleRemoveHistory(historyEntries[0].folderPath, e)}
-                                    className="px-4 py-3 rounded-xl bg-surface-tertiary text-text-muted hover:text-red-500 transition-all hover:scale-[1.05] active:scale-[0.95] border border-white/5"
-                                    title="Remove from history"
-                                >
-                                    <TrashIcon />
-                                </button>
+                                <Tooltip content={t('common.remove') || "Remove from history"} placement="left">
+                                    <button
+                                        onClick={(e) => handleRemoveHistory(historyEntries[0].folderPath, e)}
+                                        className="px-4 py-3 rounded-xl bg-surface-tertiary text-text-muted hover:text-red-500 transition-all hover:scale-[1.05] active:scale-[0.95] border border-white/5"
+                                        aria-label={t('common.remove') || "Remove from history"}
+                                    >
+                                        <TrashIcon />
+                                    </button>
+                                </Tooltip>
                             </div>
                         </div>
                     </div>
@@ -268,13 +271,15 @@ export function HomePage() {
                                                 <div className="text-xs font-semibold text-accent uppercase tracking-tighter">
                                                     Page {entry.lastImageIndex + 1} of {entry.totalImages}
                                                 </div>
-                                                <button
-                                                    onClick={(e) => handleRemoveHistory(entry.folderPath, e)}
-                                                    className="p-1.5 rounded-lg bg-surface-tertiary/50 text-text-muted hover:text-red-500 transition-all opacity-0 group-hover:opacity-100 hover:scale-110 active:scale-90"
-                                                    title="Remove"
-                                                >
-                                                    <TrashIcon />
-                                                </button>
+                                                <Tooltip content={t('common.remove') || "Remove"} placement="top">
+                                                    <button
+                                                        onClick={(e) => handleRemoveHistory(entry.folderPath, e)}
+                                                        className="p-1.5 rounded-lg bg-surface-tertiary/50 text-text-muted hover:text-red-500 transition-all opacity-0 group-hover:opacity-100 hover:scale-110 active:scale-90"
+                                                        aria-label={t('common.remove') || "Remove"}
+                                                    >
+                                                        <TrashIcon />
+                                                    </button>
+                                                </Tooltip>
                                             </div>
                                         </div>
                                     </div>

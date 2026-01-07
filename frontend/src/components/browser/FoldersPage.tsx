@@ -348,7 +348,7 @@ export function FoldersPage() {
                         <div
                             key={folder.path}
                             onClick={() => handleOpenFolder(folder)}
-                            className="group relative rounded-xl overflow-hidden cursor-pointer hover-lift shadow-sm hover:border-accent transition-all animate-slide-up"
+                            className="group/card relative rounded-xl overflow-hidden cursor-pointer hover-lift shadow-sm hover:border-accent transition-all animate-slide-up"
                             style={{
                                 backgroundColor: 'var(--color-surface-secondary)',
                                 border: '1px solid var(--color-border)',
@@ -392,7 +392,7 @@ export function FoldersPage() {
 
                                 {/* Overlay on hover */}
                                 <div
-                                    className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center"
+                                    className="absolute inset-0 opacity-0 group-hover/card:opacity-100 transition-opacity duration-300 flex items-center justify-center pointer-events-none"
                                     style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
                                 >
                                     <span
@@ -404,17 +404,19 @@ export function FoldersPage() {
                                 </div>
 
                                 {/* Remove button */}
-                                <button
-                                    onClick={(e) => handleRemoveFolder(folder, e)}
-                                    className="absolute top-2 right-2 p-2 rounded-full opacity-0 group-hover:opacity-100 transition-all hover:scale-110 active:scale-90"
-                                    style={{
-                                        backgroundColor: 'rgba(239, 68, 68, 0.9)',
-                                        color: 'white',
-                                    }}
-                                    title={t('folders.removeFolder')}
-                                >
-                                    <TrashIcon />
-                                </button>
+                                <Tooltip content={t('folders.removeFolder')} placement="left" className="absolute top-2 right-2 z-10 opacity-0 group-hover/card:opacity-100 transition-all">
+                                    <button
+                                        onClick={(e) => handleRemoveFolder(folder, e)}
+                                        className="p-2 rounded-full hover:scale-110 active:scale-90"
+                                        style={{
+                                            backgroundColor: 'rgba(239, 68, 68, 0.9)',
+                                            color: 'white',
+                                        }}
+                                        aria-label={t('folders.removeFolder')}
+                                    >
+                                        <TrashIcon />
+                                    </button>
+                                </Tooltip>
                             </div>
 
                             {/* Info */}

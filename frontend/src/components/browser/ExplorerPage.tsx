@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigationStore } from '../../stores/navigationStore';
 import { useToast } from '../common/Toast';
+import { Tooltip } from '../common/Tooltip';
 
 // Interfaces for backend data
 interface BaseFolder {
@@ -197,14 +198,17 @@ export function ExplorerPage() {
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-4">
                     {currentPath && (
-                        <button
-                            onClick={handleBack}
-                            className="p-2 rounded-full hover:bg-white/10 transition-all opacity-100 translate-x-0"
-                        >
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M19 12H5M12 19l-7-7 7-7" />
-                            </svg>
-                        </button>
+                        <Tooltip content={t('common.back') || "Back"} placement="right">
+                            <button
+                                onClick={handleBack}
+                                className="p-2 rounded-full hover:bg-white/10 transition-all opacity-100 translate-x-0"
+                                aria-label={t('common.back') || "Back"}
+                            >
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <path d="M19 12H5M12 19l-7-7 7-7" />
+                                </svg>
+                            </button>
+                        </Tooltip>
                     )}
                     <h1 className="text-3xl font-bold tracking-tight text-shadow">
                         {currentPath ? currentPath.split(/[\\/]/).pop() : (t('explorer.title') || 'Explorer')}
@@ -229,7 +233,7 @@ export function ExplorerPage() {
                     {!currentPath && baseFolders.map((folder) => (
                         <div
                             key={folder.path}
-                            className="group relative bg-surface-secondary rounded-xl overflow-hidden border border-white/5 hover:border-accent/50 transition-all hover:shadow-lg cursor-pointer animate-scale-in"
+                            className="group/card relative bg-surface-secondary rounded-xl overflow-hidden border border-white/5 hover:border-accent/50 transition-all hover:shadow-lg cursor-pointer animate-scale-in"
                             onClick={() => handleItemClick(folder)}
                         >
                             {folder.hasImages && folder.thumbnailUrl ? (
@@ -251,16 +255,17 @@ export function ExplorerPage() {
                                 </div>
                             )}
 
-                            <div className="absolute top-2 right-2 z-10">
+                            <Tooltip content={t('common.remove') || "Remove"} placement="left" className="absolute top-2 right-2 z-10">
                                 <button
                                     onClick={(e) => handleRemoveBaseFolder(folder.path, e)}
-                                    className="p-2 rounded-full bg-red-500/20 text-red-500 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500/40 backdrop-blur-md"
+                                    className="p-2 rounded-full bg-red-500/20 text-red-500 opacity-0 group-hover/card:opacity-100 transition-opacity hover:bg-red-500/40 backdrop-blur-md"
+                                    aria-label={t('common.remove') || "Remove"}
                                 >
                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                                         <path d="M18 6L6 18M6 6l12 12" />
                                     </svg>
                                 </button>
-                            </div>
+                            </Tooltip>
 
                             <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/90 to-transparent">
                                 <h3 className="font-semibold text-white truncate text-shadow-sm" title={folder.path}>{folder.name}</h3>
@@ -273,7 +278,7 @@ export function ExplorerPage() {
                     {currentPath && entries.map((entry) => (
                         <div
                             key={entry.path}
-                            className="group relative bg-surface-secondary rounded-xl overflow-hidden border border-white/5 hover:border-accent/50 transition-all hover:shadow-lg cursor-pointer animate-scale-in"
+                            className="group/card relative bg-surface-secondary rounded-xl overflow-hidden border border-white/5 hover:border-accent/50 transition-all hover:shadow-lg cursor-pointer animate-scale-in"
                             onClick={() => handleItemClick(entry)}
                         >
                             {entry.hasImages && entry.coverImage ? (
@@ -300,15 +305,17 @@ export function ExplorerPage() {
                                         {entry.isDirectory ? (entry.hasImages ? `${entry.imageCount} images` : 'Folder') : 'File'}
                                     </span>
                                     {entry.hasImages && (
-                                        <button
-                                            onClick={(e) => handleOpenInViewer(entry.path, e)}
-                                            className="p-1.5 rounded-full bg-accent text-white hover:bg-accent-hover transform hover:scale-110 transition-all opacity-0 group-hover:opacity-100"
-                                            title="Open in Viewer"
-                                        >
-                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                                                <path d="M8 5v14l11-7z" />
-                                            </svg>
-                                        </button>
+                                        <Tooltip content={t('explorer.openInViewer') || "Open in Viewer"} placement="left" className="z-10">
+                                            <button
+                                                onClick={(e) => handleOpenInViewer(entry.path, e)}
+                                                className="p-1.5 rounded-full bg-accent text-white hover:bg-accent-hover transform hover:scale-110 transition-all opacity-0 group-hover/card:opacity-100"
+                                                aria-label={t('explorer.openInViewer') || "Open in Viewer"}
+                                            >
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                                    <path d="M8 5v14l11-7z" />
+                                                </svg>
+                                            </button>
+                                        </Tooltip>
                                     )}
                                 </div>
                             </div>

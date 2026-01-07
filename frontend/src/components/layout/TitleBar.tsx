@@ -132,7 +132,7 @@ export function TitleBar({ title }: TitleBarProps) {
             {/* Window Controls */}
             <div className="flex items-center h-full no-drag">
                 {/* Minimize */}
-                <Tooltip content={t('common.minimize') || "Minimize"} placement="bottom">
+                <Tooltip content={t('common.minimize') || "Minimize"} placement="bottom" className="h-full">
                     <button
                         onClick={handleMinimize}
                         className="flex items-center justify-center w-12 h-full transition-colors hover:bg-surface-tertiary hover:text-text-primary"
@@ -146,7 +146,7 @@ export function TitleBar({ title }: TitleBarProps) {
                 </Tooltip>
 
                 {/* Maximize/Restore */}
-                <Tooltip content={isMaximized ? (t('common.restore') || "Restore") : (t('common.maximize') || "Maximize")} placement="bottom">
+                <Tooltip content={isMaximized ? (t('common.restore') || "Restore") : (t('common.maximize') || "Maximize")} placement="bottom" className="h-full">
                     <button
                         onClick={handleMaximize}
                         className="flex items-center justify-center w-12 h-full transition-colors hover:bg-surface-tertiary hover:text-text-primary"
@@ -160,7 +160,7 @@ export function TitleBar({ title }: TitleBarProps) {
                 </Tooltip>
 
                 {/* Close */}
-                <Tooltip content={t('common.close') || "Close"} placement="bottom">
+                <Tooltip content={t('common.close') || "Close"} placement="bottom" className="h-full">
                     <button
                         onClick={handleClose}
                         className="flex items-center justify-center w-12 h-full transition-colors hover:bg-red-600 hover:text-white"

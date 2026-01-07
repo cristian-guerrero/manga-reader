@@ -163,7 +163,7 @@ function NavButton({ item, isActive, isCollapsed, onClick }: NavButtonProps) {
         <Tooltip
             content={isCollapsed ? t(item.labelKey) : ''}
             placement="right"
-            className="w-full"
+            className="w-full h-11"
         >
             <button
                 onClick={onClick}

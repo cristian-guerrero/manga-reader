@@ -7,6 +7,7 @@ import { Toggle } from '../common/Toggle';
 import { HelpDialog } from '../common/HelpDialog';
 import { EventsOn } from '../../../wailsjs/runtime/runtime';
 import * as AppBackend from '../../../wailsjs/go/main/App';
+import { Tooltip } from '../common/Tooltip';
 import { downloader } from '../../../wailsjs/go/models';
 
 interface DownloadJob {
@@ -315,18 +316,20 @@ export const DownloadPage: React.FC = () => {
                         {t('home.subtitle')}
                     </p>
                 </div>
-                <Button
-                    onClick={() => setIsHelpOpen(true)}
-                    variant="ghost"
-                    className="p-2 rounded-full hover:bg-white/10"
-                    title={t('download.help.title')}
-                >
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <circle cx="12" cy="12" r="10"></circle>
-                        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
-                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
-                    </svg>
-                </Button>
+                <Tooltip content={t('download.help.title')} placement="left">
+                    <Button
+                        onClick={() => setIsHelpOpen(true)}
+                        variant="ghost"
+                        className="p-2 rounded-full hover:bg-white/10"
+                        aria-label={t('download.help.title')}
+                    >
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                        </svg>
+                    </Button>
+                </Tooltip>
             </header>
 
             {/* Input Section */}
@@ -431,15 +434,18 @@ export const DownloadPage: React.FC = () => {
                                                     }`}>
                                                     {t(`download.status${job.status.charAt(0).toUpperCase() + job.status.slice(1)}`)}
                                                 </span>
-                                                <button
-                                                    onClick={() => handleRemoveJob(job.id)}
-                                                    className="p-1 hover:bg-white/10 rounded transition-colors"
-                                                    style={{ color: 'var(--color-text-secondary)' }}
-                                                >
-                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                        <path d="M18 6L6 18M6 6l12 12" />
-                                                    </svg>
-                                                </button>
+                                                <Tooltip content={t('common.remove') || "Remove"} placement="left">
+                                                    <button
+                                                        onClick={() => handleRemoveJob(job.id)}
+                                                        className="p-1 hover:bg-white/10 rounded transition-colors"
+                                                        style={{ color: 'var(--color-text-secondary)' }}
+                                                        aria-label={t('common.remove') || "Remove"}
+                                                    >
+                                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                            <path d="M18 6L6 18M6 6l12 12" />
+                                                        </svg>
+                                                    </button>
+                                                </Tooltip>
                                             </div>
                                         </div>
 
@@ -542,15 +548,18 @@ export const DownloadPage: React.FC = () => {
                                                                     }`}>
                                                                     {t(`download.status${job.status.charAt(0).toUpperCase() + job.status.slice(1)}`)}
                                                                 </span>
-                                                                <button
-                                                                    onClick={(e) => { e.stopPropagation(); handleRemoveJob(job.id); }}
-                                                                    className="p-1 hover:bg-white/10 rounded transition-colors"
-                                                                    style={{ color: 'var(--color-text-secondary)' }}
-                                                                >
-                                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                                        <path d="M18 6L6 18M6 6l12 12" />
-                                                                    </svg>
-                                                                </button>
+                                                                <Tooltip content={t('common.remove') || "Remove"} placement="left" className="flex-shrink-0">
+                                                                    <button
+                                                                        onClick={(e) => { e.stopPropagation(); handleRemoveJob(job.id); }}
+                                                                        className="p-1 hover:bg-white/10 rounded transition-colors"
+                                                                        style={{ color: 'var(--color-text-secondary)' }}
+                                                                        aria-label={t('common.remove') || "Remove"}
+                                                                    >
+                                                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                                            <path d="M18 6L6 18M6 6l12 12" />
+                                                                        </svg>
+                                                                    </button>
+                                                                </Tooltip>
                                                             </div>
                                                         </div>
 
