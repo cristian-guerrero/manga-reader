@@ -174,6 +174,10 @@ export function UpdateSettings(arg1) {
   return window['go']['main']['App']['UpdateSettings'](arg1);
 }
 
+export function UpdateTaskbarIcon(arg1) {
+  return window['go']['main']['App']['UpdateTaskbarIcon'](arg1);
+}
+
 export function WindowIsMaximised() {
   return window['go']['main']['App']['WindowIsMaximised']();
 }

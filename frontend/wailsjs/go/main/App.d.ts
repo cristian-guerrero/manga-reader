@@ -91,6 +91,8 @@ export function StartDownload(arg1:string):Promise<string>;
 
 export function UpdateSettings(arg1:Record<string, any>):Promise<void>;
 
+export function UpdateTaskbarIcon(arg1:string):Promise<void>;
+
 export function WindowIsMaximised():Promise<boolean>;
 
 export function WindowMaximise():Promise<void>;
