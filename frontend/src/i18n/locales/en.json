@@ -101,7 +101,10 @@
         "lastRead": "Last read",
         "continueFrom": "Continue from page",
         "disabled": "History is disabled",
-        "disabledDesc": "Enable history in settings to track your reading progress."
+        "disabledDesc": "Enable history in settings to track your reading progress.",
+        "listView": "List View",
+        "gridView": "Grid View",
+        "remove": "Remove"
     },
     "thumbnails": {
         "title": "Thumbnails",

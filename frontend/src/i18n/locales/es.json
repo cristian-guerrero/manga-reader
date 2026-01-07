@@ -100,7 +100,12 @@
         "noHistory": "Sin historial de lectura",
         "progress": "Progreso",
         "lastRead": "Última lectura",
-        "continueFrom": "Continuar desde página"
+        "continueFrom": "Continuar desde página",
+        "disabled": "El historial está deshabilitado",
+        "disabledDesc": "Habilita el historial en configuración para rastrear tu progreso de lectura.",
+        "listView": "Vista de Lista",
+        "gridView": "Vista de Cuadrícula",
+        "remove": "Eliminar"
     },
     "thumbnails": {
         "title": "Miniaturas",

@@ -8,6 +8,8 @@ import { useNavigationStore } from '../../stores/navigationStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useToast } from '../common/Toast';
 import { ConfirmDialog } from '../common/ConfirmDialog';
+import { GridContainer } from '../common/GridContainer';
+import { GridItem } from '../common/GridItem';
 import { EventsOn, EventsOff } from '../../../wailsjs/runtime';
 
 
@@ -33,6 +35,26 @@ const TrashIcon = () => (
     </svg>
 );
 
+const GridIcon = () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <rect x="3" y="3" width="7" height="7" />
+        <rect x="14" y="3" width="7" height="7" />
+        <rect x="14" y="14" width="7" height="7" />
+        <rect x="3" y="14" width="7" height="7" />
+    </svg>
+);
+
+const ListIcon = () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <line x1="8" y1="6" x2="21" y2="6" />
+        <line x1="8" y1="12" x2="21" y2="12" />
+        <line x1="8" y1="18" x2="21" y2="18" />
+        <line x1="3" y1="6" x2="3.01" y2="6" />
+        <line x1="3" y1="12" x2="3.01" y2="12" />
+        <line x1="3" y1="18" x2="3.01" y2="18" />
+    </svg>
+);
+
 interface HistoryEntry {
     id: string;
     folderPath: string;
@@ -52,7 +74,16 @@ export function HistoryPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [isClearHistoryOpen, setIsClearHistoryOpen] = useState(false);
     const [thumbnails, setThumbnails] = useState<Record<string, string>>({});
+    const [viewMode, setViewMode] = useState<'grid' | 'list'>(() => {
+        const saved = localStorage.getItem('history_viewMode');
+        return (saved === 'grid' || saved === 'list') ? saved : 'list';
+    });
     const { enableHistory } = useSettingsStore();
+
+    // Save view mode preference
+    useEffect(() => {
+        localStorage.setItem('history_viewMode', viewMode);
+    }, [viewMode]);
 
     useEffect(() => {
         let isMounted = true;
@@ -204,16 +235,45 @@ export function HistoryPage() {
                 >
                     {t('history.title')}
                 </h1>
-                {enableHistory && history.length > 0 && (
-                    <button
-                        onClick={handleClearAllClick}
-                        className="btn-ghost text-sm flex items-center gap-2 transition-transform hover:scale-105 active:scale-95"
-                        style={{ color: '#ef4444' }}
-                    >
-                        <TrashIcon />
-                        {t('history.clearHistory')}
-                    </button>
-                )}
+                <div className="flex items-center gap-2">
+                    {enableHistory && history.length > 0 && (
+                        <>
+                            {/* View mode toggle */}
+                            <div className="flex items-center bg-surface-tertiary rounded-lg p-1 border border-white/5">
+                                <button
+                                    onClick={() => setViewMode('list')}
+                                    className={`p-1.5 rounded transition-colors ${
+                                        viewMode === 'list'
+                                            ? 'bg-accent text-white'
+                                            : 'text-text-secondary hover:text-text-primary hover:bg-white/10'
+                                    }`}
+                                    title={t('history.listView') || 'List View'}
+                                >
+                                    <ListIcon />
+                                </button>
+                                <button
+                                    onClick={() => setViewMode('grid')}
+                                    className={`p-1.5 rounded transition-colors ${
+                                        viewMode === 'grid'
+                                            ? 'bg-accent text-white'
+                                            : 'text-text-secondary hover:text-text-primary hover:bg-white/10'
+                                    }`}
+                                    title={t('history.gridView') || 'Grid View'}
+                                >
+                                    <GridIcon />
+                                </button>
+                            </div>
+                            <button
+                                onClick={handleClearAllClick}
+                                className="btn-ghost text-sm flex items-center gap-2 transition-transform hover:scale-105 active:scale-95"
+                                style={{ color: '#ef4444' }}
+                            >
+                                <TrashIcon />
+                                {t('history.clearHistory')}
+                            </button>
+                        </>
+                    )}
+                </div>
             </div>
 
             {/* History list */}
@@ -273,7 +333,7 @@ export function HistoryPage() {
                         {t('history.noHistory')}
                     </p>
                 </div>
-            ) : (
+            ) : viewMode === 'list' ? (
                 <div
                     className="space-y-3 animate-fade-in"
                 >
@@ -381,6 +441,112 @@ export function HistoryPage() {
                         </div>
                     ))}
                 </div>
+            ) : (
+                <GridContainer>
+                    {history.map((entry, index) => (
+                        <GridItem key={entry.id}>
+                            <div
+                                onClick={() => handleContinue(entry)}
+                                className="group/card relative rounded-xl overflow-hidden cursor-pointer hover-lift shadow-sm hover:border-accent transition-all animate-slide-up"
+                                style={{
+                                    backgroundColor: 'var(--color-surface-secondary)',
+                                    border: '1px solid var(--color-border)',
+                                    animationDelay: `${index * 0.05}s`
+                                }}
+                            >
+                                {/* Thumbnail */}
+                                <div
+                                    className="aspect-[3/4] relative overflow-hidden"
+                                    style={{ backgroundColor: 'var(--color-surface-tertiary)' }}
+                                >
+                                    {thumbnails[entry.id] ? (
+                                        <img
+                                            src={thumbnails[entry.id]}
+                                            alt={entry.folderName}
+                                            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                                        />
+                                    ) : (
+                                        <div className="flex items-center justify-center h-full">
+                                            <ClockIcon />
+                                        </div>
+                                    )}
+
+                                    {/* Play overlay */}
+                                    <div
+                                        className="absolute inset-0 opacity-0 group-hover/card:opacity-100 transition-opacity duration-300 flex items-center justify-center pointer-events-none"
+                                        style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+                                    >
+                                        <div
+                                            className="w-16 h-16 rounded-full flex items-center justify-center transition-transform hover:scale-110 shadow-2xl backdrop-blur-md"
+                                            style={{ backgroundColor: 'var(--color-accent)' }}
+                                        >
+                                            <PlayIcon />
+                                        </div>
+                                    </div>
+
+                                    {/* Remove button */}
+                                    <div className="absolute top-2 right-2 z-20 opacity-0 group-hover/card:opacity-100 transition-all">
+                                        <button
+                                            onClick={(e) => handleRemove(entry, e)}
+                                            className="p-2 rounded-full hover:scale-110 active:scale-90"
+                                            style={{
+                                                backgroundColor: 'rgba(239, 68, 68, 0.9)',
+                                                color: 'white',
+                                            }}
+                                            aria-label={t('history.remove') || 'Remove'}
+                                        >
+                                            <TrashIcon />
+                                        </button>
+                                    </div>
+
+                                    {/* Progress overlay */}
+                                    <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/90 to-transparent">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <div
+                                                className="flex-1 h-1.5 rounded-full overflow-hidden"
+                                                style={{ backgroundColor: 'rgba(255, 255, 255, 0.2)' }}
+                                            >
+                                                <div
+                                                    className="h-full rounded-full transition-all duration-500"
+                                                    style={{
+                                                        backgroundColor: 'var(--color-accent)',
+                                                        width: `${getProgress(entry)}%`
+                                                    }}
+                                                />
+                                            </div>
+                                            <span
+                                                className="text-xs font-medium text-white"
+                                            >
+                                                {getProgress(entry)}%
+                                            </span>
+                                        </div>
+                                        <span
+                                            className="text-xs text-white/80"
+                                        >
+                                            {entry.lastImageIndex + 1} / {entry.totalImages}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {/* Info */}
+                                <div className="p-3">
+                                    <h3
+                                        className="font-semibold truncate mb-1"
+                                        style={{ color: 'var(--color-text-primary)' }}
+                                    >
+                                        {entry.folderName}
+                                    </h3>
+                                    <p
+                                        className="text-xs"
+                                        style={{ color: 'var(--color-text-muted)' }}
+                                    >
+                                        {formatDate(entry.lastRead)}
+                                    </p>
+                                </div>
+                            </div>
+                        </GridItem>
+                    ))}
+                </GridContainer>
             )}
             {/* Clear History Confirmation Dialog */}
             <ConfirmDialog
