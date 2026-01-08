@@ -100,7 +100,44 @@ func (m *Module) ClearDownloadsData() error {
 }
 
 func (m *Module) RemoveJob(id string) {
+	// Check if job is active and cancel it
+	if activeJobData, ok := m.activeJobs.Load(id); ok {
+		if aj, ok := activeJobData.(*activeJob); ok && aj.cancel != nil {
+			aj.cancel() // Cancel the download context
+			m.activeJobs.Delete(id)
+			fmt.Printf("[Downloader] Cancelled active download: %s\n", id)
+		}
+	}
+
+	// Check if job is in queue and remove it
+	m.queueLock.Lock()
+	for siteID, queue := range m.queues {
+		newQueue := []*queuedJob{}
+		for _, qj := range queue {
+			if qj.job.ID != id {
+				newQueue = append(newQueue, qj)
+			} else {
+				fmt.Printf("[Downloader] Removed job from queue: %s (site: %s)\n", id, siteID)
+			}
+		}
+		m.queues[siteID] = newQueue
+	}
+	m.queueLock.Unlock()
+
+	// Update job status to cancelled if it exists in persistence
+	existingJobs := m.pm.GetJobs()
+	for _, job := range existingJobs {
+		if job.ID == id {
+			if job.Status == persistence.StatusRunning || job.Status == persistence.StatusPending {
+				m.pm.UpdateJob(id, map[string]interface{}{"status": persistence.StatusCancelled})
+			}
+			break
+		}
+	}
+
+	// Remove from persistence
 	m.pm.RemoveJob(id)
+	m.notifyUpdate()
 }
 
 func (m *Module) FetchMangaInfo(url string) (*SiteInfo, error) {
@@ -304,7 +341,14 @@ func (m *Module) runDownload(job persistence.DownloadJob, info *SiteInfo) {
 
 			// Add a small delay between requests to avoid rate limiting
 			if i > 0 && info.DownloadDelay > 0 {
-				time.Sleep(info.DownloadDelay)
+				select {
+				case <-ctx.Done():
+					m.pm.UpdateJob(job.ID, map[string]interface{}{"status": persistence.StatusCancelled})
+					m.notifyUpdate()
+					return
+				case <-time.After(info.DownloadDelay):
+					// Delay completed, continue
+				}
 			}
 
 			err := downloadFile(img.URL, destPath, img.Headers)

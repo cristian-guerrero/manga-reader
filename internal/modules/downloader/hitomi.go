@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
+	neturl "net/url"
 	"regexp"
 	"strconv"
 	"strings"
@@ -261,7 +261,7 @@ func (d *HitomiDownloader) GetImages(url string) (*SiteInfo, error) {
 
 func (d *HitomiDownloader) handleSearchURL(rawURL string) (*SiteInfo, error) {
 	// Parse URL
-	u, err := url.Parse(rawURL)
+	u, err := neturl.Parse(rawURL)
 	if err != nil {
 		return nil, fmt.Errorf("invalid url: %v", err)
 	}
@@ -284,7 +284,7 @@ func (d *HitomiDownloader) handleSearchURL(rawURL string) (*SiteInfo, error) {
 		queryParts = strings.Split(u.RawQuery, "&") // or &?
 	}
 	// Fallback: fully decode first
-	decodedQuery, _ := url.QueryUnescape(u.RawQuery)
+	decodedQuery, _ := neturl.QueryUnescape(u.RawQuery)
 	// Split by space
 	parts := strings.Fields(decodedQuery)
 
@@ -406,6 +406,10 @@ func (d *HitomiDownloader) getArbitraryList(url string) (*SiteInfo, error) {
 	if len(parts) > 0 {
 		lastPart := parts[len(parts)-1] // tsuyatsuya-all.html
 		name := strings.TrimSuffix(lastPart, ".html")
+		// Decode URL-encoded characters (e.g., %20 -> space)
+		if decoded, err := neturl.PathUnescape(name); err == nil {
+			name = decoded
+		}
 
 		// Handle language suffixes for display name
 		if strings.HasSuffix(name, "-all") {
@@ -591,6 +595,10 @@ func (d *HitomiDownloader) getNozomiList(url string) (*SiteInfo, error) {
 	}
 
 	name = strings.TrimSuffix(name, ".html")
+	// Decode URL-encoded characters (e.g., %20 -> space)
+	if decoded, err := neturl.PathUnescape(name); err == nil {
+		name = decoded
+	}
 	if name == "" {
 		return nil, fmt.Errorf("could not extract name from url")
 	}
