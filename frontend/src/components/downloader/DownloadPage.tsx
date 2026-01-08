@@ -59,14 +59,10 @@ export const DownloadPage: React.FC = () => {
         const individualItems: Array<{ type: 'single'; job: DownloadJob }> = [];
         const seriesItems: Array<{ type: 'series'; name: string; jobs: DownloadJob[] }> = [];
 
-        // Process all jobs
+        // First pass: Group all jobs by series name
         history.forEach((job) => {
-            // Always add as individual item
-            individualItems.push({ type: 'single', job });
-            
-            // Also track completed jobs for series grouping
             const sName = job.seriesName;
-            if (job.status === 'completed' && sName && sName !== 'Unknown Series' && sName !== 'Unknown') {
+            if (sName && sName !== 'Unknown Series' && sName !== 'Unknown') {
                 if (!seriesMap.has(sName)) {
                     seriesMap.set(sName, []);
                 }
@@ -74,17 +70,32 @@ export const DownloadPage: React.FC = () => {
             }
         });
 
-        // Add all individual items
-        items.push(...individualItems);
-
-        // Then add series groups (only if 2+ completed chapters) as additional items
+        // Second pass: Determine which jobs should be shown individually vs in series groups
+        const jobsInSeries = new Set<string>(); // Track job IDs that belong to series with 2+ chapters
+        
         seriesMap.forEach((jobs, name) => {
             if (jobs.length >= 2) {
-                seriesItems.push({ type: 'series', name, jobs });
+                // This is a series with 2+ chapters - mark all jobs as belonging to this series
+                jobs.forEach(job => jobsInSeries.add(job.id));
+                // Sort jobs by creation date (newest first)
+                const sortedJobs = [...jobs].sort((a, b) => 
+                    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+                );
+                seriesItems.push({ type: 'series', name, jobs: sortedJobs });
             }
         });
 
-        // Add series items
+        // Only add individual items for jobs that don't belong to any series with 2+ chapters
+        history.forEach((job) => {
+            if (!jobsInSeries.has(job.id)) {
+                individualItems.push({ type: 'single', job });
+            }
+        });
+
+        // Add individual items first
+        items.push(...individualItems);
+
+        // Then add series items
         items.push(...seriesItems);
 
         // Sort everything chronologically by creation date (newest first)
@@ -605,6 +616,26 @@ export const DownloadPage: React.FC = () => {
                                 const jobs = item.jobs;
                                 const finishedCount = jobs.filter(j => j.status === 'completed').length;
                                 const runningCount = jobs.filter(j => j.status === 'running').length;
+                                
+                                // Calculate overall series progress
+                                const calculateSeriesProgress = () => {
+                                    if (jobs.length === 0) return 0;
+                                    
+                                    let totalProgress = 0;
+                                    jobs.forEach(job => {
+                                        if (job.status === 'completed') {
+                                            totalProgress += 1.0; // 100% for completed
+                                        } else if (job.status === 'running' && job.totalPages > 0) {
+                                            totalProgress += job.progress / job.totalPages; // Partial progress
+                                        }
+                                        // pending, failed, cancelled count as 0
+                                    });
+                                    
+                                    return (totalProgress / jobs.length) * 100;
+                                };
+                                
+                                const seriesProgress = calculateSeriesProgress();
+                                const hasActiveDownloads = runningCount > 0 || (finishedCount < jobs.length && finishedCount > 0);
 
                                 return (
                                     <div key={item.name + index} className="card p-0 overflow-hidden flex flex-col">
@@ -612,13 +643,13 @@ export const DownloadPage: React.FC = () => {
                                             className="p-4 flex items-center justify-between cursor-pointer hover:bg-white/5 transition-colors"
                                             onClick={() => toggleSeries(item.name)}
                                         >
-                                            <div className="flex items-center gap-3">
-                                                <div className={`transition-transform duration-200 text-gray-400 ${isExpanded ? 'rotate-90' : ''}`}>
+                                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                                                <div className={`transition-transform duration-200 text-gray-400 shrink-0 ${isExpanded ? 'rotate-90' : ''}`}>
                                                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                                         <polyline points="9 18 15 12 9 6" />
                                                     </svg>
                                                 </div>
-                                                <div>
+                                                <div className="flex-1 min-w-0">
                                                     <h3 className="font-bold text-lg" style={{ color: 'var(--color-text-primary)' }}>
                                                         {item.name}
                                                     </h3>
@@ -626,6 +657,24 @@ export const DownloadPage: React.FC = () => {
                                                         {finishedCount} / {jobs.length} chapters completed
                                                         {runningCount > 0 && ` • ${runningCount} downloading`}
                                                     </p>
+                                                    {/* Series Progress Bar */}
+                                                    {hasActiveDownloads && (
+                                                        <div className="w-full flex flex-col gap-1 mt-2">
+                                                            <div className="flex justify-between text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+                                                                <span>Series Progress: {Math.round(seriesProgress)}%</span>
+                                                                <span>{finishedCount} / {jobs.length}</span>
+                                                            </div>
+                                                            <div className="w-full h-1.5 bg-black/20 rounded-full overflow-hidden">
+                                                                <div
+                                                                    className="h-full transition-all duration-300"
+                                                                    style={{
+                                                                        width: `${seriesProgress}%`,
+                                                                        backgroundColor: 'var(--color-accent)'
+                                                                    }}
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-2">
