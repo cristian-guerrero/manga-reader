@@ -202,7 +202,11 @@ export const DownloadPage: React.FC = () => {
                 text.includes('?q=')
             );
 
-            if (isHitomiSeries) {
+            // Manga18.club Series Detection: Don't auto-start series, just paste.
+            const isManga18 = text.includes('manga18.club');
+            const isManga18Series = isManga18 && text.includes('/manhwa/') && !text.includes('/chap-');
+
+            if (isHitomiSeries || isManga18Series) {
                 setUrl(text);
                 showToast(t('download.pastedFromClipboard'), 'info');
             } else {

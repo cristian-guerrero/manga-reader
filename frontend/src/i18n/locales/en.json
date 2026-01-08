@@ -161,7 +161,7 @@
             "step2": "Click 'Download'. For series, select the chapters you want.",
             "clipboard": "Clipboard Monitor",
             "clipboardDesc": "Enable 'Auto Clipboard Monitoring' to automatically detect copied URLs from supported sites.",
-            "supportedList": "Hitomi.la, Nhentai, ManhwaWeb, ZonaTMO, MangaDex"
+            "supportedList": "Hitomi.la, Nhentai, ManhwaWeb, ZonaTMO, MangaDex, Manga18.club"
         }
     },
     "settings": {

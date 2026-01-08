@@ -162,7 +162,7 @@
             "step2": "Haz clic en 'Descargar'. Para series, selecciona los capítulos que deseas.",
             "clipboard": "Monitor de Portapapeles",
             "clipboardDesc": "Activa 'Monitoreo Automático' para detectar automáticamente URLs copiadas de sitios soportados.",
-            "supportedList": "Hitomi.la, Nhentai, ManhwaWeb, ZonaTMO, MangaDex"
+            "supportedList": "Hitomi.la, Nhentai, ManhwaWeb, ZonaTMO, MangaDex, Manga18.club"
         }
     },
     "settings": {
