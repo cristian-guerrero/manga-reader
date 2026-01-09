@@ -69,16 +69,6 @@ jobs:
             echo "Archivo .app procesado correctamente"
           fi
 
-      - name: Comprimir Código Fuente (ZIP)
-        if: strategy.job-index == 0
-        run: |
-          git archive -o build/bin/source-code.zip HEAD
-
-      - name: Comprimir Código Fuente (TAR.GZ)
-        if: strategy.job-index == 0
-        run: |
-          git archive -o build/bin/source-code.tar.gz HEAD
-
       - name: Crear Release en GitHub
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
