@@ -10,5 +10,14 @@
   "author": {
     "name": "Cristian Guerrero",
     "email": "guerrero.chavez.cristian@gmail.com"
-  }
+  },
+  "info": {
+    "productName": "Manga Visor",
+    "productVersion": "1.0.0",
+    "copyright": "Copyright © 2024",
+    "comments": "A premium desktop manga viewer and downloader"
+  },
+  "nsisType": "multiple",
+  "obfuscated": false,
+  "garbleargs": ""
 }
