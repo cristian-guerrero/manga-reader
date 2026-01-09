@@ -131,7 +131,11 @@ export function TitleBar({ title }: TitleBarProps) {
                 {/* Minimize */}
                 <Tooltip content={t('common.minimize') || "Minimize"} placement="bottom" className="h-full no-drag">
                     <button
-                        onClick={handleMinimize}
+                        onMouseDown={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleMinimize();
+                        }}
                         className="flex items-center justify-center w-12 h-full transition-colors hover:bg-surface-tertiary hover:text-text-primary no-drag"
                         style={{
                             color: 'var(--color-text-secondary)',
@@ -145,7 +149,11 @@ export function TitleBar({ title }: TitleBarProps) {
                 {/* Maximize/Restore */}
                 <Tooltip content={isMaximized ? (t('common.restore') || "Restore") : (t('common.maximize') || "Maximize")} placement="bottom" className="h-full no-drag">
                     <button
-                        onClick={handleMaximize}
+                        onMouseDown={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleMaximize();
+                        }}
                         className="flex items-center justify-center w-12 h-full transition-colors hover:bg-surface-tertiary hover:text-text-primary no-drag"
                         style={{
                             color: 'var(--color-text-secondary)',
@@ -159,7 +167,11 @@ export function TitleBar({ title }: TitleBarProps) {
                 {/* Close */}
                 <Tooltip content={t('common.close') || "Close"} placement="bottom" className="h-full no-drag">
                     <button
-                        onClick={handleClose}
+                        onMouseDown={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleClose();
+                        }}
                         className="flex items-center justify-center w-12 h-full transition-colors hover:bg-red-600 hover:text-white no-drag"
                         style={{
                             color: 'var(--color-text-secondary)',
