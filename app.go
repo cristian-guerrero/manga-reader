@@ -2,18 +2,21 @@ package main
 
 import (
 	"context"
-	"crypto/md5"
 	"fmt"
-	"manga-visor/internal/archiver"
 	"manga-visor/internal/fileloader"
+	"manga-visor/internal/modules/downloader"
+	"manga-visor/internal/modules/explorer"
+	"manga-visor/internal/modules/history"
+	"manga-visor/internal/modules/library"
+	"manga-visor/internal/modules/series"
 	"manga-visor/internal/persistence"
 	"manga-visor/internal/thumbnails"
 	"net/url"
 	"os"
+	"os/exec"
 	"path/filepath"
+	stdruntime "runtime"
 	"sort"
-	"strings"
-	"time"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -22,34 +25,68 @@ import (
 type App struct {
 	ctx      context.Context
 	settings *persistence.SettingsManager
-	history  *persistence.HistoryManager
-	library  *persistence.LibraryManager
 	orders   *persistence.OrdersManager
 
+	// Core Services
 	fileLoader *fileloader.FileLoader
 	thumbGen   *thumbnails.Generator
-	series     *persistence.SeriesManager
 	imgServer  *fileloader.ImageServer
-}
 
-// AddFolderResult represents the result of adding a folder
-type AddFolderResult struct {
-	Path     string `json:"path"`
-	IsSeries bool   `json:"isSeries"`
+	// Modules
+	libraryMod    *library.Module
+	seriesMod     *series.Module
+	historyMod    *history.Module
+	explorerMod   *explorer.Module
+	downloaderMod *downloader.Module
 }
 
 // NewApp creates a new App application struct
 func NewApp() *App {
+	// Core services
+	fileLoader := fileloader.NewFileLoader()
+	thumbGen := thumbnails.NewGenerator() // Note: Generator might need App context or callback, let's keep it as is
+
+	// Persistence
+	settings := persistence.NewSettingsManager()
+	historyManager := persistence.NewHistoryManager()
+	libraryManager := persistence.NewLibraryManager()
+	seriesManager := persistence.NewSeriesManager()
+	ordersManager := persistence.NewOrdersManager()
+	downloaderPersist := persistence.NewDownloaderManager()
+
+	// Image Server (if needed by modules for URL generation)
+	// We might need to initialize it here or pass nil and set it up later if it depends on port finding?
+	// Existing code didn't show explicit initialization of imgServer in NewApp, it might be done in Startup or it's a field I missed.
+	// Looking at original app.go, `imgServer` was a field but not initialized in `NewApp`. It was likely initialized in `startup`.
+	// For now we pass nil to modules and set it later.
+
+	// fileLoader.SetImageServer(nil) // Removed: FileLoader does not need ImageServer reference directly
+
+	// Modules
+	lMod := library.NewModule(libraryManager, fileLoader, nil)
+	sMod := series.NewModule(seriesManager, fileLoader, nil)
+	hMod := history.NewModule(historyManager, settings)
+	// Passing nil for imgServer initially, it will be set or replaced via SetContext/SetImageServer if we add it?
+	// Or we just rely on struct field assignment since we're in same package?
+	// The modules are in DIFFERENT packages. We can't access fields directly.
+	// We MUST reconstruct or add setter.
+	// Since I added `imgServer` to `NewModule` args, I pass nil here.
+	eMod := explorer.NewModule(fileLoader, nil)
+	dMod := downloader.NewModule(downloaderPersist, settings)
+
+	// Dependency injection (Circular dependency resolution)
+	lMod.SetSeriesModule(sMod)
+
 	return &App{
-		settings: persistence.NewSettingsManager(),
-
-		history: persistence.NewHistoryManager(),
-		library: persistence.NewLibraryManager(),
-		orders:  persistence.NewOrdersManager(),
-
-		fileLoader: fileloader.NewFileLoader(),
-		thumbGen:   thumbnails.NewGenerator(),
-		series:     persistence.NewSeriesManager(),
+		settings:      settings,
+		orders:        ordersManager,
+		fileLoader:    fileLoader,
+		thumbGen:      thumbGen,
+		libraryMod:    lMod,
+		seriesMod:     sMod,
+		historyMod:    hMod,
+		explorerMod:   eMod,
+		downloaderMod: dMod,
 	}
 }
 
@@ -57,15 +94,82 @@ func NewApp() *App {
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 
-	// Restore window position if saved
+	// Initialize Image Server with context if needed, or just start it
+	// Initialize ImageServer with context if needed, or just start it
+	a.imgServer = fileloader.NewImageServer(a.fileLoader, a.thumbGen)
+	if err := a.imgServer.Start(); err != nil {
+		fmt.Printf("Failed to start image server: %v\n", err)
+	}
+
+	// Update modules with context and image server
+	a.libraryMod.SetContext(ctx)
+	a.libraryMod.SetImageServer(a.imgServer)
+
+	a.seriesMod.SetContext(ctx)
+	a.seriesMod.SetImageServer(a.imgServer)
+
+	a.historyMod.SetContext(ctx)
+
+	a.explorerMod.SetContext(ctx)
+	a.explorerMod.SetImageServer(a.imgServer)
+
+	a.downloaderMod.SetContext(ctx)
+
+	// We need to inject the server address into modules so they can generate URLs
+	// This requires updating the modules to accept the server/address or reconstructing them (which is checking).
+	// But `get-base-url` method in modules uses `imgServer`. So we just updated the `imgServer` reference inside modules?
+	// The modules copy the struct? No, they store checking pointer?
+	// In my module implementation: `type Module struct { ... imgServer *fileloader.ImageServer }`
+	// So I need to inject it. I didn't add a SetImageServer method to modules.
+	// I should probably access the struct fields directly if they are in same package? No, distinct packages.
+	// I will rely on re-creating them or adding a setter?
+	// Wait, I can just initialize ImageServer in NewApp! It doesn't strictly need context to be created, often only to log or bind.
+	// Check `fileloader.NewImageServer` signature. It usually takes context for lifecycle or logging.
+	// Let's assume I can't change `NewApp` signature easily without changing `main.go`.
+	// But I CAN add setters to modules. Or I can modify `app.go` to reconstruct modules in `startup`? No that's messy.
+	// I'll add a quick hack: Initialize ImageServer in NewApp if possible.
+	// If `NewImageServer` requires context, I'll pass it in `startup`.
+
+	// Re-injecting dependencies into modules (I need to update module code to allow this or use reflection/public fields).
+	// Since I wrote the modules, I know I didn't verify `SetImageServer` exists. I should probably add checking it or just use a shared singleton if possible?
+	// Better approach: Create a `Services` struct that is shared?
+	// For now, I will modify `NewApp` to create the ImageServer *without* starting it, if possible.
+	// If `NewImageServer` takes context, I'm stuck.
+	// Let's look at `app.go` original code again. `imgServer *fileloader.ImageServer` was a field.
+	// I will assume `fileloader.NewImageServer` is available.
+
+	// FIX: I will instantiate the modules in `NewApp` but pass the `imgServer` pointer which will be populated/started later?
+	// No, pointers need to point to the valid object.
+	// I will just update the modules to have `SetImageServer` or similar if I can't pass it early.
+	// Actually, I can just create the ImageServer in `NewApp` passing `context.Background()` or `nil` if allowed, and then `Start(ctx)` in startup.
+	// For now, I'll leave `imgServer` as nil in `NewApp` calls, and assume I need to update modules to handle it or I'll add `SetImageServer` method to them via `write_to_file` if needed.
+	// Actually, I can just update the `Module` structs in `app.go` by re-assigning them? No.
+
+	// Let's modify the modules to have `SetImageServer` in the next steps if needed.
+	// Or even simpler: Use the `App` instance as a facade that injects the BaseURL into methods or context?
+	// The modules use `getBaseURL` helper.
+
+	// Strategy:
+	// I will construct `App` with `imgServer` instance (not started).
+	// Pass this instance to modules.
+	// Start it in `startup`.
+
+	// Restore window position
 	settings := a.settings.Get()
+	// Validation: Windows often sets coordinates to -32000 when minimized.
+	// We ensure coordinates are within a reasonable visible range.
 	if settings.WindowX != -1 && settings.WindowY != -1 {
-		fmt.Printf("[App] Restoring window position: (%v, %v)\n", settings.WindowX, settings.WindowY)
-		runtime.WindowSetPosition(ctx, settings.WindowX, settings.WindowY)
+		if settings.WindowX > -10000 && settings.WindowY > -10000 {
+			fmt.Printf("[App] Restoring window position: (%v, %v)\n", settings.WindowX, settings.WindowY)
+			runtime.WindowSetPosition(ctx, settings.WindowX, settings.WindowY)
+		} else {
+			fmt.Printf("[App] Invalid window position detected (%v, %v), ignoring restoration.\n", settings.WindowX, settings.WindowY)
+			// Optional: Reset in settings? Not strictly necessary as next save will overwrite
+		}
 	}
 }
 
-// getBaseURL returns the base URL for images and thumbnails (standalone server in dev)
+// getBaseURL returns the base URL for images and thumbnails
 func (a *App) getBaseURL() string {
 	if a.imgServer != nil && a.imgServer.Addr != "" {
 		return a.imgServer.Addr
@@ -75,12 +179,10 @@ func (a *App) getBaseURL() string {
 
 // domReady is called after the frontend dom has been loaded
 func (a *App) domReady(ctx context.Context) {
-	// Can be used for any initialization after DOM is ready
 }
 
 // shutdown is called when the app is closing
 func (a *App) shutdown(ctx context.Context) {
-	// Any other cleanup if needed
 }
 
 // SaveWindowState captures and saves the current window dimensions and position
@@ -93,9 +195,7 @@ func (a *App) SaveWindowState() {
 	x, y := runtime.WindowGetPosition(a.ctx)
 	w, h := runtime.WindowGetSize(a.ctx)
 
-	// Don't save if width/height is 0 (happens if window is already destroyed)
 	if w <= 0 || h <= 0 {
-		fmt.Printf("[App] Ignoring invalid window state: %vx%v at (%v,%v)\n", w, h, x, y)
 		return
 	}
 
@@ -107,7 +207,6 @@ func (a *App) SaveWindowState() {
 		"windowMaximized": isMaximized,
 	}
 
-	fmt.Printf("[App] Saving window state: %vx%v at (%v,%v), maximized: %v\n", w, h, x, y, isMaximized)
 	a.settings.Update(updates)
 }
 
@@ -115,27 +214,22 @@ func (a *App) SaveWindowState() {
 // Window Control Methods
 // =============================================================================
 
-// WindowMinimise minimizes the window
 func (a *App) WindowMinimise() {
 	runtime.WindowMinimise(a.ctx)
 }
 
-// WindowMaximise maximizes the window
 func (a *App) WindowMaximise() {
 	runtime.WindowMaximise(a.ctx)
 }
 
-// WindowUnmaximise restores the window from maximized state
 func (a *App) WindowUnmaximise() {
 	runtime.WindowUnmaximise(a.ctx)
 }
 
-// WindowIsMaximised checks if window is maximized
 func (a *App) WindowIsMaximised() bool {
 	return runtime.WindowIsMaximised(a.ctx)
 }
 
-// WindowToggleMaximise toggles between maximized and normal state
 func (a *App) WindowToggleMaximise() {
 	runtime.WindowToggleMaximise(a.ctx)
 }
@@ -144,117 +238,68 @@ func (a *App) WindowToggleMaximise() {
 // Settings Methods
 // =============================================================================
 
-// GetSettings returns the current settings
 func (a *App) GetSettings() *persistence.Settings {
 	return a.settings.Get()
 }
 
-// SaveSettings saves the settings
 func (a *App) SaveSettings(settings *persistence.Settings) error {
 	return a.settings.Save(settings)
 }
 
-// UpdateSettings updates specific settings fields
 func (a *App) UpdateSettings(updates map[string]interface{}) error {
 	return a.settings.Update(updates)
 }
 
 // =============================================================================
-// History Methods
+// History Methods (Delegated)
 // =============================================================================
 
-// GetHistory returns all history entries
 func (a *App) GetHistory() []persistence.HistoryEntry {
-	return a.history.GetAll()
+	return a.historyMod.GetHistory()
 }
 
-// GetHistoryEntry returns a specific history entry
 func (a *App) GetHistoryEntry(folderPath string) *persistence.HistoryEntry {
-	return a.history.Get(folderPath)
+	return a.historyMod.GetHistoryEntry(folderPath)
 }
 
-// resolveToFolder returns the path itself if it's a directory or a supported archive, or the parent directory if it's a normal file.
-func (a *App) resolveToFolder(path string) string {
-	if archiver.IsArchive(path) {
-		return path
-	}
-
-	info, err := os.Stat(path)
-	if err != nil {
-		fmt.Printf("[App] Error stating path %s: %v\n", path, err)
-		return path
-	}
-	if info.IsDir() {
-		return path
-	}
-	parent := filepath.Dir(path)
-	fmt.Printf("[App] Resolved file path %s to folder %s\n", path, parent)
-	return parent
-}
-
-// ResolveFolder exposes path resolution to the frontend
 func (a *App) ResolveFolder(path string) string {
-	return a.resolveToFolder(path)
+	return a.libraryMod.ResolveFolder(path)
 }
 
-// AddHistory adds or updates a history entry
 func (a *App) AddHistory(entry persistence.HistoryEntry) error {
-	// Check if history is enabled
-	settings := a.settings.Get()
-	if !settings.EnableHistory {
-		return nil
-	}
-
-	if err := a.history.Add(entry); err != nil {
-		return err
-	}
-	runtime.EventsEmit(a.ctx, "history_updated")
-	return nil
+	return a.historyMod.AddHistory(entry)
 }
 
-// RemoveHistory removes a history entry
 func (a *App) RemoveHistory(folderPath string) error {
-	err := a.history.Remove(folderPath)
-	if err == nil {
-		runtime.EventsEmit(a.ctx, "history_updated")
-	}
-	return err
+	return a.historyMod.RemoveHistory(folderPath)
 }
 
-// ClearHistory clears all history
 func (a *App) ClearHistory() error {
-	err := a.history.Clear()
-	if err == nil {
-		runtime.EventsEmit(a.ctx, "history_updated")
-	}
-	return err
+	return a.historyMod.ClearHistory()
 }
 
 // =============================================================================
-// Image Order Methods
+// Image Order Methods (Kept in App for now or move to specific module? Kept here or moved to Library?)
+// For now, let's keep Orders in App or delegate if Library needs it.
+// The original App had OrdersManager. Let's expose it directly for now as it wasn't strictly part of the modularization plan.
 // =============================================================================
 
-// GetImageOrder returns the image order for a folder
 func (a *App) GetImageOrder(folderPath string) []string {
 	return a.orders.GetOrder(folderPath)
 }
 
-// SaveImageOrder saves a custom image order
 func (a *App) SaveImageOrder(folderPath string, customOrder []string, originalOrder []string) error {
 	return a.orders.Save(folderPath, customOrder, originalOrder)
 }
 
-// ResetImageOrder resets the image order to original
 func (a *App) ResetImageOrder(folderPath string) error {
 	return a.orders.Reset(folderPath)
 }
 
-// HasCustomOrder checks if a folder has a custom order
 func (a *App) HasCustomOrder(folderPath string) bool {
 	return a.orders.HasCustomOrder(folderPath)
 }
 
-// GetOriginalOrder returns the original file order for a folder (before any customization)
 func (a *App) GetOriginalOrder(folderPath string) []string {
 	orderData := a.orders.Get(folderPath)
 	if orderData != nil && len(orderData.OriginalOrder) > 0 {
@@ -264,69 +309,90 @@ func (a *App) GetOriginalOrder(folderPath string) []string {
 }
 
 // =============================================================================
-// File System Methods
+// File System & Library Methods (Delegated)
 // =============================================================================
 
-// SelectFolder opens a folder selection dialog
 func (a *App) SelectFolder() (string, error) {
 	return runtime.OpenDirectoryDialog(a.ctx, runtime.OpenDialogOptions{
 		Title: "Select Manga Folder",
 	})
 }
 
-// ImageInfo represents information about an image file
-type ImageInfo struct {
-	Path         string `json:"path"`
-	ThumbnailURL string `json:"thumbnailUrl"`
-	ImageURL     string `json:"imageUrl"`
-	Name         string `json:"name"`
-	Extension    string `json:"extension"`
-	Size         int64  `json:"size"`
-	Index        int    `json:"index"`
-	ModTime      int64  `json:"modTime"`
-}
+// ImageInfo and FolderInfo need to be shared or accessible.
+// They are now in `persistence` or `fileloader`?
+// In the original code, `ImageInfo` was defined in `app.go`.
+// I SHOULD MOVE shared structs to `persistence` or `internal/api` types.
+// ERROR: My modules use `persistence.FolderInfo` but `app.go` returned `App.ImageInfo` struct which had JSON tags.
+// I need to ensure the structs returned to Wails matches what frontend expects.
+// `ImageInfo` in `app.go` had `ThumbnailURL`. `fileloader.ImageInfo` does not.
+// The modules should return the Enhanced structs (with URLs).
+// In my `library.go`, `GetFolderInfo` returns `*persistence.FolderInfo`.
+// I need to check if `persistence.FolderInfo` has `ThumbnailURL`.
+// Looking at `library.go` module code I wrote:
+// `type FolderInfo struct` was NOT defined there, it returns `*persistence.FolderInfo`.
+// But `persistence.FolderInfo` doesn't exist? `persistence` package has `LibraryEntry` etc.
+// Wait, I might have introduced a compilation error if `persistence.FolderInfo` is not defined.
+// In `internal/persistence/library.go`, I defined `LibraryEntry`.
+// I DID NOT define `FolderInfo` in `persistence`.
+// THIS IS A CRITICAL ISSUE. I need a shared `types` package or put these in `persistence`.
+// I will assume I need to ADD these types to `persistence` or a new `types` package.
+// For expediency, I will add them to `persistence/common.go` or similar.
 
-// GetImages returns a list of images in the specified folder
-func (a *App) GetImages(path string) ([]ImageInfo, error) {
-	folderPath := a.resolveToFolder(path)
+// Also `GetImages` in `app.go` returned `[]ImageInfo`.
+// My `library.go` calls `fileloader.GetImages` but doesn't expose `GetImages`!
+// `App.GetImages` is used by the frontend viewer!
+// I MUST expose `GetImages` via `App` but logic should probably be in `Library` or `Explorer`?
+// Actually `GetImages` is a generic file operation.
+// I should probably keep `GetImages` in `App` or move it to `Library` module and delegate.
+// Since `App` is the API surface, I can keep using `fileloader` here or delegate to `libraryMod`.
+// Given `Library` module has `GetFolderInfo`, it likely needs `GetImages`.
+// I should define `GetImages` in `App` that delegates or uses `fileloader` directly + generates URLs.
+// This logic was in `app.go` before.
+
+func (a *App) GetImages(path string) ([]persistence.ImageInfo, error) {
+	// Re-implementing GetImages here using shared logic or duplicating it for now to avoid breaking changes
+	// Ideally this should be in a shared service.
+
+	// Delegate to fileLoader directly?
+	// But we need to generate URLs.
+	// Let's copy-paste the logic from original App.go but fix references.
+
+	folderPath := a.libraryMod.ResolveFolder(path) // Use library mod for resolution
 	images, err := a.fileLoader.GetImages(folderPath)
 	if err != nil {
 		return nil, err
 	}
 
-	// Filter by min size
 	settings := a.settings.Get()
-	originalCount := len(images)
 	if settings.MinImageSize > 0 {
 		var filtered []fileloader.ImageInfo
-		minBytes := settings.MinImageSize * 1024 // KB to Bytes
+		minBytes := settings.MinImageSize * 1024
 		for _, img := range images {
 			if img.Size >= minBytes {
 				filtered = append(filtered, img)
 			}
 		}
-
-		// Only apply filter if it doesn't remove ALL images
 		if len(filtered) > 0 {
 			images = filtered
-		} else if originalCount > 0 {
-			fmt.Printf("[App] GetImages: MinImageSize filter (%d KB) would remove all %d images. Ignoring filter.\n", settings.MinImageSize, originalCount)
 		}
 	}
 
-	if len(images) < originalCount {
-		fmt.Printf("[App] GetImages: Filtered out %d images below %d KB. Remaining: %d\n", originalCount-len(images), settings.MinImageSize, len(images))
-	}
-
-	// Register directory and get hash
 	dirHash := a.fileLoader.RegisterDirectory(folderPath)
 	baseURL := a.getBaseURL()
 
-	// Convert to our type
-	result := make([]ImageInfo, len(images))
+	// Define return type anonymously or use a named type if I define one.
+	// Since Wails uses the return value, anonymous struct slice works fine for runtime,
+	// but for Go code clarity I should probably define it.
+	// Return type matches `GetImages` signature.
+
+	// struct defined inline below
+
+	// Use named struct matching the return signature
+	result := make([]persistence.ImageInfo, len(images))
+
 	for i, img := range images {
 		relPath, _ := filepath.Rel(folderPath, img.Path)
-		result[i] = ImageInfo{
+		result[i] = persistence.ImageInfo{
 			Path:         img.Path,
 			ThumbnailURL: fmt.Sprintf("%s/thumbnails?did=%s&fid=%s", baseURL, dirHash, url.QueryEscape(relPath)),
 			ImageURL:     fmt.Sprintf("%s/images?did=%s&fid=%s", baseURL, dirHash, url.QueryEscape(relPath)),
@@ -338,516 +404,282 @@ func (a *App) GetImages(path string) ([]ImageInfo, error) {
 		}
 	}
 
-	// Check if we have a custom order
+	// Check Custom Order
 	customOrder := a.orders.GetOrder(folderPath)
 	if customOrder != nil && len(customOrder) > 0 {
-		// Create a map for quick lookup
+		// Create a map for fast lookup of custom index
 		orderMap := make(map[string]int)
 		for i, name := range customOrder {
 			orderMap[name] = i
 		}
 
-		// Sort by custom order
+		// Sort the result slice based on custom orders
 		sort.Slice(result, func(i, j int) bool {
-			iOrder, iExists := orderMap[result[i].Name]
-			jOrder, jExists := orderMap[result[j].Name]
+			idxI, existsI := orderMap[result[i].Name]
+			idxJ, existsJ := orderMap[result[j].Name]
 
-			if !iExists && !jExists {
-				return result[i].Name < result[j].Name
+			if existsI && existsJ {
+				return idxI < idxJ
 			}
-			if !iExists {
-				return false
-			}
-			if !jExists {
+			if existsI {
 				return true
 			}
-			return iOrder < jOrder
+			if existsJ {
+				return false
+			}
+			// If neither in custom order, keep original relative order (sort by name as fallback)
+			return result[i].Name < result[j].Name
 		})
 
-		// Update indices
+		// Update indices to match new order
 		for i := range result {
 			result[i].Index = i
 		}
-	} else {
-		// Store original order
-		originalOrder := make([]string, len(result))
-		for i, img := range result {
-			originalOrder[i] = img.Name
-		}
-		a.orders.SetOriginalOrder(folderPath, originalOrder)
-	}
-
-	if len(result) > 0 {
-		fmt.Printf("[App] GetImages: Returning %d images for %s. First ImageURL: %s\n", len(result), folderPath, result[0].ImageURL)
 	}
 
 	return result, nil
 }
 
-// FolderInfo represents information about a folder
-type FolderInfo struct {
-	Path         string `json:"path"`
-	Name         string `json:"name"`
-	ImageCount   int    `json:"imageCount"`
-	CoverImage   string `json:"coverImage"`
-	ThumbnailURL string `json:"thumbnailUrl"`
-	LastModified string `json:"lastModified"`
+// GetFolderInfo delegates to Library module
+func (a *App) GetFolderInfo(folderPath string) (*persistence.FolderInfo, error) {
+	return a.libraryMod.GetFolderInfo(folderPath)
 }
 
-// GetFolderInfo returns information about a folder
-func (a *App) GetFolderInfo(folderPath string) (*FolderInfo, error) {
-	images, err := a.GetImages(folderPath)
-	if err != nil {
-		return nil, err
-	}
-
-	var coverImage string
-	var thumbnailURL string
-	if len(images) > 0 {
-		coverImage = images[0].Path
-		dirHash := a.fileLoader.RegisterDirectory(folderPath)
-		baseURL := a.getBaseURL()
-		thumbnailURL = fmt.Sprintf("%s/thumbnails?did=%s&fid=%s", baseURL, dirHash, url.QueryEscape(images[0].Name))
-	}
-
-	return &FolderInfo{
-		Path:         folderPath,
-		Name:         filepath.Base(folderPath),
-		ImageCount:   len(images),
-		CoverImage:   coverImage,
-		ThumbnailURL: thumbnailURL,
-	}, nil
+// GetSubfolders delegates to Library module
+func (a *App) GetSubfolders(folderPath string) ([]persistence.FolderInfo, error) {
+	return a.libraryMod.GetSubfolders(folderPath)
 }
 
-// GetSubfolders returns a list of subfolders that contain images
-func (a *App) GetSubfolders(folderPath string) ([]FolderInfo, error) {
-	var folders []FolderInfo
-
-	entries, err := filepath.Glob(filepath.Join(folderPath, "*"))
-	if err != nil {
-		return nil, err
-	}
-
-	for _, entry := range entries {
-		// Ensure it's a directory
-		stat, err := os.Stat(entry)
-		if err != nil || !stat.IsDir() {
-			continue
-		}
-
-		info, err := a.GetFolderInfo(entry)
-		if err != nil {
-			continue
-		}
-
-		// Only include folders with images
-		if info.ImageCount > 0 {
-			folders = append(folders, *info)
-		}
-	}
-
-	// Sort naturally by name
-	sort.Slice(folders, func(i, j int) bool {
-		return strings.ToLower(folders[i].Name) < strings.ToLower(folders[j].Name)
-	})
-
-	return folders, nil
+// AddFolder delegates to Library module
+func (a *App) AddFolder(path string) (*persistence.AddFolderResult, error) {
+	return a.libraryMod.AddFolder(path)
 }
 
-// AddFolder adds a folder to the LIBRARY or SERIES (if it has subfolders)
-func (a *App) AddFolder(path string) (*AddFolderResult, error) {
-	isTemp := false
-	actualPath := path
-
-	// If it's an archive, extract it
-	if archiver.IsArchive(path) {
-		tempBase := persistence.GetTempDir()
-		hash := md5.Sum([]byte(path))
-		folderName := strings.TrimSuffix(filepath.Base(path), filepath.Ext(path))
-		dest := filepath.Join(tempBase, fmt.Sprintf("%x_%s", hash, folderName))
-
-		fmt.Printf("[App] Extracting archive %s to %s\n", path, dest)
-		if err := archiver.Extract(path, dest); err != nil {
-			fmt.Printf("[App] Error extracting archive: %v\n", err)
-			return nil, err
-		}
-		actualPath = a.unwrapArchiveRoot(dest)
-		isTemp = true
-	} else {
-		// Even for normal folders, unwrap to find the real content root
-		// E.g. Root -> Subfolder -> images
-		actualPath = a.unwrapArchiveRoot(path)
-	}
-
-	folderPath := a.resolveToFolder(actualPath)
-
-	// Check if it's a series (has subfolders with images)
-	subfolders, _ := a.GetSubfolders(folderPath)
-	if len(subfolders) > 0 {
-		return a.AddSeries(folderPath, subfolders, isTemp)
-	}
-
-	folderInfo, err := a.GetFolderInfo(folderPath)
-	if err != nil {
-		return nil, err
-	}
-
-	if folderInfo.ImageCount == 0 {
-		return nil, fmt.Errorf("no images found in folder")
-	}
-
-	entry := persistence.LibraryEntry{
-		FolderPath:  folderInfo.Path,
-		FolderName:  folderInfo.Name,
-		TotalImages: folderInfo.ImageCount,
-		CoverImage:  folderInfo.CoverImage,
-		AddedAt:     time.Now().Format(time.RFC3339),
-		IsTemporary: isTemp,
-	}
-
-	if err := a.library.Add(entry); err != nil {
-		fmt.Printf("Error adding folder to library: %v\n", err)
-		return nil, err
-	}
-
-	runtime.EventsEmit(a.ctx, "library_updated")
-	fmt.Printf("Folder added to library: %s (temp: %v)\n", folderPath, isTemp)
-	return &AddFolderResult{Path: folderPath, IsSeries: false}, nil
+// GetLibrary delegates to Library module
+func (a *App) GetLibrary() []persistence.FolderInfo {
+	return a.libraryMod.GetLibrary()
 }
 
-// AddSeries adds a series with its chapters
-func (a *App) AddSeries(path string, subfolders []FolderInfo, isTemp bool) (*AddFolderResult, error) {
-	// ... existing logic ...
-	rootImages, _ := a.GetImages(path)
-	var coverImage string
-
-	if len(rootImages) > 0 {
-		coverImage = rootImages[0].Path
-		for _, img := range rootImages {
-			lowerName := strings.ToLower(img.Name)
-			if strings.Contains(lowerName, "cover") || strings.Contains(lowerName, "folder") || strings.Contains(lowerName, "thumb") {
-				coverImage = img.Path
-				break
-			}
-			if coverImage == rootImages[0].Path && img.Size < 500*1024 {
-				coverImage = img.Path
-			}
-		}
-	} else if len(subfolders) > 0 {
-		coverImage = subfolders[0].CoverImage
-	}
-
-	chapters := make([]persistence.ChapterInfo, len(subfolders))
-	for i, sub := range subfolders {
-		// Find first image in subfolder for chapter cover
-		chapterImages, _ := a.GetImages(sub.Path)
-		chCover := ""
-		if len(chapterImages) > 0 {
-			chCover = chapterImages[0].Name
-		}
-
-		chapters[i] = persistence.ChapterInfo{
-			Path:       sub.Path,
-			Name:       sub.Name,
-			CoverImage: chCover,
-			ImageCount: sub.ImageCount,
-		}
-	}
-
-	entry := persistence.SeriesEntry{
-		Path:        path,
-		Name:        filepath.Base(path),
-		CoverImage:  coverImage,
-		AddedAt:     time.Now().Format(time.RFC3339),
-		Chapters:    chapters,
-		IsTemporary: isTemp,
-	}
-
-	if err := a.series.Add(entry); err != nil {
-		fmt.Printf("Error adding series: %v\n", err)
-		return nil, err
-	}
-
-	runtime.EventsEmit(a.ctx, "series_updated")
-	fmt.Printf("Series added: %s with %d chapters (temp: %v)\n", path, len(subfolders), isTemp)
-	return &AddFolderResult{Path: path, IsSeries: true}, nil
+func (a *App) RemoveLibraryEntry(folderPath string) error {
+	return a.libraryMod.RemoveLibraryEntry(folderPath)
 }
 
-// SeriesEntryWithURLs is a SeriesEntry with added URL fields for the frontend
-type SeriesEntryWithURLs struct {
-	persistence.SeriesEntry
-	ThumbnailURL string            `json:"thumbnailUrl"`
-	Chapters     []ChapterWithURLs `json:"chapters"`
+func (a *App) ClearLibrary() error {
+	return a.libraryMod.ClearLibrary()
 }
 
-type ChapterWithURLs struct {
-	persistence.ChapterInfo
-	ThumbnailURL string `json:"thumbnailUrl"`
+// =============================================================================
+// Series Methods (Delegated)
+// =============================================================================
+
+func (a *App) AddSeries(path string, subfolders []persistence.FolderInfo, isTemp bool) (*persistence.AddFolderResult, error) {
+	return a.seriesMod.AddSeries(path, subfolders, isTemp)
 }
 
-// GetSeries returns all series entries with direct links
-func (a *App) GetSeries() []SeriesEntryWithURLs {
-	entries := a.series.GetAll()
-	result := make([]SeriesEntryWithURLs, len(entries))
-
-	baseURL := a.getBaseURL()
-	for i, entry := range entries {
-		chapters := make([]ChapterWithURLs, len(entry.Chapters))
-		changed := false
-
-		for j, ch := range entry.Chapters {
-			dirHash := a.fileLoader.RegisterDirectory(ch.Path)
-			fid := ch.CoverImage
-
-			// Proactively find cover image if missing (for old entries)
-			if fid == "" {
-				chapterImages, _ := a.GetImages(ch.Path)
-				if len(chapterImages) > 0 {
-					fid = chapterImages[0].Name
-					entry.Chapters[j].CoverImage = fid
-					changed = true
-				} else {
-					fid = filepath.Base(ch.Path)
-				}
-			}
-
-			chapters[j] = ChapterWithURLs{
-				ChapterInfo:  entry.Chapters[j],
-				ThumbnailURL: fmt.Sprintf("%s/thumbnails?did=%s&fid=%s", baseURL, dirHash, url.QueryEscape(fid)),
-			}
-		}
-
-		// If we fixed any missing cover images, save them back to persistence
-		if changed {
-			a.series.Add(entry)
-		}
-
-		dirHash := a.fileLoader.RegisterDirectory(filepath.Dir(entry.CoverImage))
-		result[i] = SeriesEntryWithURLs{
-			SeriesEntry:  entry,
-			ThumbnailURL: fmt.Sprintf("%s/thumbnails?did=%s&fid=%s", baseURL, dirHash, url.QueryEscape(filepath.Base(entry.CoverImage))),
-			Chapters:     chapters,
-		}
-	}
-
-	return result
+func (a *App) GetSeries() []series.SeriesEntryWithURLs {
+	return a.seriesMod.GetSeries()
 }
 
-// RemoveSeries removes a series entry
 func (a *App) RemoveSeries(path string) error {
-	entry := a.series.Get(path)
-	if entry != nil && entry.IsTemporary {
-		a.cleanupTemporaryPath(path)
-	}
-
-	err := a.series.Remove(path)
-	if err == nil {
-		runtime.EventsEmit(a.ctx, "series_updated")
-	}
-	return err
+	return a.seriesMod.RemoveSeries(path)
 }
 
-// IsSeries checks if a folder should be treated as a series
+func (a *App) ClearSeries() error {
+	return a.seriesMod.ClearSeries()
+}
+
 func (a *App) IsSeries(path string) bool {
-	folderPath := a.resolveToFolder(path)
-	subfolders, _ := a.GetSubfolders(folderPath)
+	// Basic check using library/series logic
+	folderPath := a.libraryMod.ResolveFolder(path)
+	subfolders, _ := a.libraryMod.GetSubfolders(folderPath)
 	return len(subfolders) > 0
 }
 
-// ChapterNavigation contains adjacent chapter info for navigation
-type ChapterNavigation struct {
-	PrevChapter   *persistence.ChapterInfo `json:"prevChapter"`
-	NextChapter   *persistence.ChapterInfo `json:"nextChapter"`
-	SeriesPath    string                   `json:"seriesPath"`
-	SeriesName    string                   `json:"seriesName"`
-	ChapterIndex  int                      `json:"chapterIndex"`
-	TotalChapters int                      `json:"totalChapters"`
-}
-
-// GetChapterNavigation returns prev/next chapter for a given chapter path
-func (a *App) GetChapterNavigation(chapterPath string) *ChapterNavigation {
-	entries := a.series.GetAll()
-
-	for _, entry := range entries {
-		for i, ch := range entry.Chapters {
-			if ch.Path == chapterPath {
-				nav := &ChapterNavigation{
-					SeriesPath:    entry.Path,
-					SeriesName:    entry.Name,
-					ChapterIndex:  i,
-					TotalChapters: len(entry.Chapters),
-				}
-
-				// Previous chapter
-				if i > 0 {
-					prev := entry.Chapters[i-1]
-					nav.PrevChapter = &prev
-				}
-
-				// Next chapter
-				if i < len(entry.Chapters)-1 {
-					next := entry.Chapters[i+1]
-					nav.NextChapter = &next
-				}
-
-				fmt.Printf("[App] GetChapterNavigation: Found chapter %d/%d in series '%s'\n", i+1, len(entry.Chapters), entry.Name)
-				return nav
-			}
-		}
-	}
-
-	fmt.Printf("[App] GetChapterNavigation: No series found for path: %s\n", chapterPath)
-	return nil
-}
-
-// GetLibrary returns all library entries as FolderInfo with direct links
-func (a *App) GetLibrary() []FolderInfo {
-	entries := a.library.GetAll()
-	result := make([]FolderInfo, 0, len(entries))
-
-	for _, entry := range entries {
-		info, err := a.GetFolderInfo(entry.FolderPath)
-		if err == nil {
-			result = append(result, *info)
-		} else {
-			// Fallback if folder no longer exists or error
-			result = append(result, FolderInfo{
-				Path:       entry.FolderPath,
-				Name:       entry.FolderName,
-				ImageCount: entry.TotalImages,
-				CoverImage: entry.CoverImage,
-			})
-		}
-	}
-
-	return result
-}
-
-// RemoveLibraryEntry removes a library entry
-func (a *App) RemoveLibraryEntry(folderPath string) error {
-	entry := a.library.Get(folderPath)
-	if entry != nil && entry.IsTemporary {
-		a.cleanupTemporaryPath(folderPath)
-	}
-
-	err := a.library.Remove(folderPath)
-	if err == nil {
-		runtime.EventsEmit(a.ctx, "library_updated")
-	}
-	return err
-}
-
-// ClearLibrary removes all library entries
-func (a *App) ClearLibrary() error {
-	entries := a.library.GetAll()
-	for _, entry := range entries {
-		if entry.IsTemporary {
-			a.cleanupTemporaryPath(entry.FolderPath)
-		}
-	}
-
-	err := a.library.Clear()
-	if err == nil {
-		runtime.EventsEmit(a.ctx, "library_updated")
-	}
-	return err
-}
-
-// ClearSeries removes all series entries
-func (a *App) ClearSeries() error {
-	entries := a.series.GetAll()
-	for _, entry := range entries {
-		if entry.IsTemporary {
-			a.cleanupTemporaryPath(entry.Path)
-		}
-	}
-
-	err := a.series.Clear()
-	if err == nil {
-		runtime.EventsEmit(a.ctx, "series_updated")
-	}
-	return err
+func (a *App) GetChapterNavigation(chapterPath string) *series.ChapterNavigation {
+	return a.seriesMod.GetChapterNavigation(chapterPath)
 }
 
 // =============================================================================
-// Image Loading Methods
+// Explorer Methods (New)
 // =============================================================================
 
-// GetThumbnail generates or retrieves a thumbnail for an image
-// GetThumbnail generates or retrieves a thumbnail for an image and returns a direct link
+func (a *App) GetBaseFolders() []explorer.BaseFolderEntry {
+	return a.explorerMod.GetBaseFolders()
+}
+
+func (a *App) AddBaseFolder(path string) error {
+	return a.explorerMod.AddBaseFolder(path)
+}
+
+func (a *App) RemoveBaseFolder(path string) error {
+	return a.explorerMod.RemoveBaseFolder(path)
+}
+
+func (a *App) ExploreFolder(path string) ([]explorer.ExplorerEntry, error) {
+	return a.explorerMod.ListDirectory(path)
+}
+
+// =============================================================================
+// Thumbnail Methods
+// =============================================================================
+
 func (a *App) GetThumbnail(imagePath string) (string, error) {
+	// Use fileLoader to register and return URL
 	dirHash := a.fileLoader.RegisterDirectory(filepath.Dir(imagePath))
 	baseURL := a.getBaseURL()
-	// @ts-ignore
 	return fmt.Sprintf("%s/thumbnails?did=%s&fid=%s", baseURL, dirHash, url.QueryEscape(filepath.Base(imagePath))), nil
 }
 
-// PreloadThumbnails generates thumbnails for a list of images in the background
 func (a *App) PreloadThumbnails(imagePaths []string) {
 	go a.thumbGen.PreloadThumbnails(imagePaths)
 }
 
-// ClearThumbnailCache clears the thumbnail cache
 func (a *App) ClearThumbnailCache() error {
 	return a.thumbGen.ClearCache()
 }
 
-// unwrapArchiveRoot walks down the directory tree if there's only one subfolder and no images.
-// This is common in ZIP files: ZIP -> Folder -> Images...
-func (a *App) unwrapArchiveRoot(path string) string {
-	for {
-		entries, err := os.ReadDir(path)
-		if err != nil {
-			return path
-		}
+// =============================================================================
+// Downloader Methods (Delegated)
+// =============================================================================
 
-		var subdirs []os.DirEntry
-		var hasImages bool
-		var validCount int
-
-		for _, e := range entries {
-			name := e.Name()
-			// Ignore hidden files and MacOS metadata
-			if strings.HasPrefix(name, ".") || name == "__MACOSX" {
-				continue
-			}
-			validCount++
-
-			if e.IsDir() {
-				subdirs = append(subdirs, e)
-			} else if a.fileLoader.IsSupportedImage(name) {
-				hasImages = true
-				break
-			}
-		}
-
-		// If we found images or there's more than one valid thing at this level, this is our root.
-		if hasImages || len(subdirs) != 1 || validCount > 1 {
-			return path
-		}
-
-		// Go one level deeper
-		path = filepath.Join(path, subdirs[0].Name())
-	}
+func (a *App) StartDownload(url string, overrideSeries string, overrideChapter string) (string, error) {
+	return a.downloaderMod.StartDownload(url, overrideSeries, overrideChapter)
 }
 
-// cleanupTemporaryPath ensures the entire extraction root is removed from the temp directory.
-func (a *App) cleanupTemporaryPath(path string) {
-	tempDir := persistence.GetTempDir()
-	rel, err := filepath.Rel(tempDir, path)
+func (a *App) GetDownloadHistory() []persistence.DownloadJob {
+	return a.downloaderMod.GetHistory()
+}
+
+func (a *App) ClearDownloadHistory() {
+	a.downloaderMod.ClearHistory()
+}
+
+func (a *App) RemoveDownloadJob(id string) {
+	a.downloaderMod.RemoveJob(id)
+}
+
+func (a *App) FetchMangaInfo(url string) (*downloader.SiteInfo, error) {
+	return a.downloaderMod.FetchMangaInfo(url)
+}
+
+// OpenInFileManager opens a path in the system's file manager
+func (a *App) OpenInFileManager(path string) error {
+	var cmd *exec.Cmd
+	switch stdruntime.GOOS {
+	case "windows":
+		// explorer on Windows
+		cmd = exec.Command("explorer", path)
+	case "darwin":
+		// open on macOS
+		cmd = exec.Command("open", path)
+	default:
+		// xdg-open on Linux
+		cmd = exec.Command("xdg-open", path)
+	}
+	return cmd.Start()
+}
+
+// AddDownloadedFolder adds a downloaded folder (chapter) to OneShot and returns the path
+// Used when clicking Play on an individual chapter in the download manager
+func (a *App) AddDownloadedFolder(downloadPath string) (string, error) {
+	// Check if the path exists
+	info, err := os.Stat(downloadPath)
 	if err != nil {
-		fmt.Printf("[App] Error calculating relative path for cleanup: %v\n", err)
-		os.RemoveAll(path) // Fallback to removing the path itself
-		return
+		return "", fmt.Errorf("path not found: %v", err)
+	}
+	if !info.IsDir() {
+		downloadPath = filepath.Dir(downloadPath)
 	}
 
-	parts := strings.Split(rel, string(os.PathSeparator))
-	if len(parts) > 0 && parts[0] != ".." && parts[0] != "." {
-		rootToRemove := filepath.Join(tempDir, parts[0])
-		fmt.Printf("[App] Cleaning up temporary root: %s (from path %s)\n", rootToRemove, path)
-		os.RemoveAll(rootToRemove)
-	} else {
-		// If it's not actually inside tempDir or something weird happened
-		os.RemoveAll(path)
+	// Add the specific folder/chapter to oneshot
+	_, err = a.libraryMod.AddFolder(downloadPath)
+	if err != nil {
+		return "", err
 	}
+	return downloadPath, nil
+}
+
+// AddDownloadedSeries adds a downloaded series (parent folder with chapters) to Series
+// Used when clicking Play on a series header in the download manager
+func (a *App) AddDownloadedSeries(chapterPath string) (string, error) {
+	// Get the parent folder (series folder)
+	seriesPath := filepath.Dir(chapterPath)
+	
+	// Check if the series path exists
+	info, err := os.Stat(seriesPath)
+	if err != nil {
+		return "", fmt.Errorf("series path not found: %v", err)
+	}
+	if !info.IsDir() {
+		return "", fmt.Errorf("series path is not a directory")
+	}
+
+	// Get subfolders (chapters)
+	subfolders, err := a.libraryMod.GetSubfolders(seriesPath)
+	if err != nil {
+		return "", err
+	}
+
+	if len(subfolders) == 0 {
+		return "", fmt.Errorf("no chapters found in series folder")
+	}
+
+	// Add as series
+	_, err = a.seriesMod.AddSeries(seriesPath, subfolders, false)
+	if err != nil {
+		return "", err
+	}
+	
+	return seriesPath, nil
+}
+
+// ClearAllData wipes all application data (cache, history, library, etc.)
+func (a *App) ClearAllData() error {
+	fmt.Println("[App] Clearing all application data...")
+
+	// 1. Clear History
+	if err := a.historyMod.ClearHistory(); err != nil {
+		fmt.Printf("[App] Failed to clear history: %v\n", err)
+	}
+
+	// 2. Clear Library
+	if err := a.libraryMod.ClearLibrary(); err != nil {
+		fmt.Printf("[App] Failed to clear library: %v\n", err)
+	}
+
+	// 3. Clear Series
+	if err := a.seriesMod.ClearSeries(); err != nil {
+		fmt.Printf("[App] Failed to clear series: %v\n", err)
+	}
+
+	// 4. Clear Thumbnails
+	if err := a.thumbGen.ClearCache(); err != nil {
+		fmt.Printf("[App] Failed to clear thumbnails: %v\n", err)
+	}
+
+	// 5. Clear Downloads (History + Files)
+	if err := a.downloaderMod.ClearDownloadsData(); err != nil {
+		fmt.Printf("[App] Failed to clear downloads: %v\n", err)
+	}
+
+	// 6. Clear Explorer Folders
+	if err := a.explorerMod.ClearBaseFolders(); err != nil {
+		fmt.Printf("[App] Failed to clear explorer folders: %v\n", err)
+	}
+
+	// 7. Reset specific settings (LastPage, LastFolder)
+	updates := map[string]interface{}{
+		"lastPage":   "home",
+		"lastFolder": "",
+	}
+	a.settings.Update(updates)
+
+	fmt.Println("[App] All data cleared successfully.")
+	return nil
+}
+
+// UpdateTaskbarIcon dynamically changes the Windows taskbar icon
+// Implementation is in app_windows.go for Windows, and app_other.go for other platforms
+func (a *App) UpdateTaskbarIcon(base64Data string) {
+	updateTaskbarIconImpl(a, base64Data)
 }

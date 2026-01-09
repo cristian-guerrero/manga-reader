@@ -2,8 +2,8 @@
 
 ## Prerequisites
 
-- **Go 1.21+** - [Download](https://golang.org/dl/)
-- **Node.js 18+** - [Download](https://nodejs.org/)
+- **Go 1.24+** - [Download](https://golang.org/dl/)
+- **Node.js 20+** - [Download](https://nodejs.org/)
 - **Wails CLI** - Install with `go install github.com/wailsapp/wails/v2/cmd/wails@latest`
 
 ## Development Setup
@@ -32,9 +32,23 @@ internal/
 │   ├── persistence.go    # Base helpers (saveJSON, loadJSON)
 │   ├── settings.go       # Settings manager
 │   ├── history.go        # History manager
-│   └── imageorder.go     # Image order manager
+│   ├── library.go        # Library manager
+│   ├── explorer.go       # Explorer manager
+│   ├── series.go         # Series manager
+│   ├── downloader.go     # Downloader state manager
+│   ├── imageorder.go     # Image order manager
+│   └── types.go          # Shared types
+├── modules/              # Business logic modules
+│   ├── downloader/       # Downloader module (Hitomi, MangaDex, etc.)
+│   ├── explorer/         # File explorer module
+│   ├── history/          # Reading history module
+│   ├── library/          # Library management module
+│   └── series/           # Series management module
 ├── fileloader/
-│   └── loader.go         # Image loading, MIME types, natural sorting
+│   ├── loader.go         # Image loading, MIME types, natural sorting
+│   └── imageserver.go    # Image server for thumbnails
+├── archiver/
+│   └── archiver.go       # Archive extraction (ZIP, RAR, etc.)
 └── thumbnails/
     └── generator.go      # Thumbnail generation with caching
 ```
@@ -44,11 +58,29 @@ internal/
 ```
 src/
 ├── components/
-│   ├── layout/           # TitleBar, Sidebar, MainLayout
-│   ├── viewers/          # VerticalViewer, LateralViewer, ViewerPage
-│   ├── browser/          # FoldersPage, HistoryPage, ThumbnailsPage
-│   ├── settings/         # SettingsPage
-│   └── common/           # Toast, shared components
+│   ├── pages/            # All page components
+│   │   ├── HomePage.tsx
+│   │   ├── OneShotPage.tsx
+│   │   ├── SeriesPage.tsx
+│   │   ├── SeriesDetailsPage.tsx
+│   │   ├── HistoryPage.tsx
+│   │   ├── ExplorerPage.tsx
+│   │   ├── ThumbnailsPage.tsx
+│   │   ├── SettingsPage.tsx
+│   │   └── DownloadPage.tsx
+│   ├── viewers/          # Viewer components
+│   │   ├── VerticalViewer.tsx
+│   │   ├── LateralViewer.tsx
+│   │   └── ViewerPage.tsx
+│   ├── layout/           # Layout components
+│   │   ├── TitleBar.tsx
+│   │   ├── Sidebar.tsx
+│   │   └── MainLayout.tsx
+│   └── common/           # Shared components
+│       ├── Button.tsx
+│       ├── Toast.tsx
+│       ├── Tooltip.tsx
+│       └── ... (other shared components)
 ├── stores/               # Zustand state management
 │   ├── settingsStore.ts
 │   ├── navigationStore.ts
@@ -56,9 +88,18 @@ src/
 ├── hooks/                # Custom hooks
 │   ├── usePanicMode.ts
 │   └── useKeyboardNav.ts
+├── utils/                # Utility functions
+│   └── iconGenerator.ts
 ├── i18n/                 # Internationalization
+│   ├── index.ts
+│   └── locales/
+│       ├── en.json
+│       └── es.json
 ├── themes/               # Theme definitions
+│   ├── index.ts
+│   └── pixel.css
 └── types/                # TypeScript type definitions
+    └── index.ts
 ```
 
 ## Code Conventions
@@ -84,10 +125,12 @@ src/
 
 ### New Page
 
-1. Create component in appropriate folder
+1. Create component in `components/pages/` folder
 2. Add to `renderPage()` in `App.tsx`
-3. Add navigation item to `Sidebar.tsx` if needed
-4. Add translations to locale files
+3. Add the page type to `PageType` in `types/index.ts`
+4. Add navigation item to `Sidebar.tsx` if needed
+5. Add translations to locale files (`i18n/locales/`)
+6. Update `navigationStore.ts` if it's a main menu page
 
 ### New Backend Method
 

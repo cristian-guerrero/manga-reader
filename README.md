@@ -1,50 +1,51 @@
 # Manga Visor 📖
 
-A premium desktop manga viewer application built with Wails, React, and Go.
+A premium desktop manga viewer and downloader application built with Wails, React, and Go. High performance, beautiful aesthetics, and smooth experience.
 
-![Manga Visor](https://img.shields.io/badge/version-1.0.0-blue.svg)
+![Manga Visor](https://img.shields.io/badge/version-1.1.0-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 
 ## ✨ Features
 
-### Viewing Modes
-- **Vertical Scroll** - Infinite scroll with configurable width (30-100%)
-- **Lateral Pages** - Single or double page view with smooth transitions
-- **Zoom & Pan** - Pinch to zoom, drag to pan with smooth animations
+### 📥 Downloader (NEW)
+- **High-speed Downloader** - Multi-threaded image downloading.
+- **Supported Sites** - Integrated support for:
+  - **Hitomi.la** (with language filtering)
+  - **MangaDex** (with language filtering)
+  - **nHentai**
+  - **ManhwaWeb**
+  - **ZonaTMO**
+- **Smart Monitoring** - Automatic clipboard monitoring for instant downloads.
+- **Queue Management** - Sequential download queue with pause/resume support.
+- **Auto-organization** - Downloads are automatically structured into folders for the Library.
 
-### Organization
-- **Folder Browser** - Browse and manage your manga folders
-- **Series & Chapters** - Automatic organization of folders with subfolders as series
-- **Reading History** - Track your progress with visual indicators (sync across devices)
-- **Image Reordering** - Drag & drop to reorder images (persistent)
-- **Archive Management** - Drag & drop archives to extract and read automatically
-- **Visual Identifiers** - Distinctive badges for archives (ZIP/RAR) in the library
+### 🖼️ Viewing Modes
+- **Vertical Scroll** - Infinite scroll with configurable width (30-100%).
+- **Lateral Pages** - Single or double page view with smooth CSS transitions.
+- **Zoom & Pan** - Advanced controls for detailed viewing with smooth responsiveness.
+- **Thumbnails View** - Grid overview for quick navigation and selection.
 
-### Experience
-- **5 Built-in Themes** - Dark, Light, Midnight Blue, Sakura, AMOLED Black
-- **Multi-language** - English and Spanish (easy to add more)
-- **Panic Button** - Press ESC to instantly clear the screen
-- **Keyboard Navigation** - Full keyboard support
-- **Double Click Actions** - Double-click title bar to maximize/restore window
-- **Processing Feedback** - High-quality animated loading indicators for heavy tasks
+### 📂 Organization
+- **Explorer & Library** - Browse local folders or let the app manage your collection.
+- **Reading History** - Track your progress with visual indicators and resume functionality.
+- **Image Reordering** - Drag & drop to reorder images manually or sort by name/date.
+- **Archive Support** - Read directly from ZIP, RAR, CBZ, and CBR archives with automatic cleanup.
+- **Folder Thumbnails** - Visual previews for all your series and chapters.
 
-### Technical
-- **Portable** - Single executable, no installation required
-- **Fast** - Virtualized lists, lazy loading, thumbnail caching
-- **Cross-platform** - Windows, macOS, and Linux support
+### 🎨 Experience
+- **9 Premium Themes** - Dark, Light, Midnight Blue, Sakura, AMOLED Black, Lavender Dream, Mint Fresh, Peach Blossom, and Ichigo.
+- **Multi-language** - Full support for English and Spanish.
+- **Performance Optimized** - Virtualized lists and intelligent caching for smooth handling of thousands of images.
+- **Panic Button** - Press `ESC` to instantly return to the home screen.
+- **Responsive Navigation** - Optimized for both mouse and keyboard.
 
-## 🚀 Quick Start
+## 🚀 Getting Started
 
 ### Prerequisites
-- [Go 1.21+](https://golang.org/dl/)
-- [Node.js 18+](https://nodejs.org/)
+- [Go 1.24+](https://golang.org/dl/)
+- [Node.js 20+](https://nodejs.org/)
 - [Wails CLI](https://wails.io/docs/gettingstarted/installation)
-
-```bash
-# Install Wails CLI
-go install github.com/wailsapp/wails/v2/cmd/wails@latest
-```
 
 ### Development
 
@@ -60,19 +61,16 @@ cd frontend && npm install && cd ..
 wails dev
 ```
 
-### Building
+### 📦 Building & Releases
+The project uses GitHub Actions for **multiplatform builds**. When a new tag (e.g., `v1.1.0`) is pushed, builds are automatically generated for:
+- **Windows** (AMD64)
+- **Linux** (AMD64 - requires `libgtk-3-dev` and `libwebkit2gtk-4.1-dev`)
+- **macOS** (Universal/Silicon support)
 
+To build manually:
 ```bash
-# Build for current platform
-wails build
-
-# Build for specific platform (cross-compilation)
 wails build -platform windows/amd64
-wails build -platform darwin/amd64
-wails build -platform linux/amd64
 ```
-
-The built executable will be in the `build/bin/` directory.
 
 ## 🎮 Keyboard Shortcuts
 
@@ -86,121 +84,38 @@ The built executable will be in the `build/bin/` directory.
 | `-` | Zoom out |
 | `0` | Reset zoom |
 | `B` | Toggle sidebar |
-| `Escape` | Panic mode (return home) |
-
-## 🎨 Themes
-
-Manga Visor comes with 5 premium themes:
-
-- **Dark** - Default dark theme with purple accents
-- **Light** - Clean light theme for daytime reading
-- **Midnight Blue** - Deep blue theme for night owls
-- **Sakura** - Soft pink theme inspired by cherry blossoms
-- **AMOLED Black** - Pure black for OLED screens
-
-### Adding Custom Themes
-
-Create a JSON file in `~/.manga-visor/themes/`:
-
-```json
-{
-  "id": "my-theme",
-  "name": "My Custom Theme",
-  "colors": {
-    "accent": "#your-accent-color",
-    "background": "#your-background-color",
-    ...
-  }
-}
-```
-
-## 📁 Supported Formats
-
-- **Images**: PNG, JPG, JPEG, WebP, GIF, BMP, TIFF, SVG, AVIF
-- **Archives**: ZIP, RAR, CBZ, CBR (Automatic extraction and cleanup)
-
-## 🔄 Session Restore
-
-Manga Visor remembers your last visited main page (Home, Folders, Series, History, Settings) and automatically restores it when you reopen the application.
-
-## 🌐 Translations
-
-Currently supported languages:
-- 🇺🇸 English
-- 🇪🇸 Spanish
-
-### Adding a New Language
-
-1. Create a new JSON file in `frontend/src/i18n/locales/`
-2. Copy the structure from `en.json`
-3. Translate all values
-4. Add the language to `frontend/src/i18n/index.ts`
-
-## 🏗️ Project Structure
-
-```
-manga-visor/
-├── app.go                 # Main Go application logic
-├── main.go                # Entry point & Wails config
-├── internal/              # Go internal packages
-│   ├── persistence/       # Data persistence (settings, history, orders)
-│   ├── fileloader/        # Image loading & processing
-│   ├── thumbnails/        # Thumbnail generation & caching
-│   └── archiver/          # ZIP/RAR extraction & sanitization
-├── frontend/              # React frontend
-│   ├── src/
-│   │   ├── components/    # React components
-│   │   │   ├── layout/    # Layout components
-│   │   │   ├── viewers/   # Viewer components
-│   │   │   ├── browser/   # Browser & history components
-│   │   │   ├── settings/  # Settings components
-│   │   │   └── common/    # Shared components
-│   │   ├── stores/        # Zustand state management
-│   │   ├── hooks/         # Custom React hooks
-│   │   ├── i18n/          # Internationalization
-│   │   ├── themes/        # Theme definitions
-│   │   └── types/         # TypeScript types
-│   └── ...
-└── build/                 # Build output
-```
-
-## 📊 Data Storage
-
-All user data is stored in `~/.manga-visor/`:
-
-```
-~/.manga-visor/
-├── settings.json          # Application settings
-├── history.json           # Reading history
-├── series.json            # Series and chapters metadata
-├── orders.json            # Custom image orders
-├── themes/                # Custom themes (optional)
-└── cache/
-    ├── thumbnails/        # Cached thumbnails
-    └── temp/              # Temporary storage for extracted archives
-```
+| `T` | Toggle Thumbnail view |
+| `Escape` | Panic mode / Close viewer |
 
 ## 🛠️ Tech Stack
 
-- **Desktop Framework**: [Wails v2](https://wails.io/)
-- **Backend**: Go 1.21+
+- **Framework**: [Wails v2](https://wails.io/) (Go + Webview)
+- **Backend**: Go 1.24 (High performance logic and file handling)
 - **Frontend**: React 18 + TypeScript + Vite
-- **Styling**: Tailwind CSS 3
-- **Animations**: Framer Motion 11
+- **Styling**: Vanilla CSS (Premium, custom-crafted designs)
 - **State Management**: Zustand
-- **Virtualization**: @tanstack/react-virtual
+- **Drag & Drop**: @dnd-kit
 - **i18n**: react-i18next
 
-## 📝 License
+## 📊 Data Storage
+Data is stored locally in the user's home directory under `~/.manga-visor/` (on Windows: `%APPDATA%/manga-visor/`).
 
+### Folders
+- **`cache/`** - Persistent storage for high-quality thumbnails generated for the Explorer and Library.
+- **`downloads/`** - Default location for all downloaded manga chapters.
+- **`temp/`** - Temporary workspace for extracting archives (ZIP, RAR, etc.) and processing transient data.
+
+### Configuration Files
+- **`downloader.json`** - Manages the state of the download queue, including pending, running, and completed jobs.
+- **`explorer.json`** - Stores user-defined base folders, pinned locations, and explorer view preferences.
+- **`history.json`** - Detailed record of your reading progress (last page, completion status).
+- **`library.json`** - Metadata and organization info for folders managed within the internal Library.
+- **`orders.json`** - Stores custom manual sorting and reordering of images within specific folders.
+- **`series.json`** - Metadata and grouping information for manga series and their chapters.
+- **`settings.json`** - Application-wide preferences (Theme, Language, Viewer modes, etc.).
+
+## 📝 License
 MIT License - See [LICENSE](LICENSE) for details.
 
-## 🙏 Acknowledgments
-
-- [Wails](https://wails.io/) for the amazing Go + Web framework
-- [Framer Motion](https://www.framer.com/motion/) for beautiful animations
-- [Tailwind CSS](https://tailwindcss.com/) for utility-first styling
-
 ---
-
-Made with ❤️ for manga enthusiasts
+Made with ❤️ for the manga community.

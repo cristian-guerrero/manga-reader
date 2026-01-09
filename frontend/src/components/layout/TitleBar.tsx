@@ -4,8 +4,8 @@
  */
 
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
+import { Tooltip } from '../common/Tooltip';
 
 // Icons
 const MinimizeIcon = () => (
@@ -95,25 +95,20 @@ export function TitleBar({ title }: TitleBarProps) {
 
     return (
         <header
-            className="flex items-center justify-between h-10 px-3 select-none theme-transition"
+            className="flex items-center justify-between h-10 select-none theme-transition wails-drag"
             style={{
                 backgroundColor: 'rgba(0, 0, 0, 0)',
                 color: 'var(--color-titlebar-text)',
-                // @ts-ignore
-                '--wails-draggable': 'drag',
             }}
-            onDoubleClick={handleMaximize}
         >
             {/* App Logo and Title - Draggable */}
-            <div className="flex items-center gap-2 flex-1 drag h-full">
+            <div className="flex items-center gap-2 flex-1 drag h-full pl-3" onDoubleClick={handleMaximize}>
                 {/* Logo */}
-                <motion.div
-                    className="flex items-center justify-center w-5 h-5 rounded"
+                <div
+                    className="flex items-center justify-center w-5 h-5 rounded transition-transform hover:scale-110 active:scale-95"
                     style={{
                         background: 'var(--gradient-accent)',
                     }}
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.95 }}
                 >
                     <svg
                         width="12"
@@ -123,7 +118,7 @@ export function TitleBar({ title }: TitleBarProps) {
                     >
                         <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z" />
                     </svg>
-                </motion.div>
+                </div>
 
                 {/* Title */}
                 <span className="text-xs font-medium truncate">
@@ -132,57 +127,48 @@ export function TitleBar({ title }: TitleBarProps) {
             </div>
 
             {/* Window Controls */}
-            <div className="flex items-center gap-0.5 no-drag">
+            <div className="flex items-center h-full no-drag">
                 {/* Minimize */}
-                <motion.button
-                    onClick={handleMinimize}
-                    className="flex items-center justify-center w-8 h-8 rounded transition-colors"
-                    style={{
-                        color: 'var(--color-text-secondary)',
-                    }}
-                    whileHover={{
-                        backgroundColor: 'var(--color-surface-tertiary)',
-                        color: 'var(--color-text-primary)',
-                    }}
-                    whileTap={{ scale: 0.95 }}
-                    aria-label="Minimize"
-                >
-                    <MinimizeIcon />
-                </motion.button>
+                <Tooltip content={t('common.minimize') || "Minimize"} placement="bottom" className="h-full no-drag">
+                    <button
+                        onClick={handleMinimize}
+                        className="flex items-center justify-center w-12 h-full transition-colors hover:bg-surface-tertiary hover:text-text-primary no-drag"
+                        style={{
+                            color: 'var(--color-text-secondary)',
+                        }}
+                        aria-label="Minimize"
+                    >
+                        <MinimizeIcon />
+                    </button>
+                </Tooltip>
 
                 {/* Maximize/Restore */}
-                <motion.button
-                    onClick={handleMaximize}
-                    className="flex items-center justify-center w-8 h-8 rounded transition-colors"
-                    style={{
-                        color: 'var(--color-text-secondary)',
-                    }}
-                    whileHover={{
-                        backgroundColor: 'var(--color-surface-tertiary)',
-                        color: 'var(--color-text-primary)',
-                    }}
-                    whileTap={{ scale: 0.95 }}
-                    aria-label={isMaximized ? 'Restore' : 'Maximize'}
-                >
-                    {isMaximized ? <RestoreIcon /> : <MaximizeIcon />}
-                </motion.button>
+                <Tooltip content={isMaximized ? (t('common.restore') || "Restore") : (t('common.maximize') || "Maximize")} placement="bottom" className="h-full no-drag">
+                    <button
+                        onClick={handleMaximize}
+                        className="flex items-center justify-center w-12 h-full transition-colors hover:bg-surface-tertiary hover:text-text-primary no-drag"
+                        style={{
+                            color: 'var(--color-text-secondary)',
+                        }}
+                        aria-label={isMaximized ? 'Restore' : 'Maximize'}
+                    >
+                        {isMaximized ? <RestoreIcon /> : <MaximizeIcon />}
+                    </button>
+                </Tooltip>
 
                 {/* Close */}
-                <motion.button
-                    onClick={handleClose}
-                    className="flex items-center justify-center w-8 h-8 rounded transition-colors"
-                    style={{
-                        color: 'var(--color-text-secondary)',
-                    }}
-                    whileHover={{
-                        backgroundColor: '#dc2626',
-                        color: 'white',
-                    }}
-                    whileTap={{ scale: 0.95 }}
-                    aria-label="Close"
-                >
-                    <CloseIcon />
-                </motion.button>
+                <Tooltip content={t('common.close') || "Close"} placement="bottom" className="h-full no-drag">
+                    <button
+                        onClick={handleClose}
+                        className="flex items-center justify-center w-12 h-full transition-colors hover:bg-red-600 hover:text-white no-drag"
+                        style={{
+                            color: 'var(--color-text-secondary)',
+                        }}
+                        aria-label="Close"
+                    >
+                        <CloseIcon />
+                    </button>
+                </Tooltip>
             </div>
         </header>
     );

@@ -36,6 +36,8 @@ export interface FolderInfo {
     thumbnailUrl?: string;
     /** Last modified timestamp */
     lastModified: string;
+    /** Whether it's a temporary archive folder */
+    isTemporary?: boolean;
 }
 
 // ============================================================================
@@ -104,6 +106,14 @@ export interface Settings {
     processDroppedFolders: boolean;
     /** Last visited page (for startup restore) */
     lastPage: string;
+    /** Enabled menu items */
+    enabledMenuItems: Record<string, boolean>;
+    /** Download path */
+    downloadPath: string;
+    /** Clipboard auto monitor */
+    clipboardAutoMonitor: boolean;
+    /** Per-theme accent colors { themeId: color } */
+    themeAccents: Record<string, string>;
 }
 
 
@@ -127,6 +137,18 @@ export const DEFAULT_SETTINGS: Settings = {
     minImageSize: 0,
     processDroppedFolders: true,
     lastPage: 'home',
+    enabledMenuItems: {
+        'home': true,
+        'history': true,
+        'oneShot': true,
+        'series': true,
+        'explorer': true,
+        'download': true,
+        'settings': true
+    },
+    downloadPath: '',
+    clipboardAutoMonitor: false,
+    themeAccents: {},
 };
 
 
@@ -177,10 +199,12 @@ export type PageType =
     | 'home'
     | 'viewer'
     | 'history'
-    | 'folders'
+    | 'oneShot'
     | 'series'
     | 'series-details'
     | 'thumbnails'
+    | 'explorer'
+    | 'download'
     | 'settings';
 
 export interface NavigationState {

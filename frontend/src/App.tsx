@@ -3,16 +3,17 @@
  */
 
 import { useEffect, Suspense, useState, useCallback } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
 import { MainLayout } from './components/layout/MainLayout';
-import { HomePage } from './components/HomePage';
+import { HomePage } from './components/pages/HomePage';
 import { ViewerPage } from './components/viewers/ViewerPage';
-import { FoldersPage } from './components/browser/FoldersPage';
-import { SeriesPage } from './components/browser/SeriesPage';
-import { SeriesDetailsPage } from './components/browser/SeriesDetailsPage';
-import { HistoryPage } from './components/browser/HistoryPage';
-import { ThumbnailsPage } from './components/browser/ThumbnailsPage';
-import { SettingsPage } from './components/settings/SettingsPage';
+import { OneShotPage } from './components/pages/OneShotPage';
+import { SeriesPage } from './components/pages/SeriesPage';
+import { SeriesDetailsPage } from './components/pages/SeriesDetailsPage';
+import { HistoryPage } from './components/pages/HistoryPage';
+import { ExplorerPage } from './components/pages/ExplorerPage';
+import { ThumbnailsPage } from './components/pages/ThumbnailsPage';
+import { SettingsPage } from './components/pages/SettingsPage';
+import { DownloadPage } from './components/pages/DownloadPage';
 import { useNavigationStore } from './stores/navigationStore';
 import { useSettingsStore } from './stores/settingsStore';
 import { usePanicMode } from './hooks/usePanicMode';
@@ -36,27 +37,16 @@ declare global {
 function LoadingScreen() {
     return (
         <div
-            className="flex items-center justify-center h-screen w-screen"
+            className="flex items-center justify-center h-screen w-screen animate-fade-in"
             style={{ backgroundColor: 'var(--color-surface-primary)' }}
         >
-            <motion.div
-                className="flex flex-col items-center gap-4"
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.3 }}
-            >
+            <div className="flex flex-col items-center gap-4 animate-scale-in">
                 {/* Animated logo */}
-                <motion.div
+                <div
                     className="w-16 h-16 rounded-xl flex items-center justify-center"
-                    style={{ background: 'var(--gradient-accent)' }}
-                    animate={{
-                        rotate: [0, 10, -10, 0],
-                        scale: [1, 1.05, 1],
-                    }}
-                    transition={{
-                        duration: 2,
-                        repeat: Infinity,
-                        ease: 'easeInOut',
+                    style={{
+                        background: 'var(--gradient-accent)',
+                        animation: 'rotateLogo 2s ease-in-out infinite'
                     }}
                 >
                     <svg
@@ -67,35 +57,30 @@ function LoadingScreen() {
                     >
                         <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z" />
                     </svg>
-                </motion.div>
+                </div>
 
                 {/* Loading text */}
-                <motion.div
-                    className="text-lg font-medium"
+                <div
+                    className="text-lg font-medium animate-pulse-slow"
                     style={{ color: 'var(--color-text-secondary)' }}
-                    animate={{ opacity: [0.5, 1, 0.5] }}
-                    transition={{ duration: 1.5, repeat: Infinity }}
                 >
                     Loading...
-                </motion.div>
+                </div>
 
                 {/* Progress bar */}
                 <div
                     className="w-48 h-1 rounded-full overflow-hidden"
                     style={{ backgroundColor: 'var(--color-surface-tertiary)' }}
                 >
-                    <motion.div
-                        className="h-full rounded-full"
-                        style={{ background: 'var(--gradient-accent)' }}
-                        animate={{ x: ['-100%', '100%'] }}
-                        transition={{
-                            duration: 1,
-                            repeat: Infinity,
-                            ease: 'easeInOut',
+                    <div
+                        className="h-full rounded-full animate-progress"
+                        style={{
+                            background: 'var(--gradient-accent)',
+                            width: '100%'
                         }}
                     />
                 </div>
-            </motion.div>
+            </div>
         </div>
     );
 }
@@ -120,8 +105,8 @@ function renderPage(page: string, params: Record<string, string>): React.ReactNo
             return <ViewerPage folderPath={params.folder} />;
         case 'history':
             return <HistoryPage />;
-        case 'folders':
-            return <FoldersPage />;
+        case 'oneShot':
+            return <OneShotPage />;
         case 'series':
             return <SeriesPage />;
         case 'series-details':
@@ -130,6 +115,10 @@ function renderPage(page: string, params: Record<string, string>): React.ReactNo
             return <SettingsPage />;
         case 'thumbnails':
             return <ThumbnailsPage folderPath={params.folder} />;
+        case 'explorer':
+            return <ExplorerPage />;
+        case 'download':
+            return <DownloadPage />;
         default:
             return <HomePage />;
     }
@@ -160,7 +149,7 @@ function App() {
             const lastPage = useSettingsStore.getState().lastPage;
             if (lastPage && lastPage !== 'home') {
                 // Only restore main pages, not viewer or other temporary pages
-                const mainPages = ['home', 'folders', 'series', 'history', 'settings'];
+                const mainPages = ['home', 'oneShot', 'series', 'history', 'download', 'settings'];
                 if (mainPages.includes(lastPage)) {
                     useNavigationStore.getState().navigate(lastPage as any);
                 }

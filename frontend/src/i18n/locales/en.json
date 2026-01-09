@@ -8,6 +8,7 @@
         "confirm": "Confirm",
         "save": "Save",
         "delete": "Delete",
+        "remove": "Remove",
         "edit": "Edit",
         "close": "Close",
         "back": "Back",
@@ -19,15 +20,26 @@
         "off": "Off",
         "processing": "Processing...",
         "pleaseWait": "Please wait while we prepare your content",
-        "archive": "Archive"
+        "archive": "Archive",
+        "minimize": "Minimize",
+        "maximize": "Maximize",
+        "restore": "Restore",
+        "ascending": "Ascending",
+        "descending": "Descending",
+        "name": "Name",
+        "date": "Date",
+        "pages": "pages",
+        "noFolderSelected": "No folder selected"
     },
     "navigation": {
         "home": "Home",
         "history": "History",
-        "folders": "Folders",
+        "oneShot": "One shot",
         "series": "Series",
+        "download": "Downloads",
         "settings": "Settings",
-        "viewer": "Viewer"
+        "viewer": "Viewer",
+        "explorer": "Explorer"
     },
     "home": {
         "welcome": "Welcome to Manga Visor ",
@@ -55,10 +67,11 @@
         "thumbnails": "Thumbnails",
         "imageInfo": "Image Info",
         "prevChapter": "Previous Chapter",
-        "nextChapter": "Next Chapter"
+        "nextChapter": "Next Chapter",
+        "goToStart": "Go to Start"
     },
-    "folders": {
-        "title": "Folders",
+    "oneShot": {
+        "title": "One shot",
         "selectFolder": "Select Folder",
         "addFolder": "Add Folder",
         "removeFolder": "Remove Folder",
@@ -71,7 +84,9 @@
         "noFolders": "No folders added yet",
         "dragDrop": "Drag and drop or click to select",
         "addFailed": "Failed to add folder",
-        "foldersAdded": "{{count}} folders added to library"
+        "foldersAdded": "{{count}} folders added to library",
+        "searchPlaceholder": "Search folders by name...",
+        "noFoldersFound": "No folders found matching your search"
     },
     "series": {
         "title": "Series",
@@ -82,7 +97,13 @@
         "chapters": "chapters",
         "noSeries": "No series added yet",
         "openSeries": "View Chapters",
-        "chapterCount": "{{count}} Chapters"
+        "chapterCount": "{{count}} Chapters",
+        "searchPlaceholder": "Search series by name...",
+        "searchChapterPlaceholder": "Search chapters by name...",
+        "noChaptersFound": "No chapters found matching your search",
+        "pagesLabel": "pages",
+        "seriesNotFound": "Series not found",
+        "readNow": "Read Now"
     },
     "history": {
         "title": "Reading History",
@@ -93,7 +114,10 @@
         "lastRead": "Last read",
         "continueFrom": "Continue from page",
         "disabled": "History is disabled",
-        "disabledDesc": "Enable history in settings to track your reading progress."
+        "disabledDesc": "Enable history in settings to track your reading progress.",
+        "listView": "List View",
+        "gridView": "Grid View",
+        "remove": "Remove"
     },
     "thumbnails": {
         "title": "Thumbnails",
@@ -102,6 +126,45 @@
         "confirmReset": "Reset image order to original?",
         "dragToReorder": "Drag to reorder",
         "orderSaved": "Order saved"
+    },
+    "download": {
+        "title": "Download Manager",
+        "subtitle": "Download your favorite mangas to have them available offline",
+        "urlPlaceholder": "Paste manga URL here...",
+        "startDownload": "Download",
+        "autoMonitor": "Auto Clipboard Monitoring",
+        "downloadHistory": "Download History",
+        "clearHistory": "Clear History",
+        "noDownloads": "No active or recent downloads",
+        "statusPending": "Pending",
+        "statusRunning": "Downloading",
+        "statusCompleted": "Completed",
+        "statusFailed": "Failed",
+        "statusCancelled": "Cancelled",
+        "selectPath": "Change Download Folder",
+        "defaultPath": "Default Folder",
+        "totalPages": "{{count}} pages",
+        "error": "Error: {{message}}",
+        "openFolder": "Open Folder",
+        "playInViewer": "Play",
+        "playSeries": "Play Series",
+        "addedToLibrary": "Added to library",
+        "addedToSeries": "Series added to library",
+        "alreadyDownloaded": "Already downloaded",
+        "allAlreadyDownloaded": "All chapters already downloaded",
+        "pastedFromClipboard": "URL pasted from clipboard",
+        "startedFromClipboard": "Download started from clipboard",
+        "seriesDetectedClipboard": "Series detected. Go to Downloads page to select chapters",
+        "help": {
+            "title": "How to use",
+            "supportedSites": "Supported Sites",
+            "instructions": "Instructions",
+            "step1": "Paste a valid manga/doujin URL in the input field.",
+            "step2": "Click 'Download'. For series, select the chapters you want.",
+            "clipboard": "Clipboard Monitor",
+            "clipboardDesc": "Enable 'Auto Clipboard Monitoring' to automatically detect copied URLs from supported sites. Single chapters will auto-download from any page. Series require going to Downloads page to select chapters.",
+            "supportedList": "Hitomi.la, Nhentai, ManhwaWeb, ZonaTMO, MangaDex, Manga18.club"
+        }
     },
     "settings": {
         "title": "Settings",
@@ -127,7 +190,38 @@
         "minImageSizeDesc": "Filter out images smaller than this size (useful for removing covers/logos)",
         "showImageInfo": "Show Image Info",
         "resetSettings": "Reset to Defaults",
-        "confirmReset": "Reset all settings to default values?"
+        "confirmReset": "Reset all settings to default values?",
+        "menuItems": "Menu Items",
+        "menuItemsDesc": "Toggle visibility of sidebar navigation items",
+        "help": {
+            "title": "Help & Information",
+            "appearance": "Appearance",
+            "appearanceDesc": "Customize the look and feel, language, and visible menu items.",
+            "viewer": "Viewer",
+            "viewerDesc": "Configure default reading modes, vertical image width, and reading direction (LTR/RTL).",
+            "advanced": "Advanced",
+            "advancedDesc": "Manage cache, history, and performance settings like image preloading."
+        },
+        "clearAllCache": "Clear All Cache",
+        "confirmClearCache": "This will delete all history, cached data, downloads, and app usage data. Settings will be preserved. Are you sure?",
+        "clearCacheSuccess": "Cache cleared successfully!",
+        "clearCacheError": "Failed to clear cache. Please restart the app and try again."
+    },
+    "explorer": {
+        "title": "Explorer",
+        "addBaseFolder": "Add Base Folder",
+        "folderAdded": "Folder added to explorer",
+        "addFailed": "Failed to add base folder",
+        "folderRemoved": "Base folder removed",
+        "loadFailed": "Failed to load directory",
+        "noFolders": "No base folders added",
+        "startMessage": "Add a base folder to start exploring your files recursively.",
+        "openInViewer": "Open in Viewer",
+        "folder": "Folder",
+        "file": "File",
+        "images": "images",
+        "noFoldersAdded": "No folders added yet",
+        "addFolderToStart": "Add a base folder to start exploring"
     },
     "themes": {
         "dark": "Dark",
@@ -137,7 +231,8 @@
         "amoled": "AMOLED Black",
         "lavender": "Lavender Dream",
         "mint": "Mint Fresh",
-        "peach": "Peach Blossom"
+        "peach": "Peach Blossom",
+        "ichigo": "Ichigo"
     },
     "errors": {
         "loadFailed": "Failed to load",

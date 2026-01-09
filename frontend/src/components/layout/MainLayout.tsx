@@ -2,17 +2,17 @@
  * MainLayout - Main application layout with title bar, sidebar, and content area
  */
 
-import { motion, AnimatePresence } from 'framer-motion';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigationStore } from '../../stores/navigationStore';
 
 
 import { Sidebar } from './Sidebar';
 import { TitleBar } from './TitleBar';
-import { OnFileDrop, OnFileDropOff } from '../../../wailsjs/runtime';
+import { OnFileDrop, OnFileDropOff, EventsOn } from '../../../wailsjs/runtime';
 import { useToast } from '../common/Toast';
 import { useSettingsStore } from '../../stores/settingsStore';
+import * as AppBackend from '../../../wailsjs/go/main/App';
 
 interface MainLayoutProps {
     children: React.ReactNode;
@@ -20,17 +20,10 @@ interface MainLayoutProps {
 
 export function MainLayout({ children }: MainLayoutProps) {
     const { t } = useTranslation();
-    const { isPanicMode, isProcessing, setIsProcessing } = useNavigationStore();
+    const { isPanicMode, isProcessing, setIsProcessing, currentPage } = useNavigationStore();
     const { showToast } = useToast();
     const { processDroppedFolders } = useSettingsStore();
 
-
-    // Page transition variants
-    const pageVariants = {
-        initial: { opacity: 0, x: 20 },
-        animate: { opacity: 1, x: 0 },
-        exit: { opacity: 0, x: -20 },
-    };
 
     // Handle drag and drop
     useEffect(() => {
@@ -70,7 +63,7 @@ export function MainLayout({ children }: MainLayoutProps) {
                                 }
                             } catch (error) {
                                 console.error('Failed to add folder:', error);
-                                showToast(t('folders.addFailed'), 'error');
+                                showToast(t('oneShot.addFailed'), 'error');
                             }
                         } else {
                             // @ts-ignore
@@ -81,12 +74,14 @@ export function MainLayout({ children }: MainLayoutProps) {
                         const navigate = useNavigationStore.getState().navigate;
 
                         if (isSeries && processDropped) {
-                            navigate('series-details', { series: finalPath });
+                            // If it's a series, set activeMenuPage to 'series'
+                            navigate('series-details', { series: finalPath }, 'series');
                         } else {
+                            // If it's a oneshot, set activeMenuPage to 'oneShot'
                             navigate('viewer', {
                                 folder: finalPath,
                                 noHistory: !processDropped ? 'true' : 'false'
-                            });
+                            }, 'oneShot');
                         }
                         showToast(`Opening: ${finalPath.split(/[\\/]/).pop()}`, 'success');
                     } else {
@@ -125,6 +120,69 @@ export function MainLayout({ children }: MainLayoutProps) {
         };
     }, []);
 
+    // Global clipboard monitoring - works from any page
+    useEffect(() => {
+        // Listen for clipboard URL detection from backend
+        const unoff = EventsOn('clipboard_url_detected', async (text: string) => {
+            if (!text) return;
+
+            // Check if clipboard monitoring is enabled
+            const currentSettings = useSettingsStore.getState();
+            if (!currentSettings.clipboardAutoMonitor) {
+                return;
+            }
+
+            // Hitomi Series Detection: Don't auto-start, just show toast
+            const isHitomi = text.includes('hitomi.la');
+            const isHitomiSeries = isHitomi && (
+                text.includes('/artist/') ||
+                text.includes('/series/') ||
+                text.includes('/tag/') ||
+                text.includes('/character/') ||
+                text.includes('/group/') ||
+                text.includes('index-') ||
+                text.includes('search.html') ||
+                text.includes('?q=')
+            );
+
+            // Manga18.club Series Detection: Don't auto-start series, just show toast
+            const isManga18 = text.includes('manga18.club');
+            const isManga18Series = isManga18 && text.includes('/manhwa/') && !text.includes('/chap-');
+
+            // For series URLs, don't auto-start - user must go to download page
+            if (isHitomiSeries || isManga18Series) {
+                showToast(t('download.seriesDetectedClipboard') || 'Series detected. Go to Downloads page to select chapters', 'info');
+                return;
+            }
+
+            // For single chapters, auto-start download
+            try {
+                // Check if it's a series or single chapter
+                const info = await (AppBackend as any).FetchMangaInfo(text);
+
+                if (info.Type === 'series') {
+                    // It's a series - don't auto-start, just show toast
+                    showToast(t('download.seriesDetectedClipboard') || 'Series detected. Go to Downloads page to select chapters', 'info');
+                } else {
+                    // It's a single chapter - start download automatically
+                    await AppBackend.StartDownload(text, "", "");
+                    showToast(t('download.startedFromClipboard') || 'Download started from clipboard', 'success');
+                }
+            } catch (err: any) {
+                // If FetchMangaInfo fails, try to start download anyway (might be a valid URL)
+                try {
+                    await AppBackend.StartDownload(text, "", "");
+                    showToast(t('download.startedFromClipboard') || 'Download started from clipboard', 'success');
+                } catch (downloadErr: any) {
+                    // If both fail, show error
+                    showToast(err.toString() || 'Failed to process clipboard URL', 'error');
+                }
+            }
+        });
+
+        return () => unoff();
+    }, [t, showToast]);
+
     return (
         <div
             className="flex flex-col h-screen w-screen overflow-hidden theme-transition"
@@ -162,80 +220,56 @@ export function MainLayout({ children }: MainLayoutProps) {
                     }}
                 >
                     {/* Panic Mode Overlay */}
-                    <AnimatePresence>
-                        {isPanicMode && (
-                            <motion.div
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                exit={{ opacity: 0 }}
-                                className="absolute inset-0 z-50 rounded-tl-[40px]"
-                                style={{ backgroundColor: 'var(--color-surface-primary)' }}
-                            />
-                        )}
-                    </AnimatePresence>
+                    {isPanicMode && (
+                        <div
+                            className="absolute inset-0 z-50 rounded-tl-[40px] animate-fade-in"
+                            style={{ backgroundColor: 'var(--color-surface-primary)' }}
+                        />
+                    )}
 
                     {/* Page Content with Transitions */}
-                    <AnimatePresence mode="wait">
-                        <motion.div
-                            key={isPanicMode ? 'panic' : 'content'}
-                            variants={pageVariants}
-                            initial="initial"
-                            animate="animate"
-                            exit="exit"
-                            transition={{ duration: 0.2, ease: 'easeOut' }}
-                            className="h-full w-full overflow-auto"
-                            style={{ scrollbarGutter: 'stable' }}
-                        >
-                            {!isPanicMode && children}
-                        </motion.div>
-                    </AnimatePresence>
+                    <div
+                        key={currentPage}
+                        className="h-full w-full overflow-auto animate-fade-in"
+                        style={{ scrollbarGutter: 'stable' }}
+                    >
+                        {!isPanicMode && children}
+                    </div>
 
                     {/* Processing Overlay */}
-                    <AnimatePresence>
-                        {isProcessing && (
-                            <motion.div
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                exit={{ opacity: 0 }}
-                                className="absolute inset-0 z-50 flex flex-col items-center justify-center backdrop-blur-md bg-black/40 rounded-tl-[40px]"
+                    {isProcessing && (
+                        <div
+                            className="absolute inset-0 z-50 flex flex-col items-center justify-center backdrop-blur-md bg-black/40 rounded-tl-[40px] animate-fade-in"
+                        >
+                            <div
+                                className="relative w-20 h-20 mb-6"
+                                style={{ animation: 'scaleIn 1.5s ease-in-out infinite' }}
                             >
-                                <motion.div
-                                    className="relative w-20 h-20 mb-6"
-                                    animate={{ scale: [1, 1.05, 1] }}
-                                    transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-                                >
-                                    {/* Spinner Background Ring */}
-                                    <div className="absolute inset-0 border-4 border-white/10 rounded-full" />
+                                {/* Spinner Background Ring */}
+                                <div className="absolute inset-0 border-4 border-white/10 rounded-full" />
 
-                                    {/* Rotating Ring */}
-                                    <motion.div
-                                        animate={{ rotate: 360 }}
-                                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                                        className="absolute inset-0 border-4 border-t-transparent rounded-full shadow-glow"
-                                        style={{ borderColor: 'var(--color-accent) transparent transparent transparent' }}
-                                    />
+                                {/* Rotating Ring */}
+                                <div
+                                    className="absolute inset-0 border-4 border-t-transparent rounded-full shadow-glow animate-spin"
+                                    style={{ borderColor: 'var(--color-accent) transparent transparent transparent' }}
+                                />
 
-                                    {/* Center Glow */}
-                                    <div className="absolute inset-4 bg-accent/20 blur-xl rounded-full" />
-                                </motion.div>
+                                {/* Center Glow */}
+                                <div className="absolute inset-4 bg-accent/20 blur-xl rounded-full" />
+                            </div>
 
-                                <motion.div
-                                    initial={{ y: 10, opacity: 0 }}
-                                    animate={{ y: 0, opacity: 1 }}
-                                    className="text-white font-bold text-xl tracking-wider text-shadow text-center px-6"
-                                >
-                                    {t('common.processing') || 'Processing...'}
-                                </motion.div>
-                                <motion.div
-                                    animate={{ opacity: [0.4, 0.8, 0.4] }}
-                                    transition={{ duration: 2, repeat: Infinity }}
-                                    className="text-white/60 text-sm mt-2 text-center"
-                                >
-                                    {t('common.pleaseWait') || 'Please wait while we prepare your content'}
-                                </motion.div>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
+                            <div
+                                className="text-white font-bold text-xl tracking-wider text-shadow text-center px-6 animate-scale-in"
+                            >
+                                {t('common.processing') || 'Processing...'}
+                            </div>
+                            <div
+                                className="text-white/60 text-sm mt-2 text-center animate-pulse-slow"
+                            >
+                                {t('common.pleaseWait') || 'Please wait while we prepare your content'}
+                            </div>
+                        </div>
+                    )}
                 </main>
             </div>
         </div>

@@ -149,6 +149,68 @@ func (fl *FileLoader) GetImages(folderPath string) ([]ImageInfo, error) {
 	return images, nil
 }
 
+// FindFirstImage recursively searches for the first image in a directory and stops immediately
+func (fl *FileLoader) FindFirstImage(folderPath string) (string, bool) {
+	var foundPath string
+	var found bool
+
+	// Optimization: check immediate directory first
+	entries, err := os.ReadDir(folderPath)
+	if err != nil {
+		return "", false
+	}
+
+	// First pass: look for images in the current folder
+	for _, entry := range entries {
+		if !entry.IsDir() && fl.IsSupportedImage(entry.Name()) {
+			return filepath.Join(folderPath, entry.Name()), true
+		}
+	}
+
+	// Second pass: look into subdirectories recursively
+	for _, entry := range entries {
+		if entry.IsDir() {
+			path, exists := fl.FindFirstImage(filepath.Join(folderPath, entry.Name()))
+			if exists {
+				return path, true
+			}
+		}
+	}
+
+	return foundPath, found
+}
+
+// GetShallowImageCount returns the count of images in the immediate directory (not recursive)
+func (fl *FileLoader) GetShallowImageCount(folderPath string) int {
+	entries, err := os.ReadDir(folderPath)
+	if err != nil {
+		return 0
+	}
+
+	count := 0
+	for _, entry := range entries {
+		if !entry.IsDir() && fl.IsSupportedImage(entry.Name()) {
+			count++
+		}
+	}
+	return count
+}
+
+// HasSubdirectories checks if a directory contains any subdirectories
+func (fl *FileLoader) HasSubdirectories(folderPath string) bool {
+	entries, err := os.ReadDir(folderPath)
+	if err != nil {
+		return false
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() {
+			return true
+		}
+	}
+	return false
+}
+
 // LoadImageBytes loads an image and returns the raw bytes
 func (fl *FileLoader) LoadImageBytes(imagePath string) ([]byte, string, error) {
 	// Check if file exists

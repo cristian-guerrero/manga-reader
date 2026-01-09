@@ -8,6 +8,7 @@
         "confirm": "Confirmar",
         "save": "Guardar",
         "delete": "Eliminar",
+        "remove": "Quitar",
         "edit": "Editar",
         "close": "Cerrar",
         "back": "Atrás",
@@ -18,13 +19,23 @@
         "reset": "Restablecer",
         "processing": "Procesando...",
         "pleaseWait": "Por favor espera mientras preparamos tu contenido",
-        "archive": "Archivo"
+        "archive": "Archivo",
+        "minimize": "Minimizar",
+        "maximize": "Maximizar",
+        "restore": "Restaurar",
+        "ascending": "Ascendente",
+        "descending": "Descendente",
+        "name": "Nombre",
+        "date": "Fecha",
+        "pages": "páginas",
+        "noFolderSelected": "No hay carpeta seleccionada"
     },
     "navigation": {
         "home": "Inicio",
         "history": "Historial",
-        "folders": "Carpetas",
+        "oneShot": "One shot",
         "series": "Series",
+        "download": "Descargas",
         "settings": "Configuración",
         "viewer": "Visor"
     },
@@ -57,10 +68,11 @@
         "thumbnails": "Miniaturas",
         "imageInfo": "Info de Imagen",
         "prevChapter": "Capítulo Anterior",
-        "nextChapter": "Capítulo Siguiente"
+        "nextChapter": "Capítulo Siguiente",
+        "goToStart": "Ir al Inicio"
     },
-    "folders": {
-        "title": "Carpetas",
+    "oneShot": {
+        "title": "One shot",
         "selectFolder": "Seleccionar Carpeta",
         "addFolder": "Agregar Carpeta",
         "removeFolder": "Quitar Carpeta",
@@ -73,7 +85,9 @@
         "noFolders": "No hay carpetas agregadas",
         "dragDrop": "Arrastra o haz clic para seleccionar",
         "addFailed": "Error al añadir carpeta",
-        "foldersAdded": "{{count}} carpetas añadidas a la librería"
+        "foldersAdded": "{{count}} carpetas añadidas a la librería",
+        "searchPlaceholder": "Buscar carpetas por nombre...",
+        "noFoldersFound": "No se encontraron carpetas que coincidan con tu búsqueda"
     },
     "series": {
         "title": "Series",
@@ -84,7 +98,13 @@
         "chapters": "capítulos",
         "noSeries": "No hay series agregadas",
         "openSeries": "Ver Capítulos",
-        "chapterCount": "{{count}} Capítulos"
+        "chapterCount": "{{count}} Capítulos",
+        "searchPlaceholder": "Buscar series por nombre...",
+        "searchChapterPlaceholder": "Buscar capítulos por nombre...",
+        "noChaptersFound": "No se encontraron capítulos que coincidan con tu búsqueda",
+        "pagesLabel": "páginas",
+        "seriesNotFound": "Serie no encontrada",
+        "readNow": "Leer Ahora"
     },
     "history": {
         "title": "Historial de Lectura",
@@ -93,7 +113,12 @@
         "noHistory": "Sin historial de lectura",
         "progress": "Progreso",
         "lastRead": "Última lectura",
-        "continueFrom": "Continuar desde página"
+        "continueFrom": "Continuar desde página",
+        "disabled": "El historial está deshabilitado",
+        "disabledDesc": "Habilita el historial en configuración para rastrear tu progreso de lectura.",
+        "listView": "Vista de Lista",
+        "gridView": "Vista de Cuadrícula",
+        "remove": "Eliminar"
     },
     "thumbnails": {
         "title": "Miniaturas",
@@ -102,6 +127,45 @@
         "confirmReset": "¿Restablecer el orden de imágenes al original?",
         "dragToReorder": "Arrastra para reordenar",
         "orderSaved": "Orden guardado"
+    },
+    "download": {
+        "title": "Gestor de Descargas",
+        "subtitle": "Descarga tus mangas favoritos para tenerlos disponibles offline",
+        "urlPlaceholder": "Pega la URL del manga aquí...",
+        "startDownload": "Descargar",
+        "autoMonitor": "Monitoreo Automático de Portapapeles",
+        "downloadHistory": "Historial de Descargas",
+        "clearHistory": "Limpiar Historial",
+        "noDownloads": "No hay descargas activas o recientes",
+        "statusPending": "Pendiente",
+        "statusRunning": "Descargando",
+        "statusCompleted": "Completado",
+        "statusFailed": "Fallido",
+        "statusCancelled": "Cancelado",
+        "selectPath": "Cambiar Carpeta de Descargas",
+        "defaultPath": "Carpeta por Defecto",
+        "totalPages": "{{count}} páginas",
+        "error": "Error: {{message}}",
+        "openFolder": "Abrir Carpeta",
+        "playInViewer": "Ver",
+        "playSeries": "Ver Serie",
+        "addedToLibrary": "Agregado a la librería",
+        "addedToSeries": "Serie agregada a la librería",
+        "alreadyDownloaded": "Ya descargado",
+        "allAlreadyDownloaded": "Todos los capítulos ya están descargados",
+        "pastedFromClipboard": "URL pegada desde el portapapeles",
+        "startedFromClipboard": "Descarga iniciada desde el portapapeles",
+        "seriesDetectedClipboard": "Serie detectada. Ve a la página de Descargas para seleccionar capítulos",
+        "help": {
+            "title": "Cómo usar",
+            "supportedSites": "Sitios Soportados",
+            "instructions": "Instrucciones",
+            "step1": "Pega una URL válida de manga/doujin en el campo de texto.",
+            "step2": "Haz clic en 'Descargar'. Para series, selecciona los capítulos que deseas.",
+            "clipboard": "Monitor de Portapapeles",
+            "clipboardDesc": "Activa 'Monitoreo Automático' para detectar automáticamente URLs copiadas de sitios soportados. Los capítulos individuales se descargarán automáticamente desde cualquier página. Las series requieren ir a la página de Descargas para seleccionar capítulos.",
+            "supportedList": "Hitomi.la, Nhentai, ManhwaWeb, ZonaTMO, MangaDex, Manga18.club"
+        }
     },
     "settings": {
         "title": "Configuración",
@@ -123,7 +187,36 @@
         "preloadCount": "Imágenes a Precargar",
         "showImageInfo": "Mostrar Info de Imagen",
         "resetSettings": "Restablecer Valores",
-        "confirmReset": "¿Restablecer toda la configuración a valores predeterminados?"
+        "confirmReset": "¿Restablecer toda la configuración a valores predeterminados?",
+        "help": {
+            "title": "Ayuda e Información",
+            "appearance": "Apariencia",
+            "appearanceDesc": "Personaliza el aspecto, idioma y elementos visibles del menú.",
+            "viewer": "Visor",
+            "viewerDesc": "Configura modos de lectura, ancho de imagen vertical y dirección de lectura.",
+            "advanced": "Avanzado",
+            "advancedDesc": "Gestiona caché, historial y ajustes de rendimiento como precarga de imágenes."
+        },
+        "clearAllCache": "Borrar Todo el Caché",
+        "confirmClearCache": "Esto eliminará todo el historial, datos guardados, descargas y datos de uso de la aplicación. La configuración se conservará. ¿Estás seguro?",
+        "clearCacheSuccess": "¡Caché borrado exitosamente!",
+        "clearCacheError": "Error al borrar caché. Por favor reinicia la app e intenta nuevamente."
+    },
+    "explorer": {
+        "title": "Explorador",
+        "addBaseFolder": "Agregar Carpeta Base",
+        "folderAdded": "Carpeta agregada al explorador",
+        "addFailed": "Error al agregar carpeta base",
+        "folderRemoved": "Carpeta base eliminada",
+        "loadFailed": "Error al cargar directorio",
+        "noFolders": "No hay carpetas base agregadas",
+        "startMessage": "Agrega una carpeta base para comenzar a explorar tus archivos recursivamente.",
+        "openInViewer": "Abrir en Visor",
+        "folder": "Carpeta",
+        "file": "Archivo",
+        "images": "imágenes",
+        "noFoldersAdded": "No hay carpetas agregadas aún",
+        "addFolderToStart": "Agrega una carpeta base para comenzar a explorar"
     },
     "themes": {
         "dark": "Oscuro",
@@ -133,7 +226,8 @@
         "amoled": "AMOLED Negro",
         "lavender": "Sueño Lavanda",
         "mint": "Menta Fresca",
-        "peach": "Flor de Durazno"
+        "peach": "Flor de Durazno",
+        "ichigo": "Ichigo"
     },
     "errors": {
         "loadFailed": "Error al cargar",

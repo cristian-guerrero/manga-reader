@@ -7,6 +7,10 @@ export default {
   darkMode: 'class',
   theme: {
     extend: {
+      screens: {
+        '3xl': '1920px',
+        '4xl': '2560px',
+      },
       colors: {
         // Custom colors that can be overridden by CSS variables
         primary: {
@@ -72,9 +76,9 @@ export default {
         xs: '2px',
       },
       boxShadow: {
-        'glow': '0 0 20px rgba(139, 92, 246, 0.3)',
-        'glow-sm': '0 0 10px rgba(139, 92, 246, 0.2)',
-        'inner-glow': 'inset 0 0 20px rgba(139, 92, 246, 0.1)',
+        'glow': '0 0 20px var(--color-accent-glow)',
+        'glow-sm': '0 0 10px var(--color-accent-glow)',
+        'inner-glow': 'inset 0 0 20px var(--shadow-inner-glow-color, rgba(139, 92, 246, 0.1))',
       },
     },
   },

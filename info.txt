@@ -105,3 +105,47 @@ caracteristicas adicionales 6:
 - vamos a modularizar el codigo de la app para que al agregar nuevas funcionalidades no se quiebre el codigo (existente) 
     se puede tener modulos compartidos, (ejemplo de modulos, folders, series, history, etc)
 
+optimizaciones:
+- validar como se estan cargando las imagenes en el visor (ok)
+
+caracteristicas adicionales 7:
+- vamos a crear un menu (download ) que nos permita descargar imagenes de mangas de diferentes sitios web con diferentes algoritmos
+    definidos en su propio modulo y aca algoritmo en su propio archivo (algoritmo representa a sitio web)
+- esta nueva vista nos va a permitir que cuando el usuario copia el portapapeles copiar la url
+- esta nueva vista nos va a permitir copiar el url en un input
+- esta nueva vista nos va a permitir activar o desactivar el copiado directo desde el portapapeles
+- esta nueva vista nos va a permitir seleccionar la carpeta a la que se va a descargar las imagenes
+- la funcionalidad por defecto creara una carpeta de descargas en el directorio de la app (downloads)
+- esta carpeta de descargas estar ordenada por algoritmo (sitio web), adentro la serie si se puede y los capitulos
+- si no se puede por serie se descargan directamente los capitulos\
+- si es posible nos va a permitir configurar como se quiere que quede el nombre de la carpeta (por ejemplo ponerle el id de hitomi.la asi   nombre_manga (id_manga))
+- las imagenes deben quedar en el orden correcto numeradas (1.jpg, 2.jpg, 3.jpg, etc)
+- cuando se pegue direactamente del portapapeles se debe inciar el proceso de descarga, validando si existe el algorimo para esa descarga
+- cuando se pegue la url debe existir un boton de descarga
+- debe aparecer la lista de descargas con un texto que indique de donde se descargo,
+- la lista de descargas debe porde borrarse sin borrar el contenido de la carpeta de descargas.
+- los algoritmos de prueba estan en la carpeta go-files (verificar el funcionamiento)
+- de los algoritmos de prueba vamos a integrar en un principio (hitomi.la, zontatmo, manhwaweb)
+- validar la viaabilidad de la integracion de los algorimos propuestos primero, 
+- validar que nuevas dependencias se necesitan (si es necesario) de los nuevos algoritmos propuestos (hitomi.la, zontatmo, manhwaweb)
+- esta funcionalidad debe ser independiente de los otros modulos y no interrumpir con su funcionamiento
+- debe existir un boton que permita abrir la carpeta con el explorador de archivos del sistema (find location)
+
+-------------------------------------------------------------
+- mejoras y carateristicas adicionales para el modulo de downloader:
+- Poder descargar mangas completos de zonatmo.com (mostrar un mensaje al usuario informandole que se va a descaregar todos los
+    capitulos de la serie) link de ejemplo https://zonatmo.com/library/manga/87200/sonobisquedollwakoiwosuruchu
+
+- Poder descargar mangas completos de manhwaweb (mostrar un mensaje al usuario informandole que se va a descaregar todos los
+    capitulos de la serie) link de ejemplo: https://manhwaweb.com/manhwa/el-asesino-de-la-luna-a-la-deriva-_1711604095685
+
+- cuado sea una seria mostrar el nombre de la serie y los capitulos que se van descargando en forma de lista (anidada para que se sepa
+    que es de una serie y el estado de capitulos individuales)
+
+- cuando se le muestre el dialog de descarga de serie mostrar la cantidad de capitulos
+- cuando se muestre el dialog de descarga de serie mostrar dos selects para que se pueda elejir de que capitulo a que 
+    capitulo se quiere descargar 
+- en mangadex se permite seleccionar el idioma de la serie
+
+------------------------------------------------
+- validar en linux si esta funcionando correctamente el monitoreo de clipboard

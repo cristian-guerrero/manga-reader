@@ -47,6 +47,12 @@ type Settings struct {
 	WindowMaximized bool `json:"windowMaximized"`
 	// Last page visited (for startup restore)
 	LastPage string `json:"lastPage"`
+	// Enabled menu items
+	EnabledMenuItems map[string]bool `json:"enabledMenuItems"`
+	// Download path
+	DownloadPath string `json:"downloadPath"`
+	// Clipboard auto monitor
+	ClipboardAutoMonitor bool `json:"clipboardAutoMonitor"`
 }
 
 // DefaultSettings returns the default settings
@@ -74,6 +80,17 @@ func DefaultSettings() *Settings {
 		WindowY:               -1,
 		WindowMaximized:       false,
 		LastPage:              "home",
+		EnabledMenuItems: map[string]bool{
+			"home":     true,
+			"history":  true,
+			"folders":  true,
+			"series":   true,
+			"explorer": true,
+			"settings": true,
+			"download": true,
+		},
+		DownloadPath:         "", // empty means default
+		ClipboardAutoMonitor: false,
 	}
 }
 
@@ -238,6 +255,24 @@ func (sm *SettingsManager) Update(updates map[string]interface{}) error {
 		case "lastPage":
 			if v, ok := value.(string); ok {
 				sm.settings.LastPage = v
+			}
+		case "enabledMenuItems":
+			if v, ok := value.(map[string]interface{}); ok {
+				newMap := make(map[string]bool)
+				for k, val := range v {
+					if boolVal, ok := val.(bool); ok {
+						newMap[k] = boolVal
+					}
+				}
+				sm.settings.EnabledMenuItems = newMap
+			}
+		case "downloadPath":
+			if v, ok := value.(string); ok {
+				sm.settings.DownloadPath = v
+			}
+		case "clipboardAutoMonitor":
+			if v, ok := value.(bool); ok {
+				sm.settings.ClipboardAutoMonitor = v
 			}
 		}
 
