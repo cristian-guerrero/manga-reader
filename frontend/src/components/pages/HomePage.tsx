@@ -4,10 +4,10 @@
 
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigationStore } from '../stores/navigationStore';
-import { EventsOn, EventsOff } from '../../wailsjs/runtime';
-import { Button } from './common/Button';
-import { Tooltip } from './common/Tooltip';
+import { useNavigationStore } from '../../stores/navigationStore';
+import { EventsOn, EventsOff } from '../../../wailsjs/runtime';
+import { Button } from '../common/Button';
+import { Tooltip } from '../common/Tooltip';
 
 // Icons
 const FolderPlusIcon = () => (

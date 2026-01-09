@@ -4,16 +4,16 @@
 
 import { useEffect, Suspense, useState, useCallback } from 'react';
 import { MainLayout } from './components/layout/MainLayout';
-import { HomePage } from './components/HomePage';
+import { HomePage } from './components/pages/HomePage';
 import { ViewerPage } from './components/viewers/ViewerPage';
-import { OneShotPage } from './components/browser/OneShotPage';
-import { SeriesPage } from './components/browser/SeriesPage';
-import { SeriesDetailsPage } from './components/browser/SeriesDetailsPage';
-import { HistoryPage } from './components/browser/HistoryPage';
-import { ExplorerPage } from './components/browser/ExplorerPage';
-import { ThumbnailsPage } from './components/browser/ThumbnailsPage';
-import { SettingsPage } from './components/settings/SettingsPage';
-import { DownloadPage } from './components/downloader/DownloadPage';
+import { OneShotPage } from './components/pages/OneShotPage';
+import { SeriesPage } from './components/pages/SeriesPage';
+import { SeriesDetailsPage } from './components/pages/SeriesDetailsPage';
+import { HistoryPage } from './components/pages/HistoryPage';
+import { ExplorerPage } from './components/pages/ExplorerPage';
+import { ThumbnailsPage } from './components/pages/ThumbnailsPage';
+import { SettingsPage } from './components/pages/SettingsPage';
+import { DownloadPage } from './components/pages/DownloadPage';
 import { useNavigationStore } from './stores/navigationStore';
 import { useSettingsStore } from './stores/settingsStore';
 import { usePanicMode } from './hooks/usePanicMode';
