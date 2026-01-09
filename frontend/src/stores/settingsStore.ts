@@ -13,6 +13,7 @@ interface SettingsState extends Settings {
     setAccentColor: (color: string) => void;
     setViewerMode: (mode: Settings['viewerMode']) => void;
     setVerticalWidth: (width: number) => void;
+    setScrollSpeed: (speed: number) => void;
     setLateralMode: (mode: Settings['lateralMode']) => void;
     setReadingDirection: (direction: Settings['readingDirection']) => void;
     setPanicKey: (key: string) => void;
@@ -91,6 +92,12 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         const clampedWidth = Math.min(100, Math.max(10, verticalWidth));
         set({ verticalWidth: clampedWidth });
         get().updateBackend('verticalWidth', clampedWidth);
+    },
+
+    setScrollSpeed: (scrollSpeed) => {
+        const clampedSpeed = Math.min(100, Math.max(0, scrollSpeed));
+        set({ scrollSpeed: clampedSpeed });
+        get().updateBackend('scrollSpeed', clampedSpeed);
     },
 
     setLateralMode: (lateralMode) => {

@@ -80,6 +80,8 @@ export interface Settings {
     viewerMode: ViewerMode;
     /** Width percentage for vertical viewer (10-100) */
     verticalWidth: number;
+    /** Auto-scroll speed for vertical viewer (0-100) */
+    scrollSpeed: number;
     /** Lateral viewer mode (single/double page) */
     lateralMode: LateralMode;
     /** Reading direction for lateral mode */
@@ -125,6 +127,7 @@ export const DEFAULT_SETTINGS: Settings = {
     theme: 'dark',
     viewerMode: 'vertical',
     verticalWidth: 80,
+    scrollSpeed: 50,
     lateralMode: 'single',
     readingDirection: 'ltr',
     panicKey: 'Escape',

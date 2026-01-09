@@ -69,7 +69,14 @@
         "imageInfo": "Info de Imagen",
         "prevChapter": "Capítulo Anterior",
         "nextChapter": "Capítulo Siguiente",
-        "goToStart": "Ir al Inicio"
+        "goToStart": "Ir al Inicio",
+        "autoScroll": "Scroll Automático",
+        "play": "Reproducir",
+        "pause": "Pausar",
+        "scrollSpeed": "Velocidad de Scroll",
+        "slow": "Lento",
+        "medium": "Medio",
+        "fast": "Rápido"
     },
     "oneShot": {
         "title": "One shot",
