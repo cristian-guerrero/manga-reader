@@ -119,6 +119,7 @@ export function ExplorerPage() {
     const [entries, setEntries] = useState<ExplorerEntry[]>([]);
     const [loading, setLoading] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
+    const [thumbnails, setThumbnails] = useState<Record<string, string>>({});
 
     // Sorting state - initialized with root preferences
     const [sortBy, setSortBy] = useState<'name' | 'date'>(() => {
@@ -175,8 +176,50 @@ export function ExplorerPage() {
             // @ts-ignore
             const folders = await window.go.main.App.GetBaseFolders();
             setBaseFolders(folders || []);
+            
+            // Load thumbnails for base folders that don't have thumbnailUrl
+            if (folders && folders.length > 0) {
+                loadThumbnailsForBaseFolders(folders);
+            }
         } catch (error) {
             console.error("Failed to load base folders", error);
+        }
+    };
+
+    const loadThumbnailsForBaseFolders = async (folders: BaseFolder[]) => {
+        const foldersNeedingThumbnails = folders.filter(
+            folder => folder.hasImages && !folder.thumbnailUrl
+        );
+        
+        if (foldersNeedingThumbnails.length === 0) return;
+        
+        // Load thumbnails in parallel with batching
+        const batchSize = 10;
+        for (let i = 0; i < foldersNeedingThumbnails.length; i += batchSize) {
+            const batch = foldersNeedingThumbnails.slice(i, i + batchSize);
+            const thumbnailPromises = batch.map(async (folder) => {
+                try {
+                    // @ts-ignore
+                    const images = await window.go?.main?.App?.GetImages(folder.path);
+                    if (images && images.length > 0) {
+                        // @ts-ignore
+                        const thumb = await window.go?.main?.App?.GetThumbnail(images[0].path);
+                        return { path: folder.path, thumb };
+                    }
+                } catch (error) {
+                    console.error('Failed to load thumbnail for folder:', folder.path, error);
+                }
+                return null;
+            });
+            
+            const results = await Promise.all(thumbnailPromises);
+            const newThumbnails: Record<string, string> = {};
+            results.forEach(result => {
+                if (result?.thumb) {
+                    newThumbnails[result.path] = result.thumb;
+                }
+            });
+            setThumbnails((prev) => ({ ...prev, ...newThumbnails }));
         }
     };
 
@@ -192,11 +235,49 @@ export function ExplorerPage() {
             }
 
             setCurrentPath(path);
+            
+            // Load thumbnails for entries that don't have thumbnailUrl
+            if (items && items.length > 0) {
+                loadThumbnailsForEntries(items);
+            }
         } catch (error) {
             console.error("Failed to load directory", error);
             showToast(t('explorer.loadFailed') || "Failed to load directory", "error");
         } finally {
             setLoading(false);
+        }
+    };
+
+    const loadThumbnailsForEntries = async (items: ExplorerEntry[]) => {
+        const entriesNeedingThumbnails = items.filter(
+            entry => entry.hasImages && entry.coverImage && !entry.thumbnailUrl
+        );
+        
+        if (entriesNeedingThumbnails.length === 0) return;
+        
+        // Load thumbnails in parallel with batching
+        const batchSize = 10;
+        for (let i = 0; i < entriesNeedingThumbnails.length; i += batchSize) {
+            const batch = entriesNeedingThumbnails.slice(i, i + batchSize);
+            const thumbnailPromises = batch.map(async (entry) => {
+                try {
+                    // @ts-ignore
+                    const thumb = await window.go?.main?.App?.GetThumbnail(entry.coverImage);
+                    return { path: entry.path, thumb };
+                } catch (error) {
+                    console.error('Failed to load thumbnail for entry:', entry.path, error);
+                }
+                return null;
+            });
+            
+            const results = await Promise.all(thumbnailPromises);
+            const newThumbnails: Record<string, string> = {};
+            results.forEach(result => {
+                if (result?.thumb) {
+                    newThumbnails[result.path] = result.thumb;
+                }
+            });
+            setThumbnails((prev) => ({ ...prev, ...newThumbnails }));
         }
     };
 
@@ -314,9 +395,12 @@ export function ExplorerPage() {
         });
 
     return (
-        <div className="p-6 h-full flex flex-col">
+        <div
+            className="h-full overflow-auto p-6 flex flex-col"
+            style={{ backgroundColor: 'var(--color-surface-primary)' }}
+        >
             {/* Header */}
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center justify-between mb-6 flex-shrink-0">
                 <div className="flex items-center gap-4">
                     {currentPath && (
                         <Tooltip content={t('common.back')} placement="right">
@@ -372,7 +456,7 @@ export function ExplorerPage() {
             )}
 
             {/* Content */}
-            <div className="flex-1 overflow-y-auto pr-2">
+            <div className="flex-1 overflow-auto pr-2">
                 <GridContainer>
                     {/* Base Folders View */}
                     {!currentPath && sortedBaseFolders.map((folder) => (
@@ -381,10 +465,10 @@ export function ExplorerPage() {
                                 className="group/card relative bg-surface-secondary rounded-xl overflow-hidden border border-white/5 hover:border-accent/50 transition-all hover:shadow-lg cursor-pointer animate-scale-in"
                                 onClick={() => handleItemClick(folder)}
                             >
-                            {folder.hasImages && folder.thumbnailUrl ? (
+                            {folder.hasImages && (folder.thumbnailUrl || thumbnails[folder.path]) ? (
                                 <div className="aspect-[2/3] w-full relative overflow-hidden">
                                     <LazyImage
-                                        src={folder.thumbnailUrl}
+                                        src={folder.thumbnailUrl || thumbnails[folder.path]}
                                         alt={folder.name}
                                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-0"
                                     />
@@ -427,14 +511,20 @@ export function ExplorerPage() {
                                 className="group/card relative bg-surface-secondary rounded-xl overflow-hidden border border-white/5 hover:border-accent/50 transition-all hover:shadow-lg cursor-pointer animate-scale-in"
                                 onClick={() => handleItemClick(entry)}
                             >
-                            {entry.hasImages && entry.coverImage ? (
+                            {entry.hasImages && (entry.thumbnailUrl || thumbnails[entry.path]) ? (
                                 <div className="aspect-[2/3] w-full relative overflow-hidden">
                                     <LazyImage
-                                        src={entry.thumbnailUrl || entry.coverImage}
+                                        src={entry.thumbnailUrl || thumbnails[entry.path]}
                                         alt={entry.name}
                                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-0"
                                     />
                                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-60 pointer-events-none" />
+                                </div>
+                            ) : entry.hasImages && entry.coverImage ? (
+                                <div className="aspect-[2/3] w-full relative overflow-hidden">
+                                    <div className="w-full h-full flex items-center justify-center bg-surface-tertiary">
+                                        <div className="w-8 h-8 rounded-full border-2 border-accent/20 border-t-accent animate-spin" />
+                                    </div>
                                 </div>
                             ) : (
                                 <div className="aspect-[2/3] w-full flex items-center justify-center bg-surface-tertiary group-hover:bg-surface-elevated transition-colors">
