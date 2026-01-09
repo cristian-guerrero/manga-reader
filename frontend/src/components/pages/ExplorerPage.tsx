@@ -7,6 +7,7 @@ import { SortControls } from '../common/SortControls';
 import { GridItem } from '../common/GridItem';
 import { GridContainer } from '../common/GridContainer';
 import { SearchBar } from '../common/SearchBar';
+import { useThumbnails } from '../../hooks/useThumbnails';
 
 // Icons
 const TrashIcon = () => (
@@ -37,6 +38,152 @@ interface ExplorerEntry {
     thumbnailUrl?: string; // Add this
     size: number;
     lastModified: number;
+}
+
+// Componente que carga thumbnail de forma lazy cuando es visible
+function LazyThumbnail({ 
+    entry, 
+    thumbnails, 
+    loadThumbnail 
+}: { 
+    entry: ExplorerEntry; 
+    thumbnails: Record<string, string>;
+    loadThumbnail: (key: string, imagePath: string) => Promise<void>;
+}) {
+    const [isVisible, setIsVisible] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
+    const ref = useRef<HTMLDivElement>(null);
+    const loadingRef = useRef(false);
+
+    useEffect(() => {
+        if (!ref.current) return;
+
+        const observer = new IntersectionObserver(
+            ([obsEntry]) => {
+                if (obsEntry.isIntersecting && !isVisible) {
+                    setIsVisible(true);
+                    observer.disconnect();
+                }
+            },
+            { rootMargin: '200px' }
+        );
+
+        observer.observe(ref.current);
+        return () => observer.disconnect();
+    }, [isVisible]);
+
+    // Cargar thumbnail cuando sea visible y no esté cargado
+    useEffect(() => {
+        if (!isVisible || !entry.coverImage || entry.thumbnailUrl || thumbnails[entry.path] || loadingRef.current) return;
+
+        loadingRef.current = true;
+        setIsLoading(true);
+        
+        loadThumbnail(entry.path, entry.coverImage)
+            .finally(() => {
+                setIsLoading(false);
+                loadingRef.current = false;
+            });
+    }, [isVisible, entry, thumbnails, loadThumbnail]);
+
+    const thumbnailUrl = entry.thumbnailUrl || thumbnails[entry.path];
+
+    return (
+        <div ref={ref} className="w-full h-full bg-surface-tertiary overflow-hidden">
+            {thumbnailUrl ? (
+                <img
+                    src={thumbnailUrl}
+                    alt={entry.name}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-0"
+                    onLoad={(e) => {
+                        (e.target as HTMLImageElement).classList.add('opacity-100');
+                    }}
+                />
+            ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                    <div className="w-8 h-8 rounded-full border-2 border-accent/20 border-t-accent animate-spin" />
+                </div>
+            )}
+        </div>
+    );
+}
+
+// Componente lazy para base folders (necesita GetImages primero)
+function LazyBaseFolderThumbnail({
+    folder,
+    thumbnails,
+    loadThumbnail
+}: {
+    folder: BaseFolder;
+    thumbnails: Record<string, string>;
+    loadThumbnail: (key: string, imagePath: string) => Promise<void>;
+}) {
+    const [isVisible, setIsVisible] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
+    const ref = useRef<HTMLDivElement>(null);
+    const loadingRef = useRef(false);
+
+    useEffect(() => {
+        if (!ref.current) return;
+
+        const observer = new IntersectionObserver(
+            ([obsEntry]) => {
+                if (obsEntry.isIntersecting && !isVisible) {
+                    setIsVisible(true);
+                    observer.disconnect();
+                }
+            },
+            { rootMargin: '200px' }
+        );
+
+        observer.observe(ref.current);
+        return () => observer.disconnect();
+    }, [isVisible]);
+
+    // Cargar thumbnail cuando sea visible y no esté cargado
+    useEffect(() => {
+        if (!isVisible || !folder.hasImages || folder.thumbnailUrl || thumbnails[folder.path] || loadingRef.current) return;
+
+        loadingRef.current = true;
+        setIsLoading(true);
+        
+        // Para base folders, necesitamos obtener las imágenes primero
+        (async () => {
+            try {
+                // @ts-ignore
+                const images = await window.go?.main?.App?.GetImages(folder.path);
+                if (images && images.length > 0) {
+                    await loadThumbnail(folder.path, images[0].path);
+                }
+            } catch (error) {
+                console.error('Failed to load thumbnail for folder:', folder.path, error);
+            } finally {
+                setIsLoading(false);
+                loadingRef.current = false;
+            }
+        })();
+    }, [isVisible, folder, thumbnails, loadThumbnail]);
+
+    const thumbnailUrl = folder.thumbnailUrl || thumbnails[folder.path];
+
+    return (
+        <div ref={ref} className="w-full h-full bg-surface-tertiary overflow-hidden">
+            {thumbnailUrl ? (
+                <img
+                    src={thumbnailUrl}
+                    alt={folder.name}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-0"
+                    onLoad={(e) => {
+                        (e.target as HTMLImageElement).classList.add('opacity-100');
+                    }}
+                />
+            ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                    <div className="w-8 h-8 rounded-full border-2 border-accent/20 border-t-accent animate-spin" />
+                </div>
+            )}
+        </div>
+    );
 }
 
 // Robust Lazy Image component using IntersectionObserver
@@ -119,7 +266,9 @@ export function ExplorerPage() {
     const [entries, setEntries] = useState<ExplorerEntry[]>([]);
     const [loading, setLoading] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
-    const [thumbnails, setThumbnails] = useState<Record<string, string>>({});
+    
+    // Usar hook para thumbnails - cargar individualmente cuando sean visibles
+    const { thumbnails, loadThumbnail, initializeThumbnails } = useThumbnails(10);
 
     // Sorting state - initialized with root preferences
     const [sortBy, setSortBy] = useState<'name' | 'date'>(() => {
@@ -177,49 +326,21 @@ export function ExplorerPage() {
             const folders = await window.go.main.App.GetBaseFolders();
             setBaseFolders(folders || []);
             
-            // Load thumbnails for base folders that don't have thumbnailUrl
+            // Inicializar thumbnails que ya vienen del backend
             if (folders && folders.length > 0) {
-                loadThumbnailsForBaseFolders(folders);
+                const initialThumbs: Record<string, string> = {};
+                folders.forEach((folder: BaseFolder) => {
+                    if (folder.thumbnailUrl) {
+                        initialThumbs[folder.path] = folder.thumbnailUrl;
+                    }
+                });
+                if (Object.keys(initialThumbs).length > 0) {
+                    initializeThumbnails(initialThumbs);
+                }
+                // Los thumbnails sin thumbnailUrl se cargarán de forma lazy cuando sean visibles
             }
         } catch (error) {
             console.error("Failed to load base folders", error);
-        }
-    };
-
-    const loadThumbnailsForBaseFolders = async (folders: BaseFolder[]) => {
-        const foldersNeedingThumbnails = folders.filter(
-            folder => folder.hasImages && !folder.thumbnailUrl
-        );
-        
-        if (foldersNeedingThumbnails.length === 0) return;
-        
-        // Load thumbnails in parallel with batching
-        const batchSize = 10;
-        for (let i = 0; i < foldersNeedingThumbnails.length; i += batchSize) {
-            const batch = foldersNeedingThumbnails.slice(i, i + batchSize);
-            const thumbnailPromises = batch.map(async (folder) => {
-                try {
-                    // @ts-ignore
-                    const images = await window.go?.main?.App?.GetImages(folder.path);
-                    if (images && images.length > 0) {
-                        // @ts-ignore
-                        const thumb = await window.go?.main?.App?.GetThumbnail(images[0].path);
-                        return { path: folder.path, thumb };
-                    }
-                } catch (error) {
-                    console.error('Failed to load thumbnail for folder:', folder.path, error);
-                }
-                return null;
-            });
-            
-            const results = await Promise.all(thumbnailPromises);
-            const newThumbnails: Record<string, string> = {};
-            results.forEach(result => {
-                if (result?.thumb) {
-                    newThumbnails[result.path] = result.thumb;
-                }
-            });
-            setThumbnails((prev) => ({ ...prev, ...newThumbnails }));
         }
     };
 
@@ -236,48 +357,25 @@ export function ExplorerPage() {
 
             setCurrentPath(path);
             
-            // Load thumbnails for entries that don't have thumbnailUrl
+            // Inicializar thumbnails que ya vienen del backend
+            // NO cargar todos los thumbnails de una vez - se cargarán de forma lazy cuando sean visibles
             if (items && items.length > 0) {
-                loadThumbnailsForEntries(items);
+                const initialThumbs: Record<string, string> = {};
+                items.forEach((entry: ExplorerEntry) => {
+                    if (entry.thumbnailUrl) {
+                        initialThumbs[entry.path] = entry.thumbnailUrl;
+                    }
+                });
+                if (Object.keys(initialThumbs).length > 0) {
+                    initializeThumbnails(initialThumbs);
+                }
+                // Los thumbnails sin thumbnailUrl se cargarán de forma lazy cuando sean visibles
             }
         } catch (error) {
             console.error("Failed to load directory", error);
             showToast(t('explorer.loadFailed') || "Failed to load directory", "error");
         } finally {
             setLoading(false);
-        }
-    };
-
-    const loadThumbnailsForEntries = async (items: ExplorerEntry[]) => {
-        const entriesNeedingThumbnails = items.filter(
-            entry => entry.hasImages && entry.coverImage && !entry.thumbnailUrl
-        );
-        
-        if (entriesNeedingThumbnails.length === 0) return;
-        
-        // Load thumbnails in parallel with batching
-        const batchSize = 10;
-        for (let i = 0; i < entriesNeedingThumbnails.length; i += batchSize) {
-            const batch = entriesNeedingThumbnails.slice(i, i + batchSize);
-            const thumbnailPromises = batch.map(async (entry) => {
-                try {
-                    // @ts-ignore
-                    const thumb = await window.go?.main?.App?.GetThumbnail(entry.coverImage);
-                    return { path: entry.path, thumb };
-                } catch (error) {
-                    console.error('Failed to load thumbnail for entry:', entry.path, error);
-                }
-                return null;
-            });
-            
-            const results = await Promise.all(thumbnailPromises);
-            const newThumbnails: Record<string, string> = {};
-            results.forEach(result => {
-                if (result?.thumb) {
-                    newThumbnails[result.path] = result.thumb;
-                }
-            });
-            setThumbnails((prev) => ({ ...prev, ...newThumbnails }));
         }
     };
 
@@ -465,12 +563,12 @@ export function ExplorerPage() {
                                 className="group/card relative bg-surface-secondary rounded-xl overflow-hidden border border-white/5 hover:border-accent/50 transition-all hover:shadow-lg cursor-pointer animate-scale-in"
                                 onClick={() => handleItemClick(folder)}
                             >
-                            {folder.hasImages && (folder.thumbnailUrl || thumbnails[folder.path]) ? (
+                            {folder.hasImages ? (
                                 <div className="aspect-[2/3] w-full relative overflow-hidden">
-                                    <LazyImage
-                                        src={folder.thumbnailUrl || thumbnails[folder.path]}
-                                        alt={folder.name}
-                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-0"
+                                    <LazyBaseFolderThumbnail
+                                        folder={folder}
+                                        thumbnails={thumbnails}
+                                        loadThumbnail={loadThumbnail}
                                     />
                                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-60 pointer-events-none" />
                                 </div>
@@ -511,20 +609,14 @@ export function ExplorerPage() {
                                 className="group/card relative bg-surface-secondary rounded-xl overflow-hidden border border-white/5 hover:border-accent/50 transition-all hover:shadow-lg cursor-pointer animate-scale-in"
                                 onClick={() => handleItemClick(entry)}
                             >
-                            {entry.hasImages && (entry.thumbnailUrl || thumbnails[entry.path]) ? (
+                            {entry.hasImages ? (
                                 <div className="aspect-[2/3] w-full relative overflow-hidden">
-                                    <LazyImage
-                                        src={entry.thumbnailUrl || thumbnails[entry.path]}
-                                        alt={entry.name}
-                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-0"
+                                    <LazyThumbnail
+                                        entry={entry}
+                                        thumbnails={thumbnails}
+                                        loadThumbnail={loadThumbnail}
                                     />
                                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-60 pointer-events-none" />
-                                </div>
-                            ) : entry.hasImages && entry.coverImage ? (
-                                <div className="aspect-[2/3] w-full relative overflow-hidden">
-                                    <div className="w-full h-full flex items-center justify-center bg-surface-tertiary">
-                                        <div className="w-8 h-8 rounded-full border-2 border-accent/20 border-t-accent animate-spin" />
-                                    </div>
                                 </div>
                             ) : (
                                 <div className="aspect-[2/3] w-full flex items-center justify-center bg-surface-tertiary group-hover:bg-surface-elevated transition-colors">
