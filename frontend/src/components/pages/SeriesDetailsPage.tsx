@@ -124,11 +124,13 @@ export function SeriesDetailsPage({ seriesPath }: SeriesDetailsPageProps) {
 
     const loadChapterThumbnail = async (path: string) => {
         try {
+            // Use GetFolderInfoShallow instead of GetImages to avoid recursive scanning
+            // This is much faster and only scans the immediate directory
             // @ts-ignore
-            const images = await window.go?.main?.App?.GetImages(path);
-            if (images && images.length > 0) {
+            const folderInfo = await window.go?.main?.App?.GetFolderInfoShallow(path);
+            if (folderInfo && folderInfo.coverImage) {
                 // @ts-ignore
-                const thumb = await window.go?.main?.App?.GetThumbnail(images[0].path);
+                const thumb = await window.go?.main?.App?.GetThumbnail(folderInfo.coverImage);
                 if (thumb) {
                     setThumbnails((prev) => ({ ...prev, [path]: thumb }));
                 }

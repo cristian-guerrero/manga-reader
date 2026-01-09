@@ -39,13 +39,161 @@ const TrashIcon = () => (
     </svg>
 );
 
+// Thumbnail cache to avoid reloading
+const thumbnailCache = new Map<string, string>();
+
+// Thumbnail component with lazy loading - only loads when visible
+// Uses GetFolderInfoShallow instead of GetImages to avoid recursive scanning (like ExplorerPage)
+function ThumbnailComponent({ entryId, folderPath }: { entryId: string; folderPath: string }) {
+    const [thumbnail, setThumbnail] = useState<string | null>(thumbnailCache.get(entryId) || null);
+    const ref = useRef<HTMLDivElement>(null);
+    const loadingRef = useRef(false);
+    const isMountedRef = useRef(true);
+    const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const observerRef = useRef<IntersectionObserver | null>(null);
+
+    useEffect(() => {
+        isMountedRef.current = true;
+        return () => {
+            isMountedRef.current = false;
+            if (observerRef.current) {
+                observerRef.current.disconnect();
+                observerRef.current = null;
+            }
+            if (timerRef.current) {
+                clearTimeout(timerRef.current);
+                timerRef.current = null;
+            }
+            loadingRef.current = false;
+        };
+    }, []);
+
+    useEffect(() => {
+        // If already cached, use it immediately
+        const cached = thumbnailCache.get(entryId);
+        if (cached) {
+            setThumbnail(cached);
+            return;
+        }
+
+        if (!ref.current || loadingRef.current || thumbnail) return;
+
+        // Clean up previous observer and timer
+        if (observerRef.current) {
+            observerRef.current.disconnect();
+            observerRef.current = null;
+        }
+        if (timerRef.current) {
+            clearTimeout(timerRef.current);
+            timerRef.current = null;
+        }
+
+        const observer = new IntersectionObserver(
+            ([obsEntry]) => {
+                if (obsEntry.isIntersecting && !loadingRef.current && !thumbnail && isMountedRef.current) {
+                    // Check cache again before loading
+                    const cached = thumbnailCache.get(entryId);
+                    if (cached) {
+                        if (isMountedRef.current) {
+                            setThumbnail(cached);
+                        }
+                        observer.disconnect();
+                        observerRef.current = null;
+                        return;
+                    }
+
+                    loadingRef.current = true;
+
+                    // Load thumbnail asynchronously with delay to avoid blocking
+                    timerRef.current = setTimeout(async () => {
+                        if (!isMountedRef.current) {
+                            loadingRef.current = false;
+                            return;
+                        }
+
+                        try {
+                            // Use GetFolderInfoShallow (only scans immediate directory, not recursive)
+                            // This is much faster than GetImages which scans all subdirectories recursively
+                            // Based on how ExplorerPage does it for better performance
+                            // @ts-ignore
+                            const folderInfo = await window.go?.main?.App?.GetFolderInfoShallow(folderPath);
+                            if (!isMountedRef.current) {
+                                loadingRef.current = false;
+                                return;
+                            }
+
+                            if (folderInfo && folderInfo.coverImage) {
+                                // @ts-ignore
+                                const thumb = await window.go?.main?.App?.GetThumbnail(folderInfo.coverImage);
+                                
+                                if (!isMountedRef.current) {
+                                    loadingRef.current = false;
+                                    return;
+                                }
+
+                                if (thumb) {
+                                    // Cache the thumbnail
+                                    thumbnailCache.set(entryId, thumb);
+                                    if (isMountedRef.current) {
+                                        setThumbnail(thumb);
+                                    }
+                                }
+                            }
+                        } catch (error) {
+                            console.error('Failed to load thumbnail:', error);
+                        } finally {
+                            loadingRef.current = false;
+                            timerRef.current = null;
+                        }
+                    }, 100); // Small delay to yield to browser
+
+                    observer.disconnect();
+                    observerRef.current = null;
+                }
+            },
+            { rootMargin: '200px' } // Same as ExplorerPage
+        );
+
+        observerRef.current = observer;
+        observer.observe(ref.current);
+        
+        return () => {
+            if (observerRef.current) {
+                observerRef.current.disconnect();
+                observerRef.current = null;
+            }
+            if (timerRef.current) {
+                clearTimeout(timerRef.current);
+                timerRef.current = null;
+            }
+        };
+    }, [entryId, folderPath, thumbnail]);
+
+    return (
+        <div ref={ref} className="w-full h-full">
+            {thumbnail ? (
+                <img src={thumbnail} alt="" className="w-full h-full object-cover" loading="lazy" />
+            ) : (
+                <div className="w-full h-full flex items-center justify-center text-text-muted">
+                    <BookOpenIcon />
+                </div>
+            )}
+        </div>
+    );
+}
+
 export function HomePage() {
     const { t } = useTranslation();
     const { navigate } = useNavigationStore();
     const [historyEntries, setHistoryEntries] = useState<any[]>([]);
-    const [thumbnails, setThumbnails] = useState<Record<string, string>>({});
     const [isLoading, setIsLoading] = useState(true);
     const isMountedRef = useRef(true);
+    const historyEntriesRef = useRef<any[]>([]);
+
+    // Keep ref in sync with state
+    useEffect(() => {
+        historyEntriesRef.current = historyEntries;
+    }, [historyEntries]);
 
     const loadRecentHistory = useCallback(async () => {
         if (!isMountedRef.current) return;
@@ -76,32 +224,7 @@ export function HomePage() {
                 // Show up to 4 recent items
                 const recent = entries.slice(0, 4);
                 setHistoryEntries(recent);
-                setIsLoading(false); // Show UI immediately with data
-
-                // Load thumbnails asynchronously without blocking UI
-                Promise.all(recent.map(async (entry) => {
-                    try {
-                        // @ts-ignore
-                        const images = await window.go?.main?.App?.GetImages(entry.folderPath);
-                        if (images && images.length > entry.lastImageIndex) {
-                            // @ts-ignore
-                            const thumb = await window.go?.main?.App?.GetThumbnail(images[entry.lastImageIndex].path);
-                            return { id: entry.id, thumb };
-                        }
-                    } catch (err) {
-                        console.error('Failed to load thumbnail for', entry.folderName, err);
-                    }
-                    return null;
-                })).then(results => {
-                    if (!isMountedRef.current) return;
-                    const newThumbnails: Record<string, string> = {};
-                    results.forEach(result => {
-                        if (result?.thumb) {
-                            newThumbnails[result.id] = result.thumb;
-                        }
-                    });
-                    setThumbnails(prev => ({ ...prev, ...newThumbnails }));
-                });
+                setIsLoading(false); // Show UI immediately - thumbnails will load lazily
             } else {
                 setHistoryEntries([]);
                 setIsLoading(false);
@@ -125,7 +248,8 @@ export function HomePage() {
         // Also listen for app_ready event in case bindings weren't ready immediately
         unsubscribeAppReady = EventsOn('app_ready', () => {
             console.log('[HomePage] Received app_ready event');
-            if (isMountedRef.current && historyEntries.length === 0) {
+            // Use ref instead of state to avoid closure issues
+            if (isMountedRef.current && historyEntriesRef.current.length === 0) {
                 loadRecentHistory();
             }
         });
@@ -142,7 +266,7 @@ export function HomePage() {
             if (unsubscribeHistory) unsubscribeHistory();
             if (unsubscribeAppReady) unsubscribeAppReady();
         };
-    }, [loadRecentHistory, historyEntries.length]);
+    }, [loadRecentHistory]);
 
     const handleContinue = (path: string) => {
         navigate('viewer', { folder: path });
@@ -179,14 +303,11 @@ export function HomePage() {
                             className="w-48 h-72 rounded-lg overflow-hidden shadow-lg flex-shrink-0 bg-surface-tertiary relative group cursor-pointer border border-white/5 transition-transform hover:scale-[1.02] active:scale-[0.98]"
                             onClick={() => handleContinue(historyEntries[0].folderPath)}
                         >
-                            {thumbnails[historyEntries[0].id] ? (
-                                <img src={thumbnails[historyEntries[0].id]} alt="Cover" className="w-full h-full object-cover" />
-                            ) : (
-                                <div className="w-full h-full flex items-center justify-center text-text-muted">
-                                    <BookOpenIcon />
-                                </div>
-                            )}
-                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                            <ThumbnailComponent
+                                entryId={historyEntries[0].id}
+                                folderPath={historyEntries[0].folderPath}
+                            />
+                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
                                 <div className="bg-accent text-white p-3 rounded-full shadow-lg transform scale-90 group-hover:scale-100 transition-transform">
                                     <BookOpenIcon />
                                 </div>
@@ -261,13 +382,10 @@ export function HomePage() {
                                         onClick={() => handleContinue(entry.folderPath)}
                                     >
                                         <div className="aspect-[3/4] relative overflow-hidden bg-surface-tertiary">
-                                            {thumbnails[entry.id] ? (
-                                                <img src={thumbnails[entry.id]} alt={entry.folderName} className="w-full h-full object-cover transition-transform group-hover:scale-105" />
-                                            ) : (
-                                                <div className="w-full h-full flex items-center justify-center text-text-muted">
-                                                    <BookOpenIcon />
-                                                </div>
-                                            )}
+                                            <ThumbnailComponent
+                                                entryId={entry.id}
+                                                folderPath={entry.folderPath}
+                                            />
                                             <div className="absolute bottom-0 left-0 right-0 h-1 bg-surface-tertiary">
                                                 <div
                                                     className="h-full bg-accent"

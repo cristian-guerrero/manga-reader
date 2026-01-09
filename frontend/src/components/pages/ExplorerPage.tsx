@@ -148,13 +148,14 @@ function LazyBaseFolderThumbnail({
         loadingRef.current = true;
         setIsLoading(true);
         
-        // Para base folders, necesitamos obtener las imágenes primero
+        // Para base folders, usar GetFolderInfoShallow para evitar escaneo recursivo
+        // Esto es mucho más rápido que GetImages que escanea todas las subcarpetas
         (async () => {
             try {
                 // @ts-ignore
-                const images = await window.go?.main?.App?.GetImages(folder.path);
-                if (images && images.length > 0) {
-                    await loadThumbnail(folder.path, images[0].path);
+                const folderInfo = await window.go?.main?.App?.GetFolderInfoShallow(folder.path);
+                if (folderInfo && folderInfo.coverImage) {
+                    await loadThumbnail(folder.path, folderInfo.coverImage);
                 }
             } catch (error) {
                 console.error('Failed to load thumbnail for folder:', folder.path, error);
@@ -742,14 +743,16 @@ export function ExplorerPage() {
                     )}
                     
                     {/* Breadcrumb */}
-                    <Breadcrumb
-                        currentPath={currentPath}
-                        baseFolders={baseFolders}
-                        onNavigate={handleBreadcrumbClick}
-                    />
+                    <div className="flex-1 min-w-0">
+                        <Breadcrumb
+                            currentPath={currentPath}
+                            baseFolders={baseFolders}
+                            onNavigate={handleBreadcrumbClick}
+                        />
+                    </div>
 
                     {/* Sort Controls */}
-                    <div className="flex-shrink-0">
+                    <div className="flex-shrink-0 ml-8">
                         <SortControls
                             sortBy={sortBy}
                             sortOrder={sortOrder}

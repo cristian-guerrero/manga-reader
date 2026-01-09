@@ -189,13 +189,15 @@ function SimpleThumbnail({ entry }: { entry: HistoryEntry }) {
                     setIsLoading(true);
                     
                     // Load thumbnail asynchronously with delay to avoid blocking
+                    // Use GetFolderInfoShallow instead of GetImages to avoid recursive scanning
+                    // This is much faster and follows the pattern from ExplorerPage
                     const loadTimer = setTimeout(async () => {
                         try {
                             // @ts-ignore
-                            const images = await window.go?.main?.App?.GetImages(entry.folderPath);
-                            if (images && images.length > entry.lastImageIndex) {
+                            const folderInfo = await window.go?.main?.App?.GetFolderInfoShallow(entry.folderPath);
+                            if (folderInfo && folderInfo.coverImage) {
                                 // @ts-ignore
-                                const thumb = await window.go?.main?.App?.GetThumbnail(images[entry.lastImageIndex].path);
+                                const thumb = await window.go?.main?.App?.GetThumbnail(folderInfo.coverImage);
                                 if (thumb) {
                                     // Cache the thumbnail
                                     thumbnailCache.set(entry.id, thumb);
@@ -215,7 +217,7 @@ function SimpleThumbnail({ entry }: { entry: HistoryEntry }) {
                     return () => clearTimeout(loadTimer);
                 }
             },
-            { rootMargin: '150px' }
+            { rootMargin: '200px' } // Same as ExplorerPage for consistency
         );
 
         observer.observe(ref.current);

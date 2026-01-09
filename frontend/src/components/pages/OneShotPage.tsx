@@ -186,11 +186,13 @@ export function OneShotPage() {
 
     const loadFolderThumbnail = async (folderPath: string) => {
         try {
+            // Use GetFolderInfoShallow instead of GetImages to avoid recursive scanning
+            // This is much faster and only scans the immediate directory
             // @ts-ignore - Wails generated bindings
-            const images = await window.go?.main?.App?.GetImages(folderPath);
-            if (images && images.length > 0) {
+            const folderInfo = await window.go?.main?.App?.GetFolderInfoShallow(folderPath);
+            if (folderInfo && folderInfo.coverImage) {
                 // @ts-ignore - Wails generated bindings
-                const thumb = await window.go?.main?.App?.GetThumbnail(images[0].path);
+                const thumb = await window.go?.main?.App?.GetThumbnail(folderInfo.coverImage);
                 if (thumb) {
                     setThumbnails((prev) => ({ ...prev, [folderPath]: thumb }));
                 }
