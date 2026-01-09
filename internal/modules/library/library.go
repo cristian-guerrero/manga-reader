@@ -142,25 +142,38 @@ func (m *Module) AddFolder(path string) (*persistence.AddFolderResult, error) {
 }
 
 // GetLibrary returns all library entries
+// Optimized: Uses cached data from persistence instead of re-scanning folders
 func (m *Module) GetLibrary() []persistence.FolderInfo {
 	entries := m.library.GetAll()
 	result := make([]persistence.FolderInfo, 0, len(entries))
 
 	for _, entry := range entries {
-		info, err := m.GetFolderInfo(entry.FolderPath)
-		if err == nil {
-			// Preserve AddedAt from library entry as LastModified
-			info.LastModified = entry.AddedAt
-			result = append(result, *info)
-		} else {
-			result = append(result, persistence.FolderInfo{
-				Path:         entry.FolderPath,
-				Name:         entry.FolderName,
-				ImageCount:   entry.TotalImages,
-				CoverImage:   entry.CoverImage,
-				LastModified: entry.AddedAt,
-			})
+		// Use cached data from library entry instead of re-scanning
+		// Only verify the path exists, but don't re-scan for images
+		info := persistence.FolderInfo{
+			Path:         entry.FolderPath,
+			Name:         entry.FolderName,
+			ImageCount:   entry.TotalImages,
+			CoverImage:   entry.CoverImage,
+			LastModified: entry.AddedAt,
 		}
+
+		// Only check if path exists (fast check), don't re-scan images
+		if _, err := os.Stat(entry.FolderPath); err == nil {
+			// Path exists, generate thumbnail URL if we have a cover image
+			if entry.CoverImage != "" {
+				dirHash := m.fileLoader.RegisterDirectory(entry.FolderPath)
+				baseURL := m.getBaseURL()
+				if baseURL != "" {
+					// Use the filename from the cover image path
+					coverFileName := filepath.Base(entry.CoverImage)
+					info.ThumbnailURL = fmt.Sprintf("%s/thumbnails?did=%s&fid=%s", baseURL, dirHash, strings.ReplaceAll(coverFileName, " ", "%20"))
+				}
+			}
+		}
+		// If path doesn't exist, we still return it so UI can show error or handle removal
+
+		result = append(result, info)
 	}
 
 	return result
@@ -251,25 +264,61 @@ func (m *Module) GetFolderInfoShallow(folderPath string) (*persistence.FolderInf
 func (m *Module) GetSubfolders(folderPath string) ([]persistence.FolderInfo, error) {
 	var folders []persistence.FolderInfo
 
-	entries, err := filepath.Glob(filepath.Join(folderPath, "*"))
+	entries, err := os.ReadDir(folderPath)
 	if err != nil {
 		return nil, err
 	}
 
 	for _, entry := range entries {
-		stat, err := os.Stat(entry)
-		if err != nil || !stat.IsDir() {
+		if !entry.IsDir() {
 			continue
 		}
 
-		info, err := m.GetFolderInfo(entry)
-		if err != nil {
+		fullPath := filepath.Join(folderPath, entry.Name())
+		
+		// Use shallow scan instead of full recursive scan for performance
+		// Only check immediate directory for images, not recursively
+		imageCount := m.fileLoader.GetShallowImageCount(fullPath)
+		hasSubdirs := m.fileLoader.HasSubdirectories(fullPath)
+		
+		// Skip folders with no images and no subdirectories
+		if imageCount == 0 && !hasSubdirs {
 			continue
 		}
 
-		if info.ImageCount > 0 {
-			folders = append(folders, *info)
+		// Find first image for cover (shallow scan)
+		coverImage, hasImages := m.fileLoader.FindFirstImageShallow(fullPath)
+		if !hasImages {
+			// If no images in immediate directory but has subdirs, still include it
+			// as it might be a series container
+			if hasSubdirs {
+				coverImage = ""
+			} else {
+				continue
+			}
 		}
+
+		var thumbnailURL string
+		if hasImages && coverImage != "" {
+			dirHash := m.fileLoader.RegisterDirectory(fullPath)
+			baseURL := m.getBaseURL()
+			if baseURL != "" {
+				relPath, _ := filepath.Rel(fullPath, coverImage)
+				thumbnailURL = fmt.Sprintf("%s/thumbnails?did=%s&fid=%s", baseURL, dirHash, strings.ReplaceAll(relPath, " ", "%20"))
+			}
+		}
+
+		// For count, we'll use shallow count for immediate directory only
+		// The actual count will be recalculated when the folder is added as a series
+		info := persistence.FolderInfo{
+			Path:         fullPath,
+			Name:         entry.Name(),
+			ImageCount:   imageCount, // Shallow count only
+			CoverImage:   coverImage,
+			ThumbnailURL: thumbnailURL,
+		}
+
+		folders = append(folders, info)
 	}
 
 	return folders, nil
