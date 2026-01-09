@@ -179,6 +179,8 @@ func (a *App) getBaseURL() string {
 
 // domReady is called after the frontend dom has been loaded
 func (a *App) domReady(ctx context.Context) {
+	// Emit event to notify frontend that bindings are ready
+	runtime.EventsEmit(ctx, "app_ready")
 }
 
 // shutdown is called when the app is closing

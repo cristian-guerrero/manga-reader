@@ -2,7 +2,7 @@
  * HomePage - Welcome screen with recent history and folder selection
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigationStore } from '../../stores/navigationStore';
 import { EventsOn, EventsOff } from '../../../wailsjs/runtime';
@@ -45,53 +45,41 @@ export function HomePage() {
     const [historyEntries, setHistoryEntries] = useState<any[]>([]);
     const [thumbnails, setThumbnails] = useState<Record<string, string>>({});
     const [isLoading, setIsLoading] = useState(true);
+    const isMountedRef = useRef(true);
 
-    useEffect(() => {
-        let isMounted = true;
-        let unsubscribe: () => void;
+    const loadRecentHistory = useCallback(async () => {
+        if (!isMountedRef.current) return;
 
-        const init = async () => {
-            // Start loading immediately without blocking
-            loadRecentHistory();
-
-            unsubscribe = EventsOn('history_updated', () => {
-                console.log('[HomePage] Received history_updated event');
-                if (isMounted) loadRecentHistory();
-            });
-        };
-
-        init();
-
-        return () => {
-            isMounted = false;
-            if (unsubscribe) unsubscribe();
-        };
-    }, []);
-
-    const loadRecentHistory = async (retryCount = 0) => {
-        setIsLoading(true);
         try {
             // @ts-ignore
             const app = window.go?.main?.App;
             if (!app?.GetHistory) {
-                // Quick retry once if not ready
-                if (retryCount < 1) {
-                    setTimeout(() => loadRecentHistory(1), 50);
-                    return;
+                // Bindings not available - this shouldn't happen in normal operation
+                console.warn('[HomePage] Bindings not available yet');
+                if (isMountedRef.current) {
+                    setIsLoading(false);
                 }
-                throw new Error('Bindings not available');
+                return;
+            }
+
+            // Set loading state
+            if (isMountedRef.current) {
+                setIsLoading(true);
             }
 
             const entries = await app.GetHistory();
             console.log(`[HomePage] History received: ${entries?.length || 0} items`);
 
+            if (!isMountedRef.current) return;
+
             if (entries && Array.isArray(entries) && entries.length > 0) {
                 // Show up to 4 recent items
                 const recent = entries.slice(0, 4);
                 setHistoryEntries(recent);
+                setIsLoading(false); // Show UI immediately with data
 
-                // Load thumbnails in parallel using Promise.all
-                const thumbnailPromises = recent.map(async (entry) => {
+                // Load thumbnails asynchronously without blocking UI
+                Promise.all(recent.map(async (entry) => {
                     try {
                         // @ts-ignore
                         const images = await window.go?.main?.App?.GetImages(entry.folderPath);
@@ -104,25 +92,57 @@ export function HomePage() {
                         console.error('Failed to load thumbnail for', entry.folderName, err);
                     }
                     return null;
+                })).then(results => {
+                    if (!isMountedRef.current) return;
+                    const newThumbnails: Record<string, string> = {};
+                    results.forEach(result => {
+                        if (result?.thumb) {
+                            newThumbnails[result.id] = result.thumb;
+                        }
+                    });
+                    setThumbnails(prev => ({ ...prev, ...newThumbnails }));
                 });
-                
-                const results = await Promise.all(thumbnailPromises);
-                const newThumbnails: Record<string, string> = {};
-                results.forEach(result => {
-                    if (result?.thumb) {
-                        newThumbnails[result.id] = result.thumb;
-                    }
-                });
-                setThumbnails(prev => ({ ...prev, ...newThumbnails }));
             } else {
                 setHistoryEntries([]);
+                setIsLoading(false);
             }
         } catch (error) {
             console.error('Failed to load history', error);
-        } finally {
-            setIsLoading(false);
+            if (isMountedRef.current) {
+                setIsLoading(false);
+            }
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        isMountedRef.current = true;
+        let unsubscribeHistory: () => void;
+        let unsubscribeAppReady: () => void;
+
+        // Try to load immediately - bindings should be available
+        loadRecentHistory();
+
+        // Also listen for app_ready event in case bindings weren't ready immediately
+        unsubscribeAppReady = EventsOn('app_ready', () => {
+            console.log('[HomePage] Received app_ready event');
+            if (isMountedRef.current && historyEntries.length === 0) {
+                loadRecentHistory();
+            }
+        });
+
+        unsubscribeHistory = EventsOn('history_updated', () => {
+            console.log('[HomePage] Received history_updated event');
+            if (isMountedRef.current) {
+                loadRecentHistory();
+            }
+        });
+
+        return () => {
+            isMountedRef.current = false;
+            if (unsubscribeHistory) unsubscribeHistory();
+            if (unsubscribeAppReady) unsubscribeAppReady();
+        };
+    }, [loadRecentHistory, historyEntries.length]);
 
     const handleContinue = (path: string) => {
         navigate('viewer', { folder: path });

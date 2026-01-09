@@ -2,7 +2,7 @@
  * SeriesPage - Series browser
  */
 
-import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigationStore } from '../../stores/navigationStore';
 import { EventsOn, EventsOff } from '../../../wailsjs/runtime';
@@ -59,6 +59,7 @@ export function SeriesPage() {
     const [thumbnails, setThumbnails] = useState<Record<string, string>>({});
     const [history, setHistory] = useState<any[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
+    const isMountedRef = useRef(true);
 
     // Sorting state with persistence
     const [sortBy, setSortBy] = useState<'name' | 'date'>(() => {
@@ -74,77 +75,9 @@ export function SeriesPage() {
         localStorage.setItem('series_sortOrder', sortOrder);
     }, [sortBy, sortOrder]);
 
-    useEffect(() => {
-        let isMounted = true;
-        let unsubscribe: () => void;
-
-        const init = async () => {
-            // Start loading immediately without blocking
-            loadSeries();
-            loadHistory();
-
-            unsubscribe = EventsOn('series_updated', () => {
-                if (isMounted) loadSeries();
-            });
-
-            const historyUnsubscribe = EventsOn('history_updated', () => {
-                if (isMounted) loadHistory();
-            });
-
-            return () => {
-                if (historyUnsubscribe) historyUnsubscribe();
-            };
-        };
-
-        init();
-
-        return () => {
-            isMounted = false;
-            if (unsubscribe) unsubscribe();
-        };
-    }, []);
-
-    const loadHistory = async () => {
-        try {
-            // @ts-ignore
-            const data = await window.go?.main?.App?.GetHistory();
-            if (data) setHistory(data);
-        } catch (error) {
-            console.error('Failed to load history:', error);
-        }
-    };
-
-    const loadSeries = async (retryCount = 0) => {
-        setIsLoading(true);
-        console.log(`[SeriesPage] Loading series (attempt ${retryCount + 1})...`);
-        try {
-            // @ts-ignore
-            const app = window.go?.main?.App;
-            if (!app?.GetSeries) {
-                // Quick retry once if not ready
-                if (retryCount < 1) {
-                    setTimeout(() => loadSeries(1), 50);
-                    return;
-                }
-                throw new Error('Bindings not available');
-            }
-
-            const data = await app.GetSeries();
-            console.log(`[SeriesPage] Series received: ${data?.length || 0} items`);
-            if (data && Array.isArray(data)) {
-                setSeries(data);
-
-                // Load thumbnails in parallel
-                loadThumbnailsInParallel(data);
-            }
-        } catch (error) {
-            console.error('[SeriesPage] Failed to load series:', error);
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
     const loadThumbnailsInParallel = useCallback(async (data: SeriesEntry[]) => {
+        if (!isMountedRef.current) return;
+        
         const entriesWithCover = data.filter(entry => entry.coverImage);
         
         // Load thumbnails in parallel with batching to avoid overwhelming
@@ -163,6 +96,8 @@ export function SeriesPage() {
             });
             
             const results = await Promise.all(thumbnailPromises);
+            if (!isMountedRef.current) return;
+            
             const newThumbnails: Record<string, string> = {};
             results.forEach(result => {
                 if (result?.thumb) {
@@ -172,6 +107,104 @@ export function SeriesPage() {
             setThumbnails((prev) => ({ ...prev, ...newThumbnails }));
         }
     }, []);
+
+    const loadHistory = useCallback(async () => {
+        try {
+            // @ts-ignore
+            const data = await window.go?.main?.App?.GetHistory();
+            if (data && isMountedRef.current) setHistory(data);
+        } catch (error) {
+            console.error('Failed to load history:', error);
+        }
+    }, []);
+
+    const loadSeries = useCallback(async () => {
+        if (!isMountedRef.current) return;
+
+        try {
+            // @ts-ignore
+            const app = window.go?.main?.App;
+            if (!app?.GetSeries) {
+                // Bindings not available - this shouldn't happen in normal operation
+                console.warn('[SeriesPage] Bindings not available yet');
+                if (isMountedRef.current) {
+                    setIsLoading(false);
+                }
+                return;
+            }
+
+            // Set loading state
+            if (isMountedRef.current) {
+                setIsLoading(true);
+            }
+
+            // Add timeout to prevent hanging
+            const timeoutPromise = new Promise((_, reject) => {
+                setTimeout(() => reject(new Error('Timeout loading series')), 10000); // 10 second timeout
+            });
+
+            const seriesPromise = app.GetSeries();
+            const data = await Promise.race([seriesPromise, timeoutPromise]) as any[];
+            
+            console.log(`[SeriesPage] Series received: ${data?.length || 0} items`);
+            
+            if (!isMountedRef.current) return;
+
+            if (data && Array.isArray(data)) {
+                setSeries(data);
+                setIsLoading(false); // Show UI immediately with data
+
+                // Load thumbnails asynchronously without blocking UI
+                loadThumbnailsInParallel(data);
+            } else {
+                setSeries([]);
+                setIsLoading(false);
+            }
+        } catch (error) {
+            console.error('[SeriesPage] Failed to load series:', error);
+            if (isMountedRef.current) {
+                setSeries([]);
+                setIsLoading(false);
+            }
+        }
+    }, [loadThumbnailsInParallel]);
+
+    useEffect(() => {
+        isMountedRef.current = true;
+        let unsubscribeSeries: () => void;
+        let unsubscribeHistory: () => void;
+        let unsubscribeAppReady: () => void;
+
+        // Try to load immediately - bindings should be available
+        loadSeries();
+        loadHistory();
+
+        // Listen for app_ready event in case bindings weren't ready immediately
+        unsubscribeAppReady = EventsOn('app_ready', () => {
+            console.log('[SeriesPage] Received app_ready event');
+            if (isMountedRef.current) {
+                loadSeries();
+                loadHistory();
+            }
+        });
+
+        unsubscribeSeries = EventsOn('series_updated', () => {
+            if (isMountedRef.current) loadSeries();
+        });
+
+        unsubscribeHistory = EventsOn('history_updated', () => {
+            if (isMountedRef.current) loadHistory();
+        });
+
+        return () => {
+            isMountedRef.current = false;
+            if (unsubscribeSeries) unsubscribeSeries();
+            if (unsubscribeHistory) unsubscribeHistory();
+            if (unsubscribeAppReady) unsubscribeAppReady();
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []); // Empty deps - only run once on mount
+
 
     const handleSelectFolder = async () => {
         try {

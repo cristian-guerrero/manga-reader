@@ -18,6 +18,7 @@ import { useNavigationStore } from './stores/navigationStore';
 import { useSettingsStore } from './stores/settingsStore';
 import { usePanicMode } from './hooks/usePanicMode';
 import { ToastProvider } from './components/common/Toast';
+import { EventsOn } from '../wailsjs/runtime';
 import './i18n';
 
 declare global {
@@ -85,16 +86,17 @@ function LoadingScreen() {
     );
 }
 
-// Page router component
+// Page router component with optimized rendering
 function PageRouter() {
     const { currentPage, params } = useNavigationStore();
 
-    // Memoize page rendering to prevent unnecessary re-renders
     // Create a stable key from params for comparison
     const paramsKey = useMemo(() => {
         return Object.keys(params).sort().map(k => `${k}:${params[k]}`).join('|');
     }, [params]);
 
+    // Memoize page content to prevent unnecessary re-renders
+    // Only recreate when page or params actually change
     const pageContent = useMemo(() => {
         return renderPage(currentPage, params);
     }, [currentPage, paramsKey]);
@@ -152,17 +154,34 @@ function App() {
 
     // Load settings on mount and set up window resize listener
     useEffect(() => {
-        const initApp = async () => {
-            await loadSettings();
+        let unsubscribeAppReady: (() => void) | undefined;
 
-            // Restore last page after settings load
-            const lastPage = useSettingsStore.getState().lastPage;
-            if (lastPage && lastPage !== 'home') {
-                // Only restore main pages, not viewer or other temporary pages
-                const mainPages = ['home', 'oneShot', 'series', 'history', 'download', 'settings'];
-                if (mainPages.includes(lastPage)) {
-                    useNavigationStore.getState().navigate(lastPage as any);
+        const initApp = async () => {
+            try {
+                await loadSettings();
+
+                // Restore last page after settings load
+                const lastPage = useSettingsStore.getState().lastPage;
+                if (lastPage && lastPage !== 'home') {
+                    // Only restore main pages, not viewer or other temporary pages
+                    const mainPages = ['home', 'oneShot', 'series', 'history', 'download', 'settings'];
+                    if (mainPages.includes(lastPage)) {
+                        useNavigationStore.getState().navigate(lastPage as any);
+                    }
                 }
+            } catch (error) {
+                console.error('[App] Failed to initialize app:', error);
+                // App can continue with defaults even if settings load fails
+                
+                // Try again when app_ready event fires as backup
+                unsubscribeAppReady = EventsOn('app_ready', async () => {
+                    console.log('[App] Received app_ready event, retrying settings load');
+                    try {
+                        await loadSettings();
+                    } catch (retryError) {
+                        console.error('[App] Failed to load settings on app_ready:', retryError);
+                    }
+                });
             }
         };
 
@@ -180,6 +199,7 @@ function App() {
         return () => {
             window.removeEventListener('resize', handleResize);
             if (resizeTimeout) clearTimeout(resizeTimeout);
+            if (unsubscribeAppReady) unsubscribeAppReady();
         };
     }, [loadSettings, checkMaximized]);
 

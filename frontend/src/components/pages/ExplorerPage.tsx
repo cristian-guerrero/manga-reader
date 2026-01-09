@@ -257,20 +257,17 @@ const saveSortPreferences = (path: string | null, sortBy: 'name' | 'date', sortO
 
 export function ExplorerPage() {
     const { t } = useTranslation();
-    const { navigate, explorerState, setExplorerState } = useNavigationStore();
+    const { navigate, explorerState, setExplorerState, previousPage } = useNavigationStore();
     const { showToast } = useToast();
 
     const [baseFolders, setBaseFolders] = useState<BaseFolder[]>([]);
-    // Initialize state from store if available
-    const [currentPath, setCurrentPath] = useState<string | null>(() => {
-        return explorerState?.currentPath ?? null;
-    });
-    const [pathHistory, setPathHistory] = useState<string[]>(() => {
-        return explorerState?.pathHistory ?? [];
-    });
+    // Always start at root when mounting - state will be restored only if coming from explorer
+    const [currentPath, setCurrentPath] = useState<string | null>(null);
+    const [pathHistory, setPathHistory] = useState<string[]>([]);
     const [entries, setEntries] = useState<ExplorerEntry[]>([]);
     const [loading, setLoading] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
+    const isMountedRef = useRef(true);
     
     // Usar hook para thumbnails - cargar individualmente cuando sean visibles
     const { thumbnails, loadThumbnail, initializeThumbnails } = useThumbnails(10);
@@ -287,6 +284,13 @@ export function ExplorerPage() {
     const preferencesLoadedRef = useRef(false);
     // Track if we're initializing from store to avoid saving during initialization
     const isInitializingRef = useRef(true);
+    // Keep current path in ref for event listener closure
+    const currentPathRef = useRef<string | null>(currentPath);
+
+    // Update ref when currentPath changes
+    useEffect(() => {
+        currentPathRef.current = currentPath;
+    }, [currentPath]);
 
     // Load sort preferences when path changes
     useEffect(() => {
@@ -303,20 +307,31 @@ export function ExplorerPage() {
         }
     }, [sortBy, sortOrder, currentPath]);
 
-    // Initial load
+    // Initial load - defer to allow UI to render first
     useEffect(() => {
-        loadBaseFolders();
+        // Use setTimeout to defer loading and allow UI to render first
+        // This prevents blocking the main thread and allows drag from title bar
+        const timeoutId = setTimeout(() => {
+            loadBaseFolders();
+        }, 0);
 
-        // Listen for updates
+        return () => {
+            clearTimeout(timeoutId);
+        };
+    }, []); // Only run once on mount
+
+    // Listen for updates - separate effect to avoid re-registration on path change
+    useEffect(() => {
         const unlisten = (window as any).runtime?.EventsOn("explorer_updated", () => {
             loadBaseFolders();
             // Only reload current directory if we're not at root
             // This prevents unwanted navigation when adding/removing folders
-            if (currentPath) {
-                // Use a small delay to ensure state is updated
-                setTimeout(() => {
-                    loadDirectory(currentPath, false);
-                }, 0);
+            const path = currentPathRef.current;
+            if (path) {
+                // Use requestAnimationFrame for better performance
+                requestAnimationFrame(() => {
+                    loadDirectory(path, false);
+                });
             }
         });
 
@@ -325,12 +340,25 @@ export function ExplorerPage() {
                 unlisten();
             }
         };
-    }, [currentPath]);
+    }, []); // Only register listener once - uses ref for current path
 
     const loadBaseFolders = async () => {
         try {
             // @ts-ignore
-            const folders = await window.go.main.App.GetBaseFolders();
+            const app = window.go?.main?.App;
+            if (!app?.GetBaseFolders) {
+                console.warn('[ExplorerPage] Bindings not available yet');
+                return;
+            }
+
+            // Add timeout to prevent hanging
+            const timeoutPromise = new Promise((_, reject) => {
+                setTimeout(() => reject(new Error('Timeout loading base folders')), 10000); // 10 second timeout
+            });
+
+            const foldersPromise = app.GetBaseFolders();
+            const folders = await Promise.race([foldersPromise, timeoutPromise]) as BaseFolder[];
+
             setBaseFolders(folders || []);
             
             // Inicializar thumbnails que ya vienen del backend
@@ -352,10 +380,28 @@ export function ExplorerPage() {
     };
 
     const loadDirectory = async (path: string, pushHistory = true) => {
+        if (!isMountedRef.current) return;
+
         setLoading(true);
         try {
             // @ts-ignore
-            const items = await window.go.main.App.ExploreFolder(path);
+            const app = window.go?.main?.App;
+            if (!app?.ExploreFolder) {
+                console.warn('[ExplorerPage] Bindings not available yet');
+                setLoading(false);
+                return;
+            }
+
+            // Add timeout to prevent hanging
+            const timeoutPromise = new Promise((_, reject) => {
+                setTimeout(() => reject(new Error('Timeout loading directory')), 10000); // 10 second timeout
+            });
+
+            const itemsPromise = app.ExploreFolder(path);
+            const items = await Promise.race([itemsPromise, timeoutPromise]) as ExplorerEntry[];
+
+            if (!isMountedRef.current) return;
+
             setEntries(items || []);
 
             if (pushHistory && currentPath && currentPath !== path) {
@@ -380,26 +426,50 @@ export function ExplorerPage() {
             }
         } catch (error) {
             console.error("Failed to load directory", error);
-            showToast(t('explorer.loadFailed') || "Failed to load directory", "error");
+            if (isMountedRef.current) {
+                showToast(t('explorer.loadFailed') || "Failed to load directory", "error");
+            }
         } finally {
-            setLoading(false);
+            if (isMountedRef.current) {
+                setLoading(false);
+            }
         }
     };
 
-    // Restore explorer state from store when component mounts and load directory if needed
+    // Restore explorer state from store ONLY if we were already navigating within explorer
+    // If coming from another view, always start at root
     useEffect(() => {
-        if (explorerState && explorerState.currentPath) {
+        isMountedRef.current = true;
+        
+        // Only restore state if we were already in explorer (previousPage === 'explorer')
+        // This prevents restoring path when coming from other views like home, series, etc.
+        const savedPath = explorerState?.currentPath;
+        if (previousPage === 'explorer' && savedPath) {
             isInitializingRef.current = true;
+            // Restore path history first
+            setPathHistory(explorerState.pathHistory || []);
             // Load the directory - this will update currentPath and entries
-            loadDirectory(explorerState.currentPath, false).finally(() => {
-                // Mark initialization as complete after loadDirectory finishes
-                setTimeout(() => {
-                    isInitializingRef.current = false;
-                }, 50);
-            });
+            // Defer loading slightly to allow UI to render first
+            setTimeout(() => {
+                if (isMountedRef.current && savedPath) {
+                    loadDirectory(savedPath, false).finally(() => {
+                        // Mark initialization as complete after loadDirectory finishes
+                        setTimeout(() => {
+                            isInitializingRef.current = false;
+                        }, 50);
+                    });
+                }
+            }, 0);
         } else {
+            // Coming from another view - always start at root (already set in useState)
+            setCurrentPath(null);
+            setPathHistory([]);
             isInitializingRef.current = false;
         }
+
+        return () => {
+            isMountedRef.current = false;
+        };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []); // Only run on mount
 

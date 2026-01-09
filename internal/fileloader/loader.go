@@ -149,6 +149,23 @@ func (fl *FileLoader) GetImages(folderPath string) ([]ImageInfo, error) {
 	return images, nil
 }
 
+// FindFirstImageShallow searches for the first image only in the immediate directory (non-recursive)
+func (fl *FileLoader) FindFirstImageShallow(folderPath string) (string, bool) {
+	entries, err := os.ReadDir(folderPath)
+	if err != nil {
+		return "", false
+	}
+
+	// Look for images in the current folder only (fast, non-recursive)
+	for _, entry := range entries {
+		if !entry.IsDir() && fl.IsSupportedImage(entry.Name()) {
+			return filepath.Join(folderPath, entry.Name()), true
+		}
+	}
+
+	return "", false
+}
+
 // FindFirstImage recursively searches for the first image in a directory and stops immediately
 func (fl *FileLoader) FindFirstImage(folderPath string) (string, bool) {
 	var foundPath string

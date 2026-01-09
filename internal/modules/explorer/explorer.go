@@ -103,6 +103,7 @@ type BaseFolderEntry struct {
 }
 
 // GetBaseFolders returns all added base folders with thumbnail info
+// Optimized to use shallow search to avoid blocking the UI
 func (m *Module) GetBaseFolders() []BaseFolderEntry {
 	folders := m.explorerManager.GetAll()
 	result := make([]BaseFolderEntry, 0, len(folders))
@@ -115,8 +116,9 @@ func (m *Module) GetBaseFolders() []BaseFolderEntry {
 			IsVisible: f.IsVisible,
 		}
 
-		// Look for a thumbnail for this base folder
-		imagePath, hasImages := m.fileLoader.FindFirstImage(f.Path)
+		// Use shallow search first (fast, only immediate directory)
+		// This avoids expensive recursive scanning that blocks the UI
+		imagePath, hasImages := m.fileLoader.FindFirstImageShallow(f.Path)
 		if hasImages {
 			entry.HasImages = true
 			dirHash := m.fileLoader.RegisterDirectory(f.Path)
@@ -170,9 +172,10 @@ func (m *Module) ListDirectory(path string) ([]ExplorerEntry, error) {
 		var thumbnailURL string
 
 		if isDir {
-			// Check if folder has images (fast check for first image)
+			// Use shallow search first (fast, only immediate directory) to avoid blocking UI
+			// Only check for images in immediate directory, not recursively
 			var imagePath string
-			imagePath, hasImages = m.fileLoader.FindFirstImage(fullPath)
+			imagePath, hasImages = m.fileLoader.FindFirstImageShallow(fullPath)
 			hasSubdirs := m.fileLoader.HasSubdirectories(fullPath)
 
 			// FILTER: If no images and no subdirectories, skip this entry
@@ -180,7 +183,7 @@ func (m *Module) ListDirectory(path string) ([]ExplorerEntry, error) {
 				continue
 			}
 
-			// For count, we use shallow count or just 1 if images exist in subfolders to be fast.
+			// For count, we use shallow count (only immediate directory images)
 			count := m.fileLoader.GetShallowImageCount(fullPath)
 			imageCount = count
 

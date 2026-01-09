@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigationStore } from '../../stores/navigationStore';
 import { useToast } from '../common/Toast';
@@ -52,6 +52,7 @@ export function OneShotPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [thumbnails, setThumbnails] = useState<Record<string, string>>({});
     const [searchQuery, setSearchQuery] = useState('');
+    const isMountedRef = useRef(true);
 
     // Sorting state with persistence - migrate from old keys
     const [sortBy, setSortBy] = useState<'name' | 'date'>(() => {
@@ -89,44 +90,65 @@ export function OneShotPage() {
 
     // Load folders from settings/library
     useEffect(() => {
-        let isMounted = true;
-        let unsubscribe: () => void;
+        isMountedRef.current = true;
+        let unsubscribeLibrary: () => void;
+        let unsubscribeAppReady: () => void;
 
-        const init = async () => {
-            // Start loading immediately without blocking
-            loadFolders();
+        // Try to load immediately - bindings should be available
+        loadFolders();
 
-            // Listen for updates (e.g. from drag and drop)
-            unsubscribe = EventsOn('library_updated', () => {
-                if (isMounted) loadFolders();
-            });
-        };
+        // Listen for app_ready event in case bindings weren't ready immediately
+        unsubscribeAppReady = EventsOn('app_ready', () => {
+            console.log('[OneShotPage] Received app_ready event');
+            if (isMountedRef.current) {
+                loadFolders();
+            }
+        });
 
-        init();
+        // Listen for updates (e.g. from drag and drop)
+        unsubscribeLibrary = EventsOn('library_updated', () => {
+            if (isMountedRef.current) loadFolders();
+        });
 
         return () => {
-            isMounted = false;
-            if (unsubscribe) unsubscribe();
+            isMountedRef.current = false;
+            if (unsubscribeLibrary) unsubscribeLibrary();
+            if (unsubscribeAppReady) unsubscribeAppReady();
         };
-    }, []);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []); // Empty deps - only run once on mount
 
-    const loadFolders = async (retryCount = 0) => {
-        setIsLoading(true);
-        console.log(`[OneShotPage] Loading folders (attempt ${retryCount + 1})...`);
+    const loadFolders = useCallback(async () => {
+        if (!isMountedRef.current) return;
+
         try {
             // @ts-ignore - Wails generated bindings
             const app = window.go?.main?.App;
             if (!app?.GetLibrary) {
-                // Quick retry once if not ready
-                if (retryCount < 1) {
-                    setTimeout(() => loadFolders(1), 50);
-                    return;
+                // Bindings not available - this shouldn't happen in normal operation
+                console.warn('[OneShotPage] Bindings not available yet');
+                if (isMountedRef.current) {
+                    setIsLoading(false);
                 }
-                throw new Error('Bindings not available');
+                return;
             }
 
-            const library = await app.GetLibrary();
+            // Set loading state
+            if (isMountedRef.current) {
+                setIsLoading(true);
+            }
+
+            // Add timeout to prevent hanging
+            const timeoutPromise = new Promise((_, reject) => {
+                setTimeout(() => reject(new Error('Timeout loading library')), 10000); // 10 second timeout
+            });
+
+            const libraryPromise = app.GetLibrary();
+            const library = await Promise.race([libraryPromise, timeoutPromise]) as any[];
+
             console.log(`[OneShotPage] Library received: ${library?.length || 0} items`);
+
+            if (!isMountedRef.current) return;
 
             if (library && Array.isArray(library)) {
                 const folderData = library.map((entry: any) => ({
@@ -139,6 +161,7 @@ export function OneShotPage() {
                     lastModified: entry.lastModified,
                 }));
                 setFolders(folderData);
+                setIsLoading(false); // Show UI immediately with data
 
                 // Initialize thumbnails state from the folder metadata
                 const initialThumbs: Record<string, string> = {};
@@ -148,13 +171,18 @@ export function OneShotPage() {
                     }
                 }
                 setThumbnails(initialThumbs);
+            } else {
+                setFolders([]);
+                setIsLoading(false);
             }
         } catch (error) {
             console.error('[OneShotPage] Failed to load folders:', error);
-        } finally {
-            setIsLoading(false);
+            if (isMountedRef.current) {
+                setFolders([]);
+                setIsLoading(false);
+            }
         }
-    };
+    }, []);
 
     const loadFolderThumbnail = async (folderPath: string) => {
         try {

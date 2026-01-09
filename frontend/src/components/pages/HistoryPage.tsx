@@ -258,61 +258,90 @@ export function HistoryPage() {
     });
     const { enableHistory } = useSettingsStore();
     const scrollContainerRef = useRef<HTMLDivElement>(null);
+    const isMountedRef = useRef(true);
 
     // Save view mode preference
     useEffect(() => {
         localStorage.setItem('history_viewMode', viewMode);
     }, [viewMode]);
 
+    const loadHistory = useCallback(async () => {
+        if (!isMountedRef.current) return;
+
+        try {
+            // @ts-ignore - Wails generated bindings
+            const app = window.go?.main?.App;
+            if (!app?.GetHistory) {
+                // Bindings not available - this shouldn't happen in normal operation
+                console.warn('[HistoryPage] Bindings not available yet');
+                if (isMountedRef.current) {
+                    setIsLoading(false);
+                }
+                return;
+            }
+
+            // Set loading state
+            if (isMountedRef.current) {
+                setIsLoading(true);
+            }
+
+            // Add timeout to prevent hanging
+            const timeoutPromise = new Promise((_, reject) => {
+                setTimeout(() => reject(new Error('Timeout loading history')), 10000); // 10 second timeout
+            });
+
+            const historyPromise = app.GetHistory();
+            const entries = await Promise.race([historyPromise, timeoutPromise]) as any[];
+
+            if (!isMountedRef.current) return;
+
+            if (entries && Array.isArray(entries)) {
+                setHistory(entries);
+            } else {
+                setHistory([]);
+            }
+            setIsLoading(false);
+        } catch (error) {
+            console.error('Failed to load history:', error);
+            if (isMountedRef.current) {
+                setHistory([]);
+                setIsLoading(false);
+            }
+        }
+    }, []);
+
     useEffect(() => {
-        let isMounted = true;
-        let unsubscribe: () => void;
+        isMountedRef.current = true;
+        let unsubscribeHistory: () => void;
+        let unsubscribeAppReady: () => void;
 
         if (enableHistory) {
-            const init = async () => {
-                loadHistory();
+            // Try to load immediately - bindings should be available
+            loadHistory();
 
-                unsubscribe = EventsOn('history_updated', () => {
-                    if (isMounted) loadHistory();
-                });
-            };
+            // Listen for app_ready event in case bindings weren't ready immediately
+            unsubscribeAppReady = EventsOn('app_ready', () => {
+                console.log('[HistoryPage] Received app_ready event');
+                if (isMountedRef.current && enableHistory) {
+                    loadHistory();
+                }
+            });
 
-            init();
+            unsubscribeHistory = EventsOn('history_updated', () => {
+                if (isMountedRef.current) loadHistory();
+            });
         } else {
             setIsLoading(false);
             setHistory([]);
         }
 
         return () => {
-            isMounted = false;
-            if (unsubscribe) unsubscribe();
+            isMountedRef.current = false;
+            if (unsubscribeHistory) unsubscribeHistory();
+            if (unsubscribeAppReady) unsubscribeAppReady();
         };
-    }, [enableHistory]);
-
-    const loadHistory = async (retryCount = 0) => {
-        setIsLoading(true);
-        try {
-            // @ts-ignore - Wails generated bindings
-            const app = window.go?.main?.App;
-            if (!app?.GetHistory) {
-                // Quick retry once if not ready
-                if (retryCount < 1) {
-                    setTimeout(() => loadHistory(1), 50);
-                    return;
-                }
-                throw new Error('Bindings not available');
-            }
-
-            const entries = await app.GetHistory();
-            if (entries && Array.isArray(entries)) {
-                setHistory(entries);
-            }
-        } catch (error) {
-            console.error('Failed to load history:', error);
-        } finally {
-            setIsLoading(false);
-        }
-    };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [enableHistory]); // Only depend on enableHistory, loadHistory is stable
 
     const handleContinue = (entry: HistoryEntry) => {
         navigate('viewer', { folder: entry.folderPath });
