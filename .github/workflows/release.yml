@@ -62,9 +62,10 @@ jobs:
           if [ "${{ matrix.os }}" == "macos-latest" ]; then
             echo "Procesando archivo .app para macOS..."
             cd build/bin
-            # En macOS el build genera una carpeta .app, comprimirla pero mantenerla también
+            # En macOS el build genera una carpeta .app, comprimirla
+            # El .zip es suficiente para distribución, los usuarios pueden descomprimirlo
             zip -r manga-visor2-macos.zip *.app
-            echo "Archivo .app y .zip creados correctamente"
+            echo "Archivo .zip creado correctamente"
           fi
 
       - name: Listar archivos en build/bin (debug)
@@ -80,13 +81,15 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         shell: bash
         run: |
+          # Crear release si no existe (ignorar error si ya existe)
+          gh release create ${{ github.ref_name }} --title "${{ github.ref_name }}" --notes "Release ${{ github.ref_name }}" || true
+          
+          # Subir archivos según la plataforma
           if [ "${{ matrix.os }}" == "macos-latest" ]; then
-            # Para macOS, subir explícitamente el .app y el .zip usando gh CLI
-            gh release create ${{ github.ref_name }} --title "${{ github.ref_name }}" --notes "Release ${{ github.ref_name }}" || true
-            gh release upload ${{ github.ref_name }} build/bin/*.app build/bin/*.zip --clobber
+            # Para macOS, solo subir el .zip (el .app está dentro)
+            gh release upload ${{ github.ref_name }} build/bin/*.zip --clobber
           else
-            # Para otras plataformas, crear release y subir archivos
-            gh release create ${{ github.ref_name }} --title "${{ github.ref_name }}" --notes "Release ${{ github.ref_name }}" || true
+            # Para otras plataformas, subir todos los archivos
             gh release upload ${{ github.ref_name }} build/bin/* --clobber
           fi
         env:
