@@ -770,7 +770,7 @@ export function ExplorerPage() {
                 {!currentPath && (
                     <button
                         onClick={handleAddBaseFolder}
-                        className="btn-primary transition-transform hover:scale-105 active:scale-95"
+                        className="btn-primary transition-transform hover:scale-105 active:scale-95 ml-6"
                     >
                         <span className="mr-2">+</span>
                         {t('explorer.addBaseFolder')}
