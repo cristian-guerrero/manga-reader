@@ -162,3 +162,13 @@ en la vista explorer, cuando un archivo esta dentro de una carpeta pero esta car
 cargar en el visor todas las imagenes (de las carpetas a su nivel)
 si un archivo esta dentro de una carpeta pero tiene mas carpetas al mismo nivel, si se le da play  se debe ver el contenido de la carpeta actual no las subcarpeta
 recursivamente, ni con el boton play ni con el click en el archivo
+
+--------------
+optimizaciones realizadas (RESUELTO):
+- Optimizado GetLibrary() para usar datos guardados en lugar de reescanear recursivamente cada carpeta
+- Optimizado GetSubfolders() para usar escaneo shallow (solo directorio inmediato) en lugar de recursivo completo
+- Optimizado AddSeries() para evitar escaneos redundantes de directorios ya escaneados
+- Optimizado GetSeries() para usar FindFirstImageShallow() primero antes de hacer escaneo recursivo completo
+- Implementado file watching con fsnotify para detectar cambios en sistema de archivos del explorer
+- El explorer ahora se actualiza automáticamente cuando se agregan/eliminan carpetas externamente sin sobreescaneos
+- Eliminados sobreescaneos innecesarios que causaban lentitud en bibliotecas grandes
