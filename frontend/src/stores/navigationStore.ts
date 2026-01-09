@@ -54,7 +54,7 @@ export const useNavigationStore = create<NavigationStoreState>((set, get) => ({
     folders: [],
 
     // Actions
-    navigate: (page, params = {}, activeMenuPageOverride = null) => {
+    navigate: (page, params = {}, activeMenuPageOverride = undefined) => {
         const { currentPage, history } = get();
 
         // Determine active menu page
@@ -64,7 +64,7 @@ export const useNavigationStore = create<NavigationStoreState>((set, get) => ({
         let activeMenuPage: PageType | null;
         const mainPages: PageType[] = ['home', 'explorer', 'history', 'oneShot', 'series', 'download', 'settings'];
         
-        if (activeMenuPageOverride !== null) {
+        if (activeMenuPageOverride !== undefined) {
             activeMenuPage = activeMenuPageOverride;
         } else if (mainPages.includes(page)) {
             activeMenuPage = page;
