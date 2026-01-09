@@ -158,6 +158,10 @@ export function ResolveFolder(arg1) {
   return window['go']['main']['App']['ResolveFolder'](arg1);
 }
 
+export function ResumeIncompleteDownloads(arg1) {
+  return window['go']['main']['App']['ResumeIncompleteDownloads'](arg1);
+}
+
 export function SaveImageOrder(arg1, arg2, arg3) {
   return window['go']['main']['App']['SaveImageOrder'](arg1, arg2, arg3);
 }

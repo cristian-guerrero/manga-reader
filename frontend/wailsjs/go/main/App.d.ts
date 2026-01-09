@@ -83,6 +83,8 @@ export function ResetImageOrder(arg1:string):Promise<void>;
 
 export function ResolveFolder(arg1:string):Promise<string>;
 
+export function ResumeIncompleteDownloads(arg1:boolean):Promise<void>;
+
 export function SaveImageOrder(arg1:string,arg2:Array<string>,arg3:Array<string>):Promise<void>;
 
 export function SaveSettings(arg1:persistence.Settings):Promise<void>;

@@ -149,3 +149,11 @@ caracteristicas adicionales 7:
 
 ------------------------------------------------
 - validar en linux si esta funcionando correctamente el monitoreo de clipboard
+--------------------------------------------------------------------------------
+caracteristicas adicionales 8:
+- Tener un toggle en descargas que nos permita continuar descargas al abrir la pestaña de descargas
+- Las descargas marcadas como descargas ( "status": "completed",) no deben continuar asi la carpeta no exista o falten archivos en la carpeta (asi el toggle este on),
+    puede significar que el usuario ya la elimino o corto a otro loado, 
+- cuando el toggle este off se debe tener un incono de continuar descarga en descargas incompletas
+
+
