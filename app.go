@@ -562,6 +562,10 @@ func (a *App) FetchMangaInfo(url string) (*downloader.SiteInfo, error) {
 	return a.downloaderMod.FetchMangaInfo(url)
 }
 
+func (a *App) ResumeIncompleteDownloads(autoResume bool) error {
+	return a.downloaderMod.ResumeIncompleteDownloads(autoResume)
+}
+
 // OpenInFileManager opens a path in the system's file manager
 func (a *App) OpenInFileManager(path string) error {
 	var cmd *exec.Cmd

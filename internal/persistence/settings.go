@@ -53,6 +53,8 @@ type Settings struct {
 	DownloadPath string `json:"downloadPath"`
 	// Clipboard auto monitor
 	ClipboardAutoMonitor bool `json:"clipboardAutoMonitor"`
+	// Auto resume incomplete downloads
+	AutoResumeDownloads bool `json:"autoResumeDownloads"`
 }
 
 // DefaultSettings returns the default settings
@@ -91,6 +93,7 @@ func DefaultSettings() *Settings {
 		},
 		DownloadPath:         "", // empty means default
 		ClipboardAutoMonitor: false,
+		AutoResumeDownloads:  false,
 	}
 }
 
@@ -273,6 +276,10 @@ func (sm *SettingsManager) Update(updates map[string]interface{}) error {
 		case "clipboardAutoMonitor":
 			if v, ok := value.(bool); ok {
 				sm.settings.ClipboardAutoMonitor = v
+			}
+		case "autoResumeDownloads":
+			if v, ok := value.(bool); ok {
+				sm.settings.AutoResumeDownloads = v
 			}
 		}
 

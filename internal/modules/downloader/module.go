@@ -408,6 +408,104 @@ func (m *Module) notifyUpdate() {
 	}
 }
 
+// VerifyDownloadComplete verifies if a completed download actually has all files
+// Returns true only if the download is marked as completed AND has all files
+func (m *Module) VerifyDownloadComplete(job persistence.DownloadJob) (bool, error) {
+	if job.Status != persistence.StatusCompleted {
+		return false, nil // No está marcada como completa
+	}
+
+	if job.Path == "" {
+		return false, nil // No tiene path, no puede estar completa
+	}
+
+	// Verificar si la carpeta existe
+	if _, err := os.Stat(job.Path); os.IsNotExist(err) {
+		return false, nil // Carpeta no existe
+	}
+
+	// Contar archivos en la carpeta
+	files, err := os.ReadDir(job.Path)
+	if err != nil {
+		return false, err
+	}
+
+	// Contar solo archivos de imagen
+	imageCount := 0
+	imageExts := map[string]bool{
+		".jpg": true, ".jpeg": true, ".png": true,
+		".gif": true, ".webp": true, ".bmp": true,
+	}
+
+	for _, file := range files {
+		if !file.IsDir() {
+			ext := strings.ToLower(filepath.Ext(file.Name()))
+			if imageExts[ext] {
+				info, err := file.Info()
+				if err == nil && info.Size() > 0 {
+					imageCount++
+				}
+			}
+		}
+	}
+
+	// Si faltan archivos, no está completa
+	return imageCount >= job.TotalPages, nil
+}
+
+// ResumeIncompleteDownloads reanuda descargas incompletas si autoResume está activado
+// NO reanuda descargas marcadas como "completed" (aunque falten archivos)
+func (m *Module) ResumeIncompleteDownloads(autoResume bool) error {
+	if !autoResume {
+		return nil // Toggle está off
+	}
+
+	settings := m.sm.Get()
+	if !settings.AutoResumeDownloads {
+		return nil // Double check
+	}
+
+	jobs := m.pm.GetJobs()
+	for _, job := range jobs {
+		// NO reanudar descargas marcadas como "completed"
+		// Aunque falten archivos, asumimos que el usuario las eliminó/movió intencionalmente
+		if job.Status == persistence.StatusCompleted {
+			continue
+		}
+
+		// Solo reanudar: failed, cancelled, o pending/running zombies
+		if job.Status == persistence.StatusFailed ||
+			job.Status == persistence.StatusCancelled ||
+			(job.Status == persistence.StatusPending || job.Status == persistence.StatusRunning) {
+			// Verificar si está realmente activa
+			_, isActive := m.activeJobs.Load(job.ID)
+
+			// También verificar si está en la cola
+			m.queueLock.Lock()
+			inQueue := false
+			if queue, ok := m.queues[job.Site]; ok {
+				for _, qj := range queue {
+					if qj.job.ID == job.ID {
+						inQueue = true
+						break
+					}
+				}
+			}
+			m.queueLock.Unlock()
+
+			if !isActive && !inQueue {
+				// No está activa ni en cola, intentar reanudar
+				fmt.Printf("[Downloader] Auto-resuming incomplete download: %s (status: %s)\n", job.ID, job.Status)
+				_, err := m.StartDownload(job.URL, job.SeriesName, job.ChapterName)
+				if err != nil {
+					fmt.Printf("[Downloader] Failed to auto-resume job %s: %v\n", job.ID, err)
+				}
+			}
+		}
+	}
+	return nil
+}
+
 func sanitizeFilename(name string) string {
 	if name == "" {
 		return ""
