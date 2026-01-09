@@ -62,11 +62,9 @@ jobs:
           if [ "${{ matrix.os }}" == "macos-latest" ]; then
             echo "Procesando archivo .app para macOS..."
             cd build/bin
-            # En macOS el build genera una carpeta .app, hay que comprimirla para el release
+            # En macOS el build genera una carpeta .app, comprimirla pero mantenerla también
             zip -r manga-visor2-macos.zip *.app
-            # Eliminamos la carpeta para que no interfiera con la subida de archivos
-            rm -rf *.app
-            echo "Archivo .app procesado correctamente"
+            echo "Archivo .app y .zip creados correctamente"
           fi
 
       - name: Crear Release en GitHub
