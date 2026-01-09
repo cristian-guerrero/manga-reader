@@ -20,6 +20,7 @@ jobs:
             platform: darwin/universal
             artifact_name: manga-visor2.app
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
     permissions:
       contents: write
 
@@ -52,14 +53,19 @@ jobs:
         run: npm install
 
       - name: Compilar App
+        timeout-minutes: 30
         run: |
-          wails build -platform ${{ matrix.platform }}
+          echo "Iniciando compilación para plataforma: ${{ matrix.platform }}"
+          wails build -platform ${{ matrix.platform }} -v
+          echo "Compilación completada exitosamente"
           if [ "${{ matrix.os }}" == "macos-latest" ]; then
+            echo "Procesando archivo .app para macOS..."
             cd build/bin
             # En macOS el build genera una carpeta .app, hay que comprimirla para el release
             zip -r manga-visor2-macos.zip *.app
             # Eliminamos la carpeta para que no interfiera con la subida de archivos
             rm -rf *.app
+            echo "Archivo .app procesado correctamente"
           fi
 
       - name: Comprimir Código Fuente (ZIP)
