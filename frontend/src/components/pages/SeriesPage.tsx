@@ -2,7 +2,7 @@
  * SeriesPage - Series browser
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigationStore } from '../../stores/navigationStore';
 import { EventsOn, EventsOff } from '../../../wailsjs/runtime';
@@ -79,9 +79,7 @@ export function SeriesPage() {
         let unsubscribe: () => void;
 
         const init = async () => {
-            await ensureWailsReady();
-            if (!isMounted) return;
-
+            // Start loading immediately without blocking
             loadSeries();
             loadHistory();
 
@@ -106,16 +104,6 @@ export function SeriesPage() {
         };
     }, []);
 
-    const ensureWailsReady = async (maxAttempts = 20) => {
-        for (let i = 0; i < maxAttempts; i++) {
-            // @ts-ignore
-            if (window.go?.main?.App?.GetSeries) return true;
-            await new Promise(resolve => setTimeout(resolve, 100));
-        }
-        console.warn('Wails bindings not ready after timeout');
-        return false;
-    };
-
     const loadHistory = async () => {
         try {
             // @ts-ignore
@@ -132,10 +120,10 @@ export function SeriesPage() {
         try {
             // @ts-ignore
             const app = window.go?.main?.App;
-            if (!app) {
-                console.log('[SeriesPage] Wails bindings not found');
-                if (retryCount < 3) {
-                    setTimeout(() => loadSeries(retryCount + 1), 500);
+            if (!app?.GetSeries) {
+                // Quick retry once if not ready
+                if (retryCount < 1) {
+                    setTimeout(() => loadSeries(1), 50);
                     return;
                 }
                 throw new Error('Bindings not available');
@@ -146,12 +134,8 @@ export function SeriesPage() {
             if (data && Array.isArray(data)) {
                 setSeries(data);
 
-                // Load thumbnails
-                for (const entry of data) {
-                    if (entry.coverImage) {
-                        loadThumbnail(entry.id, entry.coverImage);
-                    }
-                }
+                // Load thumbnails in parallel
+                loadThumbnailsInParallel(data);
             }
         } catch (error) {
             console.error('[SeriesPage] Failed to load series:', error);
@@ -160,17 +144,34 @@ export function SeriesPage() {
         }
     };
 
-    const loadThumbnail = async (id: string, path: string) => {
-        try {
-            // @ts-ignore
-            const thumb = await window.go?.main?.App?.GetThumbnail(path);
-            if (thumb) {
-                setThumbnails((prev) => ({ ...prev, [id]: thumb }));
-            }
-        } catch (error) {
-            console.error('Failed to load thumbnail:', error);
+    const loadThumbnailsInParallel = useCallback(async (data: SeriesEntry[]) => {
+        const entriesWithCover = data.filter(entry => entry.coverImage);
+        
+        // Load thumbnails in parallel with batching to avoid overwhelming
+        const batchSize = 10;
+        for (let i = 0; i < entriesWithCover.length; i += batchSize) {
+            const batch = entriesWithCover.slice(i, i + batchSize);
+            const thumbnailPromises = batch.map(async (entry) => {
+                try {
+                    // @ts-ignore
+                    const thumb = await window.go?.main?.App?.GetThumbnail(entry.coverImage);
+                    return { id: entry.id, thumb };
+                } catch (error) {
+                    console.error('Failed to load thumbnail:', error);
+                    return null;
+                }
+            });
+            
+            const results = await Promise.all(thumbnailPromises);
+            const newThumbnails: Record<string, string> = {};
+            results.forEach(result => {
+                if (result?.thumb) {
+                    newThumbnails[result.id] = result.thumb;
+                }
+            });
+            setThumbnails((prev) => ({ ...prev, ...newThumbnails }));
         }
-    };
+    }, []);
 
     const handleSelectFolder = async () => {
         try {
@@ -234,25 +235,39 @@ export function SeriesPage() {
         }
     };
 
-    // Filter and sort series
-    const filteredSeries = series.filter(item => {
-        if (!searchQuery.trim()) return true;
-        const query = searchQuery.toLowerCase();
-        return item.name.toLowerCase().includes(query);
-    });
+    // Debounced search query
+    const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+    
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearchQuery(searchQuery);
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [searchQuery]);
 
-    const sortedSeries = filteredSeries.sort((a, b) => {
-        let res = 0;
-        if (sortBy === 'name') {
-            res = a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
-        } else {
-            // Date sort
-            const dateA = a.addedAt ? new Date(a.addedAt).getTime() : 0;
-            const dateB = b.addedAt ? new Date(b.addedAt).getTime() : 0;
-            res = dateA - dateB;
-        }
-        return sortOrder === 'asc' ? res : -res;
-    });
+    // Memoized filter and sort
+    const filteredSeries = useMemo(() => {
+        return series.filter(item => {
+            if (!debouncedSearchQuery.trim()) return true;
+            const query = debouncedSearchQuery.toLowerCase();
+            return item.name.toLowerCase().includes(query);
+        });
+    }, [series, debouncedSearchQuery]);
+
+    const sortedSeries = useMemo(() => {
+        return [...filteredSeries].sort((a, b) => {
+            let res = 0;
+            if (sortBy === 'name') {
+                res = a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
+            } else {
+                // Date sort
+                const dateA = a.addedAt ? new Date(a.addedAt).getTime() : 0;
+                const dateB = b.addedAt ? new Date(b.addedAt).getTime() : 0;
+                res = dateA - dateB;
+            }
+            return sortOrder === 'asc' ? res : -res;
+        });
+    }, [filteredSeries, sortBy, sortOrder]);
 
 
     return (

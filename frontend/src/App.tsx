@@ -2,7 +2,7 @@
  * App - Main application component
  */
 
-import { useEffect, Suspense, useState, useCallback } from 'react';
+import { useEffect, Suspense, useState, useCallback, useMemo } from 'react';
 import { MainLayout } from './components/layout/MainLayout';
 import { HomePage } from './components/pages/HomePage';
 import { ViewerPage } from './components/viewers/ViewerPage';
@@ -89,9 +89,19 @@ function LoadingScreen() {
 function PageRouter() {
     const { currentPage, params } = useNavigationStore();
 
+    // Memoize page rendering to prevent unnecessary re-renders
+    // Create a stable key from params for comparison
+    const paramsKey = useMemo(() => {
+        return Object.keys(params).sort().map(k => `${k}:${params[k]}`).join('|');
+    }, [params]);
+
+    const pageContent = useMemo(() => {
+        return renderPage(currentPage, params);
+    }, [currentPage, paramsKey]);
+
     return (
         <div className="h-full w-full">
-            {renderPage(currentPage, params)}
+            {pageContent}
         </div>
     );
 }

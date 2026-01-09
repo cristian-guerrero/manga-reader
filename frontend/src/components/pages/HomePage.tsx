@@ -51,9 +51,7 @@ export function HomePage() {
         let unsubscribe: () => void;
 
         const init = async () => {
-            await ensureWailsReady();
-            if (!isMounted) return;
-
+            // Start loading immediately without blocking
             loadRecentHistory();
 
             unsubscribe = EventsOn('history_updated', () => {
@@ -70,24 +68,15 @@ export function HomePage() {
         };
     }, []);
 
-    const ensureWailsReady = async (maxAttempts = 20) => {
-        for (let i = 0; i < maxAttempts; i++) {
-            // @ts-ignore
-            if (window.go?.main?.App?.GetHistory) return true;
-            await new Promise(resolve => setTimeout(resolve, 100));
-        }
-        console.warn('Wails bindings not ready after timeout');
-        return false;
-    };
-
     const loadRecentHistory = async (retryCount = 0) => {
         setIsLoading(true);
         try {
             // @ts-ignore
             const app = window.go?.main?.App;
-            if (!app) {
-                if (retryCount < 3) {
-                    setTimeout(() => loadRecentHistory(retryCount + 1), 500);
+            if (!app?.GetHistory) {
+                // Quick retry once if not ready
+                if (retryCount < 1) {
+                    setTimeout(() => loadRecentHistory(1), 50);
                     return;
                 }
                 throw new Error('Bindings not available');
@@ -101,22 +90,30 @@ export function HomePage() {
                 const recent = entries.slice(0, 4);
                 setHistoryEntries(recent);
 
-                // Load thumbnails in parallel
-                recent.forEach(async (entry) => {
+                // Load thumbnails in parallel using Promise.all
+                const thumbnailPromises = recent.map(async (entry) => {
                     try {
                         // @ts-ignore
                         const images = await window.go?.main?.App?.GetImages(entry.folderPath);
                         if (images && images.length > entry.lastImageIndex) {
                             // @ts-ignore
                             const thumb = await window.go?.main?.App?.GetThumbnail(images[entry.lastImageIndex].path);
-                            if (thumb) {
-                                setThumbnails(prev => ({ ...prev, [entry.id]: thumb }));
-                            }
+                            return { id: entry.id, thumb };
                         }
                     } catch (err) {
                         console.error('Failed to load thumbnail for', entry.folderName, err);
                     }
+                    return null;
                 });
+                
+                const results = await Promise.all(thumbnailPromises);
+                const newThumbnails: Record<string, string> = {};
+                results.forEach(result => {
+                    if (result?.thumb) {
+                        newThumbnails[result.id] = result.thumb;
+                    }
+                });
+                setThumbnails(prev => ({ ...prev, ...newThumbnails }));
             } else {
                 setHistoryEntries([]);
             }

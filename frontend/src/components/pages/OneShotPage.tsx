@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigationStore } from '../../stores/navigationStore';
 import { useToast } from '../common/Toast';
@@ -93,9 +93,7 @@ export function OneShotPage() {
         let unsubscribe: () => void;
 
         const init = async () => {
-            await ensureWailsReady();
-            if (!isMounted) return;
-
+            // Start loading immediately without blocking
             loadFolders();
 
             // Listen for updates (e.g. from drag and drop)
@@ -112,26 +110,16 @@ export function OneShotPage() {
         };
     }, []);
 
-    const ensureWailsReady = async (maxAttempts = 20) => {
-        for (let i = 0; i < maxAttempts; i++) {
-            // @ts-ignore
-            if (window.go?.main?.App?.GetLibrary) return true;
-            await new Promise(resolve => setTimeout(resolve, 100));
-        }
-        console.warn('Wails bindings not ready after timeout');
-        return false;
-    };
-
     const loadFolders = async (retryCount = 0) => {
         setIsLoading(true);
         console.log(`[OneShotPage] Loading folders (attempt ${retryCount + 1})...`);
         try {
             // @ts-ignore - Wails generated bindings
             const app = window.go?.main?.App;
-            if (!app) {
-                console.log('[OneShotPage] Wails bindings not found');
-                if (retryCount < 3) {
-                    setTimeout(() => loadFolders(retryCount + 1), 500);
+            if (!app?.GetLibrary) {
+                // Quick retry once if not ready
+                if (retryCount < 1) {
+                    setTimeout(() => loadFolders(1), 50);
                     return;
                 }
                 throw new Error('Bindings not available');
@@ -242,25 +230,39 @@ export function OneShotPage() {
         }
     };
 
-    // Filter and sort folders
-    const filteredFolders = folders.filter(folder => {
-        if (!searchQuery.trim()) return true;
-        const query = searchQuery.toLowerCase();
-        return folder.name.toLowerCase().includes(query);
-    });
+    // Debounced search query
+    const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+    
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearchQuery(searchQuery);
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [searchQuery]);
 
-    const sortedFolders = filteredFolders.sort((a, b) => {
-        let res = 0;
-        if (sortBy === 'name') {
-            res = a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
-        } else {
-            // Date sort
-            const dateA = a.lastModified ? new Date(a.lastModified).getTime() : 0;
-            const dateB = b.lastModified ? new Date(b.lastModified).getTime() : 0;
-            res = dateA - dateB;
-        }
-        return sortOrder === 'asc' ? res : -res;
-    });
+    // Memoized filter and sort
+    const filteredFolders = useMemo(() => {
+        return folders.filter(folder => {
+            if (!debouncedSearchQuery.trim()) return true;
+            const query = debouncedSearchQuery.toLowerCase();
+            return folder.name.toLowerCase().includes(query);
+        });
+    }, [folders, debouncedSearchQuery]);
+
+    const sortedFolders = useMemo(() => {
+        return [...filteredFolders].sort((a, b) => {
+            let res = 0;
+            if (sortBy === 'name') {
+                res = a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
+            } else {
+                // Date sort
+                const dateA = a.lastModified ? new Date(a.lastModified).getTime() : 0;
+                const dateB = b.lastModified ? new Date(b.lastModified).getTime() : 0;
+                res = dateA - dateB;
+            }
+            return sortOrder === 'asc' ? res : -res;
+        });
+    }, [filteredFolders, sortBy, sortOrder]);
 
 
     return (
