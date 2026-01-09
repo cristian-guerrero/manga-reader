@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
     DndContext,
@@ -22,6 +22,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { useNavigationStore } from '../../stores/navigationStore';
 import { GridContainer } from '../common/GridContainer';
 import { GridItem } from '../common/GridItem';
+import { useThumbnail } from '../../hooks/useThumbnail';
 
 // Icons
 const ResetIcon = () => (
@@ -159,26 +160,42 @@ export function ThumbnailsPage({ folderPath }: ThumbnailsPageProps) {
         }
     }, [folderPath, isLoading, images.length, setThumbnailScrollPosition]);
 
+    // Track if component is mounted to avoid state updates after unmount
+    const isMountedRef = useRef(true);
+
     // Load images
     useEffect(() => {
         if (!folderPath) return;
         loadImages();
     }, [folderPath]);
 
+    // Cleanup cuando el componente se desmonta
+    useEffect(() => {
+        isMountedRef.current = true;
+        return () => {
+            isMountedRef.current = false;
+        };
+    }, []);
+
     const loadImages = async (silent = false) => {
         if (!folderPath) return;
 
-        if (!silent) setIsLoading(true);
+        if (!silent && isMountedRef.current) setIsLoading(true);
         try {
             // @ts-ignore - Wails generated bindings
             const imageList = await window.go?.main?.App?.GetImages(folderPath);
+            
+            // Verificar si el componente sigue montado antes de actualizar estado
+            if (!isMountedRef.current) return;
+            
             if (imageList && Array.isArray(imageList)) {
                 setImages(imageList);
                 if (imageList.length > 0) {
                     console.log('First image debug:', imageList[0], 'ModTime:', imageList[0].modTime);
                 }
 
-                // Load thumbnails from image metadata
+                // Load thumbnails that already come from backend metadata (thumbnailUrl)
+                // Don't load all thumbnails at once - they will be loaded lazy when visible
                 const initialThumbs: Record<string, string> = {};
                 for (const img of imageList) {
                     if (img.thumbnailUrl) {
@@ -186,16 +203,28 @@ export function ThumbnailsPage({ folderPath }: ThumbnailsPageProps) {
                     }
                 }
                 setThumbnails(initialThumbs);
+                // Los thumbnails sin thumbnailUrl se cargarán de forma lazy cuando sean visibles
             }
+
+            // Verificar nuevamente antes de más peticiones
+            if (!isMountedRef.current) return;
 
             // Check if custom order exists
             // @ts-ignore - Wails generated bindings
             const hasCustom = await window.go?.main?.App?.HasCustomOrder(folderPath);
+            
+            // Verificar de nuevo antes de actualizar estado
+            if (!isMountedRef.current) return;
+            
             setHasCustomOrder(hasCustom || false);
 
             // Get the original order from backend (if it exists)
             // @ts-ignore - Wails generated bindings
             const origOrder = await window.go?.main?.App?.GetOriginalOrder(folderPath);
+            
+            // Verificar de nuevo antes de actualizar estado
+            if (!isMountedRef.current) return;
+            
             if (origOrder && Array.isArray(origOrder)) {
                 setOriginalOrder(origOrder);
             } else if (imageList && Array.isArray(imageList)) {
@@ -207,30 +236,30 @@ export function ThumbnailsPage({ folderPath }: ThumbnailsPageProps) {
             // Set initial sort mode
             if (hasCustom) {
                 setSortMode('custom');
-            } else if (!silent) {
+            } else if (!silent && isMountedRef.current) {
                 // Only reset to name if we are doing a full load, otherwise keep current? 
                 // Actually for now let's just keep the logic simple.
                 // If we are reloading for 'custom' switch, hasCustom will be true.
                 setSortMode('name');
             }
         } catch (error) {
-            console.error('Failed to load images:', error);
+            if (isMountedRef.current) {
+                console.error('Failed to load images:', error);
+            }
         } finally {
-            setIsLoading(false);
+            if (isMountedRef.current) {
+                setIsLoading(false);
+            }
         }
     };
 
-    const loadThumbnail = async (path: string) => {
-        try {
-            // @ts-ignore - Wails generated bindings
-            const thumb = await window.go?.main?.App?.GetThumbnail(path);
-            if (thumb) {
-                setThumbnails((prev) => ({ ...prev, [path]: thumb }));
-            }
-        } catch (error) {
-            // Silently fail
-        }
-    };
+    // Actualizar thumbnail cuando se carga de forma lazy
+    const handleThumbnailLoaded = useCallback((path: string, thumbnail: string) => {
+        setThumbnails((prev) => {
+            if (prev[path]) return prev; // Ya existe, no actualizar
+            return { ...prev, [path]: thumbnail };
+        });
+    }, []);
 
     const handleSort = (mode: string) => {
         setSortMode(mode);
@@ -424,6 +453,7 @@ export function ThumbnailsPage({ folderPath }: ThumbnailsPageProps) {
                                             index={index}
                                             thumbnail={thumbnails[image.path]}
                                             onImageClick={handleImageClick}
+                                            onThumbnailLoaded={handleThumbnailLoaded}
                                         />
                                     </GridItem>
                                 ))}
@@ -438,6 +468,7 @@ export function ThumbnailsPage({ folderPath }: ThumbnailsPageProps) {
                                     index={images.indexOf(activeImage)}
                                     thumbnail={thumbnails[activeImage.path]}
                                     isDragging
+                                    onThumbnailLoaded={handleThumbnailLoaded}
                                 />
                             ) : null}
                         </DragOverlay>
@@ -454,9 +485,10 @@ interface SortableItemProps {
     index: number;
     thumbnail?: string;
     onImageClick: (index: number) => void;
+    onThumbnailLoaded?: (path: string, thumbnail: string) => void;
 }
 
-function SortableItem({ image, index, thumbnail, onImageClick }: SortableItemProps) {
+function SortableItem({ image, index, thumbnail, onImageClick, onThumbnailLoaded }: SortableItemProps) {
     const {
         attributes,
         listeners,
@@ -481,6 +513,7 @@ function SortableItem({ image, index, thumbnail, onImageClick }: SortableItemPro
                 thumbnail={thumbnail}
                 onImageClick={onImageClick}
                 dragHandleProps={{ ...attributes, ...listeners }}
+                onThumbnailLoaded={onThumbnailLoaded}
             />
         </div>
     );
@@ -494,16 +527,38 @@ interface ThumbnailCardProps {
     isDragging?: boolean;
     onImageClick?: (index: number) => void;
     dragHandleProps?: Record<string, any>;
+    onThumbnailLoaded?: (path: string, thumbnail: string) => void;
 }
 
-function ThumbnailCard({
+const ThumbnailCard = React.memo(function ThumbnailCard({
     image,
     index,
-    thumbnail,
+    thumbnail: initialThumbnail,
     isDragging,
     onImageClick,
     dragHandleProps,
+    onThumbnailLoaded,
 }: ThumbnailCardProps) {
+    // Usar hook lazy para cargar thumbnail si no está disponible inicialmente
+    const { thumbnail: lazyThumbnail, isLoading, ref: thumbnailRef } = useThumbnail(
+        !initialThumbnail ? image.path : null, // Solo cargar si no hay thumbnail inicial
+        initialThumbnail, // Usar thumbnail inicial si está disponible
+        {
+            rootMargin: '200px', // Cargar un poco antes de que sea visible
+            enabled: !initialThumbnail, // Solo habilitar si no hay thumbnail inicial
+        }
+    );
+
+    // El thumbnail final es el inicial o el lazy cargado
+    const thumbnail = initialThumbnail || lazyThumbnail;
+
+    // Notificar cuando se carga el thumbnail lazy
+    useEffect(() => {
+        if (lazyThumbnail && onThumbnailLoaded && !initialThumbnail) {
+            onThumbnailLoaded(image.path, lazyThumbnail);
+        }
+    }, [lazyThumbnail, image.path, onThumbnailLoaded, initialThumbnail]);
+
     return (
         <div
             className={`relative group ${isDragging ? 'shadow-2xl' : ''} animate-scale-in`}
@@ -517,24 +572,28 @@ function ThumbnailCard({
                 }}
                 {...dragHandleProps}
             >
-                {thumbnail ? (
-                    <img
-                        src={thumbnail}
-                        alt={image.name}
-                        className="w-full h-full object-cover"
-                        draggable={false}
-                    />
-                ) : (
-                    <div className="flex items-center justify-center h-full shimmer">
-                        <div
-                            className="w-8 h-8 border-2 rounded-full animate-spin"
-                            style={{
-                                borderColor: 'var(--color-accent)',
-                                borderTopColor: 'transparent',
-                            }}
+                {/* Wrapper para IntersectionObserver */}
+                <div ref={thumbnailRef} className="w-full h-full">
+                    {thumbnail ? (
+                        <img
+                            src={thumbnail}
+                            alt={image.name}
+                            className="w-full h-full object-cover transition-opacity duration-300"
+                            draggable={false}
+                            loading="lazy"
                         />
-                    </div>
-                )}
+                    ) : (
+                        <div className="flex items-center justify-center h-full shimmer">
+                            <div
+                                className="w-8 h-8 border-2 rounded-full animate-spin"
+                                style={{
+                                    borderColor: 'var(--color-accent)',
+                                    borderTopColor: 'transparent',
+                                }}
+                            />
+                        </div>
+                    )}
+                </div>
 
                 {/* Index badge */}
                 <div
@@ -590,6 +649,14 @@ function ThumbnailCard({
             </p>
         </div>
     );
-}
+}, (prevProps, nextProps) => {
+    // Comparación personalizada para evitar re-renders innecesarios
+    return (
+        prevProps.image.path === nextProps.image.path &&
+        prevProps.index === nextProps.index &&
+        prevProps.thumbnail === nextProps.thumbnail &&
+        prevProps.isDragging === nextProps.isDragging
+    );
+});
 
 export default ThumbnailsPage;

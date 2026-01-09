@@ -40,6 +40,9 @@ export function useThumbnail(
     const [isLoading, setIsLoading] = useState(false);
     const ref = useRef<HTMLDivElement>(null);
     const loadingRef = useRef(false);
+    const isMountedRef = useRef(true);
+    const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const observerRef = useRef<IntersectionObserver | null>(null);
 
     useEffect(() => {
         // Si ya tenemos thumbnail, no hacer nada
@@ -56,24 +59,48 @@ export function useThumbnail(
 
         if (!ref.current || loadingRef.current) return;
 
+        // Limpiar observer y timer anteriores si existen
+        if (observerRef.current) {
+            observerRef.current.disconnect();
+            observerRef.current = null;
+        }
+        if (timerRef.current) {
+            clearTimeout(timerRef.current);
+            timerRef.current = null;
+        }
+
         const observer = new IntersectionObserver(
             ([obsEntry]) => {
-                if (obsEntry.isIntersecting && !loadingRef.current && !thumbnail) {
+                if (obsEntry.isIntersecting && !loadingRef.current && !thumbnail && isMountedRef.current) {
                     // Verificar cache de nuevo antes de cargar
                     if (cache && cacheKey) {
                         const cached = cache.get(cacheKey);
                         if (cached) {
-                            setThumbnail(cached);
+                            if (isMountedRef.current) {
+                                setThumbnail(cached);
+                            }
                             observer.disconnect();
+                            observerRef.current = null;
                             return;
                         }
+                    }
+
+                    // Verificar nuevamente si está montado antes de iniciar carga
+                    if (!isMountedRef.current) {
+                        return;
                     }
 
                     loadingRef.current = true;
                     setIsLoading(true);
 
                     // Cargar thumbnail asíncronamente
-                    const loadTimer = setTimeout(async () => {
+                    timerRef.current = setTimeout(async () => {
+                        // Verificar si el componente aún está montado antes de continuar
+                        if (!isMountedRef.current) {
+                            loadingRef.current = false;
+                            return;
+                        }
+
                         try {
                             // Si imagePath es una función, ejecutarla para obtener la ruta
                             let actualImagePath: string | null | undefined;
@@ -83,15 +110,30 @@ export function useThumbnail(
                                 actualImagePath = imagePath;
                             }
 
+                            // Verificar de nuevo si está montado después de async operation
+                            if (!isMountedRef.current) {
+                                loadingRef.current = false;
+                                return;
+                            }
+
                             if (!actualImagePath) {
-                                setIsLoading(false);
+                                if (isMountedRef.current) {
+                                    setIsLoading(false);
+                                }
                                 loadingRef.current = false;
                                 return;
                             }
 
                             // @ts-ignore
                             const thumb = await window.go?.main?.App?.GetThumbnail(actualImagePath);
-                            if (thumb) {
+                            
+                            // Verificar una vez más antes de actualizar estado
+                            if (!isMountedRef.current) {
+                                loadingRef.current = false;
+                                return;
+                            }
+
+                            if (thumb && isMountedRef.current) {
                                 // Guardar en cache si está disponible
                                 if (cache && cacheKey) {
                                     cache.set(cacheKey, thumb);
@@ -99,27 +141,63 @@ export function useThumbnail(
                                 setThumbnail(thumb);
                             }
                         } catch (error) {
-                            console.error('Failed to load thumbnail:', error);
+                            // Solo loggear error si el componente está montado
+                            if (isMountedRef.current) {
+                                console.error('Failed to load thumbnail:', error);
+                            }
                         } finally {
-                            setIsLoading(false);
+                            if (isMountedRef.current) {
+                                setIsLoading(false);
+                            }
                             loadingRef.current = false;
+                            timerRef.current = null;
                         }
                     }, 100); // Pequeño delay para no bloquear el navegador
 
                     observer.disconnect();
+                    observerRef.current = null;
                 }
             },
             { rootMargin }
         );
 
+        observerRef.current = observer;
         observer.observe(ref.current);
+        
         return () => {
-            observer.disconnect();
+            if (observerRef.current) {
+                observerRef.current.disconnect();
+                observerRef.current = null;
+            }
+            // Limpiar timer si existe
+            if (timerRef.current) {
+                clearTimeout(timerRef.current);
+                timerRef.current = null;
+            }
             if (loadingRef.current) {
                 loadingRef.current = false;
             }
         };
     }, [imagePath, thumbnail, enabled, rootMargin, cache, cacheKey]);
+
+    // Cleanup cuando el componente se desmonta
+    useEffect(() => {
+        isMountedRef.current = true;
+        return () => {
+            isMountedRef.current = false;
+            // Limpiar observer si existe
+            if (observerRef.current) {
+                observerRef.current.disconnect();
+                observerRef.current = null;
+            }
+            // Limpiar timer si existe
+            if (timerRef.current) {
+                clearTimeout(timerRef.current);
+                timerRef.current = null;
+            }
+            loadingRef.current = false;
+        };
+    }, []);
 
     // Actualizar si thumbnailUrl cambia
     useEffect(() => {

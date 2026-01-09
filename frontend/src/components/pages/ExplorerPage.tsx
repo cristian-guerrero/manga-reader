@@ -257,12 +257,17 @@ const saveSortPreferences = (path: string | null, sortBy: 'name' | 'date', sortO
 
 export function ExplorerPage() {
     const { t } = useTranslation();
-    const { navigate } = useNavigationStore();
+    const { navigate, explorerState, setExplorerState } = useNavigationStore();
     const { showToast } = useToast();
 
     const [baseFolders, setBaseFolders] = useState<BaseFolder[]>([]);
-    const [currentPath, setCurrentPath] = useState<string | null>(null);
-    const [pathHistory, setPathHistory] = useState<string[]>([]);
+    // Initialize state from store if available
+    const [currentPath, setCurrentPath] = useState<string | null>(() => {
+        return explorerState?.currentPath ?? null;
+    });
+    const [pathHistory, setPathHistory] = useState<string[]>(() => {
+        return explorerState?.pathHistory ?? [];
+    });
     const [entries, setEntries] = useState<ExplorerEntry[]>([]);
     const [loading, setLoading] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
@@ -280,6 +285,8 @@ export function ExplorerPage() {
 
     // Track if preferences have been loaded for current path
     const preferencesLoadedRef = useRef(false);
+    // Track if we're initializing from store to avoid saving during initialization
+    const isInitializingRef = useRef(true);
 
     // Load sort preferences when path changes
     useEffect(() => {
@@ -379,6 +386,33 @@ export function ExplorerPage() {
         }
     };
 
+    // Restore explorer state from store when component mounts and load directory if needed
+    useEffect(() => {
+        if (explorerState && explorerState.currentPath) {
+            isInitializingRef.current = true;
+            // Load the directory - this will update currentPath and entries
+            loadDirectory(explorerState.currentPath, false).finally(() => {
+                // Mark initialization as complete after loadDirectory finishes
+                setTimeout(() => {
+                    isInitializingRef.current = false;
+                }, 50);
+            });
+        } else {
+            isInitializingRef.current = false;
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []); // Only run on mount
+
+    // Save explorer state to store when it changes (but not during initialization)
+    useEffect(() => {
+        if (!isInitializingRef.current) {
+            setExplorerState({
+                currentPath,
+                pathHistory,
+            });
+        }
+    }, [currentPath, pathHistory, setExplorerState]);
+
     const handleBack = () => {
         if (pathHistory.length > 0) {
             const previous = pathHistory[pathHistory.length - 1];
@@ -432,7 +466,12 @@ export function ExplorerPage() {
 
     const handleOpenInViewer = (path: string, e: React.MouseEvent) => {
         e.stopPropagation();
-        navigate('viewer', { folder: path });
+        // Save explorer state before navigating to viewer
+        setExplorerState({
+            currentPath,
+            pathHistory,
+        });
+        navigate('viewer', { folder: path }, 'explorer');
     };
 
     const handleItemClick = (entry: ExplorerEntry | BaseFolder) => {
@@ -446,7 +485,12 @@ export function ExplorerPage() {
                 // It's a file - if it's an image, we could open viewer at parent folder or just this image
                 // For now, let's open viewer in the current directory if it has images
                 if (currentPath) {
-                    navigate('viewer', { folder: currentPath });
+                    // Save explorer state before navigating to viewer
+                    setExplorerState({
+                        currentPath,
+                        pathHistory,
+                    });
+                    navigate('viewer', { folder: currentPath }, 'explorer');
                 }
             }
         }

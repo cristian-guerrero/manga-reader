@@ -40,6 +40,13 @@ interface NavigationStoreState extends NavigationState {
     // Thumbnail scroll state
     thumbnailScrollPositions: Record<string, number>;
     setThumbnailScrollPosition: (folderPath: string, position: number) => void;
+
+    // Explorer state preservation
+    explorerState: {
+        currentPath: string | null;
+        pathHistory: string[];
+    } | null;
+    setExplorerState: (state: { currentPath: string | null; pathHistory: string[] } | null) => void;
 }
 
 export const useNavigationStore = create<NavigationStoreState>((set, get) => ({
@@ -195,5 +202,11 @@ export const useNavigationStore = create<NavigationStoreState>((set, get) => ({
         } else {
             set({ folders });
         }
+    },
+
+    // Explorer state preservation
+    explorerState: null,
+    setExplorerState: (state) => {
+        set({ explorerState: state });
     },
 }));
