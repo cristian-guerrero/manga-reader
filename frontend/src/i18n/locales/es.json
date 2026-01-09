@@ -226,7 +226,10 @@
         "file": "Archivo",
         "images": "imágenes",
         "noFoldersAdded": "No hay carpetas agregadas aún",
-        "addFolderToStart": "Agrega una carpeta base para comenzar a explorar"
+        "addFolderToStart": "Agrega una carpeta base para comenzar a explorar",
+        "searchPlaceholder": "Buscar por nombre...",
+        "noResultsFound": "No se encontraron resultados",
+        "tryDifferentSearch": "Prueba con un término de búsqueda diferente"
     },
     "themes": {
         "dark": "Oscuro",

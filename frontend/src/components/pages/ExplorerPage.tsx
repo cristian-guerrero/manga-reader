@@ -6,6 +6,7 @@ import { Tooltip } from '../common/Tooltip';
 import { SortControls } from '../common/SortControls';
 import { GridItem } from '../common/GridItem';
 import { GridContainer } from '../common/GridContainer';
+import { SearchBar } from '../common/SearchBar';
 
 // Icons
 const TrashIcon = () => (
@@ -117,6 +118,7 @@ export function ExplorerPage() {
     const [pathHistory, setPathHistory] = useState<string[]>([]);
     const [entries, setEntries] = useState<ExplorerEntry[]>([]);
     const [loading, setLoading] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
 
     // Sorting state - initialized with root preferences
     const [sortBy, setSortBy] = useState<'name' | 'date'>(() => {
@@ -257,33 +259,45 @@ export function ExplorerPage() {
         }
     };
 
-    // Sort base folders
-    const sortedBaseFolders = [...baseFolders].sort((a, b) => {
-        let res = 0;
-        if (sortBy === 'name') {
-            res = a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
-        } else {
-            // Date sort - use addedAt for base folders
-            const dateA = a.addedAt ? new Date(a.addedAt).getTime() : 0;
-            const dateB = b.addedAt ? new Date(b.addedAt).getTime() : 0;
-            res = dateA - dateB;
-        }
-        return sortOrder === 'asc' ? res : -res;
-    });
+    // Filter function for search
+    const matchesSearch = (item: BaseFolder | ExplorerEntry, query: string): boolean => {
+        if (!query.trim()) return true;
+        const searchTerm = query.toLowerCase();
+        return item.name.toLowerCase().includes(searchTerm) || 
+               ('path' in item && item.path.toLowerCase().includes(searchTerm));
+    };
 
-    // Sort entries (directory view)
-    const sortedEntries = [...entries].sort((a, b) => {
-        let res = 0;
-        if (sortBy === 'name') {
-            res = a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
-        } else {
-            // Date sort - use lastModified for entries
-            const dateA = a.lastModified || 0;
-            const dateB = b.lastModified || 0;
-            res = dateA - dateB;
-        }
-        return sortOrder === 'asc' ? res : -res;
-    });
+    // Sort and filter base folders
+    const sortedBaseFolders = [...baseFolders]
+        .filter(folder => matchesSearch(folder, searchQuery))
+        .sort((a, b) => {
+            let res = 0;
+            if (sortBy === 'name') {
+                res = a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
+            } else {
+                // Date sort - use addedAt for base folders
+                const dateA = a.addedAt ? new Date(a.addedAt).getTime() : 0;
+                const dateB = b.addedAt ? new Date(b.addedAt).getTime() : 0;
+                res = dateA - dateB;
+            }
+            return sortOrder === 'asc' ? res : -res;
+        });
+
+    // Sort and filter entries (directory view)
+    const sortedEntries = [...entries]
+        .filter(entry => matchesSearch(entry, searchQuery))
+        .sort((a, b) => {
+            let res = 0;
+            if (sortBy === 'name') {
+                res = a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
+            } else {
+                // Date sort - use lastModified for entries
+                const dateA = a.lastModified || 0;
+                const dateB = b.lastModified || 0;
+                res = dateA - dateB;
+            }
+            return sortOrder === 'asc' ? res : -res;
+        });
 
     return (
         <div className="p-6 h-full flex flex-col">
@@ -331,6 +345,17 @@ export function ExplorerPage() {
                     </button>
                 )}
             </div>
+
+            {/* Search Bar */}
+            {((!currentPath && baseFolders.length > 0) || (currentPath && entries.length > 0)) && (
+                <div className="mb-4">
+                    <SearchBar
+                        placeholder={t('explorer.searchPlaceholder') || 'Search by name...'}
+                        onSearch={setSearchQuery}
+                        className="max-w-md"
+                    />
+                </div>
+            )}
 
             {/* Content */}
             <div className="flex-1 overflow-y-auto pr-2">
@@ -438,6 +463,19 @@ export function ExplorerPage() {
                         </svg>
                         <p className="text-lg">{t('explorer.noFoldersAdded')}</p>
                         <p className="text-sm mt-1">{t('explorer.addFolderToStart')}</p>
+                    </div>
+                )}
+
+                {/* No results message */}
+                {((!currentPath && sortedBaseFolders.length === 0 && baseFolders.length > 0 && searchQuery.trim()) ||
+                  (currentPath && sortedEntries.length === 0 && entries.length > 0 && searchQuery.trim())) && (
+                    <div className="h-full flex flex-col items-center justify-center text-text-secondary opacity-60">
+                        <svg className="w-16 h-16 mb-4 text-surface-tertiary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
+                            <circle cx="11" cy="11" r="8" />
+                            <path d="m21 21-4.35-4.35" />
+                        </svg>
+                        <p className="text-lg">{t('explorer.noResultsFound') || 'No results found'}</p>
+                        <p className="text-sm mt-1">{t('explorer.tryDifferentSearch') || `Try a different search term`}</p>
                     </div>
                 )}
             </div>

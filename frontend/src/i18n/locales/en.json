@@ -231,7 +231,10 @@
         "file": "File",
         "images": "images",
         "noFoldersAdded": "No folders added yet",
-        "addFolderToStart": "Add a base folder to start exploring"
+        "addFolderToStart": "Add a base folder to start exploring",
+        "searchPlaceholder": "Search by name...",
+        "noResultsFound": "No results found",
+        "tryDifferentSearch": "Try a different search term"
     },
     "themes": {
         "dark": "Dark",
