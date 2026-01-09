@@ -179,45 +179,9 @@ export const DownloadPage: React.FC = () => {
         }
     }, [url, showToast, t]);
 
-    // Clipboard monitoring logic
-    // Clipboard monitoring logic
-    // Clipboard monitoring logic (Backend Driven)
-    useEffect(() => {
-        // Backend now handles the polling and checks the settings.
-        // We just listen for the event.
-
-        const unoff = EventsOn('clipboard_url_detected', (text: string) => {
-            if (!text) return;
-
-            // Hitomi Series Detection: Don't auto-start, just paste.
-            const isHitomi = text.includes('hitomi.la');
-            const isHitomiSeries = isHitomi && (
-                text.includes('/artist/') ||
-                text.includes('/series/') ||
-                text.includes('/tag/') ||
-                text.includes('/character/') ||
-                text.includes('/group/') ||
-                text.includes('index-') ||
-                text.includes('search.html') ||
-                text.includes('?q=')
-            );
-
-            // Manga18.club Series Detection: Don't auto-start series, just paste.
-            const isManga18 = text.includes('manga18.club');
-            const isManga18Series = isManga18 && text.includes('/manhwa/') && !text.includes('/chap-');
-
-            if (isHitomiSeries || isManga18Series) {
-                setUrl(text);
-                showToast(t('download.pastedFromClipboard'), 'info');
-            } else {
-                setUrl(text);
-                showToast(t('download.pastedFromClipboard'), 'info');
-                handleStartDownload(text);
-            }
-        });
-
-        return () => unoff();
-    }, [t, showToast, handleStartDownload]);
+    // Note: Clipboard monitoring is now handled globally in MainLayout.tsx
+    // This allows auto-download of single chapters from any page
+    // Series URLs will show a toast prompting user to go to Downloads page
 
     const handleDownloadSeries = async () => {
         if (!seriesInfo) return;

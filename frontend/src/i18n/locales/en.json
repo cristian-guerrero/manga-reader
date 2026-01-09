@@ -153,6 +153,8 @@
         "alreadyDownloaded": "Already downloaded",
         "allAlreadyDownloaded": "All chapters already downloaded",
         "pastedFromClipboard": "URL pasted from clipboard",
+        "startedFromClipboard": "Download started from clipboard",
+        "seriesDetectedClipboard": "Series detected. Go to Downloads page to select chapters",
         "help": {
             "title": "How to use",
             "supportedSites": "Supported Sites",
@@ -160,7 +162,7 @@
             "step1": "Paste a valid manga/doujin URL in the input field.",
             "step2": "Click 'Download'. For series, select the chapters you want.",
             "clipboard": "Clipboard Monitor",
-            "clipboardDesc": "Enable 'Auto Clipboard Monitoring' to automatically detect copied URLs from supported sites.",
+            "clipboardDesc": "Enable 'Auto Clipboard Monitoring' to automatically detect copied URLs from supported sites. Single chapters will auto-download from any page. Series require going to Downloads page to select chapters.",
             "supportedList": "Hitomi.la, Nhentai, ManhwaWeb, ZonaTMO, MangaDex, Manga18.club"
         }
     },

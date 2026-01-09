@@ -154,6 +154,8 @@
         "alreadyDownloaded": "Ya descargado",
         "allAlreadyDownloaded": "Todos los capítulos ya están descargados",
         "pastedFromClipboard": "URL pegada desde el portapapeles",
+        "startedFromClipboard": "Descarga iniciada desde el portapapeles",
+        "seriesDetectedClipboard": "Serie detectada. Ve a la página de Descargas para seleccionar capítulos",
         "help": {
             "title": "Cómo usar",
             "supportedSites": "Sitios Soportados",
@@ -161,7 +163,7 @@
             "step1": "Pega una URL válida de manga/doujin en el campo de texto.",
             "step2": "Haz clic en 'Descargar'. Para series, selecciona los capítulos que deseas.",
             "clipboard": "Monitor de Portapapeles",
-            "clipboardDesc": "Activa 'Monitoreo Automático' para detectar automáticamente URLs copiadas de sitios soportados.",
+            "clipboardDesc": "Activa 'Monitoreo Automático' para detectar automáticamente URLs copiadas de sitios soportados. Los capítulos individuales se descargarán automáticamente desde cualquier página. Las series requieren ir a la página de Descargas para seleccionar capítulos.",
             "supportedList": "Hitomi.la, Nhentai, ManhwaWeb, ZonaTMO, MangaDex, Manga18.club"
         }
     },

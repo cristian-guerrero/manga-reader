@@ -9,9 +9,10 @@ import { useNavigationStore } from '../../stores/navigationStore';
 
 import { Sidebar } from './Sidebar';
 import { TitleBar } from './TitleBar';
-import { OnFileDrop, OnFileDropOff } from '../../../wailsjs/runtime';
+import { OnFileDrop, OnFileDropOff, EventsOn } from '../../../wailsjs/runtime';
 import { useToast } from '../common/Toast';
 import { useSettingsStore } from '../../stores/settingsStore';
+import * as AppBackend from '../../../wailsjs/go/main/App';
 
 interface MainLayoutProps {
     children: React.ReactNode;
@@ -118,6 +119,69 @@ export function MainLayout({ children }: MainLayoutProps) {
             OnFileDropOff();
         };
     }, []);
+
+    // Global clipboard monitoring - works from any page
+    useEffect(() => {
+        // Listen for clipboard URL detection from backend
+        const unoff = EventsOn('clipboard_url_detected', async (text: string) => {
+            if (!text) return;
+
+            // Check if clipboard monitoring is enabled
+            const currentSettings = useSettingsStore.getState();
+            if (!currentSettings.clipboardAutoMonitor) {
+                return;
+            }
+
+            // Hitomi Series Detection: Don't auto-start, just show toast
+            const isHitomi = text.includes('hitomi.la');
+            const isHitomiSeries = isHitomi && (
+                text.includes('/artist/') ||
+                text.includes('/series/') ||
+                text.includes('/tag/') ||
+                text.includes('/character/') ||
+                text.includes('/group/') ||
+                text.includes('index-') ||
+                text.includes('search.html') ||
+                text.includes('?q=')
+            );
+
+            // Manga18.club Series Detection: Don't auto-start series, just show toast
+            const isManga18 = text.includes('manga18.club');
+            const isManga18Series = isManga18 && text.includes('/manhwa/') && !text.includes('/chap-');
+
+            // For series URLs, don't auto-start - user must go to download page
+            if (isHitomiSeries || isManga18Series) {
+                showToast(t('download.seriesDetectedClipboard') || 'Series detected. Go to Downloads page to select chapters', 'info');
+                return;
+            }
+
+            // For single chapters, auto-start download
+            try {
+                // Check if it's a series or single chapter
+                const info = await (AppBackend as any).FetchMangaInfo(text);
+
+                if (info.Type === 'series') {
+                    // It's a series - don't auto-start, just show toast
+                    showToast(t('download.seriesDetectedClipboard') || 'Series detected. Go to Downloads page to select chapters', 'info');
+                } else {
+                    // It's a single chapter - start download automatically
+                    await AppBackend.StartDownload(text, "", "");
+                    showToast(t('download.startedFromClipboard') || 'Download started from clipboard', 'success');
+                }
+            } catch (err: any) {
+                // If FetchMangaInfo fails, try to start download anyway (might be a valid URL)
+                try {
+                    await AppBackend.StartDownload(text, "", "");
+                    showToast(t('download.startedFromClipboard') || 'Download started from clipboard', 'success');
+                } catch (downloadErr: any) {
+                    // If both fail, show error
+                    showToast(err.toString() || 'Failed to process clipboard URL', 'error');
+                }
+            }
+        });
+
+        return () => unoff();
+    }, [t, showToast]);
 
     return (
         <div
