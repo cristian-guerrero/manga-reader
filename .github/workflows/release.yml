@@ -67,11 +67,20 @@ jobs:
             echo "Archivo .app y .zip creados correctamente"
           fi
 
+      - name: Listar archivos en build/bin (debug)
+        if: matrix.os == 'macos-latest'
+        shell: bash
+        run: |
+          echo "Contenido de build/bin:"
+          ls -la build/bin/
+          echo "Buscando .app:"
+          find build/bin -name "*.app" -type d
+
       - name: Crear Release en GitHub
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
-          files: build/bin/*
+          files: build/bin/**
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
