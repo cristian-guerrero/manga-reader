@@ -471,7 +471,24 @@ export function ExplorerPage() {
             currentPath,
             pathHistory,
         });
-        navigate('viewer', { folder: path }, 'explorer');
+        
+        // Check if we should use shallow loading
+        // Use shallow if: the folder is in a directory that has other folders at the same level
+        // This prevents loading images from sibling folders recursively
+        const entry = entries.find(ent => ent.path === path);
+        const isDirectory = entry?.isDirectory ?? false;
+        
+        // If it's a directory and there are other directories in the same level, use shallow
+        // This ensures we only load images from the current folder, not from sibling folders
+        const hasOtherFolders = entries.some(ent => 
+            ent.isDirectory && ent.path !== path
+        );
+        const useShallow = isDirectory && hasOtherFolders;
+        
+        navigate('viewer', { 
+            folder: path, 
+            shallow: useShallow ? 'true' : 'false' 
+        }, 'explorer');
     };
 
     const handleItemClick = (entry: ExplorerEntry | BaseFolder) => {
@@ -482,15 +499,21 @@ export function ExplorerPage() {
             if (e.isDirectory) {
                 loadDirectory(e.path);
             } else {
-                // It's a file - if it's an image, we could open viewer at parent folder or just this image
-                // For now, let's open viewer in the current directory if it has images
+                // It's a file - use the parent directory with shallow loading
+                // because the parent directory may have subdirectories
                 if (currentPath) {
+                    // Check if current directory has subdirectories
+                    const hasSubdirs = entries.some(ent => ent.isDirectory);
+                    
                     // Save explorer state before navigating to viewer
                     setExplorerState({
                         currentPath,
                         pathHistory,
                     });
-                    navigate('viewer', { folder: currentPath }, 'explorer');
+                    navigate('viewer', { 
+                        folder: currentPath, 
+                        shallow: hasSubdirs ? 'true' : 'false' 
+                    }, 'explorer');
                 }
             }
         }

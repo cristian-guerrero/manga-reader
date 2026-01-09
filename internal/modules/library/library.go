@@ -223,6 +223,31 @@ func (m *Module) GetFolderInfo(folderPath string) (*persistence.FolderInfo, erro
 	}, nil
 }
 
+// GetFolderInfoShallow returns folder info using shallow (non-recursive) image loading
+func (m *Module) GetFolderInfoShallow(folderPath string) (*persistence.FolderInfo, error) {
+	images, err := m.fileLoader.GetImagesShallow(folderPath)
+	if err != nil {
+		return nil, err
+	}
+
+	var coverImage string
+	var thumbnailURL string
+	if len(images) > 0 {
+		coverImage = images[0].Path
+		dirHash := m.fileLoader.RegisterDirectory(folderPath)
+		baseURL := m.getBaseURL()
+		thumbnailURL = fmt.Sprintf("%s/thumbnails?did=%s&fid=%s", baseURL, dirHash, strings.ReplaceAll(images[0].Name, " ", "%20")) // Simple escape
+	}
+
+	return &persistence.FolderInfo{
+		Path:         folderPath,
+		Name:         filepath.Base(folderPath),
+		ImageCount:   len(images),
+		CoverImage:   coverImage,
+		ThumbnailURL: thumbnailURL,
+	}, nil
+}
+
 func (m *Module) GetSubfolders(folderPath string) ([]persistence.FolderInfo, error) {
 	var folders []persistence.FolderInfo
 

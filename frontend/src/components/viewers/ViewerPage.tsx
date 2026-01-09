@@ -143,10 +143,19 @@ export function ViewerPage({ folderPath }: ViewerPageProps) {
 
             setIsLoading(true);
             try {
+                // Check if we should use shallow loading (non-recursive)
+                const navParams = useNavigationStore.getState().params;
+                const useShallow = navParams && navParams.shallow === 'true';
+                
                 // @ts-ignore
-                const folderInfo = await window.go?.main?.App?.GetFolderInfo(folderPath);
+                const folderInfo = useShallow
+                    ? await window.go?.main?.App?.GetFolderInfoShallow(folderPath)
+                    : await window.go?.main?.App?.GetFolderInfo(folderPath);
+                
                 // @ts-ignore
-                const imageList = await window.go?.main?.App?.GetImages(folderPath);
+                const imageList = useShallow 
+                    ? await window.go?.main?.App?.GetImagesShallow(folderPath)
+                    : await window.go?.main?.App?.GetImages(folderPath);
 
                 // Fetch history for this folder
                 // @ts-ignore

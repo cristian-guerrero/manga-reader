@@ -157,3 +157,8 @@ caracteristicas adicionales 8:
 - cuando el toggle este off se debe tener un incono de continuar descarga en descargas incompletas
 
 
+fixes:
+en la vista explorer, cuando un archivo esta dentro de una carpeta pero esta carpeta no es la carpeta final (hay mas carpetas al mismo nivel que el archivo), se le da play, intenta
+cargar en el visor todas las imagenes (de las carpetas a su nivel)
+si un archivo esta dentro de una carpeta pero tiene mas carpetas al mismo nivel, si se le da play  se debe ver el contenido de la carpeta actual no las subcarpeta
+recursivamente, ni con el boton play ni con el click en el archivo
