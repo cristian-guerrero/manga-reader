@@ -74,13 +74,21 @@ jobs:
           echo "Contenido de build/bin:"
           ls -la build/bin/
           echo "Buscando .app:"
-          find build/bin -name "*.app" -type d
+          find build/bin -maxdepth 1 -name "*.app" -type d
 
       - name: Crear Release en GitHub
-        uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
-        with:
-          files: build/bin/**
+        shell: bash
+        run: |
+          if [ "${{ matrix.os }}" == "macos-latest" ]; then
+            # Para macOS, subir explícitamente el .app y el .zip usando gh CLI
+            gh release create ${{ github.ref_name }} --title "${{ github.ref_name }}" --notes "Release ${{ github.ref_name }}" || true
+            gh release upload ${{ github.ref_name }} build/bin/*.app build/bin/*.zip --clobber
+          else
+            # Para otras plataformas, crear release y subir archivos
+            gh release create ${{ github.ref_name }} --title "${{ github.ref_name }}" --notes "Release ${{ github.ref_name }}" || true
+            gh release upload ${{ github.ref_name }} build/bin/* --clobber
+          fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
