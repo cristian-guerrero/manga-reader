@@ -57,7 +57,7 @@ jobs:
         shell: bash
         run: |
           echo "Iniciando compilación para plataforma: ${{ matrix.platform }}"
-          wails build -platform ${{ matrix.platform }} -v
+          wails build -platform ${{ matrix.platform }}
           echo "Compilación completada exitosamente"
           if [ "${{ matrix.os }}" == "macos-latest" ]; then
             echo "Procesando archivo .app para macOS..."
