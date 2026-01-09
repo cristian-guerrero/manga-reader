@@ -257,7 +257,7 @@ const saveSortPreferences = (path: string | null, sortBy: 'name' | 'date', sortO
 
 export function ExplorerPage() {
     const { t } = useTranslation();
-    const { navigate, explorerState, setExplorerState, previousPage } = useNavigationStore();
+    const { navigate, explorerState, setExplorerState, previousPage, params, setParams } = useNavigationStore();
     const { showToast } = useToast();
 
     const [baseFolders, setBaseFolders] = useState<BaseFolder[]>([]);
@@ -378,6 +378,20 @@ export function ExplorerPage() {
             console.error("Failed to load base folders", error);
         }
     };
+
+    // Handle resetToRoot parameter - navigate to root when clicking explorer button while already in explorer
+    useEffect(() => {
+        if (params?.resetToRoot === 'true') {
+            // Reset to root
+            setCurrentPath(null);
+            setPathHistory([]);
+            setEntries([]);
+            // Reload base folders to show root view
+            loadBaseFolders();
+            // Clear the parameter to prevent infinite loops
+            setParams({});
+        }
+    }, [params?.resetToRoot, setParams]);
 
     const loadDirectory = async (path: string, pushHistory = true) => {
         if (!isMountedRef.current) return;
