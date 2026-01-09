@@ -261,7 +261,7 @@ func (m *Module) StartDownload(url string, overrideSeries string, overrideChapte
 			Status:      persistence.StatusPending,
 			Progress:    0,
 			TotalPages:  len(info.Images),
-			CreatedAt:   time.Now(),
+			CreatedAt:   time.Now().Format(time.RFC3339),
 		}
 		m.pm.AddJob(job)
 	}
@@ -363,7 +363,7 @@ func (m *Module) runDownload(job persistence.DownloadJob, info *SiteInfo) {
 		}
 	}
 
-	now := time.Now()
+	now := time.Now().Format(time.RFC3339)
 	m.pm.UpdateJob(job.ID, map[string]interface{}{
 		"status":      persistence.StatusCompleted,
 		"completedAt": now,

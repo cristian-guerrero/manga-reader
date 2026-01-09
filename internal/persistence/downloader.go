@@ -27,8 +27,8 @@ type DownloadJob struct {
 	Progress    int            `json:"progress"`
 	TotalPages  int            `json:"totalPages"`
 	Error       string         `json:"error,omitempty"`
-	CreatedAt   time.Time      `json:"createdAt"`
-	CompletedAt *time.Time     `json:"completedAt,omitempty"`
+	CreatedAt   string         `json:"createdAt"`        // ISO 8601 format (RFC3339)
+	CompletedAt *string         `json:"completedAt,omitempty"` // ISO 8601 format (RFC3339)
 	Path        string         `json:"path"`
 }
 
@@ -110,7 +110,10 @@ func (dm *DownloaderManager) UpdateJob(id string, updates map[string]interface{}
 					}
 				case "completedAt":
 					if t, ok := v.(time.Time); ok {
-						dm.data.Jobs[i].CompletedAt = &t
+						completedAtStr := t.Format(time.RFC3339)
+						dm.data.Jobs[i].CompletedAt = &completedAtStr
+					} else if s, ok := v.(string); ok {
+						dm.data.Jobs[i].CompletedAt = &s
 					}
 				case "path":
 					if p, ok := v.(string); ok {
