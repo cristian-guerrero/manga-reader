@@ -7,6 +7,7 @@ import { SortControls } from '../common/SortControls';
 import { GridItem } from '../common/GridItem';
 import { GridContainer } from '../common/GridContainer';
 import { SearchBar } from '../common/SearchBar';
+import { Breadcrumb } from '../common/Breadcrumb';
 import { useThumbnails } from '../../hooks/useThumbnails';
 
 // Icons
@@ -508,6 +509,81 @@ export function ExplorerPage() {
         }
     };
 
+    const handleBreadcrumbClick = (path: string | null) => {
+        if (path === null) {
+            // Navigate to root
+            setCurrentPath(null);
+            setPathHistory([]);
+            setEntries([]);
+        } else {
+            // Navigate to specific path
+            // Build segments to check navigation direction
+            const buildSegments = (p: string | null): Array<{ name: string; path: string | null }> => {
+                if (!p) return [{ name: t('explorer.title'), path: null }];
+                
+                const segs: Array<{ name: string; path: string | null }> = [{ name: t('explorer.title'), path: null }];
+                const baseFolder = baseFolders.find(bf => {
+                    const bfPath = bf.path.replace(/[\\/]$/, '');
+                    const normalizedBfPath = bfPath.replace(/\\/g, '/');
+                    const normalizedPath = p.replace(/\\/g, '/');
+                    return normalizedPath.startsWith(normalizedBfPath + '/') || normalizedPath === normalizedBfPath;
+                });
+
+                if (baseFolder) {
+                    const basePath: string = baseFolder.path.replace(/[\\/]$/, '');
+                    segs.push({ name: baseFolder.name, path: basePath });
+                    const basePathNormalized = basePath.replace(/\\/g, '/');
+                    const pathNormalized = p.replace(/\\/g, '/');
+                    const relativePath = pathNormalized.substring(basePathNormalized.length + 1);
+
+                    if (relativePath) {
+                        const parts = relativePath.split('/').filter(part => part.length > 0);
+                        const pathSeparator = p.includes('\\') ? '\\' : '/';
+                        let currentPathSegments = [basePath];
+                        for (let i = 0; i < parts.length; i++) {
+                            currentPathSegments.push(parts[i]);
+                            segs.push({ name: parts[i], path: currentPathSegments.join(pathSeparator) });
+                        }
+                    }
+                } else {
+                    const normalizedPath = p.replace(/\\/g, '/');
+                    const parts = normalizedPath.split('/').filter(part => part.length > 0);
+                    const pathSeparator = p.includes('\\') ? '\\' : '/';
+                    let currentPathSegments: string[] = [];
+                    for (let i = 0; i < parts.length; i++) {
+                        currentPathSegments.push(parts[i]);
+                        segs.push({ name: parts[i], path: currentPathSegments.join(pathSeparator) });
+                    }
+                }
+                return segs;
+            };
+
+            const clickedSegments = buildSegments(path);
+            const currentSegments = buildSegments(currentPath);
+            const clickedIndex = clickedSegments.findIndex(seg => seg.path === path);
+            const currentIndex = currentSegments.findIndex(seg => seg.path === currentPath);
+            
+            if (clickedIndex >= 0 && currentIndex >= 0 && clickedIndex < currentIndex) {
+                // Going backwards - rebuild path history
+                const newHistory: string[] = [];
+                for (let i = 1; i < clickedIndex; i++) {
+                    const segPath = clickedSegments[i].path;
+                    if (segPath) {
+                        newHistory.push(segPath);
+                    }
+                }
+                setPathHistory(newHistory);
+            } else {
+                // Going forward or same level - add current path to history if it exists
+                if (currentPath && path !== currentPath) {
+                    setPathHistory(prev => [...prev, currentPath]);
+                }
+            }
+            
+            loadDirectory(path, false);
+        }
+    };
+
     const handleAddBaseFolder = async () => {
         try {
             // @ts-ignore
@@ -650,12 +726,12 @@ export function ExplorerPage() {
         >
             {/* Header */}
             <div className="flex items-center justify-between mb-6 flex-shrink-0">
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-4 flex-1 min-w-0">
                     {currentPath && (
                         <Tooltip content={t('common.back')} placement="right">
                             <button
                                 onClick={handleBack}
-                                className="p-2 rounded-full hover:bg-white/10 transition-all opacity-100 translate-x-0"
+                                className="p-2 rounded-full hover:bg-white/10 transition-all opacity-100 translate-x-0 flex-shrink-0"
                                 aria-label={t('common.back')}
                             >
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -664,22 +740,28 @@ export function ExplorerPage() {
                             </button>
                         </Tooltip>
                     )}
-                    <h1 className="text-3xl font-bold tracking-tight text-shadow">
-                        {currentPath ? currentPath.split(/[\\/]/).pop() : t('explorer.title')}
-                    </h1>
+                    
+                    {/* Breadcrumb */}
+                    <Breadcrumb
+                        currentPath={currentPath}
+                        baseFolders={baseFolders}
+                        onNavigate={handleBreadcrumbClick}
+                    />
 
                     {/* Sort Controls */}
-                    <SortControls
-                        sortBy={sortBy}
-                        sortOrder={sortOrder}
-                        onSortByChange={(value) => setSortBy(value as 'name' | 'date')}
-                        onSortOrderChange={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
-                        options={[
-                            { value: 'name', label: t('common.name') },
-                            { value: 'date', label: t('common.date') }
-                        ]}
-                        show={Boolean((!currentPath && baseFolders.length > 0) || (currentPath && entries.length > 0))}
-                    />
+                    <div className="flex-shrink-0">
+                        <SortControls
+                            sortBy={sortBy}
+                            sortOrder={sortOrder}
+                            onSortByChange={(value) => setSortBy(value as 'name' | 'date')}
+                            onSortOrderChange={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
+                            options={[
+                                { value: 'name', label: t('common.name') },
+                                { value: 'date', label: t('common.date') }
+                            ]}
+                            show={Boolean((!currentPath && baseFolders.length > 0) || (currentPath && entries.length > 0))}
+                        />
+                    </div>
                 </div>
 
                 {!currentPath && (
