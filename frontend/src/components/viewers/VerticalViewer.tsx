@@ -214,7 +214,7 @@ export function VerticalViewer({
 
         const container = parentRef.current;
         let lastUserScrollTime = 0;
-        let scrollTimeout: NodeJS.Timeout;
+        let scrollTimeout: ReturnType<typeof setTimeout>;
 
         const handleManualScroll = () => {
             const currentTime = performance.now();

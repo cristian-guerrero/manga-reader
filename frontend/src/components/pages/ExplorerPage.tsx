@@ -153,13 +153,20 @@ export function ExplorerPage() {
         // Listen for updates
         const unlisten = (window as any).runtime?.EventsOn("explorer_updated", () => {
             loadBaseFolders();
+            // Only reload current directory if we're not at root
+            // This prevents unwanted navigation when adding/removing folders
             if (currentPath) {
-                loadDirectory(currentPath, false);
+                // Use a small delay to ensure state is updated
+                setTimeout(() => {
+                    loadDirectory(currentPath, false);
+                }, 0);
             }
         });
 
         return () => {
-            // Cleanup
+            if (unlisten) {
+                unlisten();
+            }
         };
     }, [currentPath]);
 
@@ -212,7 +219,14 @@ export function ExplorerPage() {
                 // @ts-ignore
                 await window.go.main.App.AddBaseFolder(path);
                 showToast(t('explorer.folderAdded') || "Folder added to explorer", "success");
-                loadBaseFolders(); // Refresh
+                // Navigate to the newly added folder
+                setPathHistory([]);
+                // Use setTimeout to ensure the event listener doesn't interfere
+                setTimeout(() => {
+                    loadBaseFolders(); // Refresh first
+                    // Then navigate to the folder (not to its first subfolder)
+                    loadDirectory(path, false);
+                }, 100);
             }
         } catch (error) {
             console.error("Failed to add base folder", error);
@@ -227,10 +241,10 @@ export function ExplorerPage() {
             await window.go.main.App.RemoveBaseFolder(path);
             showToast(t('explorer.folderRemoved') || "Folder removed", "success");
 
-            // If we deleted the current folder, go back to root
-            if (currentPath === path) {
-                setCurrentPath(null);
-            }
+            // Always go back to root when removing a folder
+            setCurrentPath(null);
+            setPathHistory([]);
+            setEntries([]);
             loadBaseFolders();
         } catch (error) {
             console.error("Failed to remove base folder", error);
