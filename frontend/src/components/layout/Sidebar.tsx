@@ -81,12 +81,13 @@ const navItems: NavItem[] = [
 export function Sidebar() {
     const { t } = useTranslation();
     const { sidebarCollapsed, toggleSidebar, enabledMenuItems } = useSettingsStore();
-    const { currentPage, navigate } = useNavigationStore();
+    const { activeMenuPage, navigate } = useNavigationStore();
 
     const visibleItems = navItems.filter(item => enabledMenuItems?.[item.id] !== false);
 
     // Calculate Y offset for the indicator based on visible items
-    const activeItemIndex = visibleItems.findIndex(item => item.id === currentPage);
+    // Use activeMenuPage instead of currentPage to show the correct menu item as active
+    const activeItemIndex = visibleItems.findIndex(item => item.id === activeMenuPage);
     const indicatorY = activeItemIndex !== -1 ? activeItemIndex * 48 : 0; // 48px is height of NavButton (44px + 4px gap roughly)
     const showIndicator = activeItemIndex !== -1;
 
@@ -116,7 +117,7 @@ export function Sidebar() {
                     <NavButton
                         key={item.id}
                         item={item}
-                        isActive={currentPage === item.id}
+                        isActive={activeMenuPage === item.id}
                         isCollapsed={sidebarCollapsed}
                         onClick={() => navigate(item.id)}
                     />

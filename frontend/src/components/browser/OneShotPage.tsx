@@ -195,9 +195,11 @@ export function OneShotPage() {
                     const result = await window.go?.main?.App?.AddFolder(folderPath);
                     if (result) {
                         if (result.isSeries) {
-                            navigate('series-details', { series: result.path });
+                            // If it's a series, set activeMenuPage to 'series'
+                            navigate('series-details', { series: result.path }, 'series');
                         } else {
-                            navigate('viewer', { folder: result.path });
+                            // If it's a oneshot, set activeMenuPage to 'oneShot'
+                            navigate('viewer', { folder: result.path }, 'oneShot');
                         }
                     }
                 } catch (e) {
@@ -214,7 +216,8 @@ export function OneShotPage() {
 
 
     const handleOpenFolder = (folder: FolderInfo) => {
-        navigate('viewer', { folder: folder.path });
+        // Maintain 'oneShot' as active menu page when viewing from oneshot page
+        navigate('viewer', { folder: folder.path }, 'oneShot');
     };
 
     const handleRemoveFolder = async (folder: FolderInfo, e: React.MouseEvent) => {

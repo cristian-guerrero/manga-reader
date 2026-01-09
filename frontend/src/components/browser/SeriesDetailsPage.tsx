@@ -139,7 +139,8 @@ export function SeriesDetailsPage({ seriesPath }: SeriesDetailsPageProps) {
     };
 
     const handleOpenChapter = (path: string) => {
-        navigate('viewer', { folder: path });
+        // Maintain 'series' as active menu page when viewing a chapter from series details
+        navigate('viewer', { folder: path }, 'series');
     };
 
     // Filter and sort chapters

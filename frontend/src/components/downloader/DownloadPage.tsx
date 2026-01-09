@@ -293,7 +293,8 @@ export const DownloadPage: React.FC = () => {
             showToast(t('download.addedToLibrary'), 'success');
             
             // Navigate to viewer - use 'folder' parameter as expected by App.tsx router
-            navigate('viewer', { folder: addedPath });
+            // Set activeMenuPage to 'oneShot' since AddDownloadedFolder adds to OneShot library
+            navigate('viewer', { folder: addedPath }, 'oneShot');
         } catch (err: any) {
             showToast(err.toString(), 'error');
         }
@@ -312,7 +313,8 @@ export const DownloadPage: React.FC = () => {
             showToast(t('download.addedToSeries'), 'success');
             
             // Navigate to series details
-            navigate('series-details', { series: seriesPath });
+            // Set activeMenuPage to 'series' since AddDownloadedSeries adds to Series
+            navigate('series-details', { series: seriesPath }, 'series');
         } catch (err: any) {
             showToast(err.toString(), 'error');
         }

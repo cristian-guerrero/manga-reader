@@ -73,12 +73,14 @@ export function MainLayout({ children }: MainLayoutProps) {
                         const navigate = useNavigationStore.getState().navigate;
 
                         if (isSeries && processDropped) {
-                            navigate('series-details', { series: finalPath });
+                            // If it's a series, set activeMenuPage to 'series'
+                            navigate('series-details', { series: finalPath }, 'series');
                         } else {
+                            // If it's a oneshot, set activeMenuPage to 'oneShot'
                             navigate('viewer', {
                                 folder: finalPath,
                                 noHistory: !processDropped ? 'true' : 'false'
-                            });
+                            }, 'oneShot');
                         }
                         showToast(`Opening: ${finalPath.split(/[\\/]/).pop()}`, 'success');
                     } else {

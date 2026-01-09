@@ -282,14 +282,16 @@ export function ViewerPage({ folderPath }: ViewerPageProps) {
     const handlePrevChapter = useCallback(async () => {
         if (chapterNav?.prevChapter) {
             await saveProgress();
-            navigate('viewer', { folder: chapterNav.prevChapter.path });
+            // If navigating between chapters in a series, maintain 'series' as active menu page
+            navigate('viewer', { folder: chapterNav.prevChapter.path }, 'series');
         }
     }, [chapterNav, navigate, saveProgress]);
 
     const handleNextChapter = useCallback(async () => {
         if (chapterNav?.nextChapter) {
             await saveProgress();
-            navigate('viewer', { folder: chapterNav.nextChapter.path });
+            // If navigating between chapters in a series, maintain 'series' as active menu page
+            navigate('viewer', { folder: chapterNav.nextChapter.path }, 'series');
         }
     }, [chapterNav, navigate, saveProgress]);
 

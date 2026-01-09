@@ -188,7 +188,8 @@ export function SeriesPage() {
     };
 
     const handleOpenSeries = (entry: SeriesEntry) => {
-        navigate('series-details', { series: entry.path });
+        // Maintain 'series' as active menu page when viewing series details
+        navigate('series-details', { series: entry.path }, 'series');
     };
 
     const handlePlaySeries = (entry: SeriesEntry, e: React.MouseEvent) => {
@@ -202,11 +203,12 @@ export function SeriesPage() {
             .filter(h => chapterPaths.includes(h.folderPath))
             .sort((a, b) => new Date(b.lastRead).getTime() - new Date(a.lastRead).getTime())[0];
 
+        // Maintain 'series' as active menu page when viewing a chapter from series
         if (lastRead) {
-            navigate('viewer', { folder: lastRead.folderPath });
+            navigate('viewer', { folder: lastRead.folderPath }, 'series');
         } else {
             // Play first chapter
-            navigate('viewer', { folder: entry.chapters[0].path });
+            navigate('viewer', { folder: entry.chapters[0].path }, 'series');
         }
     };
 
