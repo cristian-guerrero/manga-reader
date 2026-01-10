@@ -4,7 +4,6 @@
 
 import { useEffect, useRef, useCallback, useState } from 'react';
 
-import { useViewerStore } from '../../stores/viewerStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 
 interface VerticalViewerProps {
@@ -22,6 +21,7 @@ interface VerticalViewerProps {
     scrollSpeed?: number;
     onAutoScrollStateChange?: (isScrolling: boolean) => void;
     onRestorationComplete?: () => void;
+    onIndexChange?: (index: number) => void; // NEW: Callback when current index changes
 }
 
 export function VerticalViewer({
@@ -33,14 +33,17 @@ export function VerticalViewer({
     scrollSpeed = 50,
     onAutoScrollStateChange,
     onRestorationComplete,
+    onIndexChange,
 }: VerticalViewerProps) {
     const parentRef = useRef<HTMLDivElement>(null);
     const itemRefs = useRef<Record<number, HTMLDivElement | null>>({});
     const { verticalWidth } = useSettingsStore();
-    const { setCurrentIndex } = useViewerStore();
 
     // Track which initialIndex was applied so we can re-apply if it changes
     const appliedInitialIndexRef = useRef<number>(-1);
+
+    // LOCAL state for display index - decoupled from global store
+    const [displayIndex, setDisplayIndex] = useState(initialIndex);
 
     // Windowing state - only render images near the current view
     const [visibleRange, setVisibleRange] = useState({ start: 0, end: 10 });
@@ -52,15 +55,15 @@ export function VerticalViewer({
     const lastScrollTopRef = useRef<number>(0);
     const userScrollingRef = useRef<boolean>(false);
 
-    // Update visible range based on initial index
+    // Update visible range and displayIndex based on initial index
     useEffect(() => {
         const start = Math.max(0, initialIndex - buffer);
         const end = Math.min(images.length - 1, initialIndex + buffer);
         setVisibleRange({ start, end });
+        setDisplayIndex(initialIndex);
     }, [initialIndex, images.length]);
 
-    // Handle scroll - SIMPLIFIED like Yomikiru
-    // Only updates currentIndex, nothing else
+    // Handle scroll - Updates local display index and notifies parent via callback
     const handleScroll = useCallback(() => {
         if (!parentRef.current) return;
 
@@ -78,7 +81,11 @@ export function VerticalViewer({
             }
         });
 
-        setCurrentIndex(topIndex);
+        // Update local display state
+        setDisplayIndex(topIndex);
+
+        // Notify parent via callback (parent handles persistence)
+        onIndexChange?.(topIndex);
 
         // Update visible range for windowing
         const newStart = Math.max(0, topIndex - buffer);
@@ -86,7 +93,7 @@ export function VerticalViewer({
         if (newStart !== visibleRange.start || newEnd !== visibleRange.end) {
             setVisibleRange({ start: newStart, end: newEnd });
         }
-    }, [setCurrentIndex, images.length, visibleRange.start, visibleRange.end]);
+    }, [onIndexChange, images.length, visibleRange.start, visibleRange.end]);
 
     // Handle initial scroll/resume - SIMPLIFIED like Yomikiru
     // Using useEffect with a small delay to ensure DOM is ready
@@ -357,7 +364,7 @@ export function VerticalViewer({
                     transition: 'bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
                 }}
             >
-                {useViewerStore((state) => state.currentIndex) + 1} / {images.length}
+                {displayIndex + 1} / {images.length}
             </div>
         </div>
     );

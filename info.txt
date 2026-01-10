@@ -234,3 +234,11 @@ ejemplo cuando se sale de la app queda en la pagina 29 en el visor cuando se vue
 intentemos no poner delays y setTimeout, 
 ------------------------------
 - Agregar al home, la fucionalidad que esta implementada en el explorer que permite abrir una nueva pestaña con el click medio sobre una carpeta o imagen
+//
+revisemos algo, 
+- el historial de tabs se debe guardar, cuando se abre una pestaña nueva, cuando se elimina una pestaña, cuando se hace drag en la pestaña y 
+se reordena, cuando se navega dentro de la pestaña,   (no timeouts )cuando se restaura la pestaña  NO se actualiza el historial, solo con la interaccion del 
+usuario
+- el historial del visor se debe guardar, cuando se abre una pestaña nueva, con  el visor (creacion del visor), cuando el usuario hace scroll en el visor
+(cuando se abre el visor puede llegar pagina definida o no)
+cuando se restaura el visor NO se debe guardar el historial

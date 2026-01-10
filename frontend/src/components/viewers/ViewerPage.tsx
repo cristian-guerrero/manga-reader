@@ -126,6 +126,8 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
     const [resumeScrollPos, setResumeScrollPos] = useState(0);
     const [resetKey, setResetKey] = useState(0);
     const controlsTimeoutRef = useRef<any>(null);
+    // Debounce timer for saving viewer state to backend
+    const saveViewerStateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     // Auto-scroll state
     const [isAutoScrolling, setIsAutoScrolling] = useState(false);
     const [showSpeedSlider, setShowSpeedSlider] = useState(false);
@@ -139,6 +141,35 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
         chapterIndex?: number;
         totalChapters?: number;
     } | null>(null);
+
+    // Handler for index changes from VerticalViewer - saves to backend with debounce
+    const handleIndexChange = useCallback((newIndex: number) => {
+        if (!folderPath) return;
+
+        // Clear existing timer
+        if (saveViewerStateTimerRef.current) {
+            clearTimeout(saveViewerStateTimerRef.current);
+        }
+
+        // Debounce save to backend
+        saveViewerStateTimerRef.current = setTimeout(async () => {
+            try {
+                // @ts-ignore
+                await window.go?.main?.App?.SaveViewerState(folderPath, newIndex);
+            } catch (error) {
+                console.error('[ViewerPage] Failed to save viewer state:', error);
+            }
+        }, 500);
+    }, [folderPath]);
+
+    // Cleanup debounce timer on unmount
+    useEffect(() => {
+        return () => {
+            if (saveViewerStateTimerRef.current) {
+                clearTimeout(saveViewerStateTimerRef.current);
+            }
+        };
+    }, []);
 
     // Update session flag when navigation params change (handles component reuse)
     useEffect(() => {
@@ -192,9 +223,13 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
                     ? await window.go?.main?.App?.GetImagesShallow(folderPath)
                     : await window.go?.main?.App?.GetImages(folderPath);
 
-                // Fetch history for this folder
+                // Fetch history for this folder (legacy fallback)
                 // @ts-ignore
                 const historyEntry = await window.go?.main?.App?.GetHistoryEntry(folderPath);
+
+                // NEW: Fetch viewer state from backend (primary source for restoration)
+                // @ts-ignore
+                const savedViewerState = await window.go?.main?.App?.GetViewerState(folderPath);
 
                 if (folderInfo) {
                     updateTabState({ currentFolder: folderInfo as FolderInfo });
@@ -214,20 +249,15 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
                     const targetPath = tabParams.targetPath;
                     const explicitStartIndex = tabParams.startIndex ? parseInt(tabParams.startIndex, 10) : -1;
 
-                    // PRIORITIZATION LOGIC:
-                    // 1. If tab was restored, use its saved state index/scroll (most recent user state)
-                    // 2. Else if targetPath specified in URL, find its index
-                    // 3. Else if explicitStartIndex in URL, use it
-                    // 4. Else if history entry exists, fallback to reading history
+                    // PRIORITIZATION LOGIC (SIMPLIFIED):
+                    // 1. savedViewerState from backend (primary source - indexed by folder path)
+                    // 2. targetPath specified in navigation params
+                    // 3. explicitStartIndex in navigation params
+                    // 4. history entry (legacy fallback)
 
-                    // Capture restored state from the tab we identified earlier
-                    const restoredTabState = activeTab?.viewerState;
-                    const hasRestoredState = !!restoredTabState && isRestored;
-
-                    if (hasRestoredState && restoredTabState.currentIndex < imgs.length) {
-                        targetIndex = restoredTabState.currentIndex;
-                        targetScroll = restoredTabState.scrollPosition;
-                        console.log(`[ViewerPage] Resuming from RESTORED state: index=${targetIndex}, scroll=${targetScroll}`);
+                    if (savedViewerState && savedViewerState.currentIndex > 0 && savedViewerState.currentIndex < imgs.length) {
+                        targetIndex = savedViewerState.currentIndex;
+                        console.log(`[ViewerPage] Resuming from BACKEND state: index=${targetIndex}`);
                     } else if (targetPath) {
                         const pathIndex = imgs.findIndex(img => img.path === targetPath);
                         if (pathIndex >= 0) {
@@ -237,15 +267,12 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
                     } else if (explicitStartIndex >= 0 && explicitStartIndex < imgs.length) {
                         targetIndex = explicitStartIndex;
                         console.log(`[ViewerPage] Starting from requested index: ${targetIndex}`);
-                    } else if (historyEntry) {
-                        // Fallback to history if no explicit start index
-                        if (historyEntry.lastImageIndex < imgs.length) {
-                            targetIndex = historyEntry.lastImageIndex;
-                            console.log(`[ViewerPage] Resuming from history index: ${targetIndex}`);
-                        }
+                    } else if (historyEntry && historyEntry.lastImageIndex > 0 && historyEntry.lastImageIndex < imgs.length) {
+                        // Fallback to history if no saved state
+                        targetIndex = historyEntry.lastImageIndex;
+                        console.log(`[ViewerPage] Resuming from history index: ${targetIndex}`);
                         if (historyEntry.scrollPosition > 0) {
                             targetScroll = historyEntry.scrollPosition;
-                            console.log(`[ViewerPage] Resuming from scroll position: ${targetScroll}`);
                         }
                     }
 
@@ -491,6 +518,7 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
                             scrollSpeed={scrollSpeed}
                             onAutoScrollStateChange={setIsAutoScrolling}
                             onRestorationComplete={() => tabId && useTabStore.getState().completeRestoration(tabId)}
+                            onIndexChange={handleIndexChange}
                         />
                     </div>
                 ) : (

@@ -63,7 +63,11 @@ export function GetSettings():Promise<persistence.Settings>;
 
 export function GetSubfolders(arg1:string):Promise<Array<persistence.FolderInfo>>;
 
+export function GetTabs():Promise<persistence.TabsData>;
+
 export function GetThumbnail(arg1:string):Promise<string>;
+
+export function GetViewerState(arg1:string):Promise<persistence.ViewerState>;
 
 export function HasCustomOrder(arg1:string):Promise<boolean>;
 
@@ -92,6 +96,10 @@ export function ResumeIncompleteDownloads(arg1:boolean):Promise<void>;
 export function SaveImageOrder(arg1:string,arg2:Array<string>,arg3:Array<string>):Promise<void>;
 
 export function SaveSettings(arg1:persistence.Settings):Promise<void>;
+
+export function SaveTabs(arg1:persistence.TabsData):Promise<void>;
+
+export function SaveViewerState(arg1:string,arg2:number):Promise<void>;
 
 export function SaveWindowState():Promise<void>;
 
