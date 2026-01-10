@@ -9,8 +9,9 @@ import { LateralViewer } from './LateralViewer';
 import { useViewerStore } from '../../stores/viewerStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useNavigationStore } from '../../stores/navigationStore';
+import { useTabStore } from '../../stores/tabStore';
 import { Tooltip } from '../common/Tooltip';
-import { ImageInfo, FolderInfo } from '../../types';
+import { ImageInfo, FolderInfo, ViewerMode } from '../../types';
 
 // Icons
 const VerticalIcon = () => (
@@ -85,23 +86,41 @@ const PauseIcon = () => (
 
 interface ViewerPageProps {
     folderPath?: string;
+    isActive?: boolean;
+    tabId?: string;
 }
 
-export function ViewerPage({ folderPath }: ViewerPageProps) {
+export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPageProps) {
     const { t } = useTranslation();
     const { goBack, navigate } = useNavigationStore();
     const { viewerMode, setViewerMode, verticalWidth, setVerticalWidth, scrollSpeed, setScrollSpeed } = useSettingsStore();
     const {
-        currentFolder,
-        setCurrentFolder,
-        images,
-        setImages,
-        isLoading,
-        setIsLoading,
-        mode,
-        setMode,
-        currentIndex,
+        _updateTabStateById,
+        setViewerState: globalSetViewerState
     } = useViewerStore();
+
+    // Helper to update the correct tab
+    const updateTabState = useCallback((updates: any) => {
+        if (tabId) {
+            _updateTabStateById(tabId, updates);
+        } else {
+            globalSetViewerState(updates);
+        }
+    }, [tabId, _updateTabStateById, globalSetViewerState]);
+
+    // Get current state for this specific tab
+    const tabState = useTabStore(state => state.tabs.find(t => t.id === tabId)?.viewerState);
+
+    // Live state from store (for the active tab) or from the tab object directly
+    const storeState = useViewerStore();
+    const currentFolder = isActive ? storeState.currentFolder : (tabState?.currentFolder || null);
+    const images = isActive ? storeState.images : (tabState?.images || []);
+    const currentIndex = isActive ? storeState.currentIndex : (tabState?.currentIndex || 0);
+    const mode = isActive ? storeState.mode : (tabState?.mode || 'vertical');
+    const isLoading = isActive ? storeState.isLoading : (tabState?.isLoading || false);
+
+    // Per-manga zoom state (defaults to settings level if store doesn't have it)
+    const currentVerticalWidth = isActive ? (storeState.verticalWidth || verticalWidth) : (tabState?.verticalWidth || verticalWidth);
 
     const [showControls, setShowControls] = useState(true);
     const [showWidthSlider, setShowWidthSlider] = useState(false);
@@ -110,6 +129,8 @@ export function ViewerPage({ folderPath }: ViewerPageProps) {
     const [resumeScrollPos, setResumeScrollPos] = useState(0);
     const [resetKey, setResetKey] = useState(0);
     const controlsTimeoutRef = useRef<any>(null);
+    // Debounce timer for saving viewer state to backend
+    const saveViewerStateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     // Auto-scroll state
     const [isAutoScrolling, setIsAutoScrolling] = useState(false);
     const [showSpeedSlider, setShowSpeedSlider] = useState(false);
@@ -124,6 +145,47 @@ export function ViewerPage({ folderPath }: ViewerPageProps) {
         totalChapters?: number;
     } | null>(null);
 
+    // Unified handler for viewer state changes (index and zoom) - saves to backend with debounce
+    const handleViewerStateChange = useCallback((updates: { index?: number, width?: number }) => {
+        if (!folderPath) return;
+
+        // Update local tab state immediately for UI responsiveness
+        if (updates.width !== undefined) {
+            updateTabState({ verticalWidth: updates.width });
+        }
+        if (updates.index !== undefined) {
+            updateTabState({ currentIndex: updates.index });
+        }
+
+        // Clear existing timer
+        if (saveViewerStateTimerRef.current) {
+            clearTimeout(saveViewerStateTimerRef.current);
+        }
+
+        // Debounce save to backend
+        saveViewerStateTimerRef.current = setTimeout(async () => {
+            try {
+                const state = useViewerStore.getState();
+                const targetIndex = updates.index !== undefined ? updates.index : state.currentIndex;
+                const targetWidth = updates.width !== undefined ? updates.width : (state.verticalWidth || verticalWidth);
+
+                // @ts-ignore
+                await window.go?.main?.App?.SaveViewerState(folderPath, targetIndex, targetWidth);
+            } catch (error) {
+                console.error('[ViewerPage] Failed to save viewer state:', error);
+            }
+        }, 500);
+    }, [folderPath, verticalWidth, updateTabState]);
+
+    // Cleanup debounce timer on unmount
+    useEffect(() => {
+        return () => {
+            if (saveViewerStateTimerRef.current) {
+                clearTimeout(saveViewerStateTimerRef.current);
+            }
+        };
+    }, []);
+
     // Update session flag when navigation params change (handles component reuse)
     useEffect(() => {
         const noHistory = useNavigationStore.getState().params.noHistory === 'true';
@@ -134,14 +196,43 @@ export function ViewerPage({ folderPath }: ViewerPageProps) {
     // Load folder and images
     useEffect(() => {
         if (!folderPath) return;
+        if (!isActive) return; // Don't load if tab is not active - prevents content bleeding between tabs
 
         const loadFolder = async () => {
+            // Optimization: If we already have the state for this folder in the current tab, skip loading
+            // UNLESS the tab was recently restored (URLs might be stale)
+            const activeTab = useTabStore.getState().tabs.find(t => t.id === tabId);
+            const isRestored = activeTab?.restored;
+
+            if (!isRestored && activeTab?.viewerState?.currentFolder?.path === folderPath && activeTab.viewerState.images.length > 0) {
+                console.log(`[ViewerPage] Tab switching optimization: Using existing images for ${folderPath}`);
+                // Fetch fresh currentIndex from backend (since we no longer sync with tabStore)
+                try {
+                    // @ts-ignore
+                    const savedViewerState = await window.go?.main?.App?.GetViewerState(folderPath);
+                    const freshIndex = savedViewerState?.currentIndex ?? activeTab.viewerState.currentIndex;
+                    setResumeIndex(freshIndex);
+                    setResumeScrollPos(activeTab.viewerState.scrollPosition);
+                    console.log(`[ViewerPage] Resume index from backend: ${freshIndex}`);
+                } catch {
+                    setResumeIndex(activeTab.viewerState.currentIndex);
+                    setResumeScrollPos(activeTab.viewerState.scrollPosition);
+                }
+                return;
+            }
+
+            if (isRestored) {
+                console.log(`[ViewerPage] Restored tab detected for ${folderPath}. Forcing refresh to update stale URLs.`);
+                // Clear restored flag so we don't force refresh every time we switch back to this tab
+                useTabStore.getState().updateTab(tabId!, { restored: false });
+            }
+
             // Save current progress before switching if not a no-history session
             if (currentFolder && !isNoHistorySession) {
                 await saveProgress();
             }
 
-            setIsLoading(true);
+            updateTabState({ isLoading: true });
             try {
                 // Check if we should use shallow loading (non-recursive)
                 const navParams = useNavigationStore.getState().params;
@@ -157,12 +248,16 @@ export function ViewerPage({ folderPath }: ViewerPageProps) {
                     ? await window.go?.main?.App?.GetImagesShallow(folderPath)
                     : await window.go?.main?.App?.GetImages(folderPath);
 
-                // Fetch history for this folder
+                // Fetch history for this folder (legacy fallback)
                 // @ts-ignore
                 const historyEntry = await window.go?.main?.App?.GetHistoryEntry(folderPath);
 
+                // NEW: Fetch viewer state from backend (primary source for restoration)
+                // @ts-ignore
+                const savedViewerState = await window.go?.main?.App?.GetViewerState(folderPath);
+
                 if (folderInfo) {
-                    setCurrentFolder(folderInfo as FolderInfo);
+                    updateTabState({ currentFolder: folderInfo as FolderInfo });
                 }
                 if (imageList) {
                     // Update images
@@ -174,11 +269,21 @@ export function ViewerPage({ folderPath }: ViewerPageProps) {
                     let targetScroll = 0;
 
                     // Check for targetPath or explicit start index from navigation params
-                    const navParams = useNavigationStore.getState().params;
-                    const targetPath = navParams?.targetPath;
-                    const explicitStartIndex = navParams && navParams.startIndex ? parseInt(navParams.startIndex, 10) : -1;
+                    // Use tab-specific params instead of global navigation params for restoration consistency
+                    const tabParams = activeTab?.params || {};
+                    const targetPath = tabParams.targetPath;
+                    const explicitStartIndex = tabParams.startIndex ? parseInt(tabParams.startIndex, 10) : -1;
 
-                    if (targetPath) {
+                    // PRIORITIZATION LOGIC (SIMPLIFIED):
+                    // 1. savedViewerState from backend (primary source - indexed by folder path)
+                    // 2. targetPath specified in navigation params
+                    // 3. explicitStartIndex in navigation params
+                    // 4. history entry (legacy fallback)
+
+                    if (savedViewerState && savedViewerState.currentIndex > 0 && savedViewerState.currentIndex < imgs.length) {
+                        targetIndex = savedViewerState.currentIndex;
+                        console.log(`[ViewerPage] Resuming from BACKEND state: index=${targetIndex}`);
+                    } else if (targetPath) {
                         const pathIndex = imgs.findIndex(img => img.path === targetPath);
                         if (pathIndex >= 0) {
                             targetIndex = pathIndex;
@@ -187,15 +292,12 @@ export function ViewerPage({ folderPath }: ViewerPageProps) {
                     } else if (explicitStartIndex >= 0 && explicitStartIndex < imgs.length) {
                         targetIndex = explicitStartIndex;
                         console.log(`[ViewerPage] Starting from requested index: ${targetIndex}`);
-                    } else if (historyEntry) {
-                        // Fallback to history if no explicit start index
-                        if (historyEntry.lastImageIndex < imgs.length) {
-                            targetIndex = historyEntry.lastImageIndex;
-                            console.log(`[ViewerPage] Resuming from history index: ${targetIndex}`);
-                        }
+                    } else if (historyEntry && historyEntry.lastImageIndex > 0 && historyEntry.lastImageIndex < imgs.length) {
+                        // Fallback to history if no saved state
+                        targetIndex = historyEntry.lastImageIndex;
+                        console.log(`[ViewerPage] Resuming from history index: ${targetIndex}`);
                         if (historyEntry.scrollPosition > 0) {
                             targetScroll = historyEntry.scrollPosition;
-                            console.log(`[ViewerPage] Resuming from scroll position: ${targetScroll}`);
                         }
                     }
 
@@ -204,11 +306,13 @@ export function ViewerPage({ folderPath }: ViewerPageProps) {
                     setResumeIndex(targetIndex);
                     setResumeScrollPos(targetScroll);
 
-                    // Update store with new images and index
-                    useViewerStore.setState({
+                    // Update store with new images and index via the new setViewerState action
+                    // which correctly updates the tabStore as well
+                    updateTabState({
                         images: imgs,
                         currentIndex: targetIndex,
                         scrollPosition: targetScroll,
+                        verticalWidth: savedViewerState?.verticalWidth || 0, // 0 = use global
                         currentFolder: folderInfo as FolderInfo,
                         isLoading: false
                     });
@@ -227,14 +331,13 @@ export function ViewerPage({ folderPath }: ViewerPageProps) {
 
             } catch (error) {
                 console.error('Failed to load folder:', error);
-            } finally {
-                setIsLoading(false);
+                updateTabState({ isLoading: false });
             }
         };
 
         loadFolder();
         // loadFolder(); // Removed duplicate call
-    }, [folderPath]); // Removed other dependencies to avoid re-triggering loops
+    }, [folderPath, isActive]); // Added isActive to trigger loading when tab becomes active
 
 
     // Initial history save when folder is loaded
@@ -249,15 +352,28 @@ export function ViewerPage({ folderPath }: ViewerPageProps) {
 
     // Sync viewer mode with settings
     useEffect(() => {
-        setMode(viewerMode);
-    }, [viewerMode, setMode]);
+        if (isActive) {
+            updateTabState({ mode: viewerMode });
+        }
+    }, [viewerMode, isActive, updateTabState]);
 
     // Save reading progress
-    const saveProgress = useCallback(async () => {
+    const saveProgress = useCallback(async (percentage?: any) => {
         if (!currentFolder || images.length === 0) return;
 
         if (isNoHistorySession) {
             return;
+        }
+
+        // Determine correct scroll position for history (must be 0-1)
+        let historyScrollPos = 0;
+        if (typeof percentage === 'number' && percentage >= 0 && percentage <= 1) {
+            historyScrollPos = percentage;
+        } else {
+            const storePos = useViewerStore.getState().scrollPosition;
+            if (storePos >= 0 && storePos <= 1) {
+                historyScrollPos = storePos;
+            }
         }
 
         try {
@@ -268,7 +384,7 @@ export function ViewerPage({ folderPath }: ViewerPageProps) {
                 folderName: currentFolder.name,
                 lastImage: images[currentIndex]?.name || '',
                 lastImageIndex: currentIndex,
-                scrollPosition: useViewerStore.getState().scrollPosition,
+                scrollPosition: historyScrollPos,
                 totalImages: images.length,
                 lastRead: new Date().toISOString(),
             });
@@ -306,7 +422,7 @@ export function ViewerPage({ folderPath }: ViewerPageProps) {
     // Toggle viewer mode
     const toggleMode = () => {
         const newMode = mode === 'vertical' ? 'lateral' : 'vertical';
-        setMode(newMode);
+        updateTabState({ mode: newMode });
         setViewerMode(newMode);
     };
 
@@ -333,7 +449,7 @@ export function ViewerPage({ folderPath }: ViewerPageProps) {
         setResetKey(prev => prev + 1);
 
         // Force store update to trigger re-renders in children
-        useViewerStore.setState({
+        updateTabState({
             currentIndex: 0,
             scrollPosition: 0
         });
@@ -359,7 +475,9 @@ export function ViewerPage({ folderPath }: ViewerPageProps) {
 
     const hasChapterButtons = !!(chapterNav && (chapterNav.prevChapter || chapterNav.nextChapter));
 
-    if (isLoading) {
+    // If images is empty but we are loading OR we haven't even started loading a folderPath yet,
+    // show the loading screen.
+    if (isLoading || (folderPath && images.length === 0)) {
         return (
             <div
                 className="flex items-center justify-center h-full"
@@ -417,16 +535,18 @@ export function ViewerPage({ folderPath }: ViewerPageProps) {
                         className={`h-full w-full transition-opacity duration-300 ${mode === 'vertical' ? 'opacity-100' : 'opacity-0'}`}
                     >
                         <VerticalViewer
-                            key={`${currentFolder.path}-${resumeIndex}-${resetKey}`}
+                            key={`${currentFolder.path}-${resetKey}`}
                             images={images}
-                            onScrollPositionChange={saveProgress}
                             initialIndex={resumeIndex}
-                            initialScrollPosition={resumeScrollPos}
                             showControls={showControls}
                             hasChapterButtons={hasChapterButtons}
                             isAutoScrolling={isAutoScrolling}
                             scrollSpeed={scrollSpeed}
                             onAutoScrollStateChange={setIsAutoScrolling}
+                            onRestorationComplete={() => tabId && useTabStore.getState().completeRestoration(tabId)}
+                            onIndexChange={(index) => handleViewerStateChange({ index })}
+                            verticalWidth={currentVerticalWidth}
+                            onWidthChange={(width) => handleViewerStateChange({ width })}
                         />
                     </div>
                 ) : (
@@ -435,12 +555,13 @@ export function ViewerPage({ folderPath }: ViewerPageProps) {
                         className={`h-full w-full transition-opacity duration-300 ${mode === 'lateral' ? 'opacity-100' : 'opacity-0'}`}
                     >
                         <LateralViewer
-                            key={`${currentFolder.path}-${resumeIndex}-${resetKey}`}
+                            key={`${currentFolder.path}-${resetKey}`}
                             images={images}
                             onPageChange={saveProgress}
                             initialIndex={resumeIndex}
                             showControls={showControls}
                             hasChapterButtons={hasChapterButtons}
+                            onRestorationComplete={() => tabId && useTabStore.getState().completeRestoration(tabId)}
                         />
                     </div>
                 )}
@@ -607,12 +728,20 @@ export function ViewerPage({ folderPath }: ViewerPageProps) {
                                             border: '1px solid var(--color-border)',
                                         }}
                                     >
+                                        <div className="flex items-center justify-between mb-2">
+                                            <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+                                                {t('viewer.width')}
+                                            </span>
+                                            <span className="text-xs font-bold" style={{ color: 'var(--color-text-primary)' }}>
+                                                {currentVerticalWidth}%
+                                            </span>
+                                        </div>
                                         <input
                                             type="range"
                                             min="30"
                                             max="100"
-                                            value={verticalWidth}
-                                            onChange={(e) => setVerticalWidth(Number(e.target.value))}
+                                            value={currentVerticalWidth}
+                                            onChange={(e) => handleViewerStateChange({ width: Number(e.target.value) })}
                                             className="w-full"
                                         />
                                     </div>

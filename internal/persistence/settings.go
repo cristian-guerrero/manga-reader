@@ -3,6 +3,7 @@ package persistence
 import (
 	"fmt"
 	"sync"
+	"time"
 )
 
 const settingsFile = "settings.json"
@@ -55,6 +56,12 @@ type Settings struct {
 	ClipboardAutoMonitor bool `json:"clipboardAutoMonitor"`
 	// Auto resume incomplete downloads
 	AutoResumeDownloads bool `json:"autoResumeDownloads"`
+	// Tab memory saving mode (unmount inactive tabs)
+	TabMemorySaving bool `json:"tabMemorySaving"`
+	// Restore tabs on startup
+	RestoreTabs bool `json:"restoreTabs"`
+	// Saved tabs state (JSON string)
+	SavedTabs string `json:"savedTabs"`
 }
 
 // DefaultSettings returns the default settings
@@ -94,6 +101,9 @@ func DefaultSettings() *Settings {
 		DownloadPath:         "", // empty means default
 		ClipboardAutoMonitor: false,
 		AutoResumeDownloads:  false,
+		TabMemorySaving:      true,
+		RestoreTabs:          false,
+		SavedTabs:            "",
 	}
 }
 
@@ -101,6 +111,10 @@ func DefaultSettings() *Settings {
 type SettingsManager struct {
 	settings *Settings
 	mu       sync.RWMutex
+	// Debounce timer for saving to disk
+	saveTimer *time.Timer
+	// Mutex for the timer itself
+	tmMu sync.Mutex
 }
 
 // NewSettingsManager creates a new settings manager
@@ -151,6 +165,45 @@ func (sm *SettingsManager) Load() error {
 	return nil
 }
 
+// Flush immediately saves any pending changes to disk
+func (sm *SettingsManager) Flush() error {
+	sm.tmMu.Lock()
+	if sm.saveTimer != nil {
+		sm.saveTimer.Stop()
+		sm.saveTimer = nil
+	}
+	sm.tmMu.Unlock()
+
+	sm.mu.Lock()
+	settings := *sm.settings
+	sm.mu.Unlock()
+
+	return saveJSON(settingsFile, &settings)
+}
+
+// scheduleSave schedules a save operation after a debounce period
+func (sm *SettingsManager) scheduleSave() {
+	sm.tmMu.Lock()
+	defer sm.tmMu.Unlock()
+
+	if sm.saveTimer != nil {
+		sm.saveTimer.Stop()
+	}
+
+	sm.saveTimer = time.AfterFunc(1*time.Second, func() {
+		sm.mu.Lock()
+		settings := *sm.settings
+		sm.mu.Unlock()
+
+		err := saveJSON(settingsFile, &settings)
+		if err != nil {
+			fmt.Printf("[SettingsManager] Failed to save settings: %v\n", err)
+		} else {
+			fmt.Printf("[SettingsManager] Settings saved to disk (debounced)\n")
+		}
+	})
+}
+
 // Update updates specific settings fields
 func (sm *SettingsManager) Update(updates map[string]interface{}) error {
 	sm.mu.Lock()
@@ -158,7 +211,12 @@ func (sm *SettingsManager) Update(updates map[string]interface{}) error {
 
 	// Apply updates
 	for key, value := range updates {
-		fmt.Printf("[SettingsManager] Updating field %s to %v\n", key, value)
+		if key == "savedTabs" {
+			// Don't log full content for savedTabs as it's too large
+			fmt.Printf("[SettingsManager] Updating field %s (content hidden)\n", key)
+		} else {
+			fmt.Printf("[SettingsManager] Updating field %s to %v\n", key, value)
+		}
 		switch key {
 		case "language":
 			if v, ok := value.(string); ok {
@@ -281,9 +339,23 @@ func (sm *SettingsManager) Update(updates map[string]interface{}) error {
 			if v, ok := value.(bool); ok {
 				sm.settings.AutoResumeDownloads = v
 			}
+		case "tabMemorySaving":
+			if v, ok := value.(bool); ok {
+				sm.settings.TabMemorySaving = v
+			}
+		case "restoreTabs":
+			if v, ok := value.(bool); ok {
+				sm.settings.RestoreTabs = v
+			}
+		case "savedTabs":
+			if v, ok := value.(string); ok {
+				sm.settings.SavedTabs = v
+			}
 		}
 
 	}
 
-	return saveJSON(settingsFile, sm.settings)
+	// Schedule a debounced save instead of saving immediately
+	sm.scheduleSave()
+	return nil
 }

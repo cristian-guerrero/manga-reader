@@ -8,6 +8,7 @@ import { useNavigationStore } from '../../stores/navigationStore';
 import { EventsOn, EventsOff } from '../../../wailsjs/runtime';
 import { Button } from '../common/Button';
 import { Tooltip } from '../common/Tooltip';
+import { useTabStore } from '../../stores/tabStore';
 
 // Icons
 const FolderPlusIcon = () => (
@@ -125,7 +126,7 @@ function ThumbnailComponent({ entryId, folderPath }: { entryId: string; folderPa
                             if (folderInfo && folderInfo.coverImage) {
                                 // @ts-ignore
                                 const thumb = await window.go?.main?.App?.GetThumbnail(folderInfo.coverImage);
-                                
+
                                 if (!isMountedRef.current) {
                                     loadingRef.current = false;
                                     return;
@@ -156,7 +157,7 @@ function ThumbnailComponent({ entryId, folderPath }: { entryId: string; folderPa
 
         observerRef.current = observer;
         observer.observe(ref.current);
-        
+
         return () => {
             if (observerRef.current) {
                 observerRef.current.disconnect();
@@ -185,6 +186,7 @@ function ThumbnailComponent({ entryId, folderPath }: { entryId: string; folderPa
 export function HomePage() {
     const { t } = useTranslation();
     const { navigate } = useNavigationStore();
+    const { addTab } = useTabStore();
     const [historyEntries, setHistoryEntries] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const isMountedRef = useRef(true);
@@ -272,6 +274,14 @@ export function HomePage() {
         navigate('viewer', { folder: path });
     };
 
+    const handleAuxClick = (e: React.MouseEvent, path: string, name: string) => {
+        if (e.button === 1) { // Middle click
+            e.preventDefault();
+            e.stopPropagation();
+            addTab('viewer', { folder: path }, name, {}, false);
+        }
+    };
+
     const handleRemoveHistory = async (path: string, e: React.MouseEvent) => {
         e.stopPropagation();
         try {
@@ -302,6 +312,8 @@ export function HomePage() {
                         <div
                             className="w-48 h-72 rounded-lg overflow-hidden shadow-lg flex-shrink-0 bg-surface-tertiary relative group cursor-pointer border border-white/5 transition-transform hover:scale-[1.02] active:scale-[0.98]"
                             onClick={() => handleContinue(historyEntries[0].folderPath)}
+                            onMouseDown={(e) => { if (e.button === 1) e.preventDefault(); }}
+                            onAuxClick={(e) => handleAuxClick(e, historyEntries[0].folderPath, historyEntries[0].folderName)}
                         >
                             <ThumbnailComponent
                                 entryId={historyEntries[0].id}
@@ -380,6 +392,8 @@ export function HomePage() {
                                         className="bg-surface-secondary rounded-xl overflow-hidden border border-white/5 hover:border-accent/30 transition-all group flex flex-col hover:-translate-y-1 animate-scale-in"
                                         style={{ animationDelay: `${(idx + 1) * 0.05}s` }}
                                         onClick={() => handleContinue(entry.folderPath)}
+                                        onMouseDown={(e) => { if (e.button === 1) e.preventDefault(); }}
+                                        onAuxClick={(e) => handleAuxClick(e, entry.folderPath, entry.folderName)}
                                     >
                                         <div className="aspect-[3/4] relative overflow-hidden bg-surface-tertiary">
                                             <ThumbnailComponent

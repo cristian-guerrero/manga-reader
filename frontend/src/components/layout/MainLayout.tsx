@@ -13,6 +13,7 @@ import { OnFileDrop, OnFileDropOff, EventsOn } from '../../../wailsjs/runtime';
 import { useToast } from '../common/Toast';
 import { useSettingsStore } from '../../stores/settingsStore';
 import * as AppBackend from '../../../wailsjs/go/main/App';
+import alertSound from '../../assets/sounds/alert.mp3';
 
 interface MainLayoutProps {
     children: React.ReactNode;
@@ -166,12 +167,22 @@ export function MainLayout({ children }: MainLayoutProps) {
                 } else {
                     // It's a single chapter - start download automatically
                     await AppBackend.StartDownload(text, "", "");
+
+                    // Play alert sound
+                    const audio = new Audio(alertSound);
+                    audio.play().catch(e => console.error('Failed to play alert sound:', e));
+
                     showToast(t('download.startedFromClipboard') || 'Download started from clipboard', 'success');
                 }
             } catch (err: any) {
                 // If FetchMangaInfo fails, try to start download anyway (might be a valid URL)
                 try {
                     await AppBackend.StartDownload(text, "", "");
+
+                    // Play alert sound
+                    const audio = new Audio(alertSound);
+                    audio.play().catch(e => console.error('Failed to play alert sound:', e));
+
                     showToast(t('download.startedFromClipboard') || 'Download started from clipboard', 'success');
                 } catch (downloadErr: any) {
                     // If both fail, show error

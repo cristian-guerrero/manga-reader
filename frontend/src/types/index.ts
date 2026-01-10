@@ -118,6 +118,10 @@ export interface Settings {
     autoResumeDownloads?: boolean;
     /** Per-theme accent colors { themeId: color } */
     themeAccents: Record<string, string>;
+    /** Memory saving mode for tabs (unmount inactive tabs) */
+    tabMemorySaving: boolean;
+    /** Restore tabs on startup */
+    restoreTabs: boolean;
 }
 
 
@@ -155,6 +159,8 @@ export const DEFAULT_SETTINGS: Settings = {
     clipboardAutoMonitor: false,
     autoResumeDownloads: false,
     themeAccents: {},
+    tabMemorySaving: true,
+    restoreTabs: false,
 };
 
 
@@ -260,6 +266,10 @@ export interface ViewerState {
     zoomLevel: number;
     /** Scroll position (for vertical mode) */
     scrollPosition: number;
+    /** Current vertical width (zoom) for this manga */
+    verticalWidth?: number;
+    /** Is currently restoring state (prevents premature saving) */
+    isRestoring?: boolean;
 }
 
 // ============================================================================

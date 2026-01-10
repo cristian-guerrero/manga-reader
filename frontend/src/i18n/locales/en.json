@@ -215,7 +215,10 @@
         "clearAllCache": "Clear All Cache",
         "confirmClearCache": "This will delete all history, cached data, downloads, and app usage data. Settings will be preserved. Are you sure?",
         "clearCacheSuccess": "Cache cleared successfully!",
-        "clearCacheError": "Failed to clear cache. Please restart the app and try again."
+        "clearCacheError": "Failed to clear cache. Please restart the app and try again.",
+        "tabs": "Tabs",
+        "tabMemorySaving": "Memory Saving Mode",
+        "tabMemorySavingDesc": "Unmount inactive tabs to save memory. Disable for instant tab switching."
     },
     "explorer": {
         "title": "Explorer",

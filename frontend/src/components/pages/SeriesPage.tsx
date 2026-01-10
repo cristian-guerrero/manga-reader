@@ -13,6 +13,7 @@ import { GridContainer } from '../common/GridContainer';
 import { SearchBar } from '../common/SearchBar';
 import { LibraryCard } from '../common/LibraryCard';
 import { useThumbnails } from '../../hooks/useThumbnails';
+import { useTabStore } from '../../stores/tabStore';
 
 // Icons
 const SeriesIcon = () => (
@@ -55,6 +56,7 @@ const PlayIcon = () => (
 export function SeriesPage() {
     const { t } = useTranslation();
     const { navigate } = useNavigationStore();
+    const { addTab } = useTabStore();
     const [series, setSeries] = useState<SeriesEntry[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const { thumbnails, loadThumbnails, initializeThumbnails } = useThumbnails(10);
@@ -193,6 +195,14 @@ export function SeriesPage() {
     const handleOpenSeries = (entry: SeriesEntry) => {
         // Maintain 'series' as active menu page when viewing series details
         navigate('series-details', { series: entry.path }, 'series');
+    };
+
+    const handleAuxClick = (e: React.MouseEvent, entry: SeriesEntry) => {
+        if (e.button === 1) { // Middle click
+            e.preventDefault();
+            e.stopPropagation();
+            addTab('series-details', { series: entry.path }, entry.name, {}, false);
+        }
     };
 
     const handlePlaySeries = (entry: SeriesEntry, e: React.MouseEvent) => {
@@ -385,6 +395,7 @@ export function SeriesPage() {
                                 countLabel={t('series.chapters')}
                                 countIcon={<BookIcon />}
                                 onOpen={() => handleOpenSeries(item)}
+                                onAuxClick={(e) => handleAuxClick(e, item)}
                                 onRemove={(e) => handleRemoveSeries(item, e)}
                                 onPlay={(e) => handlePlaySeries(item, e)}
                                 overlayContent={

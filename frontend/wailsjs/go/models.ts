@@ -308,6 +308,9 @@ export namespace persistence {
 	    downloadPath: string;
 	    clipboardAutoMonitor: boolean;
 	    autoResumeDownloads: boolean;
+	    tabMemorySaving: boolean;
+	    restoreTabs: boolean;
+	    savedTabs: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new Settings(source);
@@ -340,6 +343,81 @@ export namespace persistence {
 	        this.downloadPath = source["downloadPath"];
 	        this.clipboardAutoMonitor = source["clipboardAutoMonitor"];
 	        this.autoResumeDownloads = source["autoResumeDownloads"];
+	        this.tabMemorySaving = source["tabMemorySaving"];
+	        this.restoreTabs = source["restoreTabs"];
+	        this.savedTabs = source["savedTabs"];
+	    }
+	}
+	export class Tab {
+	    id: string;
+	    title: string;
+	    page: string;
+	    fromPage: string;
+	    params: Record<string, string>;
+	    explorerState: any;
+	    thumbnailScrollPositions: any;
+	
+	    static createFrom(source: any = {}) {
+	        return new Tab(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.title = source["title"];
+	        this.page = source["page"];
+	        this.fromPage = source["fromPage"];
+	        this.params = source["params"];
+	        this.explorerState = source["explorerState"];
+	        this.thumbnailScrollPositions = source["thumbnailScrollPositions"];
+	    }
+	}
+	export class TabsData {
+	    activeTabId: string;
+	    tabs: Tab[];
+	
+	    static createFrom(source: any = {}) {
+	        return new TabsData(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.activeTabId = source["activeTabId"];
+	        this.tabs = this.convertValues(source["tabs"], Tab);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ViewerState {
+	    currentIndex: number;
+	    mode: string;
+	    verticalWidth: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new ViewerState(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.currentIndex = source["currentIndex"];
+	        this.mode = source["mode"];
+	        this.verticalWidth = source["verticalWidth"];
 	    }
 	}
 

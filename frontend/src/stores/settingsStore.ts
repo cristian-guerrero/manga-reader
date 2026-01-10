@@ -26,6 +26,8 @@ interface SettingsState extends Settings {
     setEnableHistory: (enable: boolean) => void;
     setMinImageSize: (kb: number) => void;
     setProcessDroppedFolders: (process: boolean) => void;
+    setTabMemorySaving: (enable: boolean) => void;
+    setRestoreTabs: (enable: boolean) => void;
 
     setLastPage: (page: string) => void;
     setEnabledMenuItems: (items: Record<string, boolean>) => void;
@@ -158,6 +160,14 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     setProcessDroppedFolders: (processDroppedFolders) => {
         set({ processDroppedFolders });
         get().updateBackend('processDroppedFolders', processDroppedFolders);
+    },
+    setTabMemorySaving: (tabMemorySaving) => {
+        set({ tabMemorySaving });
+        get().updateBackend('tabMemorySaving', tabMemorySaving);
+    },
+    setRestoreTabs: (restoreTabs) => {
+        set({ restoreTabs });
+        get().updateBackend('restoreTabs', restoreTabs);
     },
 
     setLastPage: (lastPage) => {

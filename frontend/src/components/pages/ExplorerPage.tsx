@@ -9,6 +9,7 @@ import { GridContainer } from '../common/GridContainer';
 import { SearchBar } from '../common/SearchBar';
 import { Breadcrumb } from '../common/Breadcrumb';
 import { useThumbnails } from '../../hooks/useThumbnails';
+import { useTabStore } from '../../stores/tabStore';
 
 // Icons
 const TrashIcon = () => (
@@ -70,15 +71,30 @@ const saveSortPreferences = (path: string | null, sortBy: 'name' | 'date', sortO
     }
 };
 
-export function ExplorerPage() {
+interface ExplorerPageProps {
+    isActive?: boolean;
+    tabId?: string;
+}
+
+export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
     const { t } = useTranslation();
     const { navigate, explorerState, setExplorerState, previousPage, fromPage, params, setParams } = useNavigationStore();
+    const { addTab, getActiveTab } = useTabStore();
     const { showToast } = useToast();
 
+    // Get initial state from the specific TAB, not the global active tab
+    // This ensures each tab maintains its own explorer state
+    const getInitialExplorerState = () => {
+        const tabs = useTabStore.getState().tabs;
+        const tab = tabId ? tabs.find(t => t.id === tabId) : useTabStore.getState().getActiveTab();
+        return tab?.explorerState || null;
+    };
+
     const [baseFolders, setBaseFolders] = useState<BaseFolder[]>([]);
-    // Always start at root when mounting - state will be restored only if coming from explorer
-    const [currentPath, setCurrentPath] = useState<string | null>(null);
-    const [pathHistory, setPathHistory] = useState<string[]>([]);
+    // Initialize from tab's explorerState
+    const initialState = getInitialExplorerState();
+    const [currentPath, setCurrentPath] = useState<string | null>(initialState?.currentPath || null);
+    const [pathHistory, setPathHistory] = useState<string[]>(initialState?.pathHistory || []);
     const [entries, setEntries] = useState<ExplorerEntry[]>([]);
     const [loading, setLoading] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
@@ -176,6 +192,15 @@ export function ExplorerPage() {
 
             setBaseFolders(folders || []);
 
+            // Reset title to Explorer if we are at root
+            if (!currentPathRef.current) {
+                if (tabId) {
+                    useTabStore.getState().updateTab(tabId, { title: t('explorer.title') || 'Explorer' });
+                } else {
+                    useTabStore.getState().updateActiveTab({ title: t('explorer.title') || 'Explorer' });
+                }
+            }
+
             // Inicializar thumbnails que ya vienen del backend
             if (folders && folders.length > 0) {
                 const initialThumbs: Record<string, string> = {};
@@ -195,8 +220,9 @@ export function ExplorerPage() {
     };
 
     // Handle resetToRoot parameter - navigate to root when clicking explorer button while already in explorer
+    // ONLY process this when the tab is active to prevent other tabs from being affected
     useEffect(() => {
-        if (params?.resetToRoot === 'true') {
+        if (isActive && params?.resetToRoot === 'true') {
             // Reset to root
             setCurrentPath(null);
             setPathHistory([]);
@@ -206,7 +232,7 @@ export function ExplorerPage() {
             // Clear the parameter to prevent infinite loops
             setParams({});
         }
-    }, [params?.resetToRoot, setParams]);
+    }, [params?.resetToRoot, setParams, isActive]);
 
     const loadDirectory = async (path: string, pushHistory = true) => {
         if (!isMountedRef.current) return;
@@ -239,6 +265,14 @@ export function ExplorerPage() {
 
             setCurrentPath(path);
 
+            // Update THIS tab's title with current folder name (not the active tab)
+            const folderName = path.split(/[\\/]/).filter(Boolean).pop() || path;
+            if (tabId) {
+                useTabStore.getState().updateTab(tabId, { title: folderName });
+            } else {
+                useTabStore.getState().updateActiveTab({ title: folderName });
+            }
+
             // Inicializar thumbnails que ya vienen del backend
             // NO cargar todos los thumbnails de una vez - se cargarán de forma lazy cuando sean visibles
             if (items && items.length > 0) {
@@ -270,22 +304,15 @@ export function ExplorerPage() {
     useEffect(() => {
         isMountedRef.current = true;
 
-        // Restore path if we have a saved state and we are returning from a sub-view (viewer/thumbnails)
-        // or not explicitly coming from a main top-level page
-        const savedPath = explorerState?.currentPath;
-        const mainPages = ['home', 'oneShot', 'series', 'history', 'download', 'settings'];
-        const isReturning = fromPage === 'viewer' || fromPage === 'thumbnails' || !mainPages.includes(previousPage || '');
+        // First priority: Check if tab was restored with saved explorerState
+        const tabInitialState = getInitialExplorerState();
 
-        if (isReturning && savedPath) {
+        if (tabInitialState?.currentPath) {
+            // Tab was restored with saved state - load that directory
             isInitializingRef.current = true;
-            // Restore path history first
-            setPathHistory(explorerState.pathHistory || []);
-            // Load the directory - this will update currentPath and entries
-            // Defer loading slightly to allow UI to render first
             setTimeout(() => {
-                if (isMountedRef.current && savedPath) {
-                    loadDirectory(savedPath, false).finally(() => {
-                        // Mark initialization as complete after loadDirectory finishes
+                if (isMountedRef.current && tabInitialState.currentPath) {
+                    loadDirectory(tabInitialState.currentPath, false).finally(() => {
                         setTimeout(() => {
                             isInitializingRef.current = false;
                         }, 50);
@@ -293,10 +320,27 @@ export function ExplorerPage() {
                 }
             }, 0);
         } else {
-            // Coming from another view - always start at root (already set in useState)
-            setCurrentPath(null);
-            setPathHistory([]);
-            isInitializingRef.current = false;
+            // Fallback: Check global explorerState for returning from viewer/thumbnails
+            const savedPath = explorerState?.currentPath;
+            const mainPages = ['home', 'oneShot', 'series', 'history', 'download', 'settings'];
+            const isReturning = fromPage === 'viewer' || fromPage === 'thumbnails' || (previousPage && !mainPages.includes(previousPage));
+
+            if (isReturning && savedPath) {
+                isInitializingRef.current = true;
+                setPathHistory(explorerState.pathHistory || []);
+                setTimeout(() => {
+                    if (isMountedRef.current && savedPath) {
+                        loadDirectory(savedPath, false).finally(() => {
+                            setTimeout(() => {
+                                isInitializingRef.current = false;
+                            }, 50);
+                        });
+                    }
+                }, 0);
+            } else {
+                // Fresh tab with no saved state - already initialized to root via useState
+                isInitializingRef.current = false;
+            }
         }
 
         return () => {
@@ -305,15 +349,22 @@ export function ExplorerPage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []); // Only run on mount
 
-    // Save explorer state to store when it changes (but not during initialization)
+    // Save explorer state to the specific TAB when it changes (but not during initialization and only when active)
     useEffect(() => {
-        if (!isInitializingRef.current) {
-            setExplorerState({
-                currentPath,
-                pathHistory,
-            });
+        if (!isInitializingRef.current && isActive && tabId) {
+            // Update this specific tab's explorerState in tabStore
+            const tabs = useTabStore.getState().tabs;
+            const tabIndex = tabs.findIndex(t => t.id === tabId);
+            if (tabIndex >= 0) {
+                useTabStore.setState({
+                    tabs: tabs.map((t, i) => i === tabIndex ? {
+                        ...t,
+                        explorerState: { currentPath, pathHistory }
+                    } : t)
+                });
+            }
         }
-    }, [currentPath, pathHistory, setExplorerState]);
+    }, [currentPath, pathHistory, isActive, tabId]);
 
     const handleBack = () => {
         if (pathHistory.length > 0) {
@@ -323,15 +374,28 @@ export function ExplorerPage() {
         } else {
             setCurrentPath(null);
             setPathHistory([]);
+
+            // Reset title to Explorer
+            if (tabId) {
+                useTabStore.getState().updateTab(tabId, { title: t('explorer.title') || 'Explorer' });
+            } else {
+                useTabStore.getState().updateActiveTab({ title: t('explorer.title') || 'Explorer' });
+            }
         }
     };
 
     const handleBreadcrumbClick = (path: string | null) => {
         if (path === null) {
-            // Navigate to root
             setCurrentPath(null);
             setPathHistory([]);
             setEntries([]);
+
+            // Reset title to Explorer
+            if (tabId) {
+                useTabStore.getState().updateTab(tabId, { title: t('explorer.title') || 'Explorer' });
+            } else {
+                useTabStore.getState().updateActiveTab({ title: t('explorer.title') || 'Explorer' });
+            }
         } else {
             // Navigate to specific path
             // Build segments to check navigation direction
@@ -505,6 +569,53 @@ export function ExplorerPage() {
         }
     };
 
+    const handleItemAuxClick = (e: React.MouseEvent, entry: ExplorerEntry | BaseFolder) => {
+        if (e.button === 1) { // Middle click
+            e.preventDefault();
+            e.stopPropagation();
+
+            if ('addedAt' in entry) {
+                // BaseFolder
+                addTab('explorer', {}, entry.name, {
+                    explorerState: {
+                        currentPath: entry.path,
+                        pathHistory: []
+                    }
+                }, false);
+            } else {
+                const ent = entry as ExplorerEntry;
+                if (ent.isDirectory) {
+                    // Build proper path history for the new tab
+                    const newPathHistory = currentPath
+                        ? [...pathHistory, currentPath]
+                        : [...pathHistory];
+
+                    addTab('explorer', {}, ent.name, {
+                        explorerState: {
+                            currentPath: ent.path,
+                            pathHistory: newPathHistory
+                        }
+                    }, false);
+                } else {
+                    // Open file in viewer tab
+                    if (currentPath) {
+                        const imageEntries = sortedEntries.filter(e => !e.isDirectory);
+                        // Fixed: was comparing ent.path to ent.path (always true for all items)
+                        const clickedIndex = imageEntries.findIndex(img => img.path === ent.path);
+                        const hasSubdirs = entries.some(e => e.isDirectory);
+
+                        addTab('viewer', {
+                            folder: currentPath,
+                            shallow: hasSubdirs ? 'true' : 'false',
+                            startIndex: clickedIndex >= 0 ? String(clickedIndex) : '0',
+                            targetPath: ent.path
+                        }, ent.name, {}, false);
+                    }
+                }
+            }
+        }
+    };
+
     // Filter function for search
     const matchesSearch = (item: BaseFolder | ExplorerEntry, query: string): boolean => {
         if (!query.trim()) return true;
@@ -625,6 +736,7 @@ export function ExplorerPage() {
                                 name={folder.name}
                                 thumbnail={folder.thumbnailUrl || thumbnails[folder.path]}
                                 onClick={() => handleItemClick(folder)}
+                                onAuxClick={(e) => handleItemAuxClick(e, folder)}
                                 onVisible={async () => {
                                     if (!folder.hasImages || folder.thumbnailUrl || thumbnails[folder.path]) return;
                                     try {
@@ -660,6 +772,7 @@ export function ExplorerPage() {
                                 name={entry.name}
                                 thumbnail={entry.thumbnailUrl || thumbnails[entry.path]}
                                 onClick={() => handleItemClick(entry)}
+                                onAuxClick={(e) => handleItemAuxClick(e, entry)}
                                 onVisible={async () => {
                                     if (!entry.coverImage || entry.thumbnailUrl || thumbnails[entry.path]) return;
                                     await loadThumbnail(entry.path, entry.coverImage);

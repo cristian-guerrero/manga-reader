@@ -18,6 +18,7 @@ interface LateralViewerProps {
     initialIndex?: number;
     showControls?: boolean;
     hasChapterButtons?: boolean;
+    onRestorationComplete?: () => void;
 }
 
 export function LateralViewer({
@@ -26,6 +27,7 @@ export function LateralViewer({
     initialIndex = 0,
     showControls = false,
     hasChapterButtons = false,
+    onRestorationComplete,
 }: LateralViewerProps) {
     const [loadedImages, setLoadedImages] = useState<Record<number, string>>({});
     const [direction, setDirection] = useState(0); // -1 for prev, 1 for next
@@ -38,7 +40,8 @@ export function LateralViewer({
     // Initialize current index
     useEffect(() => {
         setCurrentIndex(initialIndex);
-    }, [initialIndex, setCurrentIndex]);
+        onRestorationComplete?.();
+    }, [initialIndex, setCurrentIndex, onRestorationComplete]);
 
     // Load image
     const loadImage = useCallback(async (index: number, path: string) => {
@@ -171,6 +174,13 @@ export function LateralViewer({
                                             alt={image.name}
                                             className="max-h-full max-w-full object-contain"
                                             draggable={false}
+                                            onError={(e) => {
+                                                // Fallback if imageUrl fails
+                                                const target = e.currentTarget;
+                                                if (target.src !== `/images?path=${encodeURIComponent(image.path)}`) {
+                                                    target.src = `/images?path=${encodeURIComponent(image.path)}`;
+                                                }
+                                            }}
                                         />
                                     ) : (
                                         <div

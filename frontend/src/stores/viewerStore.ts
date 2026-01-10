@@ -1,9 +1,11 @@
 /**
  * Viewer Store - Manages viewer state
+ * Refactored to support multiple tabs via tabStore
  */
 
 import { create } from 'zustand';
 import { ViewerState, ImageInfo, FolderInfo, ViewerMode } from '../types';
+import { useTabStore } from './tabStore';
 
 interface ViewerStoreState extends ViewerState {
     // Image navigation
@@ -11,6 +13,7 @@ interface ViewerStoreState extends ViewerState {
     nextImage: () => void;
     prevImage: () => void;
     goToImage: (index: number) => void;
+    setViewerState: (state: Partial<ViewerState>) => void;
 
     // Folder management
     setCurrentFolder: (folder: FolderInfo | null) => void;
@@ -36,100 +39,110 @@ interface ViewerStoreState extends ViewerState {
     getCurrentImage: () => ImageInfo | null;
     hasNext: () => boolean;
     hasPrev: () => boolean;
+
+    // Internal helpers (should be treated as private)
+    _updateTabState: (updates: Partial<ViewerState>) => void;
+    _updateTabStateById: (id: string, updates: Partial<ViewerState>) => void;
 }
 
-export const useViewerStore = create<ViewerStoreState>((set, get) => ({
-    // Initial state
+// Initial state values for when a tab has no viewerState yet
+const defaultViewerState = {
     currentFolder: null,
     images: [],
     currentIndex: 0,
-    mode: 'vertical',
+    mode: 'vertical' as ViewerMode,
     isLoading: false,
     zoomLevel: 1,
     scrollPosition: 0,
+    verticalWidth: 0, // 0 means use global default
+};
+
+export const useViewerStore = create<ViewerStoreState>((set, get) => ({
+    // Proxy properties
+    currentFolder: useTabStore.getState().getActiveTab().viewerState?.currentFolder ?? defaultViewerState.currentFolder,
+    images: useTabStore.getState().getActiveTab().viewerState?.images ?? defaultViewerState.images,
+    currentIndex: useTabStore.getState().getActiveTab().viewerState?.currentIndex ?? defaultViewerState.currentIndex,
+    mode: useTabStore.getState().getActiveTab().viewerState?.mode ?? defaultViewerState.mode,
+    isLoading: useTabStore.getState().getActiveTab().viewerState?.isLoading ?? defaultViewerState.isLoading,
+    zoomLevel: useTabStore.getState().getActiveTab().viewerState?.zoomLevel ?? defaultViewerState.zoomLevel,
+    scrollPosition: useTabStore.getState().getActiveTab().viewerState?.scrollPosition ?? defaultViewerState.scrollPosition,
+    verticalWidth: useTabStore.getState().getActiveTab().viewerState?.verticalWidth ?? defaultViewerState.verticalWidth,
 
     // Image navigation
     setCurrentIndex: (index) => {
         const { images } = get();
         if (index >= 0 && index < images.length) {
-            set({ currentIndex: index });
+            get()._updateTabState({ currentIndex: index });
         }
     },
 
     nextImage: () => {
         const { currentIndex, images } = get();
         if (currentIndex < images.length - 1) {
-            set({ currentIndex: currentIndex + 1 });
+            get()._updateTabState({ currentIndex: currentIndex + 1 });
         }
     },
 
     prevImage: () => {
         const { currentIndex } = get();
         if (currentIndex > 0) {
-            set({ currentIndex: currentIndex - 1 });
+            get()._updateTabState({ currentIndex: currentIndex - 1 });
         }
     },
 
     goToImage: (index) => {
         const { images } = get();
         if (index >= 0 && index < images.length) {
-            set({ currentIndex: index, scrollPosition: 0 });
+            get()._updateTabState({ currentIndex: index, scrollPosition: 0 });
         }
     },
 
     // Folder management
     setCurrentFolder: (folder) => {
-        set({ currentFolder: folder });
+        get()._updateTabState({ currentFolder: folder });
     },
 
     setImages: (images) => {
-        set({ images, currentIndex: 0, scrollPosition: 0 });
+        get()._updateTabState({ images, currentIndex: 0, scrollPosition: 0 });
     },
 
     clearViewer: () => {
-        set({
-            currentFolder: null,
-            images: [],
-            currentIndex: 0,
-            isLoading: false,
-            zoomLevel: 1,
-            scrollPosition: 0,
-        });
+        get()._updateTabState(defaultViewerState);
     },
 
     // Viewer mode
     setMode: (mode) => {
-        set({ mode });
+        get()._updateTabState({ mode });
     },
 
     // Loading state
     setIsLoading: (isLoading) => {
-        set({ isLoading });
+        get()._updateTabState({ isLoading });
     },
 
     // Zoom
     setZoomLevel: (level) => {
         const clampedLevel = Math.min(5, Math.max(0.1, level));
-        set({ zoomLevel: clampedLevel });
+        get()._updateTabState({ zoomLevel: clampedLevel });
     },
 
     zoomIn: () => {
         const { zoomLevel } = get();
-        set({ zoomLevel: Math.min(5, zoomLevel + 0.25) });
+        get()._updateTabState({ zoomLevel: Math.min(5, zoomLevel + 0.25) });
     },
 
     zoomOut: () => {
         const { zoomLevel } = get();
-        set({ zoomLevel: Math.max(0.1, zoomLevel - 0.25) });
+        get()._updateTabState({ zoomLevel: Math.max(0.1, zoomLevel - 0.25) });
     },
 
     resetZoom: () => {
-        set({ zoomLevel: 1 });
+        get()._updateTabState({ zoomLevel: 1 });
     },
 
     // Scroll position
     setScrollPosition: (scrollPosition) => {
-        set({ scrollPosition });
+        get()._updateTabState({ scrollPosition });
     },
 
     // Computed
@@ -147,4 +160,48 @@ export const useViewerStore = create<ViewerStoreState>((set, get) => ({
         const { currentIndex } = get();
         return currentIndex > 0;
     },
+
+    setViewerState: (updates) => {
+        get()._updateTabState(updates);
+    },
+
+    // Internal helper to update tabStore for active tab
+    _updateTabState: (updates: any) => {
+        const activeTabId = useTabStore.getState().activeTabId;
+        if (activeTabId) {
+            // Update local state immediately for responsiveness
+            set(updates);
+            get()._updateTabStateById(activeTabId, updates);
+        }
+    },
+
+    // Internal helper to update tabStore by ID
+    _updateTabStateById: (id: string, updates: any) => {
+        const tab = useTabStore.getState().tabs.find(t => t.id === id);
+        if (!tab) return;
+
+        const currentState = tab.viewerState || defaultViewerState;
+        useTabStore.getState().updateTab(id, {
+            viewerState: { ...currentState, ...updates }
+        });
+    }
 }));
+
+// Subscribe to tabStore changes to trigger re-renders in viewerStore consumers
+useTabStore.subscribe((tabState) => {
+    const activeTab = tabState.tabs.find(t => t.id === tabState.activeTabId) || tabState.tabs[0];
+    const viewerState = activeTab?.viewerState || defaultViewerState;
+
+    if (activeTab) {
+        useViewerStore.setState({
+            currentFolder: viewerState.currentFolder,
+            images: viewerState.images,
+            currentIndex: viewerState.currentIndex,
+            mode: viewerState.mode,
+            isLoading: viewerState.isLoading,
+            zoomLevel: viewerState.zoomLevel,
+            scrollPosition: viewerState.scrollPosition,
+            verticalWidth: viewerState.verticalWidth,
+        });
+    }
+});

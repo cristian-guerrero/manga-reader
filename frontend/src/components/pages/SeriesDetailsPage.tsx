@@ -8,10 +8,12 @@ import { useNavigationStore } from '../../stores/navigationStore';
 import { ChapterInfo, SeriesEntry } from '../../types';
 import { Tooltip } from '../common/Tooltip';
 import { SortControls } from '../common/SortControls';
-import { GridContainer, GridItem } from '../common/GridContainer';
+import { GridContainer } from '../common/GridContainer';
+import { GridItem } from '../common/GridItem';
 import { SearchBar } from '../common/SearchBar';
 import { MediaTile } from '../common/MediaTile';
 import { useThumbnails } from '../../hooks/useThumbnails';
+import { useTabStore } from '../../stores/tabStore';
 
 // Icons
 const ChevronLeftIcon = () => (
@@ -31,6 +33,7 @@ const ImageIcon = () => (
 
 interface SeriesDetailsPageProps {
     seriesPath: string;
+    tabId?: string;
 }
 
 // Helper functions for sort preferences per series
@@ -58,9 +61,10 @@ const saveSeriesSortPreferences = (seriesPath: string, sortBy: 'name' | 'pages',
     }
 };
 
-export function SeriesDetailsPage({ seriesPath }: SeriesDetailsPageProps) {
+export function SeriesDetailsPage({ seriesPath, tabId }: SeriesDetailsPageProps) {
     const { t } = useTranslation();
     const { navigate, goBack } = useNavigationStore();
+    const { addTab, updateTab, updateActiveTab } = useTabStore();
     const [series, setSeries] = useState<SeriesEntry | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const { thumbnails, loadThumbnails } = useThumbnails(10);
@@ -107,8 +111,14 @@ export function SeriesDetailsPage({ seriesPath }: SeriesDetailsPageProps) {
                 const found = data.find((s: SeriesEntry) => s.path === seriesPath);
                 if (found) {
                     setSeries(found);
+                    // Update tab title with series name
+                    if (tabId) {
+                        updateTab(tabId, { title: found.name });
+                    } else {
+                        updateActiveTab({ title: found.name });
+                    }
                     // Load thumbnails (hook handles existing thumbnailUrl)
-                    loadThumbnails(found.chapters, (chapter) => chapter.coverImage, (chapter) => chapter.path);
+                    loadThumbnails(found.chapters, (chapter) => chapter.coverImage, (chapter) => chapter.path || '');
                 }
             }
         } catch (error) {
@@ -122,6 +132,14 @@ export function SeriesDetailsPage({ seriesPath }: SeriesDetailsPageProps) {
     const handleOpenChapter = (path: string) => {
         // Maintain 'series' as active menu page when viewing a chapter from series details
         navigate('viewer', { folder: path }, 'series');
+    };
+
+    const handleAuxClick = (e: React.MouseEvent, path: string, name: string) => {
+        if (e.button === 1) { // Middle click
+            e.preventDefault();
+            e.stopPropagation();
+            addTab('viewer', { folder: path }, name, {}, false);
+        }
     };
 
     // Filter and sort chapters
@@ -238,6 +256,7 @@ export function SeriesDetailsPage({ seriesPath }: SeriesDetailsPageProps) {
                                 name={chapter.name}
                                 thumbnail={thumbnails[chapter.path]}
                                 onClick={() => handleOpenChapter(chapter.path)}
+                                onAuxClick={(e) => handleAuxClick(e, chapter.path, chapter.name)}
                                 fallbackIcon={<ImageIcon />}
                                 aspectRatio="aspect-[3/4]"
                                 footerLeft={

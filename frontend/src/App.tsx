@@ -16,6 +16,7 @@ import { SettingsPage } from './components/pages/SettingsPage';
 import { DownloadPage } from './components/pages/DownloadPage';
 import { useNavigationStore } from './stores/navigationStore';
 import { useSettingsStore } from './stores/settingsStore';
+import { useTabStore } from './stores/tabStore';
 import { usePanicMode } from './hooks/usePanicMode';
 import { ToastProvider } from './components/common/Toast';
 import { EventsOn } from '../wailsjs/runtime';
@@ -87,8 +88,15 @@ function LoadingScreen() {
 }
 
 // Page router component with optimized rendering
-function PageRouter() {
-    const { currentPage, params } = useNavigationStore();
+function PageRouter({ tabId, isActive = true }: { tabId?: string; isActive?: boolean }) {
+    const activeTabIdFromStore = useTabStore(state => state.activeTabId);
+    const id = tabId || activeTabIdFromStore;
+
+    // Read page and params from the specific tab, NOT the global navigation store
+    // This ensures each tab maintains its own state independently
+    const tab = useTabStore(state => state.tabs.find(t => t.id === id));
+    const currentPage = tab?.page || 'home';
+    const params = tab?.params || {};
 
     // Create a stable key from params for comparison
     const paramsKey = useMemo(() => {
@@ -96,25 +104,51 @@ function PageRouter() {
     }, [params]);
 
     // Memoize page content to prevent unnecessary re-renders
-    // Only recreate when page or params actually change
     const pageContent = useMemo(() => {
-        return renderPage(currentPage, params);
-    }, [currentPage, paramsKey]);
+        return renderPage(currentPage, params, isActive, id);
+    }, [currentPage, paramsKey, isActive, id]);
 
     return (
-        <div className="h-full w-full">
+        <div
+            className="h-full w-full"
+            style={{
+                display: isActive ? 'block' : 'none',
+                visibility: isActive ? 'visible' : 'hidden' // Double layer for security against layout shifts
+            }}
+        >
             {pageContent}
         </div>
     );
 }
 
+function PageContainer() {
+    const { tabs, activeTabId } = useTabStore();
+    const { tabMemorySaving } = useSettingsStore();
+
+    if (tabMemorySaving) {
+        return <PageRouter key={activeTabId} isActive={true} />;
+    }
+
+    return (
+        <div className="h-full w-full relative">
+            {tabs.map((tab) => (
+                <PageRouter
+                    key={tab.id}
+                    tabId={tab.id}
+                    isActive={tab.id === activeTabId}
+                />
+            ))}
+        </div>
+    );
+}
+
 // Render page based on current navigation
-function renderPage(page: string, params: Record<string, string>): React.ReactNode {
+function renderPage(page: string, params: Record<string, string>, isActive: boolean, tabId?: string): React.ReactNode {
     switch (page) {
         case 'home':
             return <HomePage />;
         case 'viewer':
-            return <ViewerPage folderPath={params.folder} />;
+            return <ViewerPage folderPath={params.folder} isActive={isActive} tabId={tabId} />;
         case 'history':
             return <HistoryPage />;
         case 'oneShot':
@@ -122,13 +156,13 @@ function renderPage(page: string, params: Record<string, string>): React.ReactNo
         case 'series':
             return <SeriesPage />;
         case 'series-details':
-            return <SeriesDetailsPage seriesPath={params.series} />;
+            return <SeriesDetailsPage seriesPath={params.series} tabId={tabId} />;
         case 'settings':
             return <SettingsPage />;
         case 'thumbnails':
-            return <ThumbnailsPage folderPath={params.folder} />;
+            return <ThumbnailsPage folderPath={params.folder} isActive={isActive} tabId={tabId} />;
         case 'explorer':
-            return <ExplorerPage />;
+            return <ExplorerPage isActive={isActive} tabId={tabId} />;
         case 'download':
             return <DownloadPage />;
         default:
@@ -160,9 +194,30 @@ function App() {
             try {
                 await loadSettings();
 
-                // Restore last page after settings load
+                // Restore tabs if enabled (using new tabs.json via backend)
+                const { restoreTabs } = useSettingsStore.getState();
+                if (restoreTabs) {
+                    try {
+                        // @ts-ignore
+                        const tabsData = await window.go?.main?.App?.GetTabs();
+                        if (tabsData && tabsData.tabs && tabsData.tabs.length > 0) {
+                            // Convert backend format to tabStore format
+                            useTabStore.getState().restoreTabsFromBackend(tabsData);
+                        }
+                    } catch (error) {
+                        console.error('[App] Failed to restore tabs:', error);
+                    } finally {
+                        // Mark as ready after restoration attempt (success or failure)
+                        useTabStore.getState().setReady(true);
+                    }
+                } else {
+                    // Not restoring, mark as ready immediately
+                    useTabStore.getState().setReady(true);
+                }
+
+                // Restore last page after settings load (only if tabs weren't restored)
                 const lastPage = useSettingsStore.getState().lastPage;
-                if (lastPage && lastPage !== 'home') {
+                if (!restoreTabs && lastPage && lastPage !== 'home') {
                     // Only restore main pages, not viewer or other temporary pages
                     const mainPages = ['home', 'oneShot', 'series', 'history', 'download', 'settings'];
                     if (mainPages.includes(lastPage)) {
@@ -172,7 +227,7 @@ function App() {
             } catch (error) {
                 console.error('[App] Failed to initialize app:', error);
                 // App can continue with defaults even if settings load fails
-                
+
                 // Try again when app_ready event fires as backup
                 unsubscribeAppReady = EventsOn('app_ready', async () => {
                     console.log('[App] Received app_ready event, retrying settings load');
@@ -182,6 +237,47 @@ function App() {
                         console.error('[App] Failed to load settings on app_ready:', retryError);
                     }
                 });
+            }
+        };
+
+        // Save tabs REACTIVELY when store changes (not on a blind interval)
+        let lastSavedTabsJson = '';
+        let saveTabsDebounce: ReturnType<typeof setTimeout> | null = null;
+
+        const unsubscribeTabStore = useTabStore.subscribe((state) => {
+            const { restoreTabs } = useSettingsStore.getState();
+            if (!restoreTabs || !state.isReady) return; // Only save if ready
+
+            // Debounce saving to avoid excessive backend calls
+            if (saveTabsDebounce) {
+                clearTimeout(saveTabsDebounce);
+            }
+            saveTabsDebounce = setTimeout(async () => {
+                const tabsData = state.saveTabsForBackend();
+                const tabsJson = JSON.stringify(tabsData);
+                if (tabsJson !== lastSavedTabsJson) {
+                    lastSavedTabsJson = tabsJson;
+                    try {
+                        // @ts-ignore
+                        await window.go?.main?.App?.SaveTabs(tabsData);
+                    } catch (error) {
+                        console.error('[App] Failed to save tabs:', error);
+                    }
+                }
+            }, 500);
+        });
+
+        // Also save on beforeunload
+        const handleBeforeUnload = async () => {
+            const { restoreTabs } = useSettingsStore.getState();
+            if (restoreTabs) {
+                const tabsData = useTabStore.getState().saveTabsForBackend();
+                try {
+                    // @ts-ignore
+                    await window.go?.main?.App?.SaveTabs(tabsData);
+                } catch (error) {
+                    console.error('[App] Failed to save tabs on unload:', error);
+                }
             }
         };
 
@@ -196,9 +292,12 @@ function App() {
         };
 
         window.addEventListener('resize', handleResize);
+        window.addEventListener('beforeunload', handleBeforeUnload);
         return () => {
             window.removeEventListener('resize', handleResize);
+            window.removeEventListener('beforeunload', handleBeforeUnload);
             if (resizeTimeout) clearTimeout(resizeTimeout);
+            unsubscribeTabStore();
             if (unsubscribeAppReady) unsubscribeAppReady();
         };
     }, [loadSettings, checkMaximized]);
@@ -216,7 +315,7 @@ function App() {
         <Suspense fallback={<LoadingScreen />}>
             <ToastProvider>
                 <MainLayout>
-                    <PageRouter />
+                    <PageContainer />
                 </MainLayout>
             </ToastProvider>
         </Suspense>

@@ -118,8 +118,16 @@ export function GetSubfolders(arg1) {
   return window['go']['main']['App']['GetSubfolders'](arg1);
 }
 
+export function GetTabs() {
+  return window['go']['main']['App']['GetTabs']();
+}
+
 export function GetThumbnail(arg1) {
   return window['go']['main']['App']['GetThumbnail'](arg1);
+}
+
+export function GetViewerState(arg1) {
+  return window['go']['main']['App']['GetViewerState'](arg1);
 }
 
 export function HasCustomOrder(arg1) {
@@ -176,6 +184,14 @@ export function SaveImageOrder(arg1, arg2, arg3) {
 
 export function SaveSettings(arg1) {
   return window['go']['main']['App']['SaveSettings'](arg1);
+}
+
+export function SaveTabs(arg1) {
+  return window['go']['main']['App']['SaveTabs'](arg1);
+}
+
+export function SaveViewerState(arg1, arg2, arg3) {
+  return window['go']['main']['App']['SaveViewerState'](arg1, arg2, arg3);
 }
 
 export function SaveWindowState() {

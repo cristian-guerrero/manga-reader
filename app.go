@@ -32,6 +32,10 @@ type App struct {
 	thumbGen   *thumbnails.Generator
 	imgServer  *fileloader.ImageServer
 
+	// Tab and Viewer State Persistence
+	tabsManager         *persistence.TabsManager
+	viewerStatesManager *persistence.ViewerStatesManager
+
 	// Modules
 	libraryMod    *library.Module
 	seriesMod     *series.Module
@@ -53,6 +57,8 @@ func NewApp() *App {
 	seriesManager := persistence.NewSeriesManager()
 	ordersManager := persistence.NewOrdersManager()
 	downloaderPersist := persistence.NewDownloaderManager()
+	tabsManager := persistence.NewTabsManager()
+	viewerStatesManager := persistence.NewViewerStatesManager()
 
 	// Image Server (if needed by modules for URL generation)
 	// We might need to initialize it here or pass nil and set it up later if it depends on port finding?
@@ -78,15 +84,17 @@ func NewApp() *App {
 	lMod.SetSeriesModule(sMod)
 
 	return &App{
-		settings:      settings,
-		orders:        ordersManager,
-		fileLoader:    fileLoader,
-		thumbGen:      thumbGen,
-		libraryMod:    lMod,
-		seriesMod:     sMod,
-		historyMod:    hMod,
-		explorerMod:   eMod,
-		downloaderMod: dMod,
+		settings:            settings,
+		orders:              ordersManager,
+		fileLoader:          fileLoader,
+		thumbGen:            thumbGen,
+		tabsManager:         tabsManager,
+		viewerStatesManager: viewerStatesManager,
+		libraryMod:          lMod,
+		seriesMod:           sMod,
+		historyMod:          hMod,
+		explorerMod:         eMod,
+		downloaderMod:       dMod,
 	}
 }
 
@@ -185,6 +193,8 @@ func (a *App) domReady(ctx context.Context) {
 
 // shutdown is called when the app is closing
 func (a *App) shutdown(ctx context.Context) {
+	fmt.Println("[App] Flushing settings to disk...")
+	a.settings.Flush()
 }
 
 // SaveWindowState captures and saves the current window dimensions and position
@@ -246,6 +256,30 @@ func (a *App) GetSettings() *persistence.Settings {
 
 func (a *App) SaveSettings(settings *persistence.Settings) error {
 	return a.settings.Save(settings)
+}
+
+// =============================================================================
+// Tab Persistence Methods
+// =============================================================================
+
+func (a *App) GetTabs() *persistence.TabsData {
+	return a.tabsManager.GetTabs()
+}
+
+func (a *App) SaveTabs(data *persistence.TabsData) error {
+	return a.tabsManager.SaveTabs(data)
+}
+
+// =============================================================================
+// Viewer State Persistence Methods
+// =============================================================================
+
+func (a *App) GetViewerState(folderPath string) *persistence.ViewerState {
+	return a.viewerStatesManager.GetState(folderPath)
+}
+
+func (a *App) SaveViewerState(folderPath string, currentIndex int, verticalWidth int) error {
+	return a.viewerStatesManager.UpdateState(folderPath, currentIndex, verticalWidth)
 }
 
 func (a *App) UpdateSettings(updates map[string]interface{}) error {
@@ -689,7 +723,7 @@ func (a *App) AddDownloadedFolder(downloadPath string) (string, error) {
 func (a *App) AddDownloadedSeries(chapterPath string) (string, error) {
 	// Get the parent folder (series folder)
 	seriesPath := filepath.Dir(chapterPath)
-	
+
 	// Check if the series path exists
 	info, err := os.Stat(seriesPath)
 	if err != nil {
@@ -714,7 +748,7 @@ func (a *App) AddDownloadedSeries(chapterPath string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	
+
 	return seriesPath, nil
 }
 

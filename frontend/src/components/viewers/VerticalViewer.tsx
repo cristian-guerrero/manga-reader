@@ -4,7 +4,6 @@
 
 import { useEffect, useRef, useCallback, useState } from 'react';
 
-import { useViewerStore } from '../../stores/viewerStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 
 interface VerticalViewerProps {
@@ -15,34 +14,43 @@ interface VerticalViewerProps {
         imageUrl?: string;
         thumbnailUrl?: string;
     }>;
-    onScrollPositionChange?: (position: number) => void;
-    initialScrollPosition?: number;
     initialIndex?: number;
     showControls?: boolean;
     hasChapterButtons?: boolean;
     isAutoScrolling?: boolean;
     scrollSpeed?: number;
     onAutoScrollStateChange?: (isScrolling: boolean) => void;
+    onRestorationComplete?: () => void;
+    onIndexChange?: (index: number) => void;
+    verticalWidth: number;
+    onWidthChange?: (width: number) => void;
 }
 
 export function VerticalViewer({
     images,
-    onScrollPositionChange,
-    initialScrollPosition = 0,
     initialIndex = 0,
     showControls = false,
     hasChapterButtons = false,
     isAutoScrolling = false,
     scrollSpeed = 50,
     onAutoScrollStateChange,
+    onRestorationComplete,
+    onIndexChange,
+    verticalWidth,
+    onWidthChange,
 }: VerticalViewerProps) {
     const parentRef = useRef<HTMLDivElement>(null);
     const itemRefs = useRef<Record<number, HTMLDivElement | null>>({});
-    const { verticalWidth } = useSettingsStore();
-    const { setScrollPosition, setCurrentIndex } = useViewerStore();
 
-    // State to track if initial scroll has been applied
-    const [hasAppliedInitialScroll, setHasAppliedInitialScroll] = useState(false);
+    // Track which initialIndex was applied so we can re-apply if it changes
+    const appliedInitialIndexRef = useRef<number>(-1);
+
+    // LOCAL state for display index - decoupled from global store
+    const [displayIndex, setDisplayIndex] = useState(initialIndex);
+
+    // Windowing state - only render images near the current view
+    const [visibleRange, setVisibleRange] = useState({ start: 0, end: 10 });
+    const buffer = 5; // Number of images to render above/below the visible area
 
     // Auto-scroll state
     const animationFrameIdRef = useRef<number | null>(null);
@@ -50,71 +58,74 @@ export function VerticalViewer({
     const lastScrollTopRef = useRef<number>(0);
     const userScrollingRef = useRef<boolean>(false);
 
-    // Track intersection to update current index
+    // Update visible range and displayIndex based on initial index
     useEffect(() => {
+        const start = Math.max(0, initialIndex - buffer);
+        const end = Math.min(images.length - 1, initialIndex + buffer);
+        setVisibleRange({ start, end });
+        setDisplayIndex(initialIndex);
+    }, [initialIndex, images.length]);
+
+    // Handle scroll - Updates local display index and notifies parent via callback
+    const handleScroll = useCallback(() => {
         if (!parentRef.current) return;
 
-        const observerOptions = {
-            root: parentRef.current,
-            rootMargin: '-10% 0px -10% 0px', // Trigger when image is roughly in the middle 80%
-            threshold: [0, 0.1, 0.5]
-        };
+        const container = parentRef.current;
+        const children = container.querySelectorAll('[data-index]');
 
-        const observer = new IntersectionObserver((entries) => {
-            let mostVisible: IntersectionObserverEntry | undefined;
-
-            for (const entry of entries) {
-                if (entry.isIntersecting) {
-                    if (!mostVisible || entry.intersectionRatio > mostVisible.intersectionRatio) {
-                        mostVisible = entry;
-                    }
-                }
+        // Find the image at the top of the viewport
+        let topIndex = 0;
+        children.forEach(child => {
+            const rect = child.getBoundingClientRect();
+            const containerRect = container.getBoundingClientRect();
+            // Check if this image covers the top area of the container
+            if (rect.top <= containerRect.top + 50 && rect.bottom > containerRect.top + 50) {
+                topIndex = parseInt((child as HTMLElement).dataset.index || '0');
             }
-
-            if (mostVisible) {
-                const target = mostVisible.target as HTMLElement;
-                const index = target.dataset.index;
-                if (index) {
-                    setCurrentIndex(parseInt(index));
-                }
-            }
-        }, observerOptions);
-
-        // Observe all image containers
-        const currentRefs = itemRefs.current;
-        Object.values(currentRefs).forEach(ref => {
-            if (ref) observer.observe(ref);
         });
 
-        return () => {
-            observer.disconnect();
-        };
-    }, [images.length, setCurrentIndex]);
+        // Update local display state
+        setDisplayIndex(topIndex);
 
-    // Handle initial scroll/resume
+        // Notify parent via callback (parent handles persistence)
+        onIndexChange?.(topIndex);
+
+        // Update visible range for windowing
+        const newStart = Math.max(0, topIndex - buffer);
+        const newEnd = Math.min(images.length - 1, topIndex + buffer);
+        if (newStart !== visibleRange.start || newEnd !== visibleRange.end) {
+            setVisibleRange({ start: newStart, end: newEnd });
+        }
+    }, [onIndexChange, images.length, visibleRange.start, visibleRange.end]);
+
+    // Handle initial scroll/resume - SIMPLIFIED like Yomikiru
+    // Using useEffect with a small delay to ensure DOM is ready
     useEffect(() => {
-        if (!parentRef.current || hasAppliedInitialScroll || images.length === 0) return;
+        if (!parentRef.current || images.length === 0) return;
+        if (appliedInitialIndexRef.current === initialIndex) return;
 
-        const timer = setTimeout(() => {
+        // Small delay to ensure DOM is painted (same as Yomikiru's 100ms approach)
+        const timeoutId = setTimeout(() => {
             if (initialIndex >= 0 && initialIndex < images.length) {
-                const target = itemRefs.current[initialIndex];
-                if (target) {
-                    console.log(`[VerticalViewer] Scrolling to initial index: ${initialIndex}`);
-                    target.scrollIntoView({ block: 'start' });
-                }
-            } else if (initialScrollPosition > 0) {
-                const node = parentRef.current;
-                if (node) {
-                    const { scrollHeight, clientHeight } = node;
-                    const scrollTop = initialScrollPosition * (scrollHeight - clientHeight);
-                    node.scrollTop = scrollTop;
-                }
-            }
-            setHasAppliedInitialScroll(true);
-        }, 100); // Small delay to ensure DOM is ready
+                // Ensure the target is in the visible range first
+                const start = Math.max(0, initialIndex - buffer);
+                const end = Math.min(images.length - 1, initialIndex + buffer);
+                setVisibleRange({ start, end });
 
-        return () => clearTimeout(timer);
-    }, [initialIndex, initialScrollPosition, images.length, hasAppliedInitialScroll]);
+                const target = itemRefs.current[initialIndex];
+                if (target && parentRef.current) {
+                    console.log(`[VerticalViewer] Scrolling to index: ${initialIndex}`);
+                    target.scrollIntoView({ block: 'start', behavior: 'instant' });
+                    appliedInitialIndexRef.current = initialIndex;
+                    onRestorationComplete?.();
+                }
+            } else {
+                onRestorationComplete?.();
+            }
+        }, 100);
+
+        return () => clearTimeout(timeoutId);
+    }, [initialIndex, images.length, onRestorationComplete]);
 
     // Convert scroll speed (0-100) to pixels per second
     // Range 0-33: 10-50 px/s (slow reading)
@@ -256,27 +267,17 @@ export function VerticalViewer({
         };
     }, [isAutoScrolling, onAutoScrollStateChange]);
 
-    // Track scroll for progress bar
-    const handleScroll = useCallback(() => {
-        if (!parentRef.current) return;
-        const { scrollTop, scrollHeight, clientHeight } = parentRef.current;
-        const position = scrollTop / (scrollHeight - clientHeight || 1);
-        setScrollPosition(position);
-        onScrollPositionChange?.(position);
-        lastScrollTopRef.current = scrollTop;
-    }, [setScrollPosition, onScrollPositionChange]);
-
-    // Handle wheel zoom (Pinch to zoom usually maps to Ctrl+Wheel)
+    // Track wheel for zoom
     const handleWheel = useCallback((e: React.WheelEvent) => {
         if (e.ctrlKey) {
             e.preventDefault();
             const delta = e.deltaY * -0.05;
             const newWidth = Math.min(Math.max(verticalWidth + delta, 10), 100);
             if (Math.abs(newWidth - verticalWidth) > 0.5) {
-                useSettingsStore.getState().setVerticalWidth(Math.round(newWidth));
+                onWidthChange?.(Math.round(newWidth));
             }
         }
-    }, [verticalWidth]);
+    }, [verticalWidth, onWidthChange]);
 
     return (
         <div
@@ -287,44 +288,73 @@ export function VerticalViewer({
             style={{
                 backgroundColor: 'var(--color-surface-primary)',
                 overflowX: 'hidden',
-                scrollBehavior: hasAppliedInitialScroll ? 'smooth' : 'auto'
+                // We use 'auto' to ensure instant restoration works perfectly. 
+                // Smooth scrolling for users is often handled by the browser or smooth scroll libraries,
+                // but 'smooth' css here can interfere with instant scrollIntoView on some browsers.
+                scrollBehavior: 'auto'
             }}
         >
             <div className="flex flex-col items-center w-full py-8 gap-4">
-                {images.map((image, index) => (
-                    <div
-                        key={`${image.path}-${index}`}
-                        ref={el => itemRefs.current[index] = el}
-                        data-index={index}
-                        className="flex justify-center w-full min-h-[200px]"
-                        style={{ width: '100%' }}
-                    >
+                {images.map((image, index) => {
+                    const isVisible = index >= visibleRange.start && index <= visibleRange.end;
+
+                    return (
                         <div
+                            key={`${image.path}-${index}`}
+                            ref={el => itemRefs.current[index] = el}
+                            data-index={index}
+                            className="flex justify-center w-full"
                             style={{
-                                width: `${verticalWidth}%`,
-                                maxWidth: '100%',
-                                transition: 'width 0.2s ease-out'
+                                width: '100%',
+                                minHeight: `calc(80vh * ${verticalWidth} / 100)`,
+                                // Use visibility: hidden for items out of range to keep their space? 
+                                // Actually, if we don't render the image, we can't know the height.
+                                // But keeping the placeholder height helps.
                             }}
-                            className="relative"
                         >
-                            <img
-                                src={image.imageUrl || `/images?path=${encodeURIComponent(image.path)}`}
-                                alt={image.name}
-                                loading="lazy"
-                                className="w-full h-auto shadow-2xl rounded-lg bg-zinc-900/50"
-                                onLoad={() => {
-                                    // If we just loaded the initial index image, ensure we are still there
-                                    if (index === initialIndex && !hasAppliedInitialScroll) {
-                                        itemRefs.current[index]?.scrollIntoView({ block: 'start' });
-                                    }
+                            <div
+                                style={{
+                                    width: `${verticalWidth}%`,
+                                    maxWidth: '100%',
+                                    transition: 'width 0.2s ease-out'
                                 }}
-                            />
-                            <div className="absolute top-2 right-2 bg-black/50 backdrop-blur-md px-2 py-1 rounded text-[10px] text-white/50 opacity-0 hover:opacity-100 transition-opacity">
-                                Page {index + 1}
+                                className="relative flex justify-center items-center"
+                            >
+                                {isVisible ? (
+                                    <img
+                                        src={image.imageUrl || `/images?path=${encodeURIComponent(image.path)}`}
+                                        alt={image.name}
+                                        loading="lazy"
+                                        className="w-full h-auto shadow-2xl rounded-lg bg-zinc-900/50"
+                                        onLoad={() => {
+                                            // Restoration is handled by the main useEffect now.
+                                            // No need for per-image onload hacks.
+                                        }}
+                                        onError={(e) => {
+                                            // Fallback if imageUrl fails
+                                            const target = e.currentTarget;
+                                            const fallback = `/images?path=${encodeURIComponent(image.path)}`;
+                                            if (target.src !== fallback) {
+                                                console.log(`[VerticalViewer] Image load failed for ${image.name}, trying fallback`);
+                                                target.src = fallback;
+                                            }
+                                        }}
+                                    />
+                                ) : (
+                                    <div
+                                        className="w-full aspect-[2/3] flex items-center justify-center bg-zinc-900/20 rounded-lg animate-pulse"
+                                        style={{ maxHeight: `calc(80vh * ${verticalWidth} / 100)` }}
+                                    >
+                                        <span className="text-zinc-700 font-bold text-4xl">{index + 1}</span>
+                                    </div>
+                                )}
+                                <div className="absolute top-2 right-2 bg-black/50 backdrop-blur-md px-2 py-1 rounded text-[10px] text-white/50 opacity-0 hover:opacity-100 transition-opacity">
+                                    Page {index + 1}
+                                </div>
                             </div>
                         </div>
-                    </div>
-                ))}
+                    );
+                })}
             </div>
 
             {/* Image counter */}
@@ -339,7 +369,7 @@ export function VerticalViewer({
                     transition: 'bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
                 }}
             >
-                {useViewerStore((state) => state.currentIndex) + 1} / {images.length}
+                {displayIndex + 1} / {images.length}
             </div>
         </div>
     );
