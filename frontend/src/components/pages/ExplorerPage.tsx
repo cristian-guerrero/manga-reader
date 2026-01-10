@@ -42,12 +42,12 @@ interface ExplorerEntry {
 }
 
 // Componente que carga thumbnail de forma lazy cuando es visible
-function LazyThumbnail({ 
-    entry, 
-    thumbnails, 
-    loadThumbnail 
-}: { 
-    entry: ExplorerEntry; 
+function LazyThumbnail({
+    entry,
+    thumbnails,
+    loadThumbnail
+}: {
+    entry: ExplorerEntry;
     thumbnails: Record<string, string>;
     loadThumbnail: (key: string, imagePath: string) => Promise<void>;
 }) {
@@ -57,19 +57,19 @@ function LazyThumbnail({
     const loadingRef = useRef(false);
 
     useEffect(() => {
-        if (!ref.current) return;
+        const el = ref.current;
+        if (!el || isVisible) return;
 
         const observer = new IntersectionObserver(
             ([obsEntry]) => {
-                if (obsEntry.isIntersecting && !isVisible) {
+                if (obsEntry.isIntersecting) {
                     setIsVisible(true);
-                    observer.disconnect();
                 }
             },
-            { rootMargin: '200px' }
+            { rootMargin: '400px' }
         );
 
-        observer.observe(ref.current);
+        observer.observe(el);
         return () => observer.disconnect();
     }, [isVisible]);
 
@@ -79,7 +79,7 @@ function LazyThumbnail({
 
         loadingRef.current = true;
         setIsLoading(true);
-        
+
         loadThumbnail(entry.path, entry.coverImage)
             .finally(() => {
                 setIsLoading(false);
@@ -91,20 +91,22 @@ function LazyThumbnail({
 
     return (
         <div ref={ref} className="w-full h-full bg-surface-tertiary overflow-hidden">
-            {thumbnailUrl ? (
-                <img
-                    src={thumbnailUrl}
-                    alt={entry.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-0"
-                    onLoad={(e) => {
-                        (e.target as HTMLImageElement).classList.add('opacity-100');
-                    }}
-                />
-            ) : (
-                <div className="w-full h-full flex items-center justify-center">
-                    <div className="w-8 h-8 rounded-full border-2 border-accent/20 border-t-accent animate-spin" />
-                </div>
-            )}
+            {isVisible ? (
+                thumbnailUrl ? (
+                    <img
+                        src={thumbnailUrl}
+                        alt={entry.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-0"
+                        onLoad={(e) => {
+                            (e.target as HTMLImageElement).classList.add('opacity-100');
+                        }}
+                    />
+                ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                        <div className="w-8 h-8 rounded-full border-2 border-accent/20 border-t-accent animate-spin" />
+                    </div>
+                )
+            ) : null}
         </div>
     );
 }
@@ -125,19 +127,19 @@ function LazyBaseFolderThumbnail({
     const loadingRef = useRef(false);
 
     useEffect(() => {
-        if (!ref.current) return;
+        const el = ref.current;
+        if (!el || isVisible) return;
 
         const observer = new IntersectionObserver(
             ([obsEntry]) => {
-                if (obsEntry.isIntersecting && !isVisible) {
+                if (obsEntry.isIntersecting) {
                     setIsVisible(true);
-                    observer.disconnect();
                 }
             },
-            { rootMargin: '200px' }
+            { rootMargin: '400px' }
         );
 
-        observer.observe(ref.current);
+        observer.observe(el);
         return () => observer.disconnect();
     }, [isVisible]);
 
@@ -147,7 +149,7 @@ function LazyBaseFolderThumbnail({
 
         loadingRef.current = true;
         setIsLoading(true);
-        
+
         // Para base folders, usar GetFolderInfoShallow para evitar escaneo recursivo
         // Esto es mucho más rápido que GetImages que escanea todas las subcarpetas
         (async () => {
@@ -170,20 +172,22 @@ function LazyBaseFolderThumbnail({
 
     return (
         <div ref={ref} className="w-full h-full bg-surface-tertiary overflow-hidden">
-            {thumbnailUrl ? (
-                <img
-                    src={thumbnailUrl}
-                    alt={folder.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-0"
-                    onLoad={(e) => {
-                        (e.target as HTMLImageElement).classList.add('opacity-100');
-                    }}
-                />
-            ) : (
-                <div className="w-full h-full flex items-center justify-center">
-                    <div className="w-8 h-8 rounded-full border-2 border-accent/20 border-t-accent animate-spin" />
-                </div>
-            )}
+            {isVisible ? (
+                thumbnailUrl ? (
+                    <img
+                        src={thumbnailUrl}
+                        alt={folder.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-0"
+                        onLoad={(e) => {
+                            (e.target as HTMLImageElement).classList.add('opacity-100');
+                        }}
+                    />
+                ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                        <div className="w-8 h-8 rounded-full border-2 border-accent/20 border-t-accent animate-spin" />
+                    </div>
+                )
+            ) : null}
         </div>
     );
 }
@@ -194,21 +198,20 @@ function LazyImage({ src, alt, className }: { src: string; alt: string; classNam
     const [ref, setRef] = useState<HTMLDivElement | null>(null);
 
     useEffect(() => {
-        if (!ref) return;
+        if (!ref || isVisible) return;
 
         const observer = new IntersectionObserver(
             ([entry]) => {
                 if (entry.isIntersecting) {
                     setIsVisible(true);
-                    observer.disconnect();
                 }
             },
-            { rootMargin: '200px' } // Load a bit earlier
+            { rootMargin: '400px' }
         );
 
         observer.observe(ref);
         return () => observer.disconnect();
-    }, [ref]);
+    }, [ref, isVisible]);
 
     return (
         <div ref={setRef} className="w-full h-full bg-surface-tertiary overflow-hidden">
@@ -270,7 +273,7 @@ export function ExplorerPage() {
     const [loading, setLoading] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const isMountedRef = useRef(true);
-    
+
     // Usar hook para thumbnails - cargar individualmente cuando sean visibles
     const { thumbnails, loadThumbnail, initializeThumbnails } = useThumbnails(10);
 
@@ -362,7 +365,7 @@ export function ExplorerPage() {
             const folders = await Promise.race([foldersPromise, timeoutPromise]) as BaseFolder[];
 
             setBaseFolders(folders || []);
-            
+
             // Inicializar thumbnails que ya vienen del backend
             if (folders && folders.length > 0) {
                 const initialThumbs: Record<string, string> = {};
@@ -425,7 +428,7 @@ export function ExplorerPage() {
             }
 
             setCurrentPath(path);
-            
+
             // Inicializar thumbnails que ya vienen del backend
             // NO cargar todos los thumbnails de una vez - se cargarán de forma lazy cuando sean visibles
             if (items && items.length > 0) {
@@ -456,7 +459,7 @@ export function ExplorerPage() {
     // If coming from another view, always start at root
     useEffect(() => {
         isMountedRef.current = true;
-        
+
         // Only restore state if we were already in explorer (previousPage === 'explorer')
         // This prevents restoring path when coming from other views like home, series, etc.
         const savedPath = explorerState?.currentPath;
@@ -521,7 +524,7 @@ export function ExplorerPage() {
             // Build segments to check navigation direction
             const buildSegments = (p: string | null): Array<{ name: string; path: string | null }> => {
                 if (!p) return [{ name: t('explorer.title'), path: null }];
-                
+
                 const segs: Array<{ name: string; path: string | null }> = [{ name: t('explorer.title'), path: null }];
                 const baseFolder = baseFolders.find(bf => {
                     const bfPath = bf.path.replace(/[\\/]$/, '');
@@ -563,7 +566,7 @@ export function ExplorerPage() {
             const currentSegments = buildSegments(currentPath);
             const clickedIndex = clickedSegments.findIndex(seg => seg.path === path);
             const currentIndex = currentSegments.findIndex(seg => seg.path === currentPath);
-            
+
             if (clickedIndex >= 0 && currentIndex >= 0 && clickedIndex < currentIndex) {
                 // Going backwards - rebuild path history
                 const newHistory: string[] = [];
@@ -580,7 +583,7 @@ export function ExplorerPage() {
                     setPathHistory(prev => [...prev, currentPath]);
                 }
             }
-            
+
             loadDirectory(path, false);
         }
     };
@@ -632,23 +635,23 @@ export function ExplorerPage() {
             currentPath,
             pathHistory,
         });
-        
+
         // Check if we should use shallow loading
         // Use shallow if: the folder is in a directory that has other folders at the same level
         // This prevents loading images from sibling folders recursively
         const entry = entries.find(ent => ent.path === path);
         const isDirectory = entry?.isDirectory ?? false;
-        
+
         // If it's a directory and there are other directories in the same level, use shallow
         // This ensures we only load images from the current folder, not from sibling folders
-        const hasOtherFolders = entries.some(ent => 
+        const hasOtherFolders = entries.some(ent =>
             ent.isDirectory && ent.path !== path
         );
         const useShallow = isDirectory && hasOtherFolders;
-        
-        navigate('viewer', { 
-            folder: path, 
-            shallow: useShallow ? 'true' : 'false' 
+
+        navigate('viewer', {
+            folder: path,
+            shallow: useShallow ? 'true' : 'false'
         }, 'explorer');
     };
 
@@ -665,15 +668,15 @@ export function ExplorerPage() {
                 if (currentPath) {
                     // Check if current directory has subdirectories
                     const hasSubdirs = entries.some(ent => ent.isDirectory);
-                    
+
                     // Save explorer state before navigating to viewer
                     setExplorerState({
                         currentPath,
                         pathHistory,
                     });
-                    navigate('viewer', { 
-                        folder: currentPath, 
-                        shallow: hasSubdirs ? 'true' : 'false' 
+                    navigate('viewer', {
+                        folder: currentPath,
+                        shallow: hasSubdirs ? 'true' : 'false'
                     }, 'explorer');
                 }
             }
@@ -684,8 +687,8 @@ export function ExplorerPage() {
     const matchesSearch = (item: BaseFolder | ExplorerEntry, query: string): boolean => {
         if (!query.trim()) return true;
         const searchTerm = query.toLowerCase();
-        return item.name.toLowerCase().includes(searchTerm) || 
-               ('path' in item && item.path.toLowerCase().includes(searchTerm));
+        return item.name.toLowerCase().includes(searchTerm) ||
+            ('path' in item && item.path.toLowerCase().includes(searchTerm));
     };
 
     // Sort and filter base folders
@@ -741,7 +744,7 @@ export function ExplorerPage() {
                             </button>
                         </Tooltip>
                     )}
-                    
+
                     {/* Breadcrumb */}
                     <div className="flex-1 min-w-0">
                         <Breadcrumb
@@ -799,41 +802,41 @@ export function ExplorerPage() {
                                 className="group/card relative bg-surface-secondary rounded-xl overflow-hidden border border-white/5 hover:border-accent/50 transition-all hover:shadow-lg cursor-pointer animate-scale-in"
                                 onClick={() => handleItemClick(folder)}
                             >
-                            {folder.hasImages ? (
-                                <div className="aspect-[2/3] w-full relative overflow-hidden">
-                                    <LazyBaseFolderThumbnail
-                                        folder={folder}
-                                        thumbnails={thumbnails}
-                                        loadThumbnail={loadThumbnail}
-                                    />
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-60 pointer-events-none" />
-                                </div>
-                            ) : (
-                                <div className="aspect-[2/3] w-full flex items-center justify-center bg-surface-tertiary group-hover:bg-surface-elevated transition-colors">
-                                    <div className="p-4 rounded-xl bg-accent/10 text-accent">
-                                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                                            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
-                                        </svg>
+                                {folder.hasImages ? (
+                                    <div className="aspect-[2/3] w-full relative overflow-hidden">
+                                        <LazyBaseFolderThumbnail
+                                            folder={folder}
+                                            thumbnails={thumbnails}
+                                            loadThumbnail={loadThumbnail}
+                                        />
+                                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-60 pointer-events-none" />
                                     </div>
+                                ) : (
+                                    <div className="aspect-[2/3] w-full flex items-center justify-center bg-surface-tertiary group-hover:bg-surface-elevated transition-colors">
+                                        <div className="p-4 rounded-xl bg-accent/10 text-accent">
+                                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                                                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+                                            </svg>
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="absolute top-2 right-2 z-20">
+                                    <Tooltip content={t('common.remove')} placement="left">
+                                        <button
+                                            onClick={(e) => handleRemoveBaseFolder(folder.path, e)}
+                                            className="p-2 rounded-full bg-red-500/20 text-red-500 opacity-0 group-hover/card:opacity-100 transition-opacity hover:bg-red-500/40 backdrop-blur-md"
+                                            aria-label={t('common.remove')}
+                                        >
+                                            <TrashIcon />
+                                        </button>
+                                    </Tooltip>
                                 </div>
-                            )}
 
-                            <div className="absolute top-2 right-2 z-20">
-                                <Tooltip content={t('common.remove')} placement="left">
-                                    <button
-                                        onClick={(e) => handleRemoveBaseFolder(folder.path, e)}
-                                        className="p-2 rounded-full bg-red-500/20 text-red-500 opacity-0 group-hover/card:opacity-100 transition-opacity hover:bg-red-500/40 backdrop-blur-md"
-                                        aria-label={t('common.remove')}
-                                    >
-                                        <TrashIcon />
-                                    </button>
-                                </Tooltip>
-                            </div>
-
-                            <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/90 to-transparent">
-                                <h3 className="font-semibold text-white truncate text-shadow-sm" title={folder.path}>{folder.name}</h3>
-                                <p className="text-xs text-white/60 truncate mt-1 font-mono opacity-80">{folder.path}</p>
-                            </div>
+                                <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/90 to-transparent">
+                                    <h3 className="font-semibold text-white truncate text-shadow-sm" title={folder.path}>{folder.name}</h3>
+                                    <p className="text-xs text-white/60 truncate mt-1 font-mono opacity-80">{folder.path}</p>
+                                </div>
                             </div>
                         </GridItem>
                     ))}
@@ -845,44 +848,44 @@ export function ExplorerPage() {
                                 className="group/card relative bg-surface-secondary rounded-xl overflow-hidden border border-white/5 hover:border-accent/50 transition-all hover:shadow-lg cursor-pointer animate-scale-in"
                                 onClick={() => handleItemClick(entry)}
                             >
-                            {entry.hasImages ? (
-                                <div className="aspect-[2/3] w-full relative overflow-hidden">
-                                    <LazyThumbnail
-                                        entry={entry}
-                                        thumbnails={thumbnails}
-                                        loadThumbnail={loadThumbnail}
-                                    />
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-60 pointer-events-none" />
-                                </div>
-                            ) : (
-                                <div className="aspect-[2/3] w-full flex items-center justify-center bg-surface-tertiary group-hover:bg-surface-elevated transition-colors">
-                                    <svg className="w-12 h-12 text-text-secondary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
-                                        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
-                                    </svg>
-                                </div>
-                            )}
+                                {entry.hasImages ? (
+                                    <div className="aspect-[2/3] w-full relative overflow-hidden">
+                                        <LazyThumbnail
+                                            entry={entry}
+                                            thumbnails={thumbnails}
+                                            loadThumbnail={loadThumbnail}
+                                        />
+                                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-60 pointer-events-none" />
+                                    </div>
+                                ) : (
+                                    <div className="aspect-[2/3] w-full flex items-center justify-center bg-surface-tertiary group-hover:bg-surface-elevated transition-colors">
+                                        <svg className="w-12 h-12 text-text-secondary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
+                                            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+                                        </svg>
+                                    </div>
+                                )}
 
-                            <div className="absolute bottom-0 left-0 right-0 p-3">
-                                <h3 className="font-semibold text-white truncate text-shadow-sm">{entry.name}</h3>
-                                <div className="flex items-center justify-between mt-1">
-                                    <span className="text-xs text-white/70">
-                                        {entry.isDirectory ? (entry.hasImages ? `${entry.imageCount} ${t('explorer.images')}` : t('explorer.folder')) : t('explorer.file')}
-                                    </span>
-                                    {entry.hasImages && (
-                                        <Tooltip content={t('explorer.openInViewer')} placement="left" className="z-10">
-                                            <button
-                                                onClick={(e) => handleOpenInViewer(entry.path, e)}
-                                                className="p-1.5 rounded-full bg-accent text-white hover:bg-accent-hover transform hover:scale-110 transition-all opacity-0 group-hover/card:opacity-100"
-                                                aria-label={t('explorer.openInViewer')}
-                                            >
-                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                                                    <path d="M8 5v14l11-7z" />
-                                                </svg>
-                                            </button>
-                                        </Tooltip>
-                                    )}
+                                <div className="absolute bottom-0 left-0 right-0 p-3">
+                                    <h3 className="font-semibold text-white truncate text-shadow-sm">{entry.name}</h3>
+                                    <div className="flex items-center justify-between mt-1">
+                                        <span className="text-xs text-white/70">
+                                            {entry.isDirectory ? (entry.hasImages ? `${entry.imageCount} ${t('explorer.images')}` : t('explorer.folder')) : t('explorer.file')}
+                                        </span>
+                                        {entry.hasImages && (
+                                            <Tooltip content={t('explorer.openInViewer')} placement="left" className="z-10">
+                                                <button
+                                                    onClick={(e) => handleOpenInViewer(entry.path, e)}
+                                                    className="p-1.5 rounded-full bg-accent text-white hover:bg-accent-hover transform hover:scale-110 transition-all opacity-0 group-hover/card:opacity-100"
+                                                    aria-label={t('explorer.openInViewer')}
+                                                >
+                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                                        <path d="M8 5v14l11-7z" />
+                                                    </svg>
+                                                </button>
+                                            </Tooltip>
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
                             </div>
                         </GridItem>
                     ))}
@@ -900,16 +903,16 @@ export function ExplorerPage() {
 
                 {/* No results message */}
                 {((!currentPath && sortedBaseFolders.length === 0 && baseFolders.length > 0 && searchQuery.trim()) ||
-                  (currentPath && sortedEntries.length === 0 && entries.length > 0 && searchQuery.trim())) && (
-                    <div className="h-full flex flex-col items-center justify-center text-text-secondary opacity-60">
-                        <svg className="w-16 h-16 mb-4 text-surface-tertiary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
-                            <circle cx="11" cy="11" r="8" />
-                            <path d="m21 21-4.35-4.35" />
-                        </svg>
-                        <p className="text-lg">{t('explorer.noResultsFound') || 'No results found'}</p>
-                        <p className="text-sm mt-1">{t('explorer.tryDifferentSearch') || `Try a different search term`}</p>
-                    </div>
-                )}
+                    (currentPath && sortedEntries.length === 0 && entries.length > 0 && searchQuery.trim())) && (
+                        <div className="h-full flex flex-col items-center justify-center text-text-secondary opacity-60">
+                            <svg className="w-16 h-16 mb-4 text-surface-tertiary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
+                                <circle cx="11" cy="11" r="8" />
+                                <path d="m21 21-4.35-4.35" />
+                            </svg>
+                            <p className="text-lg">{t('explorer.noResultsFound') || 'No results found'}</p>
+                            <p className="text-sm mt-1">{t('explorer.tryDifferentSearch') || `Try a different search term`}</p>
+                        </div>
+                    )}
             </div>
         </div>
     );
