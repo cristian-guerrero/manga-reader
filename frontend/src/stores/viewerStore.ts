@@ -39,6 +39,9 @@ interface ViewerStoreState extends ViewerState {
     getCurrentImage: () => ImageInfo | null;
     hasNext: () => boolean;
     hasPrev: () => boolean;
+
+    // Internal helper (should be treated as private)
+    _updateTabState: (updates: Partial<ViewerState>) => void;
 }
 
 // Initial state values for when a tab has no viewerState yet
@@ -66,77 +69,77 @@ export const useViewerStore = create<ViewerStoreState>((set, get) => ({
     setCurrentIndex: (index) => {
         const { images } = get();
         if (index >= 0 && index < images.length) {
-            (get() as any)._updateTabState({ currentIndex: index });
+            get()._updateTabState({ currentIndex: index });
         }
     },
 
     nextImage: () => {
         const { currentIndex, images } = get();
         if (currentIndex < images.length - 1) {
-            (get() as any)._updateTabState({ currentIndex: currentIndex + 1 });
+            get()._updateTabState({ currentIndex: currentIndex + 1 });
         }
     },
 
     prevImage: () => {
         const { currentIndex } = get();
         if (currentIndex > 0) {
-            (get() as any)._updateTabState({ currentIndex: currentIndex - 1 });
+            get()._updateTabState({ currentIndex: currentIndex - 1 });
         }
     },
 
     goToImage: (index) => {
         const { images } = get();
         if (index >= 0 && index < images.length) {
-            (get() as any)._updateTabState({ currentIndex: index, scrollPosition: 0 });
+            get()._updateTabState({ currentIndex: index, scrollPosition: 0 });
         }
     },
 
     // Folder management
     setCurrentFolder: (folder) => {
-        (get() as any)._updateTabState({ currentFolder: folder });
+        get()._updateTabState({ currentFolder: folder });
     },
 
     setImages: (images) => {
-        (get() as any)._updateTabState({ images, currentIndex: 0, scrollPosition: 0 });
+        get()._updateTabState({ images, currentIndex: 0, scrollPosition: 0 });
     },
 
     clearViewer: () => {
-        (get() as any)._updateTabState(defaultViewerState);
+        get()._updateTabState(defaultViewerState);
     },
 
     // Viewer mode
     setMode: (mode) => {
-        (get() as any)._updateTabState({ mode });
+        get()._updateTabState({ mode });
     },
 
     // Loading state
     setIsLoading: (isLoading) => {
-        (get() as any)._updateTabState({ isLoading });
+        get()._updateTabState({ isLoading });
     },
 
     // Zoom
     setZoomLevel: (level) => {
         const clampedLevel = Math.min(5, Math.max(0.1, level));
-        (get() as any)._updateTabState({ zoomLevel: clampedLevel });
+        get()._updateTabState({ zoomLevel: clampedLevel });
     },
 
     zoomIn: () => {
         const { zoomLevel } = get();
-        (get() as any)._updateTabState({ zoomLevel: Math.min(5, zoomLevel + 0.25) });
+        get()._updateTabState({ zoomLevel: Math.min(5, zoomLevel + 0.25) });
     },
 
     zoomOut: () => {
         const { zoomLevel } = get();
-        (get() as any)._updateTabState({ zoomLevel: Math.max(0.1, zoomLevel - 0.25) });
+        get()._updateTabState({ zoomLevel: Math.max(0.1, zoomLevel - 0.25) });
     },
 
     resetZoom: () => {
-        (get() as any)._updateTabState({ zoomLevel: 1 });
+        get()._updateTabState({ zoomLevel: 1 });
     },
 
     // Scroll position
     setScrollPosition: (scrollPosition) => {
-        (get() as any)._updateTabState({ scrollPosition });
+        get()._updateTabState({ scrollPosition });
     },
 
     // Computed
@@ -156,7 +159,7 @@ export const useViewerStore = create<ViewerStoreState>((set, get) => ({
     },
 
     setViewerState: (updates) => {
-        (get() as any)._updateTabState(updates);
+        get()._updateTabState(updates);
     },
 
     // Internal helper to update tabStore

@@ -23,6 +23,7 @@ export interface Tab {
         images: ImageInfo[];
         currentIndex: number;
         mode: ViewerMode;
+        isLoading: boolean;
         zoomLevel: number;
         scrollPosition: number;
     } | null;

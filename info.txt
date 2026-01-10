@@ -186,3 +186,12 @@ Caracteristicas adicionales 9:
 - validar el impacto en el consumo de memoria de la app
 - (en conclusion una pestaña es como una nueva instancia de la app)
 - las pestanas visualmente seran una copia de la pestañas de chrome con su comportamiento.
+------------------------
+Caracteristicas adicionales para la funcionalidad de pestañas:
+- tener una fucionalidad de ahorro de memoria, que nos permita activar o descativar (con un toggle en la vista de configuracion), esto implicaria que
+- si esta activo el toggle,  se desmontan las vistas de las pestañas, como se esta haciendo ahora, 
+- si esta desactivado el toggle, se mantiene la vista de las pestañas, pero se debe validar el impacto en el rendimiento de la app (para evitar el flickering)
+- validar si hay otra forma de evitar el flickering al cambiar de pestaña que no sea manteniendolas montadas,
+- validar porque en estos momentos algunas veces requiere doble click para que la pestaña se cambie
+- mejorar visualmente las pestañas para que se vean mas atractivas (mirar si necesitamos quitar la curva superior)
+- validar si se pueden ver como las de chrome, paso imagen.

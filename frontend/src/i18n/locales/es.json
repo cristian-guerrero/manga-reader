@@ -210,7 +210,10 @@
         "clearAllCache": "Borrar Todo el Caché",
         "confirmClearCache": "Esto eliminará todo el historial, datos guardados, descargas y datos de uso de la aplicación. La configuración se conservará. ¿Estás seguro?",
         "clearCacheSuccess": "¡Caché borrado exitosamente!",
-        "clearCacheError": "Error al borrar caché. Por favor reinicia la app e intenta nuevamente."
+        "clearCacheError": "Error al borrar caché. Por favor reinicia la app e intenta nuevamente.",
+        "tabs": "Pestañas",
+        "tabMemorySaving": "Modo Ahorro de Memoria",
+        "tabMemorySavingDesc": "Desmonta las pestañas inactivas para ahorrar memoria. Desactívalo para cambios de pestaña instantáneos."
     },
     "explorer": {
         "title": "Explorador",

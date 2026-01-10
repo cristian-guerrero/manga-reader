@@ -88,9 +88,15 @@ function LoadingScreen() {
 }
 
 // Page router component with optimized rendering
-function PageRouter() {
+function PageRouter({ tabId, isActive = true }: { tabId?: string; isActive?: boolean }) {
+    const activeTabIdFromStore = useTabStore(state => state.activeTabId);
+    const id = tabId || activeTabIdFromStore;
+
+    // In persistent mode, we want to ensure each PageRouter instance stays tied to its tab
+    // but the stores currently only reflect the active tab. So when inactive, 
+    // it will render the active tab's content. This is acceptable as long as it's hidden.
+
     const { currentPage, params } = useNavigationStore();
-    const { activeTabId } = useTabStore();
 
     // Create a stable key from params for comparison
     const paramsKey = useMemo(() => {
@@ -98,14 +104,40 @@ function PageRouter() {
     }, [params]);
 
     // Memoize page content to prevent unnecessary re-renders
-    // Only recreate when page or params actually change
     const pageContent = useMemo(() => {
         return renderPage(currentPage, params);
     }, [currentPage, paramsKey]);
 
     return (
-        <div className="h-full w-full" key={activeTabId}>
+        <div
+            className="h-full w-full"
+            style={{
+                display: isActive ? 'block' : 'none',
+                visibility: isActive ? 'visible' : 'hidden' // Double layer for security against layout shifts
+            }}
+        >
             {pageContent}
+        </div>
+    );
+}
+
+function PageContainer() {
+    const { tabs, activeTabId } = useTabStore();
+    const { tabMemorySaving } = useSettingsStore();
+
+    if (tabMemorySaving) {
+        return <PageRouter key={activeTabId} isActive={true} />;
+    }
+
+    return (
+        <div className="h-full w-full relative">
+            {tabs.map((tab) => (
+                <PageRouter
+                    key={tab.id}
+                    tabId={tab.id}
+                    isActive={tab.id === activeTabId}
+                />
+            ))}
         </div>
     );
 }
@@ -218,7 +250,7 @@ function App() {
         <Suspense fallback={<LoadingScreen />}>
             <ToastProvider>
                 <MainLayout>
-                    <PageRouter />
+                    <PageContainer />
                 </MainLayout>
             </ToastProvider>
         </Suspense>

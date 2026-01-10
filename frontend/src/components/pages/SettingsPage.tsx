@@ -49,7 +49,9 @@ export const SettingsPage: React.FC = () => {
         setShowImageInfo,
         minImageSize,
         setMinImageSize,
-        panicKey
+        panicKey,
+        tabMemorySaving,
+        setTabMemorySaving
     } = useSettingsStore();
 
     const { showToast } = useToast();
@@ -485,6 +487,20 @@ export const SettingsPage: React.FC = () => {
                         <Toggle
                             checked={processDroppedFolders}
                             onChange={setProcessDroppedFolders}
+                        />
+                    </SettingRow>
+                </section>
+
+                {/* Tabs Section */}
+                <section className="animate-slide-up" style={{ animationDelay: '0.45s' }}>
+                    <SectionHeader title={t('settings.tabs', 'Tabs')} />
+                    <SettingRow
+                        label={t('settings.tabMemorySaving', 'Memory Saving')}
+                        description={t('settings.tabMemorySavingDesc', 'When enabled, inactive tabs are unmounted to save memory. When disabled, tabs stay in memory for instant switching.')}
+                    >
+                        <Toggle
+                            checked={tabMemorySaving}
+                            onChange={setTabMemorySaving}
                         />
                     </SettingRow>
                 </section>

@@ -1,64 +1,86 @@
-import { useTabStore, Tab } from '../../stores/tabStore';
+import { useTabStore } from '../../stores/tabStore';
 import { useTranslation } from 'react-i18next';
-import { useNavigationStore } from '../../stores/navigationStore';
+
+/**
+ * TabEar - Creates the smooth inverted curve at the bottom of Chrome-style tabs
+ */
+const TabEar = ({ side }: { side: 'left' | 'right' }) => (
+    <svg
+        className={`absolute bottom-0 ${side === 'left' ? '-left-[10px]' : '-right-[10px]'} w-[10px] h-[10px] pointer-events-none z-20`}
+        viewBox="0 0 10 10"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+    >
+        <path
+            d={side === 'left'
+                ? "M10 0C10 5.52285 5.52285 10 0 10H10V0Z"
+                : "M0 0C0 5.52285 4.47715 10 10 10H0V0Z"
+            }
+            fill="var(--color-surface-primary)"
+        />
+    </svg>
+);
 
 export function TabList() {
     const { t } = useTranslation();
     const { tabs, activeTabId, setActiveTab, closeTab, addTab } = useTabStore();
-    const { navigate } = useNavigationStore();
 
     const handleAddTab = () => {
         addTab('home', {}, t('common.home') || 'Home');
     };
 
     return (
-        <div className="flex items-end h-full pl-2 pr-4 gap-0 no-drag overflow-x-auto no-scrollbar max-w-[calc(100vw-300px)]">
+        <div className="flex items-end h-[40px] pl-2 no-drag overflow-x-auto no-scrollbar max-w-[calc(100vw-300px)]">
             {tabs.map((tab, index) => (
                 <div
                     key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`relative group h-[32px] min-w-[120px] max-w-[200px] flex items-center px-4 cursor-default transition-all duration-200 select-none ${activeTabId === tab.id ? 'z-10' : 'z-0'
+                    onMouseDown={(e) => {
+                        // Switch on left click down or middle click
+                        if (e.button === 0) setActiveTab(tab.id);
+                        if (e.button === 1) closeTab(tab.id);
+                    }}
+                    onAuxClick={(e) => {
+                        // Prevent default browser behavior for middle click
+                        if (e.button === 1) e.preventDefault();
+                    }}
+                    className={`relative group h-[32px] min-w-[140px] max-w-[240px] flex items-center px-4 cursor-default select-none transition-all duration-150 ${activeTabId === tab.id ? 'z-20' : 'z-10'
                         }`}
                 >
-                    {/* Tab Background - Chrome Shape */}
+                    {/* Tab Background */}
                     <div
-                        className={`absolute inset-0 transition-colors duration-200 ${activeTabId === tab.id
-                                ? 'bg-surface-primary opacity-100'
-                                : 'bg-transparent group-hover:bg-white/5'
+                        className={`absolute inset-0 transition-all duration-200 ${activeTabId === tab.id
+                            ? 'bg-surface-primary opacity-100 rounded-t-lg shadow-[0_-2px_10px_rgba(0,0,0,0.2)]'
+                            : 'bg-transparent group-hover:bg-white/5 group-hover:rounded-t-lg mx-[4px] h-[26px] my-auto'
                             }`}
-                        style={{
-                            clipPath: 'polygon(8px 0, calc(100% - 8px) 0, 100% 100%, 0 100%)',
-                            marginRight: '-4px',
-                            marginLeft: '-4px'
-                        }}
-                    />
-
-                    {/* Active Bottom Highlight */}
-                    {activeTabId === tab.id && (
-                        <div
-                            className="absolute bottom-0 left-[8px] right-[8px] h-[2px] rounded-full z-20"
-                            style={{ background: 'var(--gradient-accent)' }}
-                        />
-                    )}
+                    >
+                        {activeTabId === tab.id && (
+                            <>
+                                <TabEar side="left" />
+                                <TabEar side="right" />
+                            </>
+                        )}
+                    </div>
 
                     {/* Content */}
                     <div className="relative flex items-center justify-between w-full gap-2 z-10 overflow-hidden">
-                        <span className="text-xs font-medium truncate whitespace-nowrap opacity-80 group-hover:opacity-100 transition-opacity">
+                        <span className={`text-[11px] font-medium truncate whitespace-nowrap transition-all ${activeTabId === tab.id ? 'opacity-100' : 'opacity-60 group-hover:opacity-90'
+                            }`}>
                             {tab.title}
                         </span>
 
                         {/* Close button */}
                         {(tabs.length > 1) && (
                             <button
+                                onMouseDown={(e) => e.stopPropagation()}
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     closeTab(tab.id);
                                 }}
-                                className={`flex items-center justify-center w-4 h-4 rounded-full hover:bg-white/10 transition-all ${activeTabId === tab.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                                className={`flex items-center justify-center w-5 h-5 rounded-md hover:bg-white/10 transition-all ${activeTabId === tab.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
                                     }`}
                             >
-                                <svg width="8" height="8" viewBox="0 0 12 12" fill="currentColor">
-                                    <path d="M1.41 0L0 1.41L4.59 6L0 10.59L1.41 12L6 7.41L10.59 12L12 10.59L7.41 6L12 1.41L10.59 0L6 4.59L1.41 0Z" />
+                                <svg width="10" height="10" viewBox="0 0 12 12" fill="currentColor">
+                                    <path d="M11 1.27L10.73 1 6 5.73 1.27 1 1 1.27 5.73 6 1 10.73 1.27 11 6 6.27 10.73 11 11 10.73 6.27 6 11 1.27z" />
                                 </svg>
                             </button>
                         )}
@@ -66,18 +88,18 @@ export function TabList() {
 
                     {/* Separator */}
                     {activeTabId !== tab.id && index < tabs.length - 1 && activeTabId !== tabs[index + 1].id && (
-                        <div className="absolute right-0 top-2 bottom-2 w-[1px] bg-white/10 group-hover:opacity-0 transition-opacity" />
+                        <div className="absolute right-0 top-[10px] bottom-[10px] w-[1px] bg-white/20 transition-opacity" />
                     )}
                 </div>
             ))}
 
             {/* Add Tab Button */}
             <button
-                onClick={handleAddTab}
-                className="flex items-center justify-center min-w-[28px] h-[28px] rounded-full hover:bg-white/10 transition-all ml-1 mb-[2px]"
+                onMouseDown={handleAddTab}
+                className="flex items-center justify-center min-w-[28px] h-[28px] rounded-full hover:bg-white/10 transition-all ml-2 mb-[4px] text-white/70 hover:text-white"
                 title={t('common.addTab') || "New Tab"}
             >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                     <line x1="12" y1="5" x2="12" y2="19" />
                     <line x1="5" y1="12" x2="19" y2="12" />
                 </svg>
