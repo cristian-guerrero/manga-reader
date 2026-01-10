@@ -26,10 +26,10 @@ type Module struct {
 	explorerManager *persistence.ExplorerManager
 	fileLoader      *fileloader.FileLoader
 	imgServer       *fileloader.ImageServer
-	
+
 	// File watching
-	watcher   *fsnotify.Watcher
-	watchLock sync.Mutex
+	watcher     *fsnotify.Watcher
+	watchLock   sync.Mutex
 	watchedDirs map[string]bool // Track which directories are being watched
 }
 
@@ -41,7 +41,7 @@ func NewModule(fileLoader *fileloader.FileLoader, imgServer *fileloader.ImageSer
 		fmt.Printf("[Explorer] Warning: Could not create file watcher: %v\n", err)
 		watcher = nil
 	}
-	
+
 	return &Module{
 		explorerManager: persistence.NewExplorerManager(),
 		fileLoader:      fileLoader,
@@ -59,7 +59,7 @@ func (m *Module) SetImageServer(imgServer *fileloader.ImageServer) {
 // SetContext sets the Wails context and starts file watching
 func (m *Module) SetContext(ctx context.Context) {
 	m.ctx = ctx
-	
+
 	// Start file watching goroutine if watcher is available
 	if m.watcher != nil {
 		go m.watchFileChanges()
@@ -84,18 +84,18 @@ func (m *Module) watchFileChanges() {
 			if !ok {
 				return
 			}
-			
+
 			// Only react to create/remove/rename events on directories
 			if event.Op&(fsnotify.Create|fsnotify.Remove|fsnotify.Rename) != 0 {
 				// Check if it's a directory or if a directory was affected
 				info, err := os.Stat(event.Name)
 				isDir := err == nil && info.IsDir()
-				
+
 				// Also check parent directory (in case a directory was created/removed)
 				parentDir := filepath.Dir(event.Name)
 				parentInfo, parentErr := os.Stat(parentDir)
 				isParentDir := parentErr == nil && parentInfo.IsDir()
-				
+
 				// Only emit if this affects a directory we're watching or its parent
 				if isDir || isParentDir {
 					// Check if this path or its parent is being watched
@@ -112,7 +112,7 @@ func (m *Module) watchFileChanges() {
 					}
 				}
 			}
-			
+
 		case err, ok := <-m.watcher.Errors:
 			if !ok {
 				return
@@ -126,7 +126,7 @@ func (m *Module) watchFileChanges() {
 func (m *Module) isWatchedPath(path string) bool {
 	m.watchLock.Lock()
 	defer m.watchLock.Unlock()
-	
+
 	// Check exact match and all parent directories
 	current := path
 	for {
@@ -160,7 +160,7 @@ func (m *Module) refreshWatcher() {
 		if folder.IsVisible {
 			// Watch the base folder itself
 			newWatchedDirs[folder.Path] = true
-			
+
 			// Try to add to watcher
 			if !m.watchedDirs[folder.Path] {
 				err := m.watcher.Add(folder.Path)
@@ -233,7 +233,7 @@ func (m *Module) RemoveBaseFolder(path string) error {
 	if err := m.explorerManager.Remove(path); err != nil {
 		return err
 	}
-	
+
 	// Remove from file watcher
 	if m.watcher != nil {
 		m.watchLock.Lock()
@@ -248,7 +248,7 @@ func (m *Module) RemoveBaseFolder(path string) error {
 		}
 		m.watchLock.Unlock()
 	}
-	
+
 	runtime.EventsEmit(m.ctx, "explorer_updated")
 	return nil
 }
@@ -261,7 +261,7 @@ func (m *Module) ClearBaseFolders() error {
 			return err
 		}
 	}
-	
+
 	// Clear all watchers
 	if m.watcher != nil {
 		m.watchLock.Lock()
@@ -271,7 +271,7 @@ func (m *Module) ClearBaseFolders() error {
 		m.watchedDirs = make(map[string]bool)
 		m.watchLock.Unlock()
 	}
-	
+
 	runtime.EventsEmit(m.ctx, "explorer_updated")
 	return nil
 }
@@ -300,15 +300,30 @@ func (m *Module) GetBaseFolders() []BaseFolderEntry {
 			IsVisible: f.IsVisible,
 		}
 
-		// Use shallow search first (fast, only immediate directory)
-		// This avoids expensive recursive scanning that blocks the UI
-		imagePath, hasImages := m.fileLoader.FindFirstImageShallow(f.Path)
+		// Check cache first
+		imagePath := f.CoverImage
+		hasImages := imagePath != ""
+
+		// If not cached, or cached path no longer exists, search for it
+		if !hasImages || !fileExists(imagePath) {
+			imagePath, hasImages = m.fileLoader.FindFirstImage(f.Path)
+			if hasImages {
+				// Update cache for next time
+				m.explorerManager.UpdateCoverImage(f.Path, imagePath)
+			}
+		}
+
 		if hasImages {
 			entry.HasImages = true
+			// For thumbnails, we need to register the directory of the image itself
+			// but for consistency with the explorer view, we register the base folder
+			// and use the relative path.
 			dirHash := m.fileLoader.RegisterDirectory(f.Path)
 			if m.imgServer != nil && m.imgServer.Addr != "" {
 				baseURL := m.imgServer.Addr
 				relPath, _ := filepath.Rel(f.Path, imagePath)
+				// Ensure relPath uses forward slashes for URLs
+				relPath = filepath.ToSlash(relPath)
 				entry.ThumbnailURL = fmt.Sprintf("%s/thumbnails?did=%s&fid=%s", baseURL, dirHash, url.QueryEscape(relPath))
 			}
 		}
@@ -356,10 +371,9 @@ func (m *Module) ListDirectory(path string) ([]ExplorerEntry, error) {
 		var thumbnailURL string
 
 		if isDir {
-			// Use shallow search first (fast, only immediate directory) to avoid blocking UI
-			// Only check for images in immediate directory, not recursively
+			// Use optimized search (shallow first, then recursive)
 			var imagePath string
-			imagePath, hasImages = m.fileLoader.FindFirstImageShallow(fullPath)
+			imagePath, hasImages = m.fileLoader.FindFirstImage(fullPath)
 			hasSubdirs := m.fileLoader.HasSubdirectories(fullPath)
 
 			// FILTER: If no images and no subdirectories, skip this entry
@@ -375,6 +389,8 @@ func (m *Module) ListDirectory(path string) ([]ExplorerEntry, error) {
 				coverImage = imagePath
 				// Generate thumbnail URL using relative path for the file ID
 				relPath, _ := filepath.Rel(fullPath, imagePath)
+				// Ensure relPath uses forward slashes for URLs
+				relPath = filepath.ToSlash(relPath)
 				dirHash := m.fileLoader.RegisterDirectory(fullPath)
 				if m.imgServer != nil && m.imgServer.Addr != "" {
 					baseURL := m.imgServer.Addr
@@ -420,4 +436,13 @@ func (m *Module) ListDirectory(path string) ([]ExplorerEntry, error) {
 	})
 
 	return result, nil
+}
+
+// fileExists checks if a file exists and is not a directory
+func fileExists(path string) bool {
+	info, err := os.Stat(path)
+	if err != nil {
+		return false
+	}
+	return !info.IsDir()
 }

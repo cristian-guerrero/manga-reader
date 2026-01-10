@@ -7,6 +7,7 @@ import (
 	"manga-visor/internal/archiver"
 	"manga-visor/internal/fileloader"
 	"manga-visor/internal/persistence"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -275,19 +276,19 @@ func (m *Module) GetSubfolders(folderPath string) ([]persistence.FolderInfo, err
 		}
 
 		fullPath := filepath.Join(folderPath, entry.Name())
-		
+
 		// Use shallow scan instead of full recursive scan for performance
 		// Only check immediate directory for images, not recursively
 		imageCount := m.fileLoader.GetShallowImageCount(fullPath)
 		hasSubdirs := m.fileLoader.HasSubdirectories(fullPath)
-		
+
 		// Skip folders with no images and no subdirectories
 		if imageCount == 0 && !hasSubdirs {
 			continue
 		}
 
-		// Find first image for cover (shallow scan)
-		coverImage, hasImages := m.fileLoader.FindFirstImageShallow(fullPath)
+		// Find first image for cover (optimized search)
+		coverImage, hasImages := m.fileLoader.FindFirstImage(fullPath)
 		if !hasImages {
 			// If no images in immediate directory but has subdirs, still include it
 			// as it might be a series container
@@ -304,7 +305,9 @@ func (m *Module) GetSubfolders(folderPath string) ([]persistence.FolderInfo, err
 			baseURL := m.getBaseURL()
 			if baseURL != "" {
 				relPath, _ := filepath.Rel(fullPath, coverImage)
-				thumbnailURL = fmt.Sprintf("%s/thumbnails?did=%s&fid=%s", baseURL, dirHash, strings.ReplaceAll(relPath, " ", "%20"))
+				// Ensure relPath uses forward slashes for URLs
+				relPath = filepath.ToSlash(relPath)
+				thumbnailURL = fmt.Sprintf("%s/thumbnails?did=%s&fid=%s", baseURL, dirHash, url.QueryEscape(relPath))
 			}
 		}
 
