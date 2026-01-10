@@ -555,7 +555,7 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
                         currentPath: entry.path,
                         pathHistory: []
                     }
-                });
+                }, false);
             } else {
                 const ent = entry as ExplorerEntry;
                 if (ent.isDirectory) {
@@ -569,7 +569,7 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
                             currentPath: ent.path,
                             pathHistory: newPathHistory
                         }
-                    });
+                    }, false);
                 } else {
                     // Open file in viewer tab
                     if (currentPath) {
@@ -583,7 +583,7 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
                             shallow: hasSubdirs ? 'true' : 'false',
                             startIndex: clickedIndex >= 0 ? String(clickedIndex) : '0',
                             targetPath: ent.path
-                        }, ent.name);
+                        }, ent.name, {}, false);
                     }
                 }
             }

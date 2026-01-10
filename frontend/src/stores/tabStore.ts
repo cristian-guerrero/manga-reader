@@ -34,7 +34,7 @@ interface TabStoreState {
     activeTabId: string;
 
     // Actions
-    addTab: (page?: PageType, params?: Record<string, string>, title?: string, initialState?: Partial<Tab>) => string;
+    addTab: (page?: PageType, params?: Record<string, string>, title?: string, initialState?: Partial<Tab>, makeActive?: boolean) => string;
     closeTab: (id: string) => void;
     setActiveTab: (id: string | number) => void;
     updateActiveTab: (updates: Partial<Tab>) => void;
@@ -69,7 +69,7 @@ export const useTabStore = create<TabStoreState>((set, get) => ({
         return tabs.find(t => t.id === activeTabId) || tabs[0];
     },
 
-    addTab: (page = 'home', params = {}, title = 'New Tab', initialState = {}) => {
+    addTab: (page = 'home', params = {}, title = 'New Tab', initialState = {}, makeActive = true) => {
         const newTab: Tab = {
             id: Math.random().toString(36).substring(2, 9),
             title,
@@ -85,7 +85,7 @@ export const useTabStore = create<TabStoreState>((set, get) => ({
 
         set((state) => ({
             tabs: [...state.tabs, newTab],
-            activeTabId: newTab.id,
+            activeTabId: makeActive ? newTab.id : state.activeTabId,
         }));
 
         return newTab.id;

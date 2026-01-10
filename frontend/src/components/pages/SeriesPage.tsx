@@ -201,7 +201,7 @@ export function SeriesPage() {
         if (e.button === 1) { // Middle click
             e.preventDefault();
             e.stopPropagation();
-            addTab('series-details', { series: entry.path }, entry.name);
+            addTab('series-details', { series: entry.path }, entry.name, {}, false);
         }
     };
 

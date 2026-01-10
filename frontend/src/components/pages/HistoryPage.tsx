@@ -355,7 +355,7 @@ export function HistoryPage() {
         if (e.button === 1) { // Middle click
             e.preventDefault();
             e.stopPropagation();
-            addTab('viewer', { folder: entry.folderPath }, entry.folderName);
+            addTab('viewer', { folder: entry.folderPath }, entry.folderName, {}, false);
         }
     };
 

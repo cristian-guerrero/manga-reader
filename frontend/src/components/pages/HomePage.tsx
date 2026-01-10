@@ -278,7 +278,7 @@ export function HomePage() {
         if (e.button === 1) { // Middle click
             e.preventDefault();
             e.stopPropagation();
-            addTab('viewer', { folder: path }, name);
+            addTab('viewer', { folder: path }, name, {}, false);
         }
     };
 

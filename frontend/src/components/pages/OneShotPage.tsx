@@ -222,7 +222,7 @@ export function OneShotPage() {
         if (e.button === 1) { // Middle click
             e.preventDefault();
             e.stopPropagation();
-            addTab('viewer', { folder: folder.path }, folder.name);
+            addTab('viewer', { folder: folder.path }, folder.name, {}, false);
         }
     };
 
