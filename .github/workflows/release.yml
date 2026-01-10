@@ -88,6 +88,7 @@ jobs:
           if [ "${{ matrix.os }}" == "macos-latest" ]; then
             # Para macOS, solo subir el .zip (el .app está dentro)
             gh release upload ${{ github.ref_name }} build/bin/*.zip --clobber
+
           else
             # Para otras plataformas, subir todos los archivos
             gh release upload ${{ github.ref_name }} build/bin/* --clobber
