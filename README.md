@@ -22,6 +22,11 @@ A premium desktop manga viewer and downloader application built with Wails, Reac
 - **Auto-resume** - Automatically resume incomplete downloads on app restart.
 - **Auto-organization** - Downloads are automatically structured into folders for the Library.
 - **Series Support** - Automatic detection and chapter selection for multi-chapter series.
+- **Advanced Tab System** - Browser-like multi-tab experience.
+  - **Intuitive Navigation** - Open multiple folders or series in independent tabs.
+  - **Drag & Drop Reordering** - Organically organize your workspace by dragging tabs.
+  - **Middle-click Actions** - Quickly close tabs or open folders/series in new tabs via middle-click.
+  - **Smart Compression** - Tabs dynamically resize to fit any window width.
 
 ### 🖼️ Viewing Modes
 - **Vertical Scroll** - Infinite scroll with configurable width (30-100%).
@@ -58,6 +63,9 @@ A premium desktop manga viewer and downloader application built with Wails, Reac
   - **Image Preloading** - Configurable preloading of adjacent images (1-10 images).
   - **Smart Filtering** - Filter out small images (covers/logos) by minimum size threshold.
 - **Panic Button** - Customizable panic key (default: `ESC`) to instantly return to home screen.
+- **Tab Management Styles**:
+  - **Memory Saving Mode** - Automatically unmount inactive tabs to keep resource usage minimal.
+  - **Session Restoration** - "Continue where you left off" - optionally restore all open tabs on application restart.
 - **Responsive Navigation** - Optimized for both mouse and keyboard.
 - **Customizable Menu** - Show/hide sidebar navigation items to your preference.
 - **Auto-hide Controls** - Viewer controls automatically hide for immersive reading.
@@ -144,6 +152,7 @@ Data is stored locally in the user's home directory under `~/.manga-visor/` (on 
 - **`history.json`** - Detailed record of your reading progress (last page, completion status, scroll position).
 - **`library.json`** - Metadata and organization info for folders managed within the One Shot Library.
 - **`orders.json`** - Stores custom manual sorting and reordering of images within specific folders.
+- **`tabs.json`** - Persists the state, order, and history of all open tabs for session restoration.
 - **`series.json`** - Metadata and grouping information for manga series and their chapters.
 - **`settings.json`** - Application-wide preferences including:
   - Theme and accent colors
@@ -155,6 +164,7 @@ Data is stored locally in the user's home directory under `~/.manga-visor/` (on 
   - History enable/disable
   - Minimum image size filter
   - Panic key customization
+  - Tab behavior (Memory saving, Restore on start)
   - Menu item visibility
 
 ## 📝 License
