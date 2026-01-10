@@ -266,6 +266,8 @@ export interface ViewerState {
     zoomLevel: number;
     /** Scroll position (for vertical mode) */
     scrollPosition: number;
+    /** Current vertical width (zoom) for this manga */
+    verticalWidth?: number;
     /** Is currently restoring state (prevents premature saving) */
     isRestoring?: boolean;
 }

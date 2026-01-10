@@ -21,7 +21,9 @@ interface VerticalViewerProps {
     scrollSpeed?: number;
     onAutoScrollStateChange?: (isScrolling: boolean) => void;
     onRestorationComplete?: () => void;
-    onIndexChange?: (index: number) => void; // NEW: Callback when current index changes
+    onIndexChange?: (index: number) => void;
+    verticalWidth: number;
+    onWidthChange?: (width: number) => void;
 }
 
 export function VerticalViewer({
@@ -34,10 +36,11 @@ export function VerticalViewer({
     onAutoScrollStateChange,
     onRestorationComplete,
     onIndexChange,
+    verticalWidth,
+    onWidthChange,
 }: VerticalViewerProps) {
     const parentRef = useRef<HTMLDivElement>(null);
     const itemRefs = useRef<Record<number, HTMLDivElement | null>>({});
-    const { verticalWidth } = useSettingsStore();
 
     // Track which initialIndex was applied so we can re-apply if it changes
     const appliedInitialIndexRef = useRef<number>(-1);
@@ -271,10 +274,10 @@ export function VerticalViewer({
             const delta = e.deltaY * -0.05;
             const newWidth = Math.min(Math.max(verticalWidth + delta, 10), 100);
             if (Math.abs(newWidth - verticalWidth) > 0.5) {
-                useSettingsStore.getState().setVerticalWidth(Math.round(newWidth));
+                onWidthChange?.(Math.round(newWidth));
             }
         }
-    }, [verticalWidth]);
+    }, [verticalWidth, onWidthChange]);
 
     return (
         <div

@@ -278,8 +278,8 @@ func (a *App) GetViewerState(folderPath string) *persistence.ViewerState {
 	return a.viewerStatesManager.GetState(folderPath)
 }
 
-func (a *App) SaveViewerState(folderPath string, currentIndex int) error {
-	return a.viewerStatesManager.UpdateState(folderPath, currentIndex)
+func (a *App) SaveViewerState(folderPath string, currentIndex int, verticalWidth int) error {
+	return a.viewerStatesManager.UpdateState(folderPath, currentIndex, verticalWidth)
 }
 
 func (a *App) UpdateSettings(updates map[string]interface{}) error {

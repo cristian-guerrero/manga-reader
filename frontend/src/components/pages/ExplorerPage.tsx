@@ -323,7 +323,7 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
             // Fallback: Check global explorerState for returning from viewer/thumbnails
             const savedPath = explorerState?.currentPath;
             const mainPages = ['home', 'oneShot', 'series', 'history', 'download', 'settings'];
-            const isReturning = fromPage === 'viewer' || fromPage === 'thumbnails' || !mainPages.includes(previousPage || '');
+            const isReturning = fromPage === 'viewer' || fromPage === 'thumbnails' || (previousPage && !mainPages.includes(previousPage));
 
             if (isReturning && savedPath) {
                 isInitializingRef.current = true;

@@ -206,7 +206,13 @@ function App() {
                         }
                     } catch (error) {
                         console.error('[App] Failed to restore tabs:', error);
+                    } finally {
+                        // Mark as ready after restoration attempt (success or failure)
+                        useTabStore.getState().setReady(true);
                     }
+                } else {
+                    // Not restoring, mark as ready immediately
+                    useTabStore.getState().setReady(true);
                 }
 
                 // Restore last page after settings load (only if tabs weren't restored)
@@ -235,20 +241,12 @@ function App() {
         };
 
         // Save tabs REACTIVELY when store changes (not on a blind interval)
-        // But with a startup grace period to prevent saving during restoration
-        const STARTUP_GRACE_PERIOD_MS = 3000;
         let lastSavedTabsJson = '';
-        let appStartTime = Date.now();
         let saveTabsDebounce: ReturnType<typeof setTimeout> | null = null;
 
         const unsubscribeTabStore = useTabStore.subscribe((state) => {
             const { restoreTabs } = useSettingsStore.getState();
-            if (!restoreTabs) return;
-
-            // Skip saving during startup grace period
-            if (Date.now() - appStartTime < STARTUP_GRACE_PERIOD_MS) {
-                return;
-            }
+            if (!restoreTabs || !state.isReady) return; // Only save if ready
 
             // Debounce saving to avoid excessive backend calls
             if (saveTabsDebounce) {

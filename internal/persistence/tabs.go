@@ -8,10 +8,13 @@ const tabsFile = "tabs.json"
 
 // Tab represents a single tab
 type Tab struct {
-	ID     string            `json:"id"`
-	Title  string            `json:"title"`
-	Page   string            `json:"page"`
-	Params map[string]string `json:"params"`
+	ID                       string            `json:"id"`
+	Title                    string            `json:"title"`
+	Page                     string            `json:"page"`
+	FromPage                 string            `json:"fromPage"`
+	Params                   map[string]string `json:"params"`
+	ExplorerState            interface{}       `json:"explorerState"`
+	ThumbnailScrollPositions interface{}       `json:"thumbnailScrollPositions"`
 }
 
 // TabsData represents the saved tabs data

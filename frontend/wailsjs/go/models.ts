@@ -352,7 +352,10 @@ export namespace persistence {
 	    id: string;
 	    title: string;
 	    page: string;
+	    fromPage: string;
 	    params: Record<string, string>;
+	    explorerState: any;
+	    thumbnailScrollPositions: any;
 	
 	    static createFrom(source: any = {}) {
 	        return new Tab(source);
@@ -363,7 +366,10 @@ export namespace persistence {
 	        this.id = source["id"];
 	        this.title = source["title"];
 	        this.page = source["page"];
+	        this.fromPage = source["fromPage"];
 	        this.params = source["params"];
+	        this.explorerState = source["explorerState"];
+	        this.thumbnailScrollPositions = source["thumbnailScrollPositions"];
 	    }
 	}
 	export class TabsData {
@@ -401,6 +407,7 @@ export namespace persistence {
 	export class ViewerState {
 	    currentIndex: number;
 	    mode: string;
+	    verticalWidth: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new ViewerState(source);
@@ -410,6 +417,7 @@ export namespace persistence {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.currentIndex = source["currentIndex"];
 	        this.mode = source["mode"];
+	        this.verticalWidth = source["verticalWidth"];
 	    }
 	}
 

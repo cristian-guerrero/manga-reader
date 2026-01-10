@@ -190,8 +190,8 @@ export function SaveTabs(arg1) {
   return window['go']['main']['App']['SaveTabs'](arg1);
 }
 
-export function SaveViewerState(arg1, arg2) {
-  return window['go']['main']['App']['SaveViewerState'](arg1, arg2);
+export function SaveViewerState(arg1, arg2, arg3) {
+  return window['go']['main']['App']['SaveViewerState'](arg1, arg2, arg3);
 }
 
 export function SaveWindowState() {

@@ -119,6 +119,9 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
     const mode = isActive ? storeState.mode : (tabState?.mode || 'vertical');
     const isLoading = isActive ? storeState.isLoading : (tabState?.isLoading || false);
 
+    // Per-manga zoom state (defaults to settings level if store doesn't have it)
+    const currentVerticalWidth = isActive ? (storeState.verticalWidth || verticalWidth) : (tabState?.verticalWidth || verticalWidth);
+
     const [showControls, setShowControls] = useState(true);
     const [showWidthSlider, setShowWidthSlider] = useState(false);
     // Local state for resume position - avoids timing issues with store
@@ -142,9 +145,17 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
         totalChapters?: number;
     } | null>(null);
 
-    // Handler for index changes from VerticalViewer - saves to backend with debounce
-    const handleIndexChange = useCallback((newIndex: number) => {
+    // Unified handler for viewer state changes (index and zoom) - saves to backend with debounce
+    const handleViewerStateChange = useCallback((updates: { index?: number, width?: number }) => {
         if (!folderPath) return;
+
+        // Update local tab state immediately for UI responsiveness
+        if (updates.width !== undefined) {
+            updateTabState({ verticalWidth: updates.width });
+        }
+        if (updates.index !== undefined) {
+            updateTabState({ currentIndex: updates.index });
+        }
 
         // Clear existing timer
         if (saveViewerStateTimerRef.current) {
@@ -154,13 +165,17 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
         // Debounce save to backend
         saveViewerStateTimerRef.current = setTimeout(async () => {
             try {
+                const state = useViewerStore.getState();
+                const targetIndex = updates.index !== undefined ? updates.index : state.currentIndex;
+                const targetWidth = updates.width !== undefined ? updates.width : (state.verticalWidth || verticalWidth);
+
                 // @ts-ignore
-                await window.go?.main?.App?.SaveViewerState(folderPath, newIndex);
+                await window.go?.main?.App?.SaveViewerState(folderPath, targetIndex, targetWidth);
             } catch (error) {
                 console.error('[ViewerPage] Failed to save viewer state:', error);
             }
         }, 500);
-    }, [folderPath]);
+    }, [folderPath, verticalWidth, updateTabState]);
 
     // Cleanup debounce timer on unmount
     useEffect(() => {
@@ -297,6 +312,7 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
                         images: imgs,
                         currentIndex: targetIndex,
                         scrollPosition: targetScroll,
+                        verticalWidth: savedViewerState?.verticalWidth || 0, // 0 = use global
                         currentFolder: folderInfo as FolderInfo,
                         isLoading: false
                     });
@@ -528,7 +544,9 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
                             scrollSpeed={scrollSpeed}
                             onAutoScrollStateChange={setIsAutoScrolling}
                             onRestorationComplete={() => tabId && useTabStore.getState().completeRestoration(tabId)}
-                            onIndexChange={handleIndexChange}
+                            onIndexChange={(index) => handleViewerStateChange({ index })}
+                            verticalWidth={currentVerticalWidth}
+                            onWidthChange={(width) => handleViewerStateChange({ width })}
                         />
                     </div>
                 ) : (
@@ -710,12 +728,20 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
                                             border: '1px solid var(--color-border)',
                                         }}
                                     >
+                                        <div className="flex items-center justify-between mb-2">
+                                            <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+                                                {t('viewer.width')}
+                                            </span>
+                                            <span className="text-xs font-bold" style={{ color: 'var(--color-text-primary)' }}>
+                                                {currentVerticalWidth}%
+                                            </span>
+                                        </div>
                                         <input
                                             type="range"
                                             min="30"
                                             max="100"
-                                            value={verticalWidth}
-                                            onChange={(e) => setVerticalWidth(Number(e.target.value))}
+                                            value={currentVerticalWidth}
+                                            onChange={(e) => handleViewerStateChange({ width: Number(e.target.value) })}
                                             className="w-full"
                                         />
                                     </div>

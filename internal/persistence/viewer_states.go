@@ -8,8 +8,9 @@ const viewerStatesFile = "viewer_states.json"
 
 // ViewerState represents the saved state for a viewer at a specific folder
 type ViewerState struct {
-	CurrentIndex int    `json:"currentIndex"`
-	Mode         string `json:"mode"` // "vertical" or "lateral"
+	CurrentIndex  int    `json:"currentIndex"`
+	Mode          string `json:"mode"` // "vertical" or "lateral"
+	VerticalWidth int    `json:"verticalWidth"`
 }
 
 // ViewerStatesManager handles viewer states persistence
@@ -35,8 +36,9 @@ func (vsm *ViewerStatesManager) GetState(folderPath string) *ViewerState {
 	if state, ok := vsm.states[folderPath]; ok {
 		// Return a copy
 		return &ViewerState{
-			CurrentIndex: state.CurrentIndex,
-			Mode:         state.Mode,
+			CurrentIndex:  state.CurrentIndex,
+			Mode:          state.Mode,
+			VerticalWidth: state.VerticalWidth,
 		}
 	}
 
@@ -57,7 +59,7 @@ func (vsm *ViewerStatesManager) SaveState(folderPath string, state *ViewerState)
 }
 
 // UpdateState updates only the provided fields for a folder path
-func (vsm *ViewerStatesManager) UpdateState(folderPath string, currentIndex int) error {
+func (vsm *ViewerStatesManager) UpdateState(folderPath string, currentIndex int, verticalWidth int) error {
 	vsm.mu.Lock()
 
 	existing, ok := vsm.states[folderPath]
@@ -65,6 +67,9 @@ func (vsm *ViewerStatesManager) UpdateState(folderPath string, currentIndex int)
 		existing = &ViewerState{Mode: "vertical"}
 	}
 	existing.CurrentIndex = currentIndex
+	if verticalWidth > 0 {
+		existing.VerticalWidth = verticalWidth
+	}
 	vsm.states[folderPath] = existing
 
 	vsm.mu.Unlock()

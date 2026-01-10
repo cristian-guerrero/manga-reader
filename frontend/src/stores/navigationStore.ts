@@ -59,7 +59,7 @@ export const useNavigationStore = create<NavigationStoreState>((set, get) => ({
     previousPage: useTabStore.getState().getActiveTab().history.length > 1
         ? useTabStore.getState().getActiveTab().history[useTabStore.getState().getActiveTab().history.length - 2].page
         : null,
-    fromPage: null,
+    fromPage: useTabStore.getState().getActiveTab().fromPage || null,
     params: useTabStore.getState().getActiveTab().params,
     history: useTabStore.getState().getActiveTab().history,
     activeMenuPage: useTabStore.getState().getActiveTab().activeMenuPage,
@@ -100,6 +100,7 @@ export const useNavigationStore = create<NavigationStoreState>((set, get) => ({
 
         useTabStore.getState().updateActiveTab({
             page,
+            fromPage: activeTab.page, // Save previous page as fromPage
             params,
             history: newHistory,
             activeMenuPage,
@@ -245,6 +246,7 @@ useTabStore.subscribe((tabState) => {
             activeMenuPage: activeTab.activeMenuPage,
             thumbnailScrollPositions: activeTab.thumbnailScrollPositions,
             explorerState: activeTab.explorerState,
+            fromPage: activeTab.fromPage || null,
         });
     }
 });

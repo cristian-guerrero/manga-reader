@@ -54,6 +54,7 @@ const defaultViewerState = {
     isLoading: false,
     zoomLevel: 1,
     scrollPosition: 0,
+    verticalWidth: 0, // 0 means use global default
 };
 
 export const useViewerStore = create<ViewerStoreState>((set, get) => ({
@@ -65,6 +66,7 @@ export const useViewerStore = create<ViewerStoreState>((set, get) => ({
     isLoading: useTabStore.getState().getActiveTab().viewerState?.isLoading ?? defaultViewerState.isLoading,
     zoomLevel: useTabStore.getState().getActiveTab().viewerState?.zoomLevel ?? defaultViewerState.zoomLevel,
     scrollPosition: useTabStore.getState().getActiveTab().viewerState?.scrollPosition ?? defaultViewerState.scrollPosition,
+    verticalWidth: useTabStore.getState().getActiveTab().viewerState?.verticalWidth ?? defaultViewerState.verticalWidth,
 
     // Image navigation
     setCurrentIndex: (index) => {
@@ -167,6 +169,8 @@ export const useViewerStore = create<ViewerStoreState>((set, get) => ({
     _updateTabState: (updates: any) => {
         const activeTabId = useTabStore.getState().activeTabId;
         if (activeTabId) {
+            // Update local state immediately for responsiveness
+            set(updates);
             get()._updateTabStateById(activeTabId, updates);
         }
     },
@@ -197,6 +201,7 @@ useTabStore.subscribe((tabState) => {
             isLoading: viewerState.isLoading,
             zoomLevel: viewerState.zoomLevel,
             scrollPosition: viewerState.scrollPosition,
+            verticalWidth: viewerState.verticalWidth,
         });
     }
 });

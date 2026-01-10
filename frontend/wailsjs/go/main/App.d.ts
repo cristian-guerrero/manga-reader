@@ -99,7 +99,7 @@ export function SaveSettings(arg1:persistence.Settings):Promise<void>;
 
 export function SaveTabs(arg1:persistence.TabsData):Promise<void>;
 
-export function SaveViewerState(arg1:string,arg2:number):Promise<void>;
+export function SaveViewerState(arg1:string,arg2:number,arg3:number):Promise<void>;
 
 export function SaveWindowState():Promise<void>;
 

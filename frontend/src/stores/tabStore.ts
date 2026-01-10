@@ -10,6 +10,7 @@ export interface Tab {
     id: string;
     title: string;
     page: PageType;
+    fromPage?: PageType | null;
     params: Record<string, string>;
     history: HistoryEntry[];
     activeMenuPage: PageType | null;
@@ -26,6 +27,7 @@ export interface Tab {
         isLoading: boolean;
         zoomLevel: number;
         scrollPosition: number;
+        verticalWidth?: number;
     } | null;
     restored?: boolean;
 }
@@ -33,6 +35,7 @@ export interface Tab {
 interface TabStoreState {
     tabs: Tab[];
     activeTabId: string;
+    isReady: boolean; // Flag to prevent saving during restoration
 
     // Actions
     addTab: (page?: PageType, params?: Record<string, string>, title?: string, initialState?: Partial<Tab>, makeActive?: boolean) => string;
@@ -49,15 +52,39 @@ interface TabStoreState {
     saveTabs: () => string;
     completeRestoration: (id: string) => void;
     restoreTabs: (savedTabs: string) => void;
+    setReady: (ready: boolean) => void;
     // New backend format methods
-    saveTabsForBackend: () => { activeTabId: string; tabs: Array<{ id: string; title: string; page: string; params: Record<string, string> }> };
-    restoreTabsFromBackend: (data: { activeTabId: string; tabs: Array<{ id: string; title: string; page: string; params: Record<string, string> }> }) => void;
+    saveTabsForBackend: () => {
+        activeTabId: string;
+        tabs: Array<{
+            id: string;
+            title: string;
+            page: string;
+            fromPage?: PageType | null;
+            params: Record<string, string>;
+            explorerState?: any;
+            thumbnailScrollPositions?: Record<string, number>;
+        }>
+    };
+    restoreTabsFromBackend: (data: {
+        activeTabId: string;
+        tabs: Array<{
+            id: string;
+            title: string;
+            page: string;
+            fromPage?: PageType | null;
+            params: Record<string, string>;
+            explorerState?: any;
+            thumbnailScrollPositions?: Record<string, number>;
+        }>
+    }) => void;
 }
 
 const createInitialTab = (): Tab => ({
     id: Math.random().toString(36).substring(2, 9),
     title: 'Home',
     page: 'home',
+    fromPage: null,
     params: {},
     history: [{ page: 'home', params: {} }],
     activeMenuPage: 'home',
@@ -68,7 +95,9 @@ const createInitialTab = (): Tab => ({
 
 export const useTabStore = create<TabStoreState>((set, get) => ({
     tabs: [createInitialTab()],
-    activeTabId: '', // Will be set in the first tab creation or manually
+    activeTabId: '',
+    isReady: false,
+    // Will be set in the first tab creation or manually
 
     getActiveTab: () => {
         const { tabs, activeTabId } = get();
@@ -144,6 +173,8 @@ export const useTabStore = create<TabStoreState>((set, get) => ({
         }));
     },
 
+    setReady: (isReady) => set({ isReady }),
+
     reorderTabs: (oldIndex, newIndex) => {
         set((state) => {
             const newTabs = [...state.tabs];
@@ -168,6 +199,7 @@ export const useTabStore = create<TabStoreState>((set, get) => ({
                 currentFolder: tab.viewerState.currentFolder,
                 currentIndex: tab.viewerState.currentIndex,
                 mode: tab.viewerState.mode,
+                verticalWidth: tab.viewerState.verticalWidth,
             } : null,
             thumbnailScrollPositions: tab.thumbnailScrollPositions,
         }));
@@ -223,7 +255,10 @@ export const useTabStore = create<TabStoreState>((set, get) => ({
                 id: tab.id,
                 title: tab.title,
                 page: tab.page,
-                params: tab.params
+                fromPage: tab.fromPage,
+                params: tab.params,
+                explorerState: tab.explorerState,
+                thumbnailScrollPositions: tab.thumbnailScrollPositions
             }))
         };
     },
@@ -236,18 +271,20 @@ export const useTabStore = create<TabStoreState>((set, get) => ({
             id: saved.id || Math.random().toString(36).substring(2, 9),
             title: saved.title || 'Home',
             page: saved.page as PageType || 'home',
+            fromPage: saved.fromPage || null,
             params: saved.params || {},
             history: [{ page: saved.page as PageType || 'home', params: saved.params || {} }],
             activeMenuPage: saved.page as PageType || 'home',
-            explorerState: null,
-            thumbnailScrollPositions: {},
+            explorerState: saved.explorerState || null,
+            thumbnailScrollPositions: saved.thumbnailScrollPositions || {},
             viewerState: null,
             restored: true, // Mark as restored so ViewerPage loads state from backend
         }));
 
         set({
             tabs: restoredTabs,
-            activeTabId: data.activeTabId || restoredTabs[0].id
+            activeTabId: data.activeTabId || restoredTabs[0].id,
+            isReady: false // Still not ready until App says so
         });
         console.log('[TabStore] Restored', restoredTabs.length, 'tabs from backend');
     },
