@@ -99,10 +99,10 @@ func DefaultSettings() *Settings {
 			"download": true,
 		},
 		DownloadPath:         "", // empty means default
-		ClipboardAutoMonitor: false,
+		ClipboardAutoMonitor: true,
 		AutoResumeDownloads:  false,
-		TabMemorySaving:      true,
-		RestoreTabs:          false,
+		TabMemorySaving:      false,
+		RestoreTabs:          true,
 		SavedTabs:            "",
 	}
 }

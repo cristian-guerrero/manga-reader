@@ -1,4 +1,6 @@
 import { useTabStore } from '../../stores/tabStore';
+import { useSettingsStore } from '../../stores/settingsStore';
+import { getThemeById, darkTheme } from '../../themes';
 import { useTranslation } from 'react-i18next';
 import { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import {
@@ -143,6 +145,12 @@ function SortableTab({
 export function TabList() {
     const { t } = useTranslation();
     const { tabs, activeTabId, setActiveTab, closeTab, addTab, reorderTabs } = useTabStore();
+    const { theme: themeId } = useSettingsStore();
+
+    // Determine current theme properties
+    const currentTheme = useMemo(() => getThemeById(themeId) || darkTheme, [themeId]);
+    const isDark = currentTheme.isDark;
+
     const containerRef = useRef<HTMLDivElement>(null);
     const [tabWidth, setTabWidth] = useState(180);
 
@@ -258,7 +266,10 @@ export function TabList() {
             {/* Add Tab Button */}
             <button
                 onMouseDown={handleAddTab}
-                className="flex items-center justify-center min-w-[26px] h-[26px] rounded-md hover:bg-white/10 transition-all ml-1 text-white/50 hover:text-white flex-shrink-0"
+                className={`flex items-center justify-center min-w-[26px] h-[26px] rounded-md transition-all ml-1 flex-shrink-0 ${isDark
+                    ? 'hover:bg-white/10 text-white/50 hover:text-white'
+                    : 'hover:bg-black/5 text-[var(--color-accent)]'
+                    }`}
                 title={t('common.addTab') || "New Tab"}
             >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
