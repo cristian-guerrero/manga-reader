@@ -61,7 +61,8 @@ const ImageItem = React.memo(({
                     src={image.imageUrl || (image.path ? `/images?path=${encodeURIComponent(image.path)}` : '')}
                     alt={image.name}
                     loading="lazy"
-                    className="w-full h-auto shadow-2xl rounded-lg bg-zinc-900/50"
+                    className="w-full h-auto shadow-2xl rounded-lg bg-zinc-900"
+                    style={{ minHeight: '200px' }} // Ensure it has some height even if empty
                     onLoad={(e) => {
                         const parent = e.currentTarget.parentElement?.parentElement;
                         if (parent) parent.style.minHeight = '0';
@@ -189,6 +190,9 @@ export const VerticalViewer = React.memo(({
                     console.log(`[VerticalViewer] Scrolling to index: ${initialIndex}`);
                     target.scrollIntoView({ block: 'start', behavior: 'instant' });
                     appliedInitialIndexRef.current = initialIndex;
+                    onRestorationComplete?.();
+                } else {
+                    console.warn(`[VerticalViewer] Target for index ${initialIndex} not found in refs`);
                     onRestorationComplete?.();
                 }
             } else {

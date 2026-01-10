@@ -154,6 +154,20 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
         totalChapters?: number;
     } | null>(null);
 
+    // Prioritize viewer by pausing background thumbnail generation when active
+    useEffect(() => {
+        if (isActive && folderPath) {
+            console.log(`[ViewerPage] Pausing thumbnails for ${folderPath}`);
+            // @ts-ignore
+            window.go?.main?.App?.SetThumbnailsPaused(true);
+            return () => {
+                console.log(`[ViewerPage] Resuming thumbnails`);
+                // @ts-ignore
+                window.go?.main?.App?.SetThumbnailsPaused(false);
+            };
+        }
+    }, [isActive, folderPath]);
+
     // Unified handler for viewer state changes (index and zoom) - saves to backend with debounce
     const handleViewerStateChange = useCallback((updates: { index?: number, width?: number }) => {
         if (!folderPath) return;
@@ -222,6 +236,32 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
     useEffect(() => {
         if (!folderPath) return;
         if (!isActive) return; // Don't load if tab is not active - prevents content bleeding between tabs
+
+        // If we already have images for this folder in the current tab, don't reload everything
+        // unless it's an explicit navigation refresh (handled via resetKey)
+        if (images.length > 0 && currentFolder?.path === folderPath) {
+            console.log(`[ViewerPage] Images already present for ${folderPath}, checking for seeks`);
+
+            // Still process potential "seeks" from navigation params (e.g. clicking a different thumbnail)
+            const activeTab = useTabStore.getState().tabs.find(t => t.id === tabId);
+            const tabParams = activeTab?.params || {};
+            const targetPath = tabParams.targetPath;
+            const explicitStartIndex = tabParams.startIndex ? parseInt(tabParams.startIndex, 10) : -1;
+
+            let targetIndex = -1;
+            if (targetPath) {
+                targetIndex = images.findIndex(img => img.path === targetPath);
+            } else if (explicitStartIndex >= 0) {
+                targetIndex = explicitStartIndex;
+            }
+
+            if (targetIndex >= 0 && targetIndex !== currentIndex) {
+                console.log(`[ViewerPage] Seeking to ${targetIndex} via params (skipping reload)`);
+                setResumeIndex(targetIndex);
+                updateTabState({ currentIndex: targetIndex });
+            }
+            return;
+        }
 
         const loadFolder = async () => {
             // Optimization: If we already have the state for this folder in the current tab, skip loading
@@ -299,24 +339,24 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
                     const targetPath = tabParams.targetPath;
                     const explicitStartIndex = tabParams.startIndex ? parseInt(tabParams.startIndex, 10) : -1;
 
-                    // PRIORITIZATION LOGIC (SIMPLIFIED):
-                    // 1. savedViewerState from backend (primary source - indexed by folder path)
-                    // 2. targetPath specified in navigation params
-                    // 3. explicitStartIndex in navigation params
-                    // 4. history entry (legacy fallback)
+                    // PRIORITIZATION LOGIC:
+                    // 1. targetPath specified in navigation params (Explicit user click)
+                    // 2. explicitStartIndex in navigation params (Explicit user click)
+                    // 3. savedViewerState from backend (Resume from last session)
+                    // 4. history entry (Legacy fallback)
 
-                    if (savedViewerState && savedViewerState.currentIndex > 0 && savedViewerState.currentIndex < imgs.length) {
-                        targetIndex = savedViewerState.currentIndex;
-                        console.log(`[ViewerPage] Resuming from BACKEND state: index=${targetIndex}`);
-                    } else if (targetPath) {
+                    if (targetPath) {
                         const pathIndex = imgs.findIndex(img => img.path === targetPath);
                         if (pathIndex >= 0) {
                             targetIndex = pathIndex;
-                            console.log(`[ViewerPage] Starting from target path index: ${targetIndex} (${targetPath})`);
+                            console.log(`[ViewerPage] Starting from TARGET PATH: ${targetIndex} (${targetPath})`);
                         }
                     } else if (explicitStartIndex >= 0 && explicitStartIndex < imgs.length) {
                         targetIndex = explicitStartIndex;
-                        console.log(`[ViewerPage] Starting from requested index: ${targetIndex}`);
+                        console.log(`[ViewerPage] Starting from EXPLICIT INDEX: ${targetIndex}`);
+                    } else if (savedViewerState && savedViewerState.currentIndex > 0 && savedViewerState.currentIndex < imgs.length) {
+                        targetIndex = savedViewerState.currentIndex;
+                        console.log(`[ViewerPage] Resuming from BACKEND state: index=${targetIndex}`);
                     } else if (historyEntry && historyEntry.lastImageIndex > 0 && historyEntry.lastImageIndex < imgs.length) {
                         // Fallback to history if no saved state
                         targetIndex = historyEntry.lastImageIndex;
@@ -361,8 +401,7 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
         };
 
         loadFolder();
-        // loadFolder(); // Removed duplicate call
-    }, [folderPath, isActive]); // Added isActive to trigger loading when tab becomes active
+    }, [folderPath, isActive, resetKey, tabId]); // Added resetKey and tabId for robust re-triggers
 
 
     // Initial history save when folder is loaded

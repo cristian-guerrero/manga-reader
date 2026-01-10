@@ -653,6 +653,12 @@ func (a *App) ClearThumbnailCache() error {
 	return a.thumbGen.ClearCache()
 }
 
+func (a *App) SetThumbnailsPaused(paused bool) {
+	if a.thumbGen != nil {
+		a.thumbGen.SetPaused(paused)
+	}
+}
+
 // =============================================================================
 // Downloader Methods (Delegated)
 // =============================================================================
