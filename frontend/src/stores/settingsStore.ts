@@ -13,6 +13,7 @@ interface SettingsState extends Settings {
     setAccentColor: (color: string) => void;
     setViewerMode: (mode: Settings['viewerMode']) => void;
     setVerticalWidth: (width: number) => void;
+    setScrollSpeed: (speed: number) => void;
     setLateralMode: (mode: Settings['lateralMode']) => void;
     setReadingDirection: (direction: Settings['readingDirection']) => void;
     setPanicKey: (key: string) => void;
@@ -91,6 +92,12 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         const clampedWidth = Math.min(100, Math.max(10, verticalWidth));
         set({ verticalWidth: clampedWidth });
         get().updateBackend('verticalWidth', clampedWidth);
+    },
+
+    setScrollSpeed: (scrollSpeed) => {
+        const clampedSpeed = Math.min(100, Math.max(0, scrollSpeed));
+        set({ scrollSpeed: clampedSpeed });
+        get().updateBackend('scrollSpeed', clampedSpeed);
     },
 
     setLateralMode: (lateralMode) => {
@@ -195,7 +202,23 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     loadSettings: async () => {
         try {
             // @ts-ignore
-            const settings = await window.go?.main?.App?.GetSettings();
+            const app = window.go?.main?.App;
+            if (!app?.GetSettings) {
+                console.warn('[SettingsStore] Bindings not available yet, using defaults');
+                // Apply default theme if bindings not available
+                const theme = getThemeById(DEFAULT_SETTINGS.theme) || darkTheme;
+                applyTheme(theme);
+                return;
+            }
+
+            // Add timeout to prevent hanging
+            const timeoutPromise = new Promise((_, reject) => {
+                setTimeout(() => reject(new Error('Timeout loading settings')), 5000); // 5 second timeout
+            });
+
+            const settingsPromise = app.GetSettings();
+            const settings = await Promise.race([settingsPromise, timeoutPromise]) as any;
+
             if (settings) {
                 set(settings);
 
@@ -203,9 +226,16 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
                 const theme = getThemeById(settings.theme) || darkTheme;
                 const accent = settings.themeAccents?.[settings.theme];
                 applyTheme(theme, accent);
+            } else {
+                // If settings is null/undefined, use defaults
+                const theme = getThemeById(DEFAULT_SETTINGS.theme) || darkTheme;
+                applyTheme(theme);
             }
         } catch (error) {
-            console.error('Failed to load settings:', error);
+            console.error('[SettingsStore] Failed to load settings:', error);
+            // Apply default theme on error
+            const theme = getThemeById(DEFAULT_SETTINGS.theme) || darkTheme;
+            applyTheme(theme);
         }
     },
 

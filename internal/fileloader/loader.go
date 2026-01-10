@@ -149,6 +149,23 @@ func (fl *FileLoader) GetImages(folderPath string) ([]ImageInfo, error) {
 	return images, nil
 }
 
+// FindFirstImageShallow searches for the first image only in the immediate directory (non-recursive)
+func (fl *FileLoader) FindFirstImageShallow(folderPath string) (string, bool) {
+	entries, err := os.ReadDir(folderPath)
+	if err != nil {
+		return "", false
+	}
+
+	// Look for images in the current folder only (fast, non-recursive)
+	for _, entry := range entries {
+		if !entry.IsDir() && fl.IsSupportedImage(entry.Name()) {
+			return filepath.Join(folderPath, entry.Name()), true
+		}
+	}
+
+	return "", false
+}
+
 // FindFirstImage recursively searches for the first image in a directory and stops immediately
 func (fl *FileLoader) FindFirstImage(folderPath string) (string, bool) {
 	var foundPath string
@@ -194,6 +211,61 @@ func (fl *FileLoader) GetShallowImageCount(folderPath string) int {
 		}
 	}
 	return count
+}
+
+// GetImagesShallow returns a list of images in the specified folder (non-recursive, only immediate directory)
+func (fl *FileLoader) GetImagesShallow(folderPath string) ([]ImageInfo, error) {
+	var images []ImageInfo
+	var imageFiles []struct {
+		path string
+		name string
+		info os.FileInfo
+	}
+
+	entries, err := os.ReadDir(folderPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read directory: %w", err)
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		if fl.IsSupportedImage(entry.Name()) {
+			info, err := entry.Info()
+			if err != nil {
+				continue
+			}
+			fullPath := filepath.Join(folderPath, entry.Name())
+			imageFiles = append(imageFiles, struct {
+				path string
+				name string
+				info os.FileInfo
+			}{path: fullPath, name: entry.Name(), info: info})
+		}
+	}
+
+	fmt.Printf("[FileLoader] GetImagesShallow: Found %d image files in %s\n", len(imageFiles), folderPath)
+
+	// Sort by natural order
+	sort.Slice(imageFiles, func(i, j int) bool {
+		return naturalLess(imageFiles[i].name, imageFiles[j].name)
+	})
+
+	// Build result
+	for i, file := range imageFiles {
+		ext := strings.ToLower(filepath.Ext(file.name))
+		images = append(images, ImageInfo{
+			Path:      file.path,
+			Name:      file.name,
+			Extension: strings.TrimPrefix(ext, "."),
+			Size:      file.info.Size(),
+			Index:     i,
+			ModTime:   file.info.ModTime().UnixMilli(),
+		})
+	}
+
+	return images, nil
 }
 
 // HasSubdirectories checks if a directory contains any subdirectories

@@ -9,10 +9,11 @@ const explorerFile = "explorer.json"
 
 // BaseFolder represents a root folder added to the explorer
 type BaseFolder struct {
-	Path      string `json:"path"`
-	AddedAt   string `json:"addedAt"`
-	Name      string `json:"name"`
-	IsVisible bool   `json:"isVisible"` // To optionally hide it without deleting
+	Path       string `json:"path"`
+	AddedAt    string `json:"addedAt"`
+	Name       string `json:"name"`
+	IsVisible  bool   `json:"isVisible"`  // To optionally hide it without deleting
+	CoverImage string `json:"coverImage"` // Cached cover image path
 }
 
 // ExplorerManager handles persistence for explorer base folders
@@ -80,6 +81,21 @@ func (em *ExplorerManager) Remove(path string) error {
 		if f.Path == path {
 			// Remove element
 			em.folders = append(em.folders[:i], em.folders[i+1:]...)
+			return saveJSON(explorerFile, em.folders)
+		}
+	}
+
+	return fmt.Errorf("folder not found")
+}
+
+// UpdateCoverImage updates the cached cover image for a base folder
+func (em *ExplorerManager) UpdateCoverImage(path string, coverImage string) error {
+	em.mu.Lock()
+	defer em.mu.Unlock()
+
+	for i, f := range em.folders {
+		if f.Path == path {
+			em.folders[i].CoverImage = coverImage
 			return saveJSON(explorerFile, em.folders)
 		}
 	}

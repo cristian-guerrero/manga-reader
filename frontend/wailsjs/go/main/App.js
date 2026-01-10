@@ -74,6 +74,10 @@ export function GetFolderInfo(arg1) {
   return window['go']['main']['App']['GetFolderInfo'](arg1);
 }
 
+export function GetFolderInfoShallow(arg1) {
+  return window['go']['main']['App']['GetFolderInfoShallow'](arg1);
+}
+
 export function GetHistory() {
   return window['go']['main']['App']['GetHistory']();
 }
@@ -88,6 +92,10 @@ export function GetImageOrder(arg1) {
 
 export function GetImages(arg1) {
   return window['go']['main']['App']['GetImages'](arg1);
+}
+
+export function GetImagesShallow(arg1) {
+  return window['go']['main']['App']['GetImagesShallow'](arg1);
 }
 
 export function GetLibrary() {
@@ -156,6 +164,10 @@ export function ResetImageOrder(arg1) {
 
 export function ResolveFolder(arg1) {
   return window['go']['main']['App']['ResolveFolder'](arg1);
+}
+
+export function ResumeIncompleteDownloads(arg1) {
+  return window['go']['main']['App']['ResumeIncompleteDownloads'](arg1);
 }
 
 export function SaveImageOrder(arg1, arg2, arg3) {

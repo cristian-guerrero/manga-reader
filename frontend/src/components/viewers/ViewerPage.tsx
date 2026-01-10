@@ -70,6 +70,19 @@ const SkipBackIcon = () => (
     </svg>
 );
 
+const PlayIcon = () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <polygon points="5 3 19 12 5 21 5 3" />
+    </svg>
+);
+
+const PauseIcon = () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <rect x="6" y="4" width="4" height="16" />
+        <rect x="14" y="4" width="4" height="16" />
+    </svg>
+);
+
 interface ViewerPageProps {
     folderPath?: string;
 }
@@ -77,7 +90,7 @@ interface ViewerPageProps {
 export function ViewerPage({ folderPath }: ViewerPageProps) {
     const { t } = useTranslation();
     const { goBack, navigate } = useNavigationStore();
-    const { viewerMode, setViewerMode, verticalWidth, setVerticalWidth } = useSettingsStore();
+    const { viewerMode, setViewerMode, verticalWidth, setVerticalWidth, scrollSpeed, setScrollSpeed } = useSettingsStore();
     const {
         currentFolder,
         setCurrentFolder,
@@ -97,6 +110,9 @@ export function ViewerPage({ folderPath }: ViewerPageProps) {
     const [resumeScrollPos, setResumeScrollPos] = useState(0);
     const [resetKey, setResetKey] = useState(0);
     const controlsTimeoutRef = useRef<any>(null);
+    // Auto-scroll state
+    const [isAutoScrolling, setIsAutoScrolling] = useState(false);
+    const [showSpeedSlider, setShowSpeedSlider] = useState(false);
     // Session flag state that can be updated during component reuse
     const [isNoHistorySession, setIsNoHistorySession] = useState(useNavigationStore.getState().params.noHistory === 'true');
     // Chapter navigation state for series
@@ -127,10 +143,19 @@ export function ViewerPage({ folderPath }: ViewerPageProps) {
 
             setIsLoading(true);
             try {
+                // Check if we should use shallow loading (non-recursive)
+                const navParams = useNavigationStore.getState().params;
+                const useShallow = navParams && navParams.shallow === 'true';
+
                 // @ts-ignore
-                const folderInfo = await window.go?.main?.App?.GetFolderInfo(folderPath);
+                const folderInfo = useShallow
+                    ? await window.go?.main?.App?.GetFolderInfoShallow(folderPath)
+                    : await window.go?.main?.App?.GetFolderInfo(folderPath);
+
                 // @ts-ignore
-                const imageList = await window.go?.main?.App?.GetImages(folderPath);
+                const imageList = useShallow
+                    ? await window.go?.main?.App?.GetImagesShallow(folderPath)
+                    : await window.go?.main?.App?.GetImages(folderPath);
 
                 // Fetch history for this folder
                 // @ts-ignore
@@ -148,11 +173,18 @@ export function ViewerPage({ folderPath }: ViewerPageProps) {
                     let targetIndex = 0;
                     let targetScroll = 0;
 
-                    // Check for explicit start index from navigation params (e.g. from Thumbnails)
+                    // Check for targetPath or explicit start index from navigation params
                     const navParams = useNavigationStore.getState().params;
+                    const targetPath = navParams?.targetPath;
                     const explicitStartIndex = navParams && navParams.startIndex ? parseInt(navParams.startIndex, 10) : -1;
 
-                    if (explicitStartIndex >= 0 && explicitStartIndex < imgs.length) {
+                    if (targetPath) {
+                        const pathIndex = imgs.findIndex(img => img.path === targetPath);
+                        if (pathIndex >= 0) {
+                            targetIndex = pathIndex;
+                            console.log(`[ViewerPage] Starting from target path index: ${targetIndex} (${targetPath})`);
+                        }
+                    } else if (explicitStartIndex >= 0 && explicitStartIndex < imgs.length) {
                         targetIndex = explicitStartIndex;
                         console.log(`[ViewerPage] Starting from requested index: ${targetIndex}`);
                     } else if (historyEntry) {
@@ -392,6 +424,9 @@ export function ViewerPage({ folderPath }: ViewerPageProps) {
                             initialScrollPosition={resumeScrollPos}
                             showControls={showControls}
                             hasChapterButtons={hasChapterButtons}
+                            isAutoScrolling={isAutoScrolling}
+                            scrollSpeed={scrollSpeed}
+                            onAutoScrollStateChange={setIsAutoScrolling}
                         />
                     </div>
                 ) : (
@@ -420,7 +455,7 @@ export function ViewerPage({ folderPath }: ViewerPageProps) {
                 }}
             >
                 {/* Left side */}
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-1 min-w-0">
                     <div className="relative z-20">
                         <Tooltip content={t('common.back')} placement="bottom">
                             <button
@@ -431,7 +466,7 @@ export function ViewerPage({ folderPath }: ViewerPageProps) {
                             </button>
                         </Tooltip>
                     </div>
-                    <div className="flex flex-col">
+                    <div className="flex flex-col min-w-0">
                         <span
                             className="text-sm font-medium truncate max-w-xs"
                             style={{ color: 'var(--color-text-primary)' }}
@@ -449,8 +484,72 @@ export function ViewerPage({ folderPath }: ViewerPageProps) {
                     </div>
                 </div>
 
+                {/* Center - Auto-scroll controls (vertical mode only) */}
+                {mode === 'vertical' && (
+                    <div className="flex items-center gap-2 flex-shrink-0 px-4">
+                        {/* Play/Pause button */}
+                        <div className="relative z-20">
+                            <Tooltip content={isAutoScrolling ? t('viewer.pause') : t('viewer.play')} placement="bottom">
+                                <button
+                                    onClick={() => setIsAutoScrolling(!isAutoScrolling)}
+                                    className="btn-icon btn-ghost hover:scale-110 active:scale-90 transition-transform"
+                                >
+                                    {isAutoScrolling ? <PauseIcon /> : <PlayIcon />}
+                                </button>
+                            </Tooltip>
+                        </div>
+
+                        {/* Speed slider */}
+                        <div className="relative z-20">
+                            <div className="relative">
+                                <Tooltip content={t('viewer.scrollSpeed')} placement="bottom">
+                                    <button
+                                        onClick={() => setShowSpeedSlider(!showSpeedSlider)}
+                                        className="btn-icon btn-ghost hover:scale-110 active:scale-90 transition-transform"
+                                    >
+                                        <span className="text-xs font-bold">{scrollSpeed}</span>
+                                    </button>
+                                </Tooltip>
+
+                                {showSpeedSlider && (
+                                    <div
+                                        className="absolute top-full left-1/2 -translate-x-1/2 mt-2 p-4 rounded-lg animate-slide-down w-64 z-50"
+                                        style={{
+                                            backgroundColor: 'var(--color-surface-elevated)',
+                                            border: '1px solid var(--color-border)',
+                                        }}
+                                        onClick={(e) => e.stopPropagation()}
+                                    >
+                                        <div className="flex items-center justify-between mb-2">
+                                            <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+                                                {t('viewer.scrollSpeed')}
+                                            </span>
+                                            <span className="text-xs font-bold" style={{ color: 'var(--color-text-primary)' }}>
+                                                {scrollSpeed}
+                                            </span>
+                                        </div>
+                                        <input
+                                            type="range"
+                                            min="0"
+                                            max="100"
+                                            value={scrollSpeed}
+                                            onChange={(e) => setScrollSpeed(Number(e.target.value))}
+                                            className="w-full"
+                                        />
+                                        <div className="flex justify-between mt-2 text-[10px]" style={{ color: 'var(--color-text-tertiary)' }}>
+                                            <span>{t('viewer.slow')}</span>
+                                            <span>{t('viewer.medium')}</span>
+                                            <span>{t('viewer.fast')}</span>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {/* Right side */}
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-1 justify-end">
                     {/* Thumbnails */}
                     <div className="relative z-20">
                         <Tooltip content={t('viewer.thumbnails') || 'Thumbnails'} placement="bottom">
@@ -523,6 +622,14 @@ export function ViewerPage({ folderPath }: ViewerPageProps) {
                     )}
                 </div>
             </div>
+
+            {/* Click outside handler for speed slider */}
+            {showSpeedSlider && (
+                <div
+                    className="fixed inset-0 z-40"
+                    onClick={() => setShowSpeedSlider(false)}
+                />
+            )}
 
             {/* Bottom chapter navigation bar */}
             {chapterNav && (chapterNav.prevChapter || chapterNav.nextChapter) && (

@@ -68,7 +68,14 @@
         "imageInfo": "Image Info",
         "prevChapter": "Previous Chapter",
         "nextChapter": "Next Chapter",
-        "goToStart": "Go to Start"
+        "goToStart": "Go to Start",
+        "autoScroll": "Auto Scroll",
+        "play": "Play",
+        "pause": "Pause",
+        "scrollSpeed": "Scroll Speed",
+        "slow": "Slow",
+        "medium": "Medium",
+        "fast": "Fast"
     },
     "oneShot": {
         "title": "One shot",
@@ -152,6 +159,9 @@
         "addedToSeries": "Series added to library",
         "alreadyDownloaded": "Already downloaded",
         "allAlreadyDownloaded": "All chapters already downloaded",
+        "autoResume": "Auto-resume downloads",
+        "resume": "Resume",
+        "resumed": "Download resumed",
         "pastedFromClipboard": "URL pasted from clipboard",
         "startedFromClipboard": "Download started from clipboard",
         "seriesDetectedClipboard": "Series detected. Go to Downloads page to select chapters",
@@ -221,7 +231,10 @@
         "file": "File",
         "images": "images",
         "noFoldersAdded": "No folders added yet",
-        "addFolderToStart": "Add a base folder to start exploring"
+        "addFolderToStart": "Add a base folder to start exploring",
+        "searchPlaceholder": "Search by name...",
+        "noResultsFound": "No results found",
+        "tryDifferentSearch": "Try a different search term"
     },
     "themes": {
         "dark": "Dark",

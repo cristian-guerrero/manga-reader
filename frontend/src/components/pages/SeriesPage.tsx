@@ -2,7 +2,7 @@
  * SeriesPage - Series browser
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigationStore } from '../../stores/navigationStore';
 import { EventsOn, EventsOff } from '../../../wailsjs/runtime';
@@ -12,6 +12,7 @@ import { GridItem } from '../common/GridItem';
 import { GridContainer } from '../common/GridContainer';
 import { SearchBar } from '../common/SearchBar';
 import { LibraryCard } from '../common/LibraryCard';
+import { useThumbnails } from '../../hooks/useThumbnails';
 
 // Icons
 const SeriesIcon = () => (
@@ -56,9 +57,10 @@ export function SeriesPage() {
     const { navigate } = useNavigationStore();
     const [series, setSeries] = useState<SeriesEntry[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [thumbnails, setThumbnails] = useState<Record<string, string>>({});
+    const { thumbnails, loadThumbnails, initializeThumbnails } = useThumbnails(10);
     const [history, setHistory] = useState<any[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
+    const isMountedRef = useRef(true);
 
     // Sorting state with persistence
     const [sortBy, setSortBy] = useState<'name' | 'date'>(() => {
@@ -74,103 +76,104 @@ export function SeriesPage() {
         localStorage.setItem('series_sortOrder', sortOrder);
     }, [sortBy, sortOrder]);
 
-    useEffect(() => {
-        let isMounted = true;
-        let unsubscribe: () => void;
 
-        const init = async () => {
-            await ensureWailsReady();
-            if (!isMounted) return;
-
-            loadSeries();
-            loadHistory();
-
-            unsubscribe = EventsOn('series_updated', () => {
-                if (isMounted) loadSeries();
-            });
-
-            const historyUnsubscribe = EventsOn('history_updated', () => {
-                if (isMounted) loadHistory();
-            });
-
-            return () => {
-                if (historyUnsubscribe) historyUnsubscribe();
-            };
-        };
-
-        init();
-
-        return () => {
-            isMounted = false;
-            if (unsubscribe) unsubscribe();
-        };
-    }, []);
-
-    const ensureWailsReady = async (maxAttempts = 20) => {
-        for (let i = 0; i < maxAttempts; i++) {
-            // @ts-ignore
-            if (window.go?.main?.App?.GetSeries) return true;
-            await new Promise(resolve => setTimeout(resolve, 100));
-        }
-        console.warn('Wails bindings not ready after timeout');
-        return false;
-    };
-
-    const loadHistory = async () => {
+    const loadHistory = useCallback(async () => {
         try {
             // @ts-ignore
             const data = await window.go?.main?.App?.GetHistory();
-            if (data) setHistory(data);
+            if (data && isMountedRef.current) setHistory(data);
         } catch (error) {
             console.error('Failed to load history:', error);
         }
-    };
+    }, []);
 
-    const loadSeries = async (retryCount = 0) => {
-        setIsLoading(true);
-        console.log(`[SeriesPage] Loading series (attempt ${retryCount + 1})...`);
+    const loadSeries = useCallback(async () => {
+        if (!isMountedRef.current) return;
+
         try {
             // @ts-ignore
             const app = window.go?.main?.App;
-            if (!app) {
-                console.log('[SeriesPage] Wails bindings not found');
-                if (retryCount < 3) {
-                    setTimeout(() => loadSeries(retryCount + 1), 500);
-                    return;
+            if (!app?.GetSeries) {
+                // Bindings not available - this shouldn't happen in normal operation
+                console.warn('[SeriesPage] Bindings not available yet');
+                if (isMountedRef.current) {
+                    setIsLoading(false);
                 }
-                throw new Error('Bindings not available');
+                return;
             }
 
-            const data = await app.GetSeries();
+            // Set loading state
+            if (isMountedRef.current) {
+                setIsLoading(true);
+            }
+
+            // Add timeout to prevent hanging
+            const timeoutPromise = new Promise((_, reject) => {
+                setTimeout(() => reject(new Error('Timeout loading series')), 10000); // 10 second timeout
+            });
+
+            const seriesPromise = app.GetSeries();
+            const data = await Promise.race([seriesPromise, timeoutPromise]) as any[];
+
             console.log(`[SeriesPage] Series received: ${data?.length || 0} items`);
+
+            if (!isMountedRef.current) return;
+
             if (data && Array.isArray(data)) {
                 setSeries(data);
+                setIsLoading(false); // Show UI immediately with data
 
-                // Load thumbnails
-                for (const entry of data) {
-                    if (entry.coverImage) {
-                        loadThumbnail(entry.id, entry.coverImage);
-                    }
-                }
+                // Load thumbnails asynchronously (hook handles existing thumbnailUrl)
+                loadThumbnails(data, (entry) => entry.coverImage, (entry) => entry.id);
+            } else {
+                setSeries([]);
+                setIsLoading(false);
             }
         } catch (error) {
             console.error('[SeriesPage] Failed to load series:', error);
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    const loadThumbnail = async (id: string, path: string) => {
-        try {
-            // @ts-ignore
-            const thumb = await window.go?.main?.App?.GetThumbnail(path);
-            if (thumb) {
-                setThumbnails((prev) => ({ ...prev, [id]: thumb }));
+            if (isMountedRef.current) {
+                setSeries([]);
+                setIsLoading(false);
             }
-        } catch (error) {
-            console.error('Failed to load thumbnail:', error);
         }
-    };
+    }, [loadThumbnails]);
+
+    useEffect(() => {
+        isMountedRef.current = true;
+        let unsubscribeSeries: () => void;
+        let unsubscribeHistory: () => void;
+        let unsubscribeAppReady: () => void;
+
+        // Try to load immediately - bindings should be available
+        loadSeries();
+        loadHistory();
+
+        // Listen for app_ready event in case bindings weren't ready immediately
+        unsubscribeAppReady = EventsOn('app_ready', () => {
+            console.log('[SeriesPage] Received app_ready event');
+            if (isMountedRef.current) {
+                loadSeries();
+                loadHistory();
+            }
+        });
+
+        unsubscribeSeries = EventsOn('series_updated', () => {
+            if (isMountedRef.current) loadSeries();
+        });
+
+        unsubscribeHistory = EventsOn('history_updated', () => {
+            if (isMountedRef.current) loadHistory();
+        });
+
+        return () => {
+            isMountedRef.current = false;
+            if (unsubscribeSeries) unsubscribeSeries();
+            if (unsubscribeHistory) unsubscribeHistory();
+            if (unsubscribeAppReady) unsubscribeAppReady();
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []); // Empty deps - only run once on mount
+
 
     const handleSelectFolder = async () => {
         try {
@@ -234,25 +237,39 @@ export function SeriesPage() {
         }
     };
 
-    // Filter and sort series
-    const filteredSeries = series.filter(item => {
-        if (!searchQuery.trim()) return true;
-        const query = searchQuery.toLowerCase();
-        return item.name.toLowerCase().includes(query);
-    });
+    // Debounced search query
+    const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
 
-    const sortedSeries = filteredSeries.sort((a, b) => {
-        let res = 0;
-        if (sortBy === 'name') {
-            res = a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
-        } else {
-            // Date sort
-            const dateA = a.addedAt ? new Date(a.addedAt).getTime() : 0;
-            const dateB = b.addedAt ? new Date(b.addedAt).getTime() : 0;
-            res = dateA - dateB;
-        }
-        return sortOrder === 'asc' ? res : -res;
-    });
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearchQuery(searchQuery);
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [searchQuery]);
+
+    // Memoized filter and sort
+    const filteredSeries = useMemo(() => {
+        return series.filter(item => {
+            if (!debouncedSearchQuery.trim()) return true;
+            const query = debouncedSearchQuery.toLowerCase();
+            return item.name.toLowerCase().includes(query);
+        });
+    }, [series, debouncedSearchQuery]);
+
+    const sortedSeries = useMemo(() => {
+        return [...filteredSeries].sort((a, b) => {
+            let res = 0;
+            if (sortBy === 'name') {
+                res = a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
+            } else {
+                // Date sort
+                const dateA = a.addedAt ? new Date(a.addedAt).getTime() : 0;
+                const dateB = b.addedAt ? new Date(b.addedAt).getTime() : 0;
+                res = dateA - dateB;
+            }
+            return sortOrder === 'asc' ? res : -res;
+        });
+    }, [filteredSeries, sortBy, sortOrder]);
 
 
     return (
@@ -304,7 +321,7 @@ export function SeriesPage() {
                         </button>
                     </div>
                 </div>
-                
+
                 {/* Search Bar */}
                 {series.length > 0 && (
                     <div className="mt-4">

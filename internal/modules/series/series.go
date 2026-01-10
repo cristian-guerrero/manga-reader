@@ -71,41 +71,53 @@ func (m *Module) getBaseURL() string {
 }
 
 // AddSeries adds a series with its chapters
+// Optimized: Uses data from subfolders parameter instead of re-scanning
 func (m *Module) AddSeries(path string, subfolders []persistence.FolderInfo, isTemp bool) (*persistence.AddFolderResult, error) {
-	// Root images for cover detection
-	rootImages, _ := m.fileLoader.GetImages(path)
+	// Use shallow scan for root directory cover detection (fast)
+	rootImagePath, hasRootImages := m.fileLoader.FindFirstImageShallow(path)
 	var coverImage string
 
-	if len(rootImages) > 0 {
-		coverImage = rootImages[0].Path
-		for _, img := range rootImages {
-			lowerName := strings.ToLower(img.Name)
-			if strings.Contains(lowerName, "cover") || strings.Contains(lowerName, "folder") || strings.Contains(lowerName, "thumb") {
-				coverImage = img.Path
-				break
+	if hasRootImages && rootImagePath != "" {
+		coverImage = rootImagePath
+		// Try to find a better cover (cover.jpg, folder.jpg, etc.) using shallow scan
+		entries, _ := os.ReadDir(path)
+		for _, entry := range entries {
+			if entry.IsDir() {
+				continue
 			}
-			if coverImage == rootImages[0].Path && img.Size < 500*1024 {
-				coverImage = img.Path
+			lowerName := strings.ToLower(entry.Name())
+			if m.fileLoader.IsSupportedImage(entry.Name()) {
+				fullPath := filepath.Join(path, entry.Name())
+				if strings.Contains(lowerName, "cover") || strings.Contains(lowerName, "folder") || strings.Contains(lowerName, "thumb") {
+					coverImage = fullPath
+					break
+				}
 			}
 		}
-	} else if len(subfolders) > 0 {
+	} else if len(subfolders) > 0 && subfolders[0].CoverImage != "" {
 		coverImage = subfolders[0].CoverImage
 	}
 
 	chapters := make([]persistence.ChapterInfo, len(subfolders))
 	for i, sub := range subfolders {
-		// Find first image in subfolder for chapter cover
-		chapterImages, _ := m.fileLoader.GetImages(sub.Path)
+		// Use cover image from subfolder if available (already scanned in GetSubfolders)
 		chCover := ""
-		if len(chapterImages) > 0 {
-			chCover = chapterImages[0].Name
+		if sub.CoverImage != "" {
+			// Extract just the filename from the full path
+			chCover = filepath.Base(sub.CoverImage)
+		} else {
+			// Fallback: do shallow scan only if no cover was found earlier
+			firstImagePath, hasImage := m.fileLoader.FindFirstImageShallow(sub.Path)
+			if hasImage && firstImagePath != "" {
+				chCover = filepath.Base(firstImagePath)
+			}
 		}
 
 		chapters[i] = persistence.ChapterInfo{
 			Path:       sub.Path,
 			Name:       sub.Name,
 			CoverImage: chCover,
-			ImageCount: sub.ImageCount,
+			ImageCount: sub.ImageCount, // Already calculated in GetSubfolders
 		}
 	}
 
@@ -142,15 +154,23 @@ func (m *Module) GetSeries() []SeriesEntryWithURLs {
 			dirHash := m.fileLoader.RegisterDirectory(ch.Path)
 			fid := ch.CoverImage
 
-			// Proactively find cover image if missing
+			// Proactively find cover image if missing using shallow scan (fast)
 			if fid == "" {
-				chapterImages, _ := m.fileLoader.GetImages(ch.Path)
-				if len(chapterImages) > 0 {
-					fid = chapterImages[0].Name
+				firstImagePath, hasImage := m.fileLoader.FindFirstImageShallow(ch.Path)
+				if hasImage && firstImagePath != "" {
+					fid = filepath.Base(firstImagePath)
 					entry.Chapters[j].CoverImage = fid
 					changed = true
 				} else {
-					fid = filepath.Base(ch.Path)
+					// Fallback: try recursive scan only if shallow found nothing
+					firstImagePath, hasImage := m.fileLoader.FindFirstImage(ch.Path)
+					if hasImage && firstImagePath != "" {
+						fid = filepath.Base(firstImagePath)
+						entry.Chapters[j].CoverImage = fid
+						changed = true
+					} else {
+						fid = filepath.Base(ch.Path)
+					}
 				}
 			}
 

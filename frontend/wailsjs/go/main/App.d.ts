@@ -41,6 +41,8 @@ export function GetDownloadHistory():Promise<Array<persistence.DownloadJob>>;
 
 export function GetFolderInfo(arg1:string):Promise<persistence.FolderInfo>;
 
+export function GetFolderInfoShallow(arg1:string):Promise<persistence.FolderInfo>;
+
 export function GetHistory():Promise<Array<persistence.HistoryEntry>>;
 
 export function GetHistoryEntry(arg1:string):Promise<persistence.HistoryEntry>;
@@ -48,6 +50,8 @@ export function GetHistoryEntry(arg1:string):Promise<persistence.HistoryEntry>;
 export function GetImageOrder(arg1:string):Promise<Array<string>>;
 
 export function GetImages(arg1:string):Promise<Array<persistence.ImageInfo>>;
+
+export function GetImagesShallow(arg1:string):Promise<Array<persistence.ImageInfo>>;
 
 export function GetLibrary():Promise<Array<persistence.FolderInfo>>;
 
@@ -82,6 +86,8 @@ export function RemoveSeries(arg1:string):Promise<void>;
 export function ResetImageOrder(arg1:string):Promise<void>;
 
 export function ResolveFolder(arg1:string):Promise<string>;
+
+export function ResumeIncompleteDownloads(arg1:boolean):Promise<void>;
 
 export function SaveImageOrder(arg1:string,arg2:Array<string>,arg3:Array<string>):Promise<void>;
 

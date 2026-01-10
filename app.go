@@ -179,6 +179,8 @@ func (a *App) getBaseURL() string {
 
 // domReady is called after the frontend dom has been loaded
 func (a *App) domReady(ctx context.Context) {
+	// Emit event to notify frontend that bindings are ready
+	runtime.EventsEmit(ctx, "app_ready")
 }
 
 // shutdown is called when the app is closing
@@ -440,9 +442,88 @@ func (a *App) GetImages(path string) ([]persistence.ImageInfo, error) {
 	return result, nil
 }
 
+// GetImagesShallow returns a list of images in the specified folder (non-recursive, only immediate directory)
+func (a *App) GetImagesShallow(path string) ([]persistence.ImageInfo, error) {
+	folderPath := a.libraryMod.ResolveFolder(path)
+	images, err := a.fileLoader.GetImagesShallow(folderPath)
+	if err != nil {
+		return nil, err
+	}
+
+	settings := a.settings.Get()
+	if settings.MinImageSize > 0 {
+		var filtered []fileloader.ImageInfo
+		minBytes := settings.MinImageSize * 1024
+		for _, img := range images {
+			if img.Size >= minBytes {
+				filtered = append(filtered, img)
+			}
+		}
+		if len(filtered) > 0 {
+			images = filtered
+		}
+	}
+
+	dirHash := a.fileLoader.RegisterDirectory(folderPath)
+	baseURL := a.getBaseURL()
+
+	result := make([]persistence.ImageInfo, len(images))
+
+	for i, img := range images {
+		relPath, _ := filepath.Rel(folderPath, img.Path)
+		result[i] = persistence.ImageInfo{
+			Path:         img.Path,
+			ThumbnailURL: fmt.Sprintf("%s/thumbnails?did=%s&fid=%s", baseURL, dirHash, url.QueryEscape(relPath)),
+			ImageURL:     fmt.Sprintf("%s/images?did=%s&fid=%s", baseURL, dirHash, url.QueryEscape(relPath)),
+			Name:         img.Name,
+			Extension:    img.Extension,
+			Size:         img.Size,
+			Index:        img.Index,
+			ModTime:      img.ModTime,
+		}
+	}
+
+	// Check Custom Order
+	customOrder := a.orders.GetOrder(folderPath)
+	if customOrder != nil && len(customOrder) > 0 {
+		orderMap := make(map[string]int)
+		for i, name := range customOrder {
+			orderMap[name] = i
+		}
+
+		sort.Slice(result, func(i, j int) bool {
+			idxI, existsI := orderMap[result[i].Name]
+			idxJ, existsJ := orderMap[result[j].Name]
+
+			if existsI && existsJ {
+				return idxI < idxJ
+			}
+			if existsI {
+				return true
+			}
+			if existsJ {
+				return false
+			}
+			return result[i].Name < result[j].Name
+		})
+
+		// Update indices to match new order
+		for i := range result {
+			result[i].Index = i
+		}
+	}
+
+	return result, nil
+}
+
 // GetFolderInfo delegates to Library module
 func (a *App) GetFolderInfo(folderPath string) (*persistence.FolderInfo, error) {
 	return a.libraryMod.GetFolderInfo(folderPath)
+}
+
+// GetFolderInfoShallow delegates to Library module for shallow (non-recursive) folder info
+func (a *App) GetFolderInfoShallow(folderPath string) (*persistence.FolderInfo, error) {
+	return a.libraryMod.GetFolderInfoShallow(folderPath)
 }
 
 // GetSubfolders delegates to Library module
@@ -560,6 +641,10 @@ func (a *App) RemoveDownloadJob(id string) {
 
 func (a *App) FetchMangaInfo(url string) (*downloader.SiteInfo, error) {
 	return a.downloaderMod.FetchMangaInfo(url)
+}
+
+func (a *App) ResumeIncompleteDownloads(autoResume bool) error {
+	return a.downloaderMod.ResumeIncompleteDownloads(autoResume)
 }
 
 // OpenInFileManager opens a path in the system's file manager

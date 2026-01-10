@@ -8,8 +8,10 @@ import { useNavigationStore } from '../../stores/navigationStore';
 import { ChapterInfo, SeriesEntry } from '../../types';
 import { Tooltip } from '../common/Tooltip';
 import { SortControls } from '../common/SortControls';
-import { GridContainer } from '../common/GridContainer';
+import { GridContainer, GridItem } from '../common/GridContainer';
 import { SearchBar } from '../common/SearchBar';
+import { MediaTile } from '../common/MediaTile';
+import { useThumbnails } from '../../hooks/useThumbnails';
 
 // Icons
 const ChevronLeftIcon = () => (
@@ -61,7 +63,7 @@ export function SeriesDetailsPage({ seriesPath }: SeriesDetailsPageProps) {
     const { navigate, goBack } = useNavigationStore();
     const [series, setSeries] = useState<SeriesEntry | null>(null);
     const [isLoading, setIsLoading] = useState(true);
-    const [thumbnails, setThumbnails] = useState<Record<string, string>>({});
+    const { thumbnails, loadThumbnails } = useThumbnails(10);
     const [searchQuery, setSearchQuery] = useState('');
 
     // Sorting state - initialized with series preferences
@@ -105,14 +107,8 @@ export function SeriesDetailsPage({ seriesPath }: SeriesDetailsPageProps) {
                 const found = data.find((s: SeriesEntry) => s.path === seriesPath);
                 if (found) {
                     setSeries(found);
-                    // Initialize thumbnails from the chapter metadata
-                    const initialThumbs: Record<string, string> = {};
-                    for (const chapter of found.chapters) {
-                        if (chapter.thumbnailUrl) {
-                            initialThumbs[chapter.path] = chapter.thumbnailUrl;
-                        }
-                    }
-                    setThumbnails(initialThumbs);
+                    // Load thumbnails (hook handles existing thumbnailUrl)
+                    loadThumbnails(found.chapters, (chapter) => chapter.coverImage, (chapter) => chapter.path);
                 }
             }
         } catch (error) {
@@ -122,21 +118,6 @@ export function SeriesDetailsPage({ seriesPath }: SeriesDetailsPageProps) {
         }
     };
 
-    const loadChapterThumbnail = async (path: string) => {
-        try {
-            // @ts-ignore
-            const images = await window.go?.main?.App?.GetImages(path);
-            if (images && images.length > 0) {
-                // @ts-ignore
-                const thumb = await window.go?.main?.App?.GetThumbnail(images[0].path);
-                if (thumb) {
-                    setThumbnails((prev) => ({ ...prev, [path]: thumb }));
-                }
-            }
-        } catch (error) {
-            console.error('Failed to load chapter thumbnail:', error);
-        }
-    };
 
     const handleOpenChapter = (path: string) => {
         // Maintain 'series' as active menu page when viewing a chapter from series details
@@ -251,49 +232,28 @@ export function SeriesDetailsPage({ seriesPath }: SeriesDetailsPageProps) {
             ) : (
                 <GridContainer variant="chapters" gap="lg">
                     {sortedChapters.map((chapter: ChapterInfo) => (
-                    <div
-                        key={chapter.path}
-                        onClick={() => handleOpenChapter(chapter.path)}
-                        className="group flex flex-col cursor-pointer animate-slide-in-right"
-                    >
-                        <div
-                            className="aspect-[3/4] rounded-xl overflow-hidden mb-3 relative shadow-lg"
-                            style={{ backgroundColor: 'var(--color-surface-secondary)', border: '1px solid var(--color-border)' }}
-                        >
-                            {thumbnails[chapter.path] ? (
-                                <img
-                                    src={thumbnails[chapter.path]}
-                                    alt={chapter.name}
-                                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                                />
-                            ) : (
-                                <div className="w-full h-full flex items-center justify-center opacity-20">
-                                    <ImageIcon />
-                                </div>
-                            )}
-
-                            {/* Overlay */}
-                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                <span className="bg-accent text-white px-4 py-2 rounded-full font-bold shadow-lg transform translate-y-4 group-hover:translate-y-0 transition-transform">
-                                    {t('series.readNow')}
-                                </span>
-                            </div>
-                        </div>
-
-                        <Tooltip content={chapter.name} placement="top" className="w-full justify-start">
-                            <h3
-                                className="font-bold truncate group-hover:text-accent transition-colors w-full"
-                                style={{ color: 'var(--color-text-primary)' }}
-                            >
-                                {chapter.name}
-                            </h3>
-                        </Tooltip>
-                        <p className="text-xs opacity-60" style={{ color: 'var(--color-text-muted)' }}>
-                            {chapter.imageCount} {t('series.pagesLabel')}
-                        </p>
-                    </div>
-                ))}
-            </GridContainer>
+                        <GridItem key={chapter.path}>
+                            <MediaTile
+                                id={chapter.path}
+                                name={chapter.name}
+                                thumbnail={thumbnails[chapter.path]}
+                                onClick={() => handleOpenChapter(chapter.path)}
+                                fallbackIcon={<ImageIcon />}
+                                aspectRatio="aspect-[3/4]"
+                                footerLeft={
+                                    <span className="text-xs text-white/50">
+                                        {chapter.imageCount} {t('series.pagesLabel')}
+                                    </span>
+                                }
+                                overlayContent={
+                                    <span className="bg-accent text-white px-4 py-2 rounded-full font-bold shadow-lg">
+                                        {t('series.readNow')}
+                                    </span>
+                                }
+                            />
+                        </GridItem>
+                    ))}
+                </GridContainer>
             )}
         </div>
     );

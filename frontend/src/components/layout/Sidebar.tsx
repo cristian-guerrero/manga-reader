@@ -119,7 +119,14 @@ export function Sidebar() {
                         item={item}
                         isActive={activeMenuPage === item.id}
                         isCollapsed={sidebarCollapsed}
-                        onClick={() => navigate(item.id)}
+                        onClick={() => {
+                            // If clicking on explorer button while already in explorer, reset to root
+                            if (item.id === 'explorer' && activeMenuPage === 'explorer') {
+                                navigate(item.id, { resetToRoot: 'true' });
+                            } else {
+                                navigate(item.id);
+                            }
+                        }}
                     />
                 ))}
             </nav>

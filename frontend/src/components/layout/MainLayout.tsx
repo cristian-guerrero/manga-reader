@@ -229,7 +229,6 @@ export function MainLayout({ children }: MainLayoutProps) {
 
                     {/* Page Content with Transitions */}
                     <div
-                        key={currentPage}
                         className="h-full w-full overflow-auto animate-fade-in"
                         style={{ scrollbarGutter: 'stable' }}
                     >

@@ -69,7 +69,14 @@
         "imageInfo": "Info de Imagen",
         "prevChapter": "Capítulo Anterior",
         "nextChapter": "Capítulo Siguiente",
-        "goToStart": "Ir al Inicio"
+        "goToStart": "Ir al Inicio",
+        "autoScroll": "Scroll Automático",
+        "play": "Reproducir",
+        "pause": "Pausar",
+        "scrollSpeed": "Velocidad de Scroll",
+        "slow": "Lento",
+        "medium": "Medio",
+        "fast": "Rápido"
     },
     "oneShot": {
         "title": "One shot",
@@ -153,6 +160,9 @@
         "addedToSeries": "Serie agregada a la librería",
         "alreadyDownloaded": "Ya descargado",
         "allAlreadyDownloaded": "Todos los capítulos ya están descargados",
+        "autoResume": "Reanudar descargas automáticamente",
+        "resume": "Continuar",
+        "resumed": "Descarga reanudada",
         "pastedFromClipboard": "URL pegada desde el portapapeles",
         "startedFromClipboard": "Descarga iniciada desde el portapapeles",
         "seriesDetectedClipboard": "Serie detectada. Ve a la página de Descargas para seleccionar capítulos",
@@ -216,7 +226,10 @@
         "file": "Archivo",
         "images": "imágenes",
         "noFoldersAdded": "No hay carpetas agregadas aún",
-        "addFolderToStart": "Agrega una carpeta base para comenzar a explorar"
+        "addFolderToStart": "Agrega una carpeta base para comenzar a explorar",
+        "searchPlaceholder": "Buscar por nombre...",
+        "noResultsFound": "No se encontraron resultados",
+        "tryDifferentSearch": "Prueba con un término de búsqueda diferente"
     },
     "themes": {
         "dark": "Oscuro",

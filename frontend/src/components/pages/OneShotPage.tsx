@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigationStore } from '../../stores/navigationStore';
 import { useToast } from '../common/Toast';
@@ -9,6 +9,7 @@ import { GridContainer } from '../common/GridContainer';
 import { SearchBar } from '../common/SearchBar';
 import { LibraryCard } from '../common/LibraryCard';
 import { FolderInfo } from '../../types';
+import { useThumbnails } from '../../hooks/useThumbnails';
 
 // Icons
 const OneShotIcon = () => (
@@ -50,8 +51,9 @@ export function OneShotPage() {
     const { t } = useTranslation();
     const { showToast } = useToast();
     const [isLoading, setIsLoading] = useState(true);
-    const [thumbnails, setThumbnails] = useState<Record<string, string>>({});
+    const { thumbnails, loadThumbnails, initializeThumbnails } = useThumbnails(10);
     const [searchQuery, setSearchQuery] = useState('');
+    const isMountedRef = useRef(true);
 
     // Sorting state with persistence - migrate from old keys
     const [sortBy, setSortBy] = useState<'name' | 'date'>(() => {
@@ -89,56 +91,65 @@ export function OneShotPage() {
 
     // Load folders from settings/library
     useEffect(() => {
-        let isMounted = true;
-        let unsubscribe: () => void;
+        isMountedRef.current = true;
+        let unsubscribeLibrary: () => void;
+        let unsubscribeAppReady: () => void;
 
-        const init = async () => {
-            await ensureWailsReady();
-            if (!isMounted) return;
+        // Try to load immediately - bindings should be available
+        loadFolders();
 
-            loadFolders();
+        // Listen for app_ready event in case bindings weren't ready immediately
+        unsubscribeAppReady = EventsOn('app_ready', () => {
+            console.log('[OneShotPage] Received app_ready event');
+            if (isMountedRef.current) {
+                loadFolders();
+            }
+        });
 
-            // Listen for updates (e.g. from drag and drop)
-            unsubscribe = EventsOn('library_updated', () => {
-                if (isMounted) loadFolders();
-            });
-        };
-
-        init();
+        // Listen for updates (e.g. from drag and drop)
+        unsubscribeLibrary = EventsOn('library_updated', () => {
+            if (isMountedRef.current) loadFolders();
+        });
 
         return () => {
-            isMounted = false;
-            if (unsubscribe) unsubscribe();
+            isMountedRef.current = false;
+            if (unsubscribeLibrary) unsubscribeLibrary();
+            if (unsubscribeAppReady) unsubscribeAppReady();
         };
-    }, []);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []); // Empty deps - only run once on mount
 
-    const ensureWailsReady = async (maxAttempts = 20) => {
-        for (let i = 0; i < maxAttempts; i++) {
-            // @ts-ignore
-            if (window.go?.main?.App?.GetLibrary) return true;
-            await new Promise(resolve => setTimeout(resolve, 100));
-        }
-        console.warn('Wails bindings not ready after timeout');
-        return false;
-    };
+    const loadFolders = useCallback(async () => {
+        if (!isMountedRef.current) return;
 
-    const loadFolders = async (retryCount = 0) => {
-        setIsLoading(true);
-        console.log(`[OneShotPage] Loading folders (attempt ${retryCount + 1})...`);
         try {
             // @ts-ignore - Wails generated bindings
             const app = window.go?.main?.App;
-            if (!app) {
-                console.log('[OneShotPage] Wails bindings not found');
-                if (retryCount < 3) {
-                    setTimeout(() => loadFolders(retryCount + 1), 500);
-                    return;
+            if (!app?.GetLibrary) {
+                // Bindings not available - this shouldn't happen in normal operation
+                console.warn('[OneShotPage] Bindings not available yet');
+                if (isMountedRef.current) {
+                    setIsLoading(false);
                 }
-                throw new Error('Bindings not available');
+                return;
             }
 
-            const library = await app.GetLibrary();
+            // Set loading state
+            if (isMountedRef.current) {
+                setIsLoading(true);
+            }
+
+            // Add timeout to prevent hanging
+            const timeoutPromise = new Promise((_, reject) => {
+                setTimeout(() => reject(new Error('Timeout loading library')), 10000); // 10 second timeout
+            });
+
+            const libraryPromise = app.GetLibrary();
+            const library = await Promise.race([libraryPromise, timeoutPromise]) as any[];
+
             console.log(`[OneShotPage] Library received: ${library?.length || 0} items`);
+
+            if (!isMountedRef.current) return;
 
             if (library && Array.isArray(library)) {
                 const folderData = library.map((entry: any) => ({
@@ -151,38 +162,23 @@ export function OneShotPage() {
                     lastModified: entry.lastModified,
                 }));
                 setFolders(folderData);
+                setIsLoading(false); // Show UI immediately with data
 
-                // Initialize thumbnails state from the folder metadata
-                const initialThumbs: Record<string, string> = {};
-                for (const folder of folderData) {
-                    if (folder.thumbnailUrl) {
-                        initialThumbs[folder.path] = folder.thumbnailUrl;
-                    }
-                }
-                setThumbnails(initialThumbs);
+                // Load thumbnails (hook handles existing thumbnailUrl)
+                loadThumbnails(folderData, (f) => f.coverImage, (f) => f.path);
+            } else {
+                setFolders([]);
+                setIsLoading(false);
             }
         } catch (error) {
             console.error('[OneShotPage] Failed to load folders:', error);
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    const loadFolderThumbnail = async (folderPath: string) => {
-        try {
-            // @ts-ignore - Wails generated bindings
-            const images = await window.go?.main?.App?.GetImages(folderPath);
-            if (images && images.length > 0) {
-                // @ts-ignore - Wails generated bindings
-                const thumb = await window.go?.main?.App?.GetThumbnail(images[0].path);
-                if (thumb) {
-                    setThumbnails((prev) => ({ ...prev, [folderPath]: thumb }));
-                }
+            if (isMountedRef.current) {
+                setFolders([]);
+                setIsLoading(false);
             }
-        } catch (error) {
-            console.error('Failed to load thumbnail:', error);
         }
-    };
+    }, []);
+
 
     const handleSelectFolder = async () => {
         try {
@@ -242,25 +238,39 @@ export function OneShotPage() {
         }
     };
 
-    // Filter and sort folders
-    const filteredFolders = folders.filter(folder => {
-        if (!searchQuery.trim()) return true;
-        const query = searchQuery.toLowerCase();
-        return folder.name.toLowerCase().includes(query);
-    });
+    // Debounced search query
+    const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
 
-    const sortedFolders = filteredFolders.sort((a, b) => {
-        let res = 0;
-        if (sortBy === 'name') {
-            res = a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
-        } else {
-            // Date sort
-            const dateA = a.lastModified ? new Date(a.lastModified).getTime() : 0;
-            const dateB = b.lastModified ? new Date(b.lastModified).getTime() : 0;
-            res = dateA - dateB;
-        }
-        return sortOrder === 'asc' ? res : -res;
-    });
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearchQuery(searchQuery);
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [searchQuery]);
+
+    // Memoized filter and sort
+    const filteredFolders = useMemo(() => {
+        return folders.filter(folder => {
+            if (!debouncedSearchQuery.trim()) return true;
+            const query = debouncedSearchQuery.toLowerCase();
+            return folder.name.toLowerCase().includes(query);
+        });
+    }, [folders, debouncedSearchQuery]);
+
+    const sortedFolders = useMemo(() => {
+        return [...filteredFolders].sort((a, b) => {
+            let res = 0;
+            if (sortBy === 'name') {
+                res = a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
+            } else {
+                // Date sort
+                const dateA = a.lastModified ? new Date(a.lastModified).getTime() : 0;
+                const dateB = b.lastModified ? new Date(b.lastModified).getTime() : 0;
+                res = dateA - dateB;
+            }
+            return sortOrder === 'asc' ? res : -res;
+        });
+    }, [filteredFolders, sortBy, sortOrder]);
 
 
     return (

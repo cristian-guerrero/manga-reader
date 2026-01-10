@@ -20,6 +20,9 @@ interface VerticalViewerProps {
     initialIndex?: number;
     showControls?: boolean;
     hasChapterButtons?: boolean;
+    isAutoScrolling?: boolean;
+    scrollSpeed?: number;
+    onAutoScrollStateChange?: (isScrolling: boolean) => void;
 }
 
 export function VerticalViewer({
@@ -29,6 +32,9 @@ export function VerticalViewer({
     initialIndex = 0,
     showControls = false,
     hasChapterButtons = false,
+    isAutoScrolling = false,
+    scrollSpeed = 50,
+    onAutoScrollStateChange,
 }: VerticalViewerProps) {
     const parentRef = useRef<HTMLDivElement>(null);
     const itemRefs = useRef<Record<number, HTMLDivElement | null>>({});
@@ -37,6 +43,12 @@ export function VerticalViewer({
 
     // State to track if initial scroll has been applied
     const [hasAppliedInitialScroll, setHasAppliedInitialScroll] = useState(false);
+
+    // Auto-scroll state
+    const animationFrameIdRef = useRef<number | null>(null);
+    const lastScrollTimeRef = useRef<number>(0);
+    const lastScrollTopRef = useRef<number>(0);
+    const userScrollingRef = useRef<boolean>(false);
 
     // Track intersection to update current index
     useEffect(() => {
@@ -84,7 +96,7 @@ export function VerticalViewer({
         if (!parentRef.current || hasAppliedInitialScroll || images.length === 0) return;
 
         const timer = setTimeout(() => {
-            if (initialIndex > 0 && initialIndex < images.length) {
+            if (initialIndex >= 0 && initialIndex < images.length) {
                 const target = itemRefs.current[initialIndex];
                 if (target) {
                     console.log(`[VerticalViewer] Scrolling to initial index: ${initialIndex}`);
@@ -104,6 +116,146 @@ export function VerticalViewer({
         return () => clearTimeout(timer);
     }, [initialIndex, initialScrollPosition, images.length, hasAppliedInitialScroll]);
 
+    // Convert scroll speed (0-100) to pixels per second
+    // Range 0-33: 10-50 px/s (slow reading)
+    // Range 34-66: 50-100 px/s (normal reading)
+    // Range 67-100: 100-200 px/s (fast reading)
+    // Minimum 10 px/s to ensure visible movement even at speed 0
+    const getPixelsPerSecond = useCallback((speed: number): number => {
+        if (speed <= 33) {
+            // Slow: 10-50 px/s (ensuring minimum of 10 even at 0)
+            return 10 + (speed / 33) * 40;
+        } else if (speed <= 66) {
+            // Normal: 50-100 px/s
+            return 50 + ((speed - 33) / 33) * 50;
+        } else {
+            // Fast: 100-200 px/s
+            return 100 + ((speed - 66) / 34) * 100;
+        }
+    }, []);
+
+    // Auto-scroll logic
+    useEffect(() => {
+        if (!isAutoScrolling || !parentRef.current) {
+            // Clean up animation frame if scrolling stopped
+            if (animationFrameIdRef.current !== null) {
+                cancelAnimationFrame(animationFrameIdRef.current);
+                animationFrameIdRef.current = null;
+            }
+            return;
+        }
+
+        const pixelsPerSecond = getPixelsPerSecond(scrollSpeed);
+        let lastTime = performance.now();
+        let accumulatedScroll = 0; // Accumulate fractional pixels
+
+        const scrollStep = (currentTime: number) => {
+            if (!parentRef.current || !isAutoScrolling) {
+                animationFrameIdRef.current = null;
+                accumulatedScroll = 0;
+                return;
+            }
+
+            const deltaTime = (currentTime - lastTime) / 1000; // Convert to seconds
+            lastTime = currentTime;
+
+            const container = parentRef.current;
+            const { scrollTop, scrollHeight, clientHeight } = container;
+
+            // Check if we've reached the bottom
+            const maxScroll = scrollHeight - clientHeight;
+            if (scrollTop >= maxScroll - 1) {
+                // Reached the end, stop auto-scrolling
+                if (onAutoScrollStateChange) {
+                    onAutoScrollStateChange(false);
+                }
+                animationFrameIdRef.current = null;
+                accumulatedScroll = 0;
+                return;
+            }
+
+            // Only scroll if user hasn't manually scrolled
+            if (!userScrollingRef.current) {
+                // Accumulate scroll delta to handle very small values
+                accumulatedScroll += pixelsPerSecond * deltaTime;
+
+                // Apply accumulated scroll when it reaches at least 0.5 pixels
+                if (Math.abs(accumulatedScroll) >= 0.5) {
+                    const scrollToApply = accumulatedScroll;
+                    accumulatedScroll = 0; // Reset accumulator
+
+                    const newScrollTop = Math.min(scrollTop + scrollToApply, maxScroll);
+                    container.scrollTop = newScrollTop;
+                    lastScrollTimeRef.current = currentTime; // Mark when we last scrolled via auto-scroll
+                    lastScrollTopRef.current = newScrollTop;
+                }
+            } else {
+                // Reset accumulator if user is scrolling manually
+                accumulatedScroll = 0;
+            }
+
+            animationFrameIdRef.current = requestAnimationFrame(scrollStep);
+        };
+
+        animationFrameIdRef.current = requestAnimationFrame(scrollStep);
+        lastScrollTimeRef.current = performance.now();
+
+        return () => {
+            if (animationFrameIdRef.current !== null) {
+                cancelAnimationFrame(animationFrameIdRef.current);
+                animationFrameIdRef.current = null;
+            }
+        };
+    }, [isAutoScrolling, scrollSpeed, getPixelsPerSecond, onAutoScrollStateChange]);
+
+    // Detect manual scrolling and pause auto-scroll
+    useEffect(() => {
+        if (!parentRef.current || !isAutoScrolling) return;
+
+        const container = parentRef.current;
+        let lastUserScrollTime = 0;
+        let scrollTimeout: ReturnType<typeof setTimeout>;
+
+        const handleManualScroll = () => {
+            const currentTime = performance.now();
+            const currentScrollTop = container.scrollTop;
+
+            // If scroll happened when auto-scroll is active, check if it was user-initiated
+            // Auto-scroll updates scrollTop frequently, so we detect sudden large changes
+            // or scroll events that happen outside of our auto-scroll animation frame
+            const timeSinceLastAutoScroll = currentTime - lastScrollTimeRef.current;
+            const scrollDelta = Math.abs(currentScrollTop - lastScrollTopRef.current);
+
+            // If scroll delta is significant and it's been a while since auto-scroll updated,
+            // or if the scroll was in the opposite direction of auto-scroll, it's likely manual
+            if (scrollDelta > 10 && timeSinceLastAutoScroll > 50) {
+                lastUserScrollTime = currentTime;
+                userScrollingRef.current = true;
+                if (onAutoScrollStateChange) {
+                    onAutoScrollStateChange(false);
+                }
+            }
+
+            lastScrollTopRef.current = currentScrollTop;
+
+            // Reset user scrolling flag after a delay if no more manual scrolling detected
+            clearTimeout(scrollTimeout);
+            scrollTimeout = setTimeout(() => {
+                const timeSinceLastUserScroll = performance.now() - lastUserScrollTime;
+                if (timeSinceLastUserScroll > 200) {
+                    userScrollingRef.current = false;
+                }
+            }, 200);
+        };
+
+        container.addEventListener('scroll', handleManualScroll, { passive: true });
+
+        return () => {
+            container.removeEventListener('scroll', handleManualScroll);
+            clearTimeout(scrollTimeout);
+        };
+    }, [isAutoScrolling, onAutoScrollStateChange]);
+
     // Track scroll for progress bar
     const handleScroll = useCallback(() => {
         if (!parentRef.current) return;
@@ -111,6 +263,7 @@ export function VerticalViewer({
         const position = scrollTop / (scrollHeight - clientHeight || 1);
         setScrollPosition(position);
         onScrollPositionChange?.(position);
+        lastScrollTopRef.current = scrollTop;
     }, [setScrollPosition, onScrollPositionChange]);
 
     // Handle wheel zoom (Pinch to zoom usually maps to Ctrl+Wheel)
