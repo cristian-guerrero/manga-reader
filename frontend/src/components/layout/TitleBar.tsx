@@ -115,11 +115,8 @@ export function TitleBar({ title }: TitleBarProps) {
                     onDoubleClick={handleMaximize}
                 />
 
-                {/* Tabs - Now starting with breathable margin */}
+                {/* Tabs - fills all available space */}
                 <TabList />
-
-                {/* Empty draggable area to fill the rest of the header */}
-                <div className="flex-1 h-full drag" onDoubleClick={handleMaximize} />
             </div>
 
             {/* Window Controls */}
