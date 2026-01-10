@@ -13,6 +13,7 @@ import { GridItem } from '../common/GridItem';
 import { SearchBar } from '../common/SearchBar';
 import { MediaTile } from '../common/MediaTile';
 import { useThumbnails } from '../../hooks/useThumbnails';
+import { useTabStore } from '../../stores/tabStore';
 
 // Icons
 const ChevronLeftIcon = () => (
@@ -62,6 +63,7 @@ const saveSeriesSortPreferences = (seriesPath: string, sortBy: 'name' | 'pages',
 export function SeriesDetailsPage({ seriesPath }: SeriesDetailsPageProps) {
     const { t } = useTranslation();
     const { navigate, goBack } = useNavigationStore();
+    const { addTab } = useTabStore();
     const [series, setSeries] = useState<SeriesEntry | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const { thumbnails, loadThumbnails } = useThumbnails(10);
@@ -123,6 +125,14 @@ export function SeriesDetailsPage({ seriesPath }: SeriesDetailsPageProps) {
     const handleOpenChapter = (path: string) => {
         // Maintain 'series' as active menu page when viewing a chapter from series details
         navigate('viewer', { folder: path }, 'series');
+    };
+
+    const handleAuxClick = (e: React.MouseEvent, path: string, name: string) => {
+        if (e.button === 1) { // Middle click
+            e.preventDefault();
+            e.stopPropagation();
+            addTab('viewer', { folder: path }, name);
+        }
     };
 
     // Filter and sort chapters
@@ -239,6 +249,7 @@ export function SeriesDetailsPage({ seriesPath }: SeriesDetailsPageProps) {
                                 name={chapter.name}
                                 thumbnail={thumbnails[chapter.path]}
                                 onClick={() => handleOpenChapter(chapter.path)}
+                                onAuxClick={(e) => handleAuxClick(e, chapter.path, chapter.name)}
                                 fallbackIcon={<ImageIcon />}
                                 aspectRatio="aspect-[3/4]"
                                 footerLeft={

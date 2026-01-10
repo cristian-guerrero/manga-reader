@@ -10,6 +10,7 @@ import { SearchBar } from '../common/SearchBar';
 import { LibraryCard } from '../common/LibraryCard';
 import { FolderInfo } from '../../types';
 import { useThumbnails } from '../../hooks/useThumbnails';
+import { useTabStore } from '../../stores/tabStore';
 
 // Icons
 const OneShotIcon = () => (
@@ -48,6 +49,7 @@ const ImageIcon = () => (
 
 export function OneShotPage() {
     const { folders, setFolders, setIsProcessing, navigate } = useNavigationStore();
+    const { addTab } = useTabStore();
     const { t } = useTranslation();
     const { showToast } = useToast();
     const [isLoading, setIsLoading] = useState(true);
@@ -214,6 +216,14 @@ export function OneShotPage() {
     const handleOpenFolder = (folder: FolderInfo) => {
         // Maintain 'oneShot' as active menu page when viewing from oneshot page
         navigate('viewer', { folder: folder.path }, 'oneShot');
+    };
+
+    const handleAuxClick = (e: React.MouseEvent, folder: FolderInfo) => {
+        if (e.button === 1) { // Middle click
+            e.preventDefault();
+            e.stopPropagation();
+            addTab('viewer', { folder: folder.path }, folder.name);
+        }
     };
 
     const handleRemoveFolder = async (folder: FolderInfo, e: React.MouseEvent) => {
@@ -401,6 +411,7 @@ export function OneShotPage() {
                                 countLabel={t('oneShot.images')}
                                 countIcon={<ImageIcon />}
                                 onOpen={() => handleOpenFolder(folder)}
+                                onAuxClick={(e) => handleAuxClick(e, folder)}
                                 onRemove={(e) => handleRemoveFolder(folder, e)}
                                 overlayContent={
                                     <span

@@ -232,3 +232,5 @@ validar porque el scroll es lazy load haciendo scroll hacia abajo  pero cuando c
 o sea que si quedo en la pagina mil cuando vuelva va a cargar mil imagenes
 ejemplo cuando se sale de la app queda en la pagina 29 en el visor cuando se vuevle a inciar la imagen esta en la pagin 22 y e indicador dice 2/29
 intentemos no poner delays y setTimeout, 
+------------------------------
+- Agregar al home, la fucionalidad que esta implementada en el explorer que permite abrir una nueva pestaña con el click medio sobre una carpeta o imagen
