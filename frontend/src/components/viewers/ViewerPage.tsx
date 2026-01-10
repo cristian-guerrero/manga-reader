@@ -112,7 +112,15 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
     const tabState = useTabStore(state => state.tabs.find(t => t.id === tabId)?.viewerState);
 
     // Live state from store (for the active tab) or from the tab object directly
-    const storeState = useViewerStore();
+    const storeState = useViewerStore(state => ({
+        currentFolder: state.currentFolder,
+        images: state.images,
+        currentIndex: state.currentIndex,
+        mode: state.mode,
+        isLoading: state.isLoading,
+        verticalWidth: state.verticalWidth
+    }));
+
     const currentFolder = isActive ? storeState.currentFolder : (tabState?.currentFolder || null);
     const images = isActive ? storeState.images : (tabState?.images || []);
     const currentIndex = isActive ? storeState.currentIndex : (tabState?.currentIndex || 0);
@@ -126,6 +134,7 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
     const [showWidthSlider, setShowWidthSlider] = useState(false);
     // Local state for resume position - avoids timing issues with store
     const [resumeIndex, setResumeIndex] = useState(0);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [resumeScrollPos, setResumeScrollPos] = useState(0);
     const [resetKey, setResetKey] = useState(0);
     const controlsTimeoutRef = useRef<any>(null);
@@ -176,6 +185,22 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
             }
         }, 500);
     }, [folderPath, verticalWidth, updateTabState]);
+
+    // Callbacks for viewer components moved to top level to obey Rules of Hooks
+    const handleRestorationComplete = useCallback(() => {
+        if (tabId) {
+            useTabStore.getState().completeRestoration(tabId);
+        }
+    }, [tabId]);
+
+    const handleIndexChange = useCallback((index: number) => {
+        handleViewerStateChange({ index });
+    }, [handleViewerStateChange]);
+
+    const handleWidthChange = useCallback((width: number) => {
+        handleViewerStateChange({ width });
+    }, [handleViewerStateChange]);
+
 
     // Cleanup debounce timer on unmount
     useEffect(() => {
@@ -543,10 +568,10 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
                             isAutoScrolling={isAutoScrolling}
                             scrollSpeed={scrollSpeed}
                             onAutoScrollStateChange={setIsAutoScrolling}
-                            onRestorationComplete={() => tabId && useTabStore.getState().completeRestoration(tabId)}
-                            onIndexChange={(index) => handleViewerStateChange({ index })}
+                            onRestorationComplete={handleRestorationComplete}
+                            onIndexChange={handleIndexChange}
                             verticalWidth={currentVerticalWidth}
-                            onWidthChange={(width) => handleViewerStateChange({ width })}
+                            onWidthChange={handleWidthChange}
                         />
                     </div>
                 ) : (
@@ -561,8 +586,9 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
                             initialIndex={resumeIndex}
                             showControls={showControls}
                             hasChapterButtons={hasChapterButtons}
-                            onRestorationComplete={() => tabId && useTabStore.getState().completeRestoration(tabId)}
+                            onRestorationComplete={handleRestorationComplete}
                         />
+
                     </div>
                 )}
             </div>

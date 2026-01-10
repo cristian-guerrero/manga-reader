@@ -242,3 +242,6 @@ usuario
 - el historial del visor se debe guardar, cuando se abre una pestaña nueva, con  el visor (creacion del visor), cuando el usuario hace scroll en el visor
 (cuando se abre el visor puede llegar pagina definida o no)
 cuando se restaura el visor NO se debe guardar el historial
+//
+cuando se esta en una carpeta con muchas imagenes y se pasa el visor el visor, la generacion de miniaturas no para, eso hace que el visor se tarde 
+mucho tiempo en cargar, deberia parar la generacion de miniaturas y pasar al visor o segir con la generacion en segundo plano y dejar que el visor cargue 

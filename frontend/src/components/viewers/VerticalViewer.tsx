@@ -1,10 +1,9 @@
 /**
  * VerticalViewer - Native scroll vertical image viewer
+ * Improved version with zero flicker and stable heights
  */
 
-import { useEffect, useRef, useCallback, useState } from 'react';
-
-import { useSettingsStore } from '../../stores/settingsStore';
+import React, { useEffect, useRef, useCallback, useState, useMemo } from 'react';
 
 interface VerticalViewerProps {
     images: Array<{
@@ -26,7 +25,70 @@ interface VerticalViewerProps {
     onWidthChange?: (width: number) => void;
 }
 
-export function VerticalViewer({
+// Memoized Single Image Component to prevent unnecessary re-renders of the entire list
+const ImageItem = React.memo(({
+    image,
+    index,
+    verticalWidth,
+    itemRef
+}: {
+    image: any,
+    index: number,
+    verticalWidth: number,
+    itemRef: (el: HTMLDivElement | null) => void
+}) => {
+    return (
+        <div
+            ref={itemRef}
+            data-index={index}
+            className="flex justify-center w-full"
+            style={{
+                width: '100%',
+                // Use a default min-height based on verticalWidth to stabilize layout
+                minHeight: `calc(80vh * ${verticalWidth} / 100)`,
+                marginBottom: '1rem'
+            }}
+        >
+            <div
+                style={{
+                    width: `${verticalWidth}%`,
+                    maxWidth: '100%',
+                    transition: 'width 0.2s ease-out'
+                }}
+                className="relative flex justify-center items-center"
+            >
+                <img
+                    src={image.imageUrl || (image.path ? `/images?path=${encodeURIComponent(image.path)}` : '')}
+                    alt={image.name}
+                    loading="lazy"
+                    className="w-full h-auto shadow-2xl rounded-lg bg-zinc-900/50"
+                    onLoad={(e) => {
+                        const parent = e.currentTarget.parentElement?.parentElement;
+                        if (parent) parent.style.minHeight = '0';
+                    }}
+                    onError={(e) => {
+                        const target = e.currentTarget;
+                        const fallback = `/images?path=${encodeURIComponent(image.path)}`;
+
+                        // Prevent infinite loops if fallback also fails
+                        if (target.getAttribute('data-tried-fallback') === 'true') {
+                            console.error(`[VerticalViewer] Image load failed even with fallback: ${image.name}`);
+                            return;
+                        }
+
+                        target.setAttribute('data-tried-fallback', 'true');
+                        target.src = fallback;
+                    }}
+                />
+                <div className="absolute top-2 right-2 bg-black/50 backdrop-blur-md px-2 py-1 rounded text-[10px] text-white/50 opacity-0 hover:opacity-100 transition-opacity">
+                    Page {index + 1}
+                </div>
+            </div>
+        </div>
+    );
+});
+
+export const VerticalViewer = React.memo(({
     images,
     initialIndex = 0,
     showControls = false,
@@ -38,19 +100,15 @@ export function VerticalViewer({
     onIndexChange,
     verticalWidth,
     onWidthChange,
-}: VerticalViewerProps) {
+}: VerticalViewerProps) => {
     const parentRef = useRef<HTMLDivElement>(null);
     const itemRefs = useRef<Record<number, HTMLDivElement | null>>({});
 
-    // Track which initialIndex was applied so we can re-apply if it changes
+    // Track which initialIndex was applied
     const appliedInitialIndexRef = useRef<number>(-1);
 
-    // LOCAL state for display index - decoupled from global store
+    // LOCAL state for display index
     const [displayIndex, setDisplayIndex] = useState(initialIndex);
-
-    // Windowing state - only render images near the current view
-    const [visibleRange, setVisibleRange] = useState({ start: 0, end: 10 });
-    const buffer = 5; // Number of images to render above/below the visible area
 
     // Auto-scroll state
     const animationFrameIdRef = useRef<number | null>(null);
@@ -58,60 +116,74 @@ export function VerticalViewer({
     const lastScrollTopRef = useRef<number>(0);
     const userScrollingRef = useRef<boolean>(false);
 
-    // Update visible range and displayIndex based on initial index
-    useEffect(() => {
-        const start = Math.max(0, initialIndex - buffer);
-        const end = Math.min(images.length - 1, initialIndex + buffer);
-        setVisibleRange({ start, end });
-        setDisplayIndex(initialIndex);
-    }, [initialIndex, images.length]);
+    // Memoize the image list to prevent wholesale re-renders
+    const imageElements = useMemo(() => {
+        return images.map((image, index) => (
+            <ImageItem
+                key={`${image.path}-${index}`}
+                image={image}
+                index={index}
+                verticalWidth={verticalWidth}
+                itemRef={(el) => { itemRefs.current[index] = el; }}
+            />
+        ));
+    }, [images, verticalWidth]);
 
-    // Handle scroll - Updates local display index and notifies parent via callback
+    // Handle scroll - Optimized to find current index
     const handleScroll = useCallback(() => {
         if (!parentRef.current) return;
 
         const container = parentRef.current;
-        const children = container.querySelectorAll('[data-index]');
+        const containerRect = container.getBoundingClientRect();
+        const containerTop = containerRect.top;
 
-        // Find the image at the top of the viewport
-        let topIndex = 0;
-        children.forEach(child => {
-            const rect = child.getBoundingClientRect();
-            const containerRect = container.getBoundingClientRect();
-            // Check if this image covers the top area of the container
-            if (rect.top <= containerRect.top + 50 && rect.bottom > containerRect.top + 50) {
-                topIndex = parseInt((child as HTMLElement).dataset.index || '0');
+        // Efficiently find which image is at the top using the refs we already have
+        let topIndex = displayIndex;
+
+        // Check current, next few, and previous few to avoid scanning all 1000 images
+        const checkRange = 10;
+        const start = Math.max(0, displayIndex - checkRange);
+        const end = Math.min(images.length - 1, displayIndex + checkRange);
+
+        for (let i = start; i <= end; i++) {
+            const el = itemRefs.current[i];
+            if (el) {
+                const rect = el.getBoundingClientRect();
+                if (rect.top <= containerTop + 100 && rect.bottom > containerTop + 100) {
+                    topIndex = i;
+                    break;
+                }
             }
-        });
-
-        // Update local display state
-        setDisplayIndex(topIndex);
-
-        // Notify parent via callback (parent handles persistence)
-        onIndexChange?.(topIndex);
-
-        // Update visible range for windowing
-        const newStart = Math.max(0, topIndex - buffer);
-        const newEnd = Math.min(images.length - 1, topIndex + buffer);
-        if (newStart !== visibleRange.start || newEnd !== visibleRange.end) {
-            setVisibleRange({ start: newStart, end: newEnd });
         }
-    }, [onIndexChange, images.length, visibleRange.start, visibleRange.end]);
 
-    // Handle initial scroll/resume - SIMPLIFIED like Yomikiru
-    // Using useEffect with a small delay to ensure DOM is ready
+        // If not found in range, do a full scan (fallback)
+        if (topIndex === displayIndex) {
+            for (let i = 0; i < images.length; i++) {
+                const el = itemRefs.current[i];
+                if (el) {
+                    const rect = el.getBoundingClientRect();
+                    if (rect.top <= containerTop + 100 && rect.bottom > containerTop + 100) {
+                        topIndex = i;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (topIndex !== displayIndex) {
+            setDisplayIndex(topIndex);
+            onIndexChange?.(topIndex);
+        }
+    }, [displayIndex, images.length, onIndexChange]);
+
+    // Handle initial scroll/resume
     useEffect(() => {
         if (!parentRef.current || images.length === 0) return;
         if (appliedInitialIndexRef.current === initialIndex) return;
 
-        // Small delay to ensure DOM is painted (same as Yomikiru's 100ms approach)
+        // Small delay to ensure DOM is ready
         const timeoutId = setTimeout(() => {
             if (initialIndex >= 0 && initialIndex < images.length) {
-                // Ensure the target is in the visible range first
-                const start = Math.max(0, initialIndex - buffer);
-                const end = Math.min(images.length - 1, initialIndex + buffer);
-                setVisibleRange({ start, end });
-
                 const target = itemRefs.current[initialIndex];
                 if (target && parentRef.current) {
                     console.log(`[VerticalViewer] Scrolling to index: ${initialIndex}`);
@@ -122,33 +194,21 @@ export function VerticalViewer({
             } else {
                 onRestorationComplete?.();
             }
-        }, 100);
+        }, 150); // Slightly longer delay for initial load stability
 
         return () => clearTimeout(timeoutId);
     }, [initialIndex, images.length, onRestorationComplete]);
 
-    // Convert scroll speed (0-100) to pixels per second
-    // Range 0-33: 10-50 px/s (slow reading)
-    // Range 34-66: 50-100 px/s (normal reading)
-    // Range 67-100: 100-200 px/s (fast reading)
-    // Minimum 10 px/s to ensure visible movement even at speed 0
+    // Auto-scroll pixels per second calculation
     const getPixelsPerSecond = useCallback((speed: number): number => {
-        if (speed <= 33) {
-            // Slow: 10-50 px/s (ensuring minimum of 10 even at 0)
-            return 10 + (speed / 33) * 40;
-        } else if (speed <= 66) {
-            // Normal: 50-100 px/s
-            return 50 + ((speed - 33) / 33) * 50;
-        } else {
-            // Fast: 100-200 px/s
-            return 100 + ((speed - 66) / 34) * 100;
-        }
+        if (speed <= 33) return 10 + (speed / 33) * 40;
+        if (speed <= 66) return 50 + ((speed - 33) / 33) * 50;
+        return 100 + ((speed - 66) / 34) * 100;
     }, []);
 
-    // Auto-scroll logic
+    // Auto-scroll animation loop
     useEffect(() => {
         if (!isAutoScrolling || !parentRef.current) {
-            // Clean up animation frame if scrolling stopped
             if (animationFrameIdRef.current !== null) {
                 cancelAnimationFrame(animationFrameIdRef.current);
                 animationFrameIdRef.current = null;
@@ -158,50 +218,37 @@ export function VerticalViewer({
 
         const pixelsPerSecond = getPixelsPerSecond(scrollSpeed);
         let lastTime = performance.now();
-        let accumulatedScroll = 0; // Accumulate fractional pixels
+        let accumulatedScroll = 0;
 
         const scrollStep = (currentTime: number) => {
             if (!parentRef.current || !isAutoScrolling) {
                 animationFrameIdRef.current = null;
-                accumulatedScroll = 0;
                 return;
             }
 
-            const deltaTime = (currentTime - lastTime) / 1000; // Convert to seconds
+            const deltaTime = (currentTime - lastTime) / 1000;
             lastTime = currentTime;
 
             const container = parentRef.current;
             const { scrollTop, scrollHeight, clientHeight } = container;
-
-            // Check if we've reached the bottom
             const maxScroll = scrollHeight - clientHeight;
-            if (scrollTop >= maxScroll - 1) {
-                // Reached the end, stop auto-scrolling
-                if (onAutoScrollStateChange) {
-                    onAutoScrollStateChange(false);
-                }
+
+            if (scrollTop >= maxScroll - 2) {
+                onAutoScrollStateChange?.(false);
                 animationFrameIdRef.current = null;
-                accumulatedScroll = 0;
                 return;
             }
 
-            // Only scroll if user hasn't manually scrolled
             if (!userScrollingRef.current) {
-                // Accumulate scroll delta to handle very small values
                 accumulatedScroll += pixelsPerSecond * deltaTime;
-
-                // Apply accumulated scroll when it reaches at least 0.5 pixels
                 if (Math.abs(accumulatedScroll) >= 0.5) {
-                    const scrollToApply = accumulatedScroll;
-                    accumulatedScroll = 0; // Reset accumulator
-
-                    const newScrollTop = Math.min(scrollTop + scrollToApply, maxScroll);
+                    const newScrollTop = Math.min(scrollTop + accumulatedScroll, maxScroll);
                     container.scrollTop = newScrollTop;
-                    lastScrollTimeRef.current = currentTime; // Mark when we last scrolled via auto-scroll
+                    accumulatedScroll = 0;
+                    lastScrollTimeRef.current = currentTime;
                     lastScrollTopRef.current = newScrollTop;
                 }
             } else {
-                // Reset accumulator if user is scrolling manually
                 accumulatedScroll = 0;
             }
 
@@ -209,58 +256,37 @@ export function VerticalViewer({
         };
 
         animationFrameIdRef.current = requestAnimationFrame(scrollStep);
-        lastScrollTimeRef.current = performance.now();
-
         return () => {
-            if (animationFrameIdRef.current !== null) {
-                cancelAnimationFrame(animationFrameIdRef.current);
-                animationFrameIdRef.current = null;
-            }
+            if (animationFrameIdRef.current !== null) cancelAnimationFrame(animationFrameIdRef.current);
         };
     }, [isAutoScrolling, scrollSpeed, getPixelsPerSecond, onAutoScrollStateChange]);
 
-    // Detect manual scrolling and pause auto-scroll
+    // Detect manual scrolling to pause auto-scroll
     useEffect(() => {
         if (!parentRef.current || !isAutoScrolling) return;
 
         const container = parentRef.current;
-        let lastUserScrollTime = 0;
         let scrollTimeout: ReturnType<typeof setTimeout>;
 
         const handleManualScroll = () => {
             const currentTime = performance.now();
             const currentScrollTop = container.scrollTop;
-
-            // If scroll happened when auto-scroll is active, check if it was user-initiated
-            // Auto-scroll updates scrollTop frequently, so we detect sudden large changes
-            // or scroll events that happen outside of our auto-scroll animation frame
             const timeSinceLastAutoScroll = currentTime - lastScrollTimeRef.current;
             const scrollDelta = Math.abs(currentScrollTop - lastScrollTopRef.current);
 
-            // If scroll delta is significant and it's been a while since auto-scroll updated,
-            // or if the scroll was in the opposite direction of auto-scroll, it's likely manual
             if (scrollDelta > 10 && timeSinceLastAutoScroll > 50) {
-                lastUserScrollTime = currentTime;
                 userScrollingRef.current = true;
-                if (onAutoScrollStateChange) {
-                    onAutoScrollStateChange(false);
-                }
+                onAutoScrollStateChange?.(false);
             }
 
             lastScrollTopRef.current = currentScrollTop;
-
-            // Reset user scrolling flag after a delay if no more manual scrolling detected
             clearTimeout(scrollTimeout);
             scrollTimeout = setTimeout(() => {
-                const timeSinceLastUserScroll = performance.now() - lastUserScrollTime;
-                if (timeSinceLastUserScroll > 200) {
-                    userScrollingRef.current = false;
-                }
+                userScrollingRef.current = false;
             }, 200);
         };
 
         container.addEventListener('scroll', handleManualScroll, { passive: true });
-
         return () => {
             container.removeEventListener('scroll', handleManualScroll);
             clearTimeout(scrollTimeout);
@@ -282,79 +308,17 @@ export function VerticalViewer({
     return (
         <div
             ref={parentRef}
-            className="h-full w-full overflow-y-auto"
+            className="h-full w-full overflow-y-scroll" // use scroll to always show scrollbar and prevent layout shifts
             onScroll={handleScroll}
             onWheel={handleWheel}
             style={{
                 backgroundColor: 'var(--color-surface-primary)',
                 overflowX: 'hidden',
-                // We use 'auto' to ensure instant restoration works perfectly. 
-                // Smooth scrolling for users is often handled by the browser or smooth scroll libraries,
-                // but 'smooth' css here can interfere with instant scrollIntoView on some browsers.
                 scrollBehavior: 'auto'
             }}
         >
-            <div className="flex flex-col items-center w-full py-8 gap-4">
-                {images.map((image, index) => {
-                    const isVisible = index >= visibleRange.start && index <= visibleRange.end;
-
-                    return (
-                        <div
-                            key={`${image.path}-${index}`}
-                            ref={el => itemRefs.current[index] = el}
-                            data-index={index}
-                            className="flex justify-center w-full"
-                            style={{
-                                width: '100%',
-                                minHeight: `calc(80vh * ${verticalWidth} / 100)`,
-                                // Use visibility: hidden for items out of range to keep their space? 
-                                // Actually, if we don't render the image, we can't know the height.
-                                // But keeping the placeholder height helps.
-                            }}
-                        >
-                            <div
-                                style={{
-                                    width: `${verticalWidth}%`,
-                                    maxWidth: '100%',
-                                    transition: 'width 0.2s ease-out'
-                                }}
-                                className="relative flex justify-center items-center"
-                            >
-                                {isVisible ? (
-                                    <img
-                                        src={image.imageUrl || `/images?path=${encodeURIComponent(image.path)}`}
-                                        alt={image.name}
-                                        loading="lazy"
-                                        className="w-full h-auto shadow-2xl rounded-lg bg-zinc-900/50"
-                                        onLoad={() => {
-                                            // Restoration is handled by the main useEffect now.
-                                            // No need for per-image onload hacks.
-                                        }}
-                                        onError={(e) => {
-                                            // Fallback if imageUrl fails
-                                            const target = e.currentTarget;
-                                            const fallback = `/images?path=${encodeURIComponent(image.path)}`;
-                                            if (target.src !== fallback) {
-                                                console.log(`[VerticalViewer] Image load failed for ${image.name}, trying fallback`);
-                                                target.src = fallback;
-                                            }
-                                        }}
-                                    />
-                                ) : (
-                                    <div
-                                        className="w-full aspect-[2/3] flex items-center justify-center bg-zinc-900/20 rounded-lg animate-pulse"
-                                        style={{ maxHeight: `calc(80vh * ${verticalWidth} / 100)` }}
-                                    >
-                                        <span className="text-zinc-700 font-bold text-4xl">{index + 1}</span>
-                                    </div>
-                                )}
-                                <div className="absolute top-2 right-2 bg-black/50 backdrop-blur-md px-2 py-1 rounded text-[10px] text-white/50 opacity-0 hover:opacity-100 transition-opacity">
-                                    Page {index + 1}
-                                </div>
-                            </div>
-                        </div>
-                    );
-                })}
+            <div className="flex flex-col items-center w-full py-8">
+                {imageElements}
             </div>
 
             {/* Image counter */}
@@ -373,6 +337,6 @@ export function VerticalViewer({
             </div>
         </div>
     );
-}
+});
 
 export default VerticalViewer;
