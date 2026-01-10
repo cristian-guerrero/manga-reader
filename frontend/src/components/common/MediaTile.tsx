@@ -105,7 +105,19 @@ export function MediaTile({
             ref={containerRef}
             className={`group/tile relative rounded-xl overflow-hidden border border-white/5 hover:border-accent/50 transition-all hover:shadow-xl cursor-pointer animate-scale-in hover-lift ${getVariantClasses()} ${className}`}
             onClick={onClick}
-            onAuxClick={onAuxClick}
+            onMouseDown={(e) => {
+                // Prevent browser autoscroll on middle-click
+                if (e.button === 1) {
+                    e.preventDefault();
+                }
+            }}
+            onAuxClick={(e) => {
+                // Prevent default middle-click behavior (autoscroll)
+                if (e.button === 1) {
+                    e.preventDefault();
+                }
+                onAuxClick?.(e);
+            }}
         >
             {/* Thumbnail Area */}
             <div className={`${aspectRatio} w-full relative overflow-hidden bg-surface-tertiary`}>

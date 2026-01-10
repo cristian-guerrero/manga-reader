@@ -195,3 +195,12 @@ Caracteristicas adicionales para la funcionalidad de pestañas:
 - validar porque en estos momentos algunas veces requiere doble click para que la pestaña se cambie
 - mejorar visualmente las pestañas para que se vean mas atractivas (mirar si necesitamos quitar la curva superior)
 - validar si se pueden ver como las de chrome, paso imagen.
+------------------------------------------------------------
+tenemos otra situacion cuando estoy en el explorador tenemos una funcionalidad que permite con el click medio abrir una nueva pestaña con la carpeta o imagen que se clickeada
+cuando yo le doy a una carpeta click medio abre la otra pestaña con el contenido, eso esta bien y la pestaña actual queda donde estaba eso esta bien, 
+pero en la segunda pestaña cuando le doy click para abrir la imagen con el visor, la primera pestaña se va a root del explorer (deberia quedarse donde esta
+ya que no se esta interactuando con esa pestaña si no con la segunda)
+
+al darle click con el boton medio a una de las carpetas raiz abre la subcarpeta en otra pestaña, pero al darle click con el boton medio a una subcarpeta de la nueva pestaña
+no se abre una nueva pestaña,
+tenemos estas dos cosas para mirar 

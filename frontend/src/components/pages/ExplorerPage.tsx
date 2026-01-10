@@ -71,16 +71,27 @@ const saveSortPreferences = (path: string | null, sortBy: 'name' | 'date', sortO
     }
 };
 
-export function ExplorerPage() {
+interface ExplorerPageProps {
+    isActive?: boolean;
+}
+
+export function ExplorerPage({ isActive = true }: ExplorerPageProps) {
     const { t } = useTranslation();
     const { navigate, explorerState, setExplorerState, previousPage, fromPage, params, setParams } = useNavigationStore();
-    const { addTab } = useTabStore();
+    const { addTab, getActiveTab } = useTabStore();
     const { showToast } = useToast();
+
+    // Get initial state from the TAB store, not the global navigation store
+    // This ensures each tab maintains its own explorer state
+    const getInitialExplorerState = () => {
+        const tab = useTabStore.getState().getActiveTab();
+        return tab?.explorerState || null;
+    };
 
     const [baseFolders, setBaseFolders] = useState<BaseFolder[]>([]);
     // Always start at root when mounting - state will be restored only if coming from explorer
-    const [currentPath, setCurrentPath] = useState<string | null>(null);
-    const [pathHistory, setPathHistory] = useState<string[]>([]);
+    const [currentPath, setCurrentPath] = useState<string | null>(() => getInitialExplorerState()?.currentPath || null);
+    const [pathHistory, setPathHistory] = useState<string[]>(() => getInitialExplorerState()?.pathHistory || []);
     const [entries, setEntries] = useState<ExplorerEntry[]>([]);
     const [loading, setLoading] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
@@ -197,8 +208,9 @@ export function ExplorerPage() {
     };
 
     // Handle resetToRoot parameter - navigate to root when clicking explorer button while already in explorer
+    // ONLY process this when the tab is active to prevent other tabs from being affected
     useEffect(() => {
-        if (params?.resetToRoot === 'true') {
+        if (isActive && params?.resetToRoot === 'true') {
             // Reset to root
             setCurrentPath(null);
             setPathHistory([]);
@@ -208,7 +220,7 @@ export function ExplorerPage() {
             // Clear the parameter to prevent infinite loops
             setParams({});
         }
-    }, [params?.resetToRoot, setParams]);
+    }, [params?.resetToRoot, setParams, isActive]);
 
     const loadDirectory = async (path: string, pushHistory = true) => {
         if (!isMountedRef.current) return;
@@ -311,15 +323,15 @@ export function ExplorerPage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []); // Only run on mount
 
-    // Save explorer state to store when it changes (but not during initialization)
+    // Save explorer state to store when it changes (but not during initialization and only when active)
     useEffect(() => {
-        if (!isInitializingRef.current) {
+        if (!isInitializingRef.current && isActive) {
             setExplorerState({
                 currentPath,
                 pathHistory,
             });
         }
-    }, [currentPath, pathHistory, setExplorerState]);
+    }, [currentPath, pathHistory, setExplorerState, isActive]);
 
     const handleBack = () => {
         if (pathHistory.length > 0) {
@@ -527,18 +539,24 @@ export function ExplorerPage() {
             } else {
                 const ent = entry as ExplorerEntry;
                 if (ent.isDirectory) {
+                    // Build proper path history for the new tab
+                    const newPathHistory = currentPath
+                        ? [...pathHistory, currentPath]
+                        : [...pathHistory];
+
                     addTab('explorer', {}, ent.name, {
                         explorerState: {
                             currentPath: ent.path,
-                            pathHistory: [...pathHistory, currentPath!]
+                            pathHistory: newPathHistory
                         }
                     });
                 } else {
                     // Open file in viewer tab
                     if (currentPath) {
-                        const imageEntries = sortedEntries.filter(ent => !ent.isDirectory);
-                        const clickedIndex = imageEntries.findIndex(ent => ent.path === ent.path);
-                        const hasSubdirs = entries.some(ent => ent.isDirectory);
+                        const imageEntries = sortedEntries.filter(e => !e.isDirectory);
+                        // Fixed: was comparing ent.path to ent.path (always true for all items)
+                        const clickedIndex = imageEntries.findIndex(img => img.path === ent.path);
+                        const hasSubdirs = entries.some(e => e.isDirectory);
 
                         addTab('viewer', {
                             folder: currentPath,

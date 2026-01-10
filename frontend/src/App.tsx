@@ -162,7 +162,7 @@ function renderPage(page: string, params: Record<string, string>, isActive: bool
         case 'thumbnails':
             return <ThumbnailsPage folderPath={params.folder} isActive={isActive} />;
         case 'explorer':
-            return <ExplorerPage />;
+            return <ExplorerPage isActive={isActive} />;
         case 'download':
             return <DownloadPage />;
         default:
