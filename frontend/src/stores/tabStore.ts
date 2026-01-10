@@ -38,6 +38,7 @@ interface TabStoreState {
     closeTab: (id: string) => void;
     setActiveTab: (id: string | number) => void;
     updateActiveTab: (updates: Partial<Tab>) => void;
+    updateTab: (id: string, updates: Partial<Tab>) => void;
 
     // Getters - used by navigation store proxy
     getActiveTab: () => Tab;
@@ -129,15 +130,28 @@ export const useTabStore = create<TabStoreState>((set, get) => ({
         }));
     },
 
+    updateTab: (id, updates) => {
+        set((state) => ({
+            tabs: state.tabs.map(t =>
+                t.id === id ? { ...t, ...updates } : t
+            )
+        }));
+    },
+
     saveTabs: () => {
         const { tabs, activeTabId } = get();
-        // Only save essential tab data (page, params, title)
+        // Save essential tab data including viewerState
         const savedData = tabs.map(tab => ({
             id: tab.id,
             title: tab.title,
             page: tab.page,
             params: tab.params,
             explorerState: tab.explorerState,
+            viewerState: tab.viewerState ? {
+                ...tab.viewerState,
+                isLoading: false // Always reset loading on save
+            } : null,
+            thumbnailScrollPositions: tab.thumbnailScrollPositions,
         }));
         return JSON.stringify({ tabs: savedData, activeTabId });
     },
@@ -155,8 +169,8 @@ export const useTabStore = create<TabStoreState>((set, get) => ({
                     history: [{ page: saved.page || 'home', params: saved.params || {} }],
                     activeMenuPage: saved.page as PageType || 'home',
                     explorerState: saved.explorerState || null,
-                    thumbnailScrollPositions: {},
-                    viewerState: null,
+                    thumbnailScrollPositions: saved.thumbnailScrollPositions || {},
+                    viewerState: saved.viewerState || null,
                 }));
                 set({
                     tabs: restoredTabs,

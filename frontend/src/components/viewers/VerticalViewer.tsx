@@ -46,86 +46,119 @@ export function VerticalViewer({
     // Track which initialIndex was applied so we can re-apply if it changes
     const appliedInitialIndexRef = useRef<number>(-1);
 
+    // Windowing state - only render images near the current view
+    const [visibleRange, setVisibleRange] = useState({ start: 0, end: 10 });
+    const buffer = 5; // Number of images to render above/below the visible area
+
     // Auto-scroll state
     const animationFrameIdRef = useRef<number | null>(null);
     const lastScrollTimeRef = useRef<number>(0);
     const lastScrollTopRef = useRef<number>(0);
     const userScrollingRef = useRef<boolean>(false);
 
-    // Track intersection to update current index
+    // Update visible range based on initial index
     useEffect(() => {
+        const start = Math.max(0, initialIndex - buffer);
+        const end = Math.min(images.length - 1, initialIndex + buffer);
+        setVisibleRange({ start, end });
+    }, [initialIndex, images.length]);
+
+    // Handle scroll to update current index and visible range
+    const handleScroll = useCallback(() => {
         if (!parentRef.current) return;
+        const { scrollTop, scrollHeight, clientHeight } = parentRef.current;
 
-        const observerOptions = {
-            root: parentRef.current,
-            rootMargin: '-10% 0px -10% 0px', // Trigger when image is roughly in the middle 80%
-            threshold: [0, 0.1, 0.5]
-        };
+        // Update global scroll percentage
+        const position = scrollTop / (scrollHeight - clientHeight || 1);
+        setScrollPosition(position);
+        onScrollPositionChange?.(position);
+        lastScrollTopRef.current = scrollTop;
 
-        const observer = new IntersectionObserver((entries) => {
-            let mostVisible: IntersectionObserverEntry | undefined;
+        // Find current image via position
+        const container = parentRef.current;
+        const children = container.querySelectorAll('[data-index]');
+        let closestIndex = -1;
+        let minDistance = Infinity;
 
-            for (const entry of entries) {
-                if (entry.isIntersecting) {
-                    if (!mostVisible || entry.intersectionRatio > mostVisible.intersectionRatio) {
-                        mostVisible = entry;
-                    }
-                }
+        children.forEach(child => {
+            const rect = child.getBoundingClientRect();
+            const containerRect = container.getBoundingClientRect();
+            // distance to the top of the container
+            const distance = Math.abs(rect.top - containerRect.top);
+            if (distance < minDistance) {
+                minDistance = distance;
+                closestIndex = parseInt((child as HTMLElement).dataset.index || '0');
             }
-
-            if (mostVisible) {
-                const target = mostVisible.target as HTMLElement;
-                const index = target.dataset.index;
-                if (index) {
-                    setCurrentIndex(parseInt(index));
-                }
-            }
-        }, observerOptions);
-
-        // Observe all image containers
-        const currentRefs = itemRefs.current;
-        Object.values(currentRefs).forEach(ref => {
-            if (ref) observer.observe(ref);
         });
 
-        return () => {
-            observer.disconnect();
-        };
-    }, [images.length, setCurrentIndex]);
+        if (closestIndex !== -1) {
+            // Find the image that is actually at the top of the viewport
+            let topIndex = closestIndex;
+            let offset = 0;
+
+            children.forEach(child => {
+                const rect = child.getBoundingClientRect();
+                const containerRect = container.getBoundingClientRect();
+                // Check if this image covers the top area of the container
+                if (rect.top <= containerRect.top + 5 && rect.bottom > containerRect.top + 5) {
+                    topIndex = parseInt((child as HTMLElement).dataset.index || '0');
+                    offset = containerRect.top - rect.top;
+                }
+            });
+
+            setCurrentIndex(topIndex);
+            setScrollPosition(offset);
+            onScrollPositionChange?.(offset);
+
+            // Update visible range
+            const newStart = Math.max(0, topIndex - buffer);
+            const newEnd = Math.min(images.length - 1, topIndex + buffer);
+
+            if (newStart !== visibleRange.start || newEnd !== visibleRange.end) {
+                setVisibleRange({ start: newStart, end: newEnd });
+            }
+        }
+    }, [setScrollPosition, onScrollPositionChange, setCurrentIndex, images.length, visibleRange.start, visibleRange.end]);
 
     // Handle initial scroll/resume
     useEffect(() => {
         if (!parentRef.current || images.length === 0) return;
 
-        // Skip if we already applied THIS specific initialIndex
-        // But re-apply if initialIndex changed (e.g., from 0 to 20)
         if (hasAppliedInitialScroll && appliedInitialIndexRef.current === initialIndex) return;
 
-        // Apply scroll immediately via requestAnimationFrame (minimal delay, just wait for paint)
         const applyScroll = () => {
             if (initialIndex >= 0 && initialIndex < images.length) {
-                const target = itemRefs.current[initialIndex];
-                if (target) {
-                    console.log(`[VerticalViewer] Scrolling to initial index: ${initialIndex}`);
-                    target.scrollIntoView({ block: 'start', behavior: 'instant' });
-                    appliedInitialIndexRef.current = initialIndex;
-                }
-            } else if (initialScrollPosition > 0) {
-                const node = parentRef.current;
-                if (node) {
-                    const { scrollHeight, clientHeight } = node;
-                    const scrollTop = initialScrollPosition * (scrollHeight - clientHeight);
-                    node.scrollTop = scrollTop;
-                }
+                // When restoring, we might need to render the target index first
+                const start = Math.max(0, initialIndex - buffer);
+                const end = Math.min(images.length - 1, initialIndex + buffer);
+                setVisibleRange({ start, end });
+
+                // Wait for the next tick to ensure the items are rendered
+                setTimeout(() => {
+                    const target = itemRefs.current[initialIndex];
+                    if (target) {
+                        console.log(`[VerticalViewer] Scrolling to initial index: ${initialIndex}`);
+                        target.scrollIntoView({ block: 'start', behavior: 'instant' });
+
+                        // Apply pixel offset if available
+                        if (initialScrollPosition !== 0) {
+                            console.log(`[VerticalViewer] Applying pixel offset: ${initialScrollPosition}`);
+                            parentRef.current!.scrollTop += Math.abs(initialScrollPosition);
+                        }
+
+                        appliedInitialIndexRef.current = initialIndex;
+                        setHasAppliedInitialScroll(true);
+                    }
+                }, 0);
+            } else {
+                setHasAppliedInitialScroll(true);
             }
-            setHasAppliedInitialScroll(true);
         };
 
-        // Use double requestAnimationFrame to ensure DOM is ready
         requestAnimationFrame(() => {
             requestAnimationFrame(applyScroll);
         });
-    }, [initialIndex, initialScrollPosition, images.length, hasAppliedInitialScroll]);
+    }, [initialIndex, images.length, hasAppliedInitialScroll]);
 
     // Convert scroll speed (0-100) to pixels per second
     // Range 0-33: 10-50 px/s (slow reading)
@@ -267,17 +300,7 @@ export function VerticalViewer({
         };
     }, [isAutoScrolling, onAutoScrollStateChange]);
 
-    // Track scroll for progress bar
-    const handleScroll = useCallback(() => {
-        if (!parentRef.current) return;
-        const { scrollTop, scrollHeight, clientHeight } = parentRef.current;
-        const position = scrollTop / (scrollHeight - clientHeight || 1);
-        setScrollPosition(position);
-        onScrollPositionChange?.(position);
-        lastScrollTopRef.current = scrollTop;
-    }, [setScrollPosition, onScrollPositionChange]);
-
-    // Handle wheel zoom (Pinch to zoom usually maps to Ctrl+Wheel)
+    // Track wheel for zoom
     const handleWheel = useCallback((e: React.WheelEvent) => {
         if (e.ctrlKey) {
             e.preventDefault();
@@ -302,40 +325,57 @@ export function VerticalViewer({
             }}
         >
             <div className="flex flex-col items-center w-full py-8 gap-4">
-                {images.map((image, index) => (
-                    <div
-                        key={`${image.path}-${index}`}
-                        ref={el => itemRefs.current[index] = el}
-                        data-index={index}
-                        className="flex justify-center w-full min-h-[200px]"
-                        style={{ width: '100%' }}
-                    >
+                {images.map((image, index) => {
+                    const isVisible = index >= visibleRange.start && index <= visibleRange.end;
+
+                    return (
                         <div
+                            key={`${image.path}-${index}`}
+                            ref={el => itemRefs.current[index] = el}
+                            data-index={index}
+                            className="flex justify-center w-full min-h-[400px]"
                             style={{
-                                width: `${verticalWidth}%`,
-                                maxWidth: '100%',
-                                transition: 'width 0.2s ease-out'
+                                width: '100%',
+                                // Use visibility: hidden for items out of range to keep their space? 
+                                // Actually, if we don't render the image, we can't know the height.
+                                // But keeping the placeholder height helps.
                             }}
-                            className="relative"
                         >
-                            <img
-                                src={image.imageUrl || `/images?path=${encodeURIComponent(image.path)}`}
-                                alt={image.name}
-                                loading="lazy"
-                                className="w-full h-auto shadow-2xl rounded-lg bg-zinc-900/50"
-                                onLoad={() => {
-                                    // If we just loaded the initial index image, ensure we are still there
-                                    if (index === initialIndex && !hasAppliedInitialScroll) {
-                                        itemRefs.current[index]?.scrollIntoView({ block: 'start' });
-                                    }
+                            <div
+                                style={{
+                                    width: `${verticalWidth}%`,
+                                    maxWidth: '100%',
+                                    transition: 'width 0.2s ease-out'
                                 }}
-                            />
-                            <div className="absolute top-2 right-2 bg-black/50 backdrop-blur-md px-2 py-1 rounded text-[10px] text-white/50 opacity-0 hover:opacity-100 transition-opacity">
-                                Page {index + 1}
+                                className="relative flex justify-center items-center"
+                            >
+                                {isVisible ? (
+                                    <img
+                                        src={image.imageUrl || `/images?path=${encodeURIComponent(image.path)}`}
+                                        alt={image.name}
+                                        loading="lazy"
+                                        className="w-full h-auto shadow-2xl rounded-lg bg-zinc-900/50"
+                                        onLoad={() => {
+                                            // Ensure we stay at the correct position if we just loaded the current one
+                                            if (index === initialIndex && !hasAppliedInitialScroll) {
+                                                itemRefs.current[index]?.scrollIntoView({ block: 'start' });
+                                            }
+                                        }}
+                                    />
+                                ) : (
+                                    <div
+                                        className="w-full aspect-[2/3] max-h-[80vh] flex items-center justify-center bg-zinc-900/20 rounded-lg animate-pulse"
+                                    >
+                                        <span className="text-zinc-700 font-bold text-4xl">{index + 1}</span>
+                                    </div>
+                                )}
+                                <div className="absolute top-2 right-2 bg-black/50 backdrop-blur-md px-2 py-1 rounded text-[10px] text-white/50 opacity-0 hover:opacity-100 transition-opacity">
+                                    Page {index + 1}
+                                </div>
                             </div>
                         </div>
-                    </div>
-                ))}
+                    );
+                })}
             </div>
 
             {/* Image counter */}

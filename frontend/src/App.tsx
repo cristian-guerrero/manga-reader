@@ -148,7 +148,7 @@ function renderPage(page: string, params: Record<string, string>, isActive: bool
         case 'home':
             return <HomePage />;
         case 'viewer':
-            return <ViewerPage folderPath={params.folder} isActive={isActive} />;
+            return <ViewerPage folderPath={params.folder} isActive={isActive} tabId={tabId} />;
         case 'history':
             return <HistoryPage />;
         case 'oneShot':
@@ -160,7 +160,7 @@ function renderPage(page: string, params: Record<string, string>, isActive: bool
         case 'settings':
             return <SettingsPage />;
         case 'thumbnails':
-            return <ThumbnailsPage folderPath={params.folder} isActive={isActive} />;
+            return <ThumbnailsPage folderPath={params.folder} isActive={isActive} tabId={tabId} />;
         case 'explorer':
             return <ExplorerPage isActive={isActive} tabId={tabId} />;
         case 'download':

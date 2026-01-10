@@ -66,9 +66,10 @@ interface ImageData {
 interface ThumbnailsPageProps {
     folderPath?: string;
     isActive?: boolean;
+    tabId?: string;
 }
 
-export function ThumbnailsPage({ folderPath, isActive = true }: ThumbnailsPageProps) {
+export function ThumbnailsPage({ folderPath, isActive = true, tabId }: ThumbnailsPageProps) {
     const { t } = useTranslation();
     const { goBack, navigate } = useNavigationStore();
     const [images, setImages] = useState<ImageData[]>([]);

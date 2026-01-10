@@ -309,6 +309,8 @@ export namespace persistence {
 	    clipboardAutoMonitor: boolean;
 	    autoResumeDownloads: boolean;
 	    tabMemorySaving: boolean;
+	    restoreTabs: boolean;
+	    savedTabs: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new Settings(source);
@@ -342,6 +344,8 @@ export namespace persistence {
 	        this.clipboardAutoMonitor = source["clipboardAutoMonitor"];
 	        this.autoResumeDownloads = source["autoResumeDownloads"];
 	        this.tabMemorySaving = source["tabMemorySaving"];
+	        this.restoreTabs = source["restoreTabs"];
+	        this.savedTabs = source["savedTabs"];
 	    }
 	}
 

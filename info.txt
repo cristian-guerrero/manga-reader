@@ -204,3 +204,31 @@ ya que no se esta interactuando con esa pestaña si no con la segunda)
 al darle click con el boton medio a una de las carpetas raiz abre la subcarpeta en otra pestaña, pero al darle click con el boton medio a una subcarpeta de la nueva pestaña
 no se abre una nueva pestaña,
 tenemos estas dos cosas para mirar 
+
+
+----------------------------------------------------------------------
+
+Vamos a mejorar otro comportamiento, a medida que se abren pestañas, y se va llenando la barra las pestañas deberian comprimirse, como hacen los  navegadores
+hasta quedar la x solamente, ahora parece que se estan ocultando
+
+cuando las pestañas se van cerrando,  y liberando espacio las restantes debe ir tomando su tamaño, hasta llegar al original
+--- 
+vamos a crear una nueva configuracion(Continue where you left off) que permita cuando este activa mantener las pestañas abiertas
+cuando este inactiva inicia como se esta haciendo ahora
+esta configuracion debe persistir y quedar en la pestaña de configuracion en la seccion de pestañas
+
+//
+//-----------------------------
+pendiente, las pestañas si se estan restaurando
+no se carga  la ubicacion anterior de la pestaña (subcarpeta)
+no se restaura el visor queda cargando 
+si se restaura la cantida de pestañas y los titulos (los titulos no representan el contenido)
+
+-----------------------
+validar que se esten guardando la posiciones de los visores independiente (cuando hay mas de un visor)
+validar que se guarde la pagina y pixeles de la imagen (para que al recargar el scroll no se ponga a hacer scroll y carge directamente la imagen y la posicion )
+validar que los scroll (y sus tabs se guarden con sus respectivos ids) no se guarde solo el visor activo
+validar porque el scroll es lazy load haciendo scroll hacia abajo  pero cuando carga en una posicion baja no es lazy load haci arriba (carga todas las imagnes haci arriba)
+o sea que si quedo en la pagina mil cuando vuelva va a cargar mil imagenes
+ejemplo cuando se sale de la app queda en la pagina 29 en el visor cuando se vuevle a inciar la imagen esta en la pagin 22 y e indicador dice 2/29
+intentemos no poner delays y setTimeout, 

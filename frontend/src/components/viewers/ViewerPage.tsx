@@ -87,57 +87,37 @@ const PauseIcon = () => (
 interface ViewerPageProps {
     folderPath?: string;
     isActive?: boolean;
+    tabId?: string;
 }
 
-export function ViewerPage({ folderPath, isActive = true }: ViewerPageProps) {
+export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPageProps) {
     const { t } = useTranslation();
     const { goBack, navigate } = useNavigationStore();
     const { viewerMode, setViewerMode, verticalWidth, setVerticalWidth, scrollSpeed, setScrollSpeed } = useSettingsStore();
     const {
-        currentFolder: storeCurrentFolder,
-        setCurrentFolder,
-        images: storeImages,
-        setImages,
-        isLoading: storeIsLoading,
-        setIsLoading,
-        mode: storeMode,
-        setMode,
-        currentIndex: storeCurrentIndex,
-        setViewerState,
+        _updateTabStateById,
+        setViewerState: globalSetViewerState
     } = useViewerStore();
 
-    // ============ FROZEN STATE REFS ============
-    // These refs hold the "frozen" state when the tab is inactive
-    // This prevents flickering when switching tabs
-    const frozenImagesRef = useRef<ImageInfo[]>([]);
-    const frozenFolderRef = useRef<FolderInfo | null>(null);
-    const frozenIndexRef = useRef<number>(0);
-    const frozenModeRef = useRef<ViewerMode>('vertical');
-    const frozenLoadingRef = useRef<boolean>(false);
-    const hasInitialized = useRef(false);
-
-    // Update frozen refs ONLY when active
-    useEffect(() => {
-        if (isActive) {
-            if (storeImages.length > 0) {
-                frozenImagesRef.current = storeImages;
-                frozenFolderRef.current = storeCurrentFolder;
-                frozenIndexRef.current = storeCurrentIndex;
-                hasInitialized.current = true;
-            }
-            frozenModeRef.current = storeMode;
-            frozenLoadingRef.current = storeIsLoading;
+    // Helper to update the correct tab
+    const updateTabState = useCallback((updates: any) => {
+        if (tabId) {
+            _updateTabStateById(tabId, updates);
+        } else {
+            globalSetViewerState(updates);
         }
-    }, [isActive, storeImages, storeCurrentFolder, storeCurrentIndex, storeMode, storeIsLoading]);
+    }, [tabId, _updateTabStateById, globalSetViewerState]);
 
-    // Use frozen state when inactive, live state when active
-    // IMPORTANT: Inactive tabs must NOT fall back to global store to prevent content bleeding
-    const currentFolder = isActive ? storeCurrentFolder : frozenFolderRef.current;
-    const images = isActive ? storeImages : frozenImagesRef.current;
-    const currentIndex = isActive ? storeCurrentIndex : frozenIndexRef.current;
-    const mode = isActive ? storeMode : frozenModeRef.current;
-    const isLoading = isActive ? storeIsLoading : frozenLoadingRef.current;
-    // ============ END FROZEN STATE ============
+    // Get current state for this specific tab
+    const tabState = useTabStore(state => state.tabs.find(t => t.id === tabId)?.viewerState);
+
+    // Live state from store (for the active tab) or from the tab object directly
+    const storeState = useViewerStore();
+    const currentFolder = isActive ? storeState.currentFolder : (tabState?.currentFolder || null);
+    const images = isActive ? storeState.images : (tabState?.images || []);
+    const currentIndex = isActive ? storeState.currentIndex : (tabState?.currentIndex || 0);
+    const mode = isActive ? storeState.mode : (tabState?.mode || 'vertical');
+    const isLoading = isActive ? storeState.isLoading : (tabState?.isLoading || false);
 
     const [showControls, setShowControls] = useState(true);
     const [showWidthSlider, setShowWidthSlider] = useState(false);
@@ -174,12 +154,11 @@ export function ViewerPage({ folderPath, isActive = true }: ViewerPageProps) {
 
         const loadFolder = async () => {
             // Optimization: If we already have the state for this folder in the current tab, skip loading
-            const activeTab = useTabStore.getState().getActiveTab();
-            if (activeTab.viewerState?.currentFolder?.path === folderPath && activeTab.viewerState.images.length > 0) {
+            const activeTab = useTabStore.getState().tabs.find(t => t.id === tabId);
+            if (activeTab?.viewerState?.currentFolder?.path === folderPath && activeTab.viewerState.images.length > 0) {
                 console.log(`[ViewerPage] Tab switching optimization: Using existing state for ${folderPath}`);
                 setResumeIndex(activeTab.viewerState.currentIndex);
                 setResumeScrollPos(activeTab.viewerState.scrollPosition);
-                setIsLoading(false);
                 return;
             }
 
@@ -188,7 +167,7 @@ export function ViewerPage({ folderPath, isActive = true }: ViewerPageProps) {
                 await saveProgress();
             }
 
-            setIsLoading(true);
+            updateTabState({ isLoading: true });
             try {
                 // Check if we should use shallow loading (non-recursive)
                 const navParams = useNavigationStore.getState().params;
@@ -209,7 +188,7 @@ export function ViewerPage({ folderPath, isActive = true }: ViewerPageProps) {
                 const historyEntry = await window.go?.main?.App?.GetHistoryEntry(folderPath);
 
                 if (folderInfo) {
-                    setCurrentFolder(folderInfo as FolderInfo);
+                    updateTabState({ currentFolder: folderInfo as FolderInfo });
                 }
                 if (imageList) {
                     // Update images
@@ -253,7 +232,7 @@ export function ViewerPage({ folderPath, isActive = true }: ViewerPageProps) {
 
                     // Update store with new images and index via the new setViewerState action
                     // which correctly updates the tabStore as well
-                    setViewerState({
+                    updateTabState({
                         images: imgs,
                         currentIndex: targetIndex,
                         scrollPosition: targetScroll,
@@ -275,8 +254,7 @@ export function ViewerPage({ folderPath, isActive = true }: ViewerPageProps) {
 
             } catch (error) {
                 console.error('Failed to load folder:', error);
-            } finally {
-                setIsLoading(false);
+                updateTabState({ isLoading: false });
             }
         };
 
@@ -297,8 +275,10 @@ export function ViewerPage({ folderPath, isActive = true }: ViewerPageProps) {
 
     // Sync viewer mode with settings
     useEffect(() => {
-        setMode(viewerMode);
-    }, [viewerMode, setMode]);
+        if (isActive) {
+            updateTabState({ mode: viewerMode });
+        }
+    }, [viewerMode, isActive, updateTabState]);
 
     // Save reading progress
     const saveProgress = useCallback(async () => {
@@ -354,7 +334,7 @@ export function ViewerPage({ folderPath, isActive = true }: ViewerPageProps) {
     // Toggle viewer mode
     const toggleMode = () => {
         const newMode = mode === 'vertical' ? 'lateral' : 'vertical';
-        setMode(newMode);
+        updateTabState({ mode: newMode });
         setViewerMode(newMode);
     };
 
@@ -381,7 +361,7 @@ export function ViewerPage({ folderPath, isActive = true }: ViewerPageProps) {
         setResetKey(prev => prev + 1);
 
         // Force store update to trigger re-renders in children
-        setViewerState({
+        updateTabState({
             currentIndex: 0,
             scrollPosition: 0
         });

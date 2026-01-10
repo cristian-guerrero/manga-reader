@@ -40,8 +40,9 @@ interface ViewerStoreState extends ViewerState {
     hasNext: () => boolean;
     hasPrev: () => boolean;
 
-    // Internal helper (should be treated as private)
+    // Internal helpers (should be treated as private)
     _updateTabState: (updates: Partial<ViewerState>) => void;
+    _updateTabStateById: (id: string, updates: Partial<ViewerState>) => void;
 }
 
 // Initial state values for when a tab has no viewerState yet
@@ -162,11 +163,21 @@ export const useViewerStore = create<ViewerStoreState>((set, get) => ({
         get()._updateTabState(updates);
     },
 
-    // Internal helper to update tabStore
+    // Internal helper to update tabStore for active tab
     _updateTabState: (updates: any) => {
-        const activeTab = useTabStore.getState().getActiveTab();
-        const currentState = activeTab.viewerState || defaultViewerState;
-        useTabStore.getState().updateActiveTab({
+        const activeTabId = useTabStore.getState().activeTabId;
+        if (activeTabId) {
+            get()._updateTabStateById(activeTabId, updates);
+        }
+    },
+
+    // Internal helper to update tabStore by ID
+    _updateTabStateById: (id: string, updates: any) => {
+        const tab = useTabStore.getState().tabs.find(t => t.id === id);
+        if (!tab) return;
+
+        const currentState = tab.viewerState || defaultViewerState;
+        useTabStore.getState().updateTab(id, {
             viewerState: { ...currentState, ...updates }
         });
     }
