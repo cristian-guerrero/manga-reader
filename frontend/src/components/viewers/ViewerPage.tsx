@@ -190,9 +190,19 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
             const isRestored = activeTab?.restored;
 
             if (!isRestored && activeTab?.viewerState?.currentFolder?.path === folderPath && activeTab.viewerState.images.length > 0) {
-                console.log(`[ViewerPage] Tab switching optimization: Using existing state for ${folderPath}`);
-                setResumeIndex(activeTab.viewerState.currentIndex);
-                setResumeScrollPos(activeTab.viewerState.scrollPosition);
+                console.log(`[ViewerPage] Tab switching optimization: Using existing images for ${folderPath}`);
+                // Fetch fresh currentIndex from backend (since we no longer sync with tabStore)
+                try {
+                    // @ts-ignore
+                    const savedViewerState = await window.go?.main?.App?.GetViewerState(folderPath);
+                    const freshIndex = savedViewerState?.currentIndex ?? activeTab.viewerState.currentIndex;
+                    setResumeIndex(freshIndex);
+                    setResumeScrollPos(activeTab.viewerState.scrollPosition);
+                    console.log(`[ViewerPage] Resume index from backend: ${freshIndex}`);
+                } catch {
+                    setResumeIndex(activeTab.viewerState.currentIndex);
+                    setResumeScrollPos(activeTab.viewerState.scrollPosition);
+                }
                 return;
             }
 
