@@ -171,6 +171,13 @@ export function LateralViewer({
                                             alt={image.name}
                                             className="max-h-full max-w-full object-contain"
                                             draggable={false}
+                                            onError={(e) => {
+                                                // Fallback if imageUrl fails
+                                                const target = e.currentTarget;
+                                                if (target.src !== `/images?path=${encodeURIComponent(image.path)}`) {
+                                                    target.src = `/images?path=${encodeURIComponent(image.path)}`;
+                                                }
+                                            }}
                                         />
                                     ) : (
                                         <div

@@ -154,12 +154,21 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
 
         const loadFolder = async () => {
             // Optimization: If we already have the state for this folder in the current tab, skip loading
+            // UNLESS the tab was recently restored (URLs might be stale)
             const activeTab = useTabStore.getState().tabs.find(t => t.id === tabId);
-            if (activeTab?.viewerState?.currentFolder?.path === folderPath && activeTab.viewerState.images.length > 0) {
+            const isRestored = activeTab?.restored;
+
+            if (!isRestored && activeTab?.viewerState?.currentFolder?.path === folderPath && activeTab.viewerState.images.length > 0) {
                 console.log(`[ViewerPage] Tab switching optimization: Using existing state for ${folderPath}`);
                 setResumeIndex(activeTab.viewerState.currentIndex);
                 setResumeScrollPos(activeTab.viewerState.scrollPosition);
                 return;
+            }
+
+            if (isRestored) {
+                console.log(`[ViewerPage] Restored tab detected for ${folderPath}. Forcing refresh to update stale URLs.`);
+                // Clear restored flag so we don't force refresh every time we switch back to this tab
+                useTabStore.getState().updateTab(tabId!, { restored: false });
             }
 
             // Save current progress before switching if not a no-history session

@@ -27,6 +27,7 @@ export interface Tab {
         zoomLevel: number;
         scrollPosition: number;
     } | null;
+    restored?: boolean;
 }
 
 interface TabStoreState {
@@ -39,6 +40,7 @@ interface TabStoreState {
     setActiveTab: (id: string | number) => void;
     updateActiveTab: (updates: Partial<Tab>) => void;
     updateTab: (id: string, updates: Partial<Tab>) => void;
+    reorderTabs: (oldIndex: number, newIndex: number) => void;
 
     // Getters - used by navigation store proxy
     getActiveTab: () => Tab;
@@ -138,6 +140,15 @@ export const useTabStore = create<TabStoreState>((set, get) => ({
         }));
     },
 
+    reorderTabs: (oldIndex, newIndex) => {
+        set((state) => {
+            const newTabs = [...state.tabs];
+            const [removed] = newTabs.splice(oldIndex, 1);
+            newTabs.splice(newIndex, 0, removed);
+            return { tabs: newTabs };
+        });
+    },
+
     saveTabs: () => {
         const { tabs, activeTabId } = get();
         // Save essential tab data including viewerState
@@ -171,6 +182,7 @@ export const useTabStore = create<TabStoreState>((set, get) => ({
                     explorerState: saved.explorerState || null,
                     thumbnailScrollPositions: saved.thumbnailScrollPositions || {},
                     viewerState: saved.viewerState || null,
+                    restored: true, // Mark as restored to trigger URL refresh
                 }));
                 set({
                     tabs: restoredTabs,

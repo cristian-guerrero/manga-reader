@@ -361,6 +361,15 @@ export function VerticalViewer({
                                                 itemRefs.current[index]?.scrollIntoView({ block: 'start' });
                                             }
                                         }}
+                                        onError={(e) => {
+                                            // Fallback if imageUrl fails
+                                            const target = e.currentTarget;
+                                            const fallback = `/images?path=${encodeURIComponent(image.path)}`;
+                                            if (target.src !== fallback) {
+                                                console.log(`[VerticalViewer] Image load failed for ${image.name}, trying fallback`);
+                                                target.src = fallback;
+                                            }
+                                        }}
                                     />
                                 ) : (
                                     <div
