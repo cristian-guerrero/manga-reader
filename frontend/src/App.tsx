@@ -194,9 +194,15 @@ function App() {
             try {
                 await loadSettings();
 
-                // Restore last page after settings load
+                // Restore tabs if enabled
+                const { restoreTabs, savedTabs } = useSettingsStore.getState();
+                if (restoreTabs && savedTabs) {
+                    useTabStore.getState().restoreTabs(savedTabs);
+                }
+
+                // Restore last page after settings load (only if tabs weren't restored)
                 const lastPage = useSettingsStore.getState().lastPage;
-                if (lastPage && lastPage !== 'home') {
+                if (!restoreTabs && lastPage && lastPage !== 'home') {
                     // Only restore main pages, not viewer or other temporary pages
                     const mainPages = ['home', 'oneShot', 'series', 'history', 'download', 'settings'];
                     if (mainPages.includes(lastPage)) {
@@ -219,7 +225,38 @@ function App() {
             }
         };
 
-        initApp();
+        // Save tabs periodically if restoreTabs is enabled
+        // We use an interval because beforeunload doesn't allow async operations
+        let saveTabsInterval: ReturnType<typeof setInterval> | null = null;
+        let lastSavedTabs = '';
+
+        const startTabSaving = () => {
+            saveTabsInterval = setInterval(() => {
+                const { restoreTabs, setSavedTabs } = useSettingsStore.getState();
+                if (restoreTabs) {
+                    const currentTabs = useTabStore.getState().saveTabs();
+                    // Only save if tabs actually changed
+                    if (currentTabs !== lastSavedTabs) {
+                        lastSavedTabs = currentTabs;
+                        setSavedTabs(currentTabs);
+                        console.log('[App] Saved tabs state');
+                    }
+                }
+            }, 2000); // Save every 2 seconds if changed
+        };
+
+        // Also save on beforeunload (it may work for some browsers)
+        const handleBeforeUnload = () => {
+            const { restoreTabs, setSavedTabs } = useSettingsStore.getState();
+            if (restoreTabs) {
+                const savedTabs = useTabStore.getState().saveTabs();
+                setSavedTabs(savedTabs);
+            }
+        };
+
+        initApp().then(() => {
+            startTabSaving();
+        });
         checkMaximized();
 
         // Debounced resize handler to avoid excessive backend calls
@@ -230,9 +267,12 @@ function App() {
         };
 
         window.addEventListener('resize', handleResize);
+        window.addEventListener('beforeunload', handleBeforeUnload);
         return () => {
             window.removeEventListener('resize', handleResize);
+            window.removeEventListener('beforeunload', handleBeforeUnload);
             if (resizeTimeout) clearTimeout(resizeTimeout);
+            if (saveTabsInterval) clearInterval(saveTabsInterval);
             if (unsubscribeAppReady) unsubscribeAppReady();
         };
     }, [loadSettings, checkMaximized]);

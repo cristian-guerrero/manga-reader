@@ -57,6 +57,10 @@ type Settings struct {
 	AutoResumeDownloads bool `json:"autoResumeDownloads"`
 	// Tab memory saving mode (unmount inactive tabs)
 	TabMemorySaving bool `json:"tabMemorySaving"`
+	// Restore tabs on startup
+	RestoreTabs bool `json:"restoreTabs"`
+	// Saved tabs state (JSON string)
+	SavedTabs string `json:"savedTabs"`
 }
 
 // DefaultSettings returns the default settings
@@ -97,6 +101,8 @@ func DefaultSettings() *Settings {
 		ClipboardAutoMonitor: false,
 		AutoResumeDownloads:  false,
 		TabMemorySaving:      true,
+		RestoreTabs:          false,
+		SavedTabs:            "",
 	}
 }
 
@@ -287,6 +293,14 @@ func (sm *SettingsManager) Update(updates map[string]interface{}) error {
 		case "tabMemorySaving":
 			if v, ok := value.(bool); ok {
 				sm.settings.TabMemorySaving = v
+			}
+		case "restoreTabs":
+			if v, ok := value.(bool); ok {
+				sm.settings.RestoreTabs = v
+			}
+		case "savedTabs":
+			if v, ok := value.(string); ok {
+				sm.settings.SavedTabs = v
 			}
 		}
 

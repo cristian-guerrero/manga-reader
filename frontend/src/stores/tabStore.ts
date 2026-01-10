@@ -41,6 +41,10 @@ interface TabStoreState {
 
     // Getters - used by navigation store proxy
     getActiveTab: () => Tab;
+
+    // Persistence
+    saveTabs: () => string;
+    restoreTabs: (savedTabs: string) => void;
 }
 
 const createInitialTab = (): Tab => ({
@@ -123,6 +127,45 @@ export const useTabStore = create<TabStoreState>((set, get) => ({
                 t.id === state.activeTabId ? { ...t, ...updates } : t
             )
         }));
+    },
+
+    saveTabs: () => {
+        const { tabs, activeTabId } = get();
+        // Only save essential tab data (page, params, title)
+        const savedData = tabs.map(tab => ({
+            id: tab.id,
+            title: tab.title,
+            page: tab.page,
+            params: tab.params,
+        }));
+        return JSON.stringify({ tabs: savedData, activeTabId });
+    },
+
+    restoreTabs: (savedTabs: string) => {
+        try {
+            const data = JSON.parse(savedTabs);
+            if (data.tabs && Array.isArray(data.tabs) && data.tabs.length > 0) {
+                // Reconstruct full Tab objects from saved data
+                const restoredTabs: Tab[] = data.tabs.map((saved: any) => ({
+                    id: saved.id || Math.random().toString(36).substring(2, 9),
+                    title: saved.title || 'Home',
+                    page: saved.page || 'home',
+                    params: saved.params || {},
+                    history: [{ page: saved.page || 'home', params: saved.params || {} }],
+                    activeMenuPage: saved.page as PageType || 'home',
+                    explorerState: null,
+                    thumbnailScrollPositions: {},
+                    viewerState: null,
+                }));
+                set({
+                    tabs: restoredTabs,
+                    activeTabId: data.activeTabId || restoredTabs[0].id
+                });
+                console.log('[TabStore] Restored', restoredTabs.length, 'tabs');
+            }
+        } catch (error) {
+            console.error('[TabStore] Failed to restore tabs:', error);
+        }
     },
 }));
 

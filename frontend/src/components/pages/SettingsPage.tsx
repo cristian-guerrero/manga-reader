@@ -51,7 +51,9 @@ export const SettingsPage: React.FC = () => {
         setMinImageSize,
         panicKey,
         tabMemorySaving,
-        setTabMemorySaving
+        setTabMemorySaving,
+        restoreTabs,
+        setRestoreTabs
     } = useSettingsStore();
 
     const { showToast } = useToast();
@@ -501,6 +503,15 @@ export const SettingsPage: React.FC = () => {
                         <Toggle
                             checked={tabMemorySaving}
                             onChange={setTabMemorySaving}
+                        />
+                    </SettingRow>
+                    <SettingRow
+                        label={t('settings.restoreTabs', 'Continue where you left off')}
+                        description={t('settings.restoreTabsDesc', 'When enabled, your open tabs will be restored when you restart the app.')}
+                    >
+                        <Toggle
+                            checked={restoreTabs}
+                            onChange={setRestoreTabs}
                         />
                     </SettingRow>
                 </section>

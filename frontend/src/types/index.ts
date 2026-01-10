@@ -120,6 +120,10 @@ export interface Settings {
     themeAccents: Record<string, string>;
     /** Memory saving mode for tabs (unmount inactive tabs) */
     tabMemorySaving: boolean;
+    /** Restore tabs on startup */
+    restoreTabs: boolean;
+    /** Saved tabs state (JSON string) */
+    savedTabs: string;
 }
 
 
@@ -158,6 +162,8 @@ export const DEFAULT_SETTINGS: Settings = {
     autoResumeDownloads: false,
     themeAccents: {},
     tabMemorySaving: true,
+    restoreTabs: false,
+    savedTabs: '',
 };
 
 
