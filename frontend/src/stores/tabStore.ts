@@ -47,6 +47,7 @@ interface TabStoreState {
 
     // Persistence
     saveTabs: () => string;
+    completeRestoration: (id: string) => void;
     restoreTabs: (savedTabs: string) => void;
 }
 
@@ -151,7 +152,8 @@ export const useTabStore = create<TabStoreState>((set, get) => ({
 
     saveTabs: () => {
         const { tabs, activeTabId } = get();
-        // Save essential tab data including viewerState
+        // SIMPLIFIED: Only save essential data - no complex protection needed
+        // Yomikiru approach: just save page number, nothing else
         const savedData = tabs.map(tab => ({
             id: tab.id,
             title: tab.title,
@@ -159,12 +161,23 @@ export const useTabStore = create<TabStoreState>((set, get) => ({
             params: tab.params,
             explorerState: tab.explorerState,
             viewerState: tab.viewerState ? {
-                ...tab.viewerState,
-                isLoading: false // Always reset loading on save
+                // Only essential data for restoration
+                currentFolder: tab.viewerState.currentFolder,
+                currentIndex: tab.viewerState.currentIndex,
+                mode: tab.viewerState.mode,
             } : null,
             thumbnailScrollPositions: tab.thumbnailScrollPositions,
         }));
         return JSON.stringify({ tabs: savedData, activeTabId });
+    },
+
+    completeRestoration: (id) => {
+        set((state) => ({
+            tabs: state.tabs.map(tab =>
+                tab.id === id ? { ...tab, restored: false } : tab
+            )
+        }));
+        console.log(`[TabStore] Restoration completed for tab: ${id}`);
     },
 
     restoreTabs: (savedTabs: string) => {
@@ -181,7 +194,10 @@ export const useTabStore = create<TabStoreState>((set, get) => ({
                     activeMenuPage: saved.page as PageType || 'home',
                     explorerState: saved.explorerState || null,
                     thumbnailScrollPositions: saved.thumbnailScrollPositions || {},
-                    viewerState: saved.viewerState || null,
+                    viewerState: saved.viewerState ? {
+                        ...saved.viewerState,
+                        images: saved.viewerState.images || []
+                    } : null,
                     restored: true, // Mark as restored to trigger URL refresh
                 }));
                 set({

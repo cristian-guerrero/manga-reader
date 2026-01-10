@@ -269,6 +269,8 @@ export interface ViewerState {
     zoomLevel: number;
     /** Scroll position (for vertical mode) */
     scrollPosition: number;
+    /** Is currently restoring state (prevents premature saving) */
+    isRestoring?: boolean;
 }
 
 // ============================================================================

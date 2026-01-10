@@ -3,6 +3,7 @@ package persistence
 import (
 	"fmt"
 	"sync"
+	"time"
 )
 
 const settingsFile = "settings.json"
@@ -110,6 +111,10 @@ func DefaultSettings() *Settings {
 type SettingsManager struct {
 	settings *Settings
 	mu       sync.RWMutex
+	// Debounce timer for saving to disk
+	saveTimer *time.Timer
+	// Mutex for the timer itself
+	tmMu sync.Mutex
 }
 
 // NewSettingsManager creates a new settings manager
@@ -158,6 +163,45 @@ func (sm *SettingsManager) Load() error {
 
 	sm.settings = settings
 	return nil
+}
+
+// Flush immediately saves any pending changes to disk
+func (sm *SettingsManager) Flush() error {
+	sm.tmMu.Lock()
+	if sm.saveTimer != nil {
+		sm.saveTimer.Stop()
+		sm.saveTimer = nil
+	}
+	sm.tmMu.Unlock()
+
+	sm.mu.Lock()
+	settings := *sm.settings
+	sm.mu.Unlock()
+
+	return saveJSON(settingsFile, &settings)
+}
+
+// scheduleSave schedules a save operation after a debounce period
+func (sm *SettingsManager) scheduleSave() {
+	sm.tmMu.Lock()
+	defer sm.tmMu.Unlock()
+
+	if sm.saveTimer != nil {
+		sm.saveTimer.Stop()
+	}
+
+	sm.saveTimer = time.AfterFunc(1*time.Second, func() {
+		sm.mu.Lock()
+		settings := *sm.settings
+		sm.mu.Unlock()
+
+		err := saveJSON(settingsFile, &settings)
+		if err != nil {
+			fmt.Printf("[SettingsManager] Failed to save settings: %v\n", err)
+		} else {
+			fmt.Printf("[SettingsManager] Settings saved to disk (debounced)\n")
+		}
+	})
 }
 
 // Update updates specific settings fields
@@ -311,5 +355,7 @@ func (sm *SettingsManager) Update(updates map[string]interface{}) error {
 
 	}
 
-	return saveJSON(settingsFile, sm.settings)
+	// Schedule a debounced save instead of saving immediately
+	sm.scheduleSave()
+	return nil
 }

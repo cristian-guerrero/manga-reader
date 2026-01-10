@@ -225,25 +225,29 @@ function App() {
             }
         };
 
-        // Save tabs periodically if restoreTabs is enabled
-        // We use an interval because beforeunload doesn't allow async operations
-        let saveTabsInterval: ReturnType<typeof setInterval> | null = null;
+        // Save tabs REACTIVELY when store changes (not on a blind interval)
+        // But with a startup grace period to prevent saving during restoration
+        const STARTUP_GRACE_PERIOD_MS = 3000;
         let lastSavedTabs = '';
+        let appStartTime = Date.now();
 
-        const startTabSaving = () => {
-            saveTabsInterval = setInterval(() => {
-                const { restoreTabs, setSavedTabs } = useSettingsStore.getState();
-                if (restoreTabs) {
-                    const currentTabs = useTabStore.getState().saveTabs();
-                    // Only save if tabs actually changed
-                    if (currentTabs !== lastSavedTabs) {
-                        lastSavedTabs = currentTabs;
-                        setSavedTabs(currentTabs);
-                        console.log('[App] Saved tabs state');
-                    }
-                }
-            }, 2000); // Save every 2 seconds if changed
-        };
+        const unsubscribeTabStore = useTabStore.subscribe((state) => {
+            const { restoreTabs, setSavedTabs } = useSettingsStore.getState();
+            if (!restoreTabs) return;
+
+            // Skip saving during startup grace period
+            if (Date.now() - appStartTime < STARTUP_GRACE_PERIOD_MS) {
+                console.log('[App] Skipping tab save during startup grace period');
+                return;
+            }
+
+            const currentTabs = state.saveTabs();
+            if (currentTabs !== lastSavedTabs) {
+                lastSavedTabs = currentTabs;
+                setSavedTabs(currentTabs);
+                console.log('[App] Saved tabs state (reactive)');
+            }
+        });
 
         // Also save on beforeunload (it may work for some browsers)
         const handleBeforeUnload = () => {
@@ -254,9 +258,7 @@ function App() {
             }
         };
 
-        initApp().then(() => {
-            startTabSaving();
-        });
+        initApp();
         checkMaximized();
 
         // Debounced resize handler to avoid excessive backend calls
@@ -272,7 +274,7 @@ function App() {
             window.removeEventListener('resize', handleResize);
             window.removeEventListener('beforeunload', handleBeforeUnload);
             if (resizeTimeout) clearTimeout(resizeTimeout);
-            if (saveTabsInterval) clearInterval(saveTabsInterval);
+            unsubscribeTabStore();
             if (unsubscribeAppReady) unsubscribeAppReady();
         };
     }, [loadSettings, checkMaximized]);

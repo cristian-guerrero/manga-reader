@@ -185,6 +185,8 @@ func (a *App) domReady(ctx context.Context) {
 
 // shutdown is called when the app is closing
 func (a *App) shutdown(ctx context.Context) {
+	fmt.Println("[App] Flushing settings to disk...")
+	a.settings.Flush()
 }
 
 // SaveWindowState captures and saves the current window dimensions and position
@@ -689,7 +691,7 @@ func (a *App) AddDownloadedFolder(downloadPath string) (string, error) {
 func (a *App) AddDownloadedSeries(chapterPath string) (string, error) {
 	// Get the parent folder (series folder)
 	seriesPath := filepath.Dir(chapterPath)
-	
+
 	// Check if the series path exists
 	info, err := os.Stat(seriesPath)
 	if err != nil {
@@ -714,7 +716,7 @@ func (a *App) AddDownloadedSeries(chapterPath string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	
+
 	return seriesPath, nil
 }
 

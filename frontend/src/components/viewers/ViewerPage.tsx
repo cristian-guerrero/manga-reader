@@ -209,11 +209,26 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
                     let targetScroll = 0;
 
                     // Check for targetPath or explicit start index from navigation params
-                    const navParams = useNavigationStore.getState().params;
-                    const targetPath = navParams?.targetPath;
-                    const explicitStartIndex = navParams && navParams.startIndex ? parseInt(navParams.startIndex, 10) : -1;
+                    // Use tab-specific params instead of global navigation params for restoration consistency
+                    const tabParams = activeTab?.params || {};
+                    const targetPath = tabParams.targetPath;
+                    const explicitStartIndex = tabParams.startIndex ? parseInt(tabParams.startIndex, 10) : -1;
 
-                    if (targetPath) {
+                    // PRIORITIZATION LOGIC:
+                    // 1. If tab was restored, use its saved state index/scroll (most recent user state)
+                    // 2. Else if targetPath specified in URL, find its index
+                    // 3. Else if explicitStartIndex in URL, use it
+                    // 4. Else if history entry exists, fallback to reading history
+
+                    // Capture restored state from the tab we identified earlier
+                    const restoredTabState = activeTab?.viewerState;
+                    const hasRestoredState = !!restoredTabState && isRestored;
+
+                    if (hasRestoredState && restoredTabState.currentIndex < imgs.length) {
+                        targetIndex = restoredTabState.currentIndex;
+                        targetScroll = restoredTabState.scrollPosition;
+                        console.log(`[ViewerPage] Resuming from RESTORED state: index=${targetIndex}, scroll=${targetScroll}`);
+                    } else if (targetPath) {
                         const pathIndex = imgs.findIndex(img => img.path === targetPath);
                         if (pathIndex >= 0) {
                             targetIndex = pathIndex;
@@ -290,11 +305,22 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
     }, [viewerMode, isActive, updateTabState]);
 
     // Save reading progress
-    const saveProgress = useCallback(async () => {
+    const saveProgress = useCallback(async (percentage?: any) => {
         if (!currentFolder || images.length === 0) return;
 
         if (isNoHistorySession) {
             return;
+        }
+
+        // Determine correct scroll position for history (must be 0-1)
+        let historyScrollPos = 0;
+        if (typeof percentage === 'number' && percentage >= 0 && percentage <= 1) {
+            historyScrollPos = percentage;
+        } else {
+            const storePos = useViewerStore.getState().scrollPosition;
+            if (storePos >= 0 && storePos <= 1) {
+                historyScrollPos = storePos;
+            }
         }
 
         try {
@@ -305,7 +331,7 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
                 folderName: currentFolder.name,
                 lastImage: images[currentIndex]?.name || '',
                 lastImageIndex: currentIndex,
-                scrollPosition: useViewerStore.getState().scrollPosition,
+                scrollPosition: historyScrollPos,
                 totalImages: images.length,
                 lastRead: new Date().toISOString(),
             });
@@ -458,14 +484,13 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
                         <VerticalViewer
                             key={`${currentFolder.path}-${resetKey}`}
                             images={images}
-                            onScrollPositionChange={saveProgress}
                             initialIndex={resumeIndex}
-                            initialScrollPosition={resumeScrollPos}
                             showControls={showControls}
                             hasChapterButtons={hasChapterButtons}
                             isAutoScrolling={isAutoScrolling}
                             scrollSpeed={scrollSpeed}
                             onAutoScrollStateChange={setIsAutoScrolling}
+                            onRestorationComplete={() => tabId && useTabStore.getState().completeRestoration(tabId)}
                         />
                     </div>
                 ) : (
@@ -480,6 +505,7 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
                             initialIndex={resumeIndex}
                             showControls={showControls}
                             hasChapterButtons={hasChapterButtons}
+                            onRestorationComplete={() => tabId && useTabStore.getState().completeRestoration(tabId)}
                         />
                     </div>
                 )}
