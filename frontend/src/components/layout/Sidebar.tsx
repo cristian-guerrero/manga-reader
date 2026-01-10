@@ -97,8 +97,9 @@ export function Sidebar() {
                 }`}
             style={{
                 backgroundColor: 'rgba(0, 0, 0, 0)',
-                width: sidebarCollapsed ? 'var(--sidebar-width-collapsed)' : 'var(--sidebar-width-expanded)'
-            }}
+                width: sidebarCollapsed ? 'var(--sidebar-width-collapsed)' : 'var(--sidebar-width-expanded)',
+                '--wails-draggable': 'drag'
+            } as any}
         >
             {/* Navigation Items */}
             <nav className="flex-1 py-4 px-3 space-y-1 relative">
@@ -139,7 +140,8 @@ export function Sidebar() {
                     style={{
                         backgroundColor: 'var(--color-surface-tertiary)',
                         color: 'var(--color-text-secondary)',
-                    }}
+                        '--wails-draggable': 'no-drag'
+                    } as any}
                 >
                     <div
                         className="transition-transform duration-300"
@@ -183,7 +185,8 @@ function NavButton({ item, isActive, isCollapsed, onClick }: NavButtonProps) {
                 style={{
                     backgroundColor: isActive ? 'var(--color-accent)' : 'rgba(0, 0, 0, 0)',
                     color: isActive ? 'white' : 'var(--color-text-secondary)',
-                }}
+                    '--wails-draggable': 'no-drag'
+                } as any}
             >
                 {/* Icon */}
                 <div

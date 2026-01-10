@@ -167,7 +167,12 @@ func (sm *SettingsManager) Update(updates map[string]interface{}) error {
 
 	// Apply updates
 	for key, value := range updates {
-		fmt.Printf("[SettingsManager] Updating field %s to %v\n", key, value)
+		if key == "savedTabs" {
+			// Don't log full content for savedTabs as it's too large
+			fmt.Printf("[SettingsManager] Updating field %s (content hidden)\n", key)
+		} else {
+			fmt.Printf("[SettingsManager] Updating field %s to %v\n", key, value)
+		}
 		switch key {
 		case "language":
 			if v, ok := value.(string); ok {
