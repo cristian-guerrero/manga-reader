@@ -237,54 +237,21 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
         if (!folderPath) return;
         if (!isActive) return; // Don't load if tab is not active - prevents content bleeding between tabs
 
-        // If we already have images for this folder in the current tab, don't reload everything
-        // unless it's an explicit navigation refresh (handled via resetKey)
-        if (images.length > 0 && currentFolder?.path === folderPath) {
-            console.log(`[ViewerPage] Images already present for ${folderPath}, checking for seeks`);
+        // Read tab state to check if we are in restoration
+        const activeTabFromState = useTabStore.getState().tabs.find(t => t.id === tabId);
+        const isRestoredFromState = activeTabFromState?.restored;
 
-            // Still process potential "seeks" from navigation params (e.g. clicking a different thumbnail)
-            const activeTab = useTabStore.getState().tabs.find(t => t.id === tabId);
-            const tabParams = activeTab?.params || {};
-            const targetPath = tabParams.targetPath;
-            const explicitStartIndex = tabParams.startIndex ? parseInt(tabParams.startIndex, 10) : -1;
-
-            let targetIndex = -1;
-            if (targetPath) {
-                targetIndex = images.findIndex(img => img.path === targetPath);
-            } else if (explicitStartIndex >= 0) {
-                targetIndex = explicitStartIndex;
-            }
-
-            if (targetIndex >= 0 && targetIndex !== currentIndex) {
-                console.log(`[ViewerPage] Seeking to ${targetIndex} via params (skipping reload)`);
-                setResumeIndex(targetIndex);
-                updateTabState({ currentIndex: targetIndex });
-            }
+        if (!isRestoredFromState && images.length > 0 && currentFolder?.path === folderPath) {
+            console.log(`[ViewerPage] Eager check: Using existing images for ${folderPath}. Resuming at index ${currentIndex}`);
+            // Important: ensure resumeIndex is updated to our last known position
+            // so child components like VerticalViewer re-scroll correctly
+            setResumeIndex(currentIndex);
             return;
         }
 
         const loadFolder = async () => {
-            // Optimization: If we already have the state for this folder in the current tab, skip loading
-            // UNLESS the tab was recently restored (URLs might be stale)
             const activeTab = useTabStore.getState().tabs.find(t => t.id === tabId);
             const isRestored = activeTab?.restored;
-
-            if (!isRestored && activeTab?.viewerState?.currentFolder?.path === folderPath && activeTab.viewerState.images.length > 0) {
-                console.log(`[ViewerPage] Tab switching optimization: Using existing images for ${folderPath}`);
-                // Fetch fresh currentIndex from backend (since we no longer sync with tabStore)
-                try {
-                    // @ts-ignore
-                    const savedViewerState = await window.go?.main?.App?.GetViewerState(folderPath);
-                    const freshIndex = savedViewerState?.currentIndex ?? activeTab.viewerState.currentIndex;
-                    setResumeIndex(freshIndex);
-                    setResumeScrollPos(activeTab.viewerState.scrollPosition);
-                    console.log(`[ViewerPage] Resume index from backend: ${freshIndex}`);
-                } catch {
-                    setResumeIndex(activeTab.viewerState.currentIndex);
-                    setResumeScrollPos(activeTab.viewerState.scrollPosition);
-                }
-                return;
-            }
 
             if (isRestored) {
                 console.log(`[ViewerPage] Restored tab detected for ${folderPath}. Forcing refresh to update stale URLs.`);
@@ -401,7 +368,34 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
         };
 
         loadFolder();
-    }, [folderPath, isActive, resetKey, tabId]); // Added resetKey and tabId for robust re-triggers
+    }, [folderPath, isActive, tabId]); // REMOVED resetKey to prevent infinite loop
+
+    // Separate effect for "Seeks" (navigation within the same folder)
+    const currentParams = useTabStore(state => state.tabs.find(t => t.id === tabId)?.params);
+    useEffect(() => {
+        if (!isActive || !folderPath || images.length === 0) return;
+        if (currentFolder?.path !== folderPath) return;
+
+        const targetPath = currentParams?.targetPath;
+        const explicitStartIndex = currentParams?.startIndex ? parseInt(currentParams.startIndex, 10) : -1;
+
+        let targetIndex = -1;
+        if (targetPath) {
+            targetIndex = images.findIndex(img => img.path === targetPath);
+        } else if (explicitStartIndex >= 0) {
+            targetIndex = explicitStartIndex;
+        }
+
+        if (targetIndex >= 0) {
+            console.log(`[ViewerPage] Navigation seek detected: ${targetIndex}`);
+            setResumeIndex(targetIndex);
+            // Updating resetKey here is safe because the main effect NO LONGER depends on it
+            setResetKey(prev => prev + 1);
+            if (targetIndex !== currentIndex) {
+                updateTabState({ currentIndex: targetIndex });
+            }
+        }
+    }, [currentParams?.targetPath, currentParams?.startIndex, isActive, folderPath, images.length]);
 
 
     // Initial history save when folder is loaded
