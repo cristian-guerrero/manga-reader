@@ -105,8 +105,8 @@ function PageRouter({ tabId, isActive = true }: { tabId?: string; isActive?: boo
 
     // Memoize page content to prevent unnecessary re-renders
     const pageContent = useMemo(() => {
-        return renderPage(currentPage, params);
-    }, [currentPage, paramsKey]);
+        return renderPage(currentPage, params, isActive);
+    }, [currentPage, paramsKey, isActive]);
 
     return (
         <div
@@ -143,12 +143,12 @@ function PageContainer() {
 }
 
 // Render page based on current navigation
-function renderPage(page: string, params: Record<string, string>): React.ReactNode {
+function renderPage(page: string, params: Record<string, string>, isActive: boolean): React.ReactNode {
     switch (page) {
         case 'home':
             return <HomePage />;
         case 'viewer':
-            return <ViewerPage folderPath={params.folder} />;
+            return <ViewerPage folderPath={params.folder} isActive={isActive} />;
         case 'history':
             return <HistoryPage />;
         case 'oneShot':
@@ -160,7 +160,7 @@ function renderPage(page: string, params: Record<string, string>): React.ReactNo
         case 'settings':
             return <SettingsPage />;
         case 'thumbnails':
-            return <ThumbnailsPage folderPath={params.folder} />;
+            return <ThumbnailsPage folderPath={params.folder} isActive={isActive} />;
         case 'explorer':
             return <ExplorerPage />;
         case 'download':

@@ -11,7 +11,7 @@ import { useSettingsStore } from '../../stores/settingsStore';
 import { useNavigationStore } from '../../stores/navigationStore';
 import { useTabStore } from '../../stores/tabStore';
 import { Tooltip } from '../common/Tooltip';
-import { ImageInfo, FolderInfo } from '../../types';
+import { ImageInfo, FolderInfo, ViewerMode } from '../../types';
 
 // Icons
 const VerticalIcon = () => (
@@ -86,24 +86,57 @@ const PauseIcon = () => (
 
 interface ViewerPageProps {
     folderPath?: string;
+    isActive?: boolean;
 }
 
-export function ViewerPage({ folderPath }: ViewerPageProps) {
+export function ViewerPage({ folderPath, isActive = true }: ViewerPageProps) {
     const { t } = useTranslation();
     const { goBack, navigate } = useNavigationStore();
     const { viewerMode, setViewerMode, verticalWidth, setVerticalWidth, scrollSpeed, setScrollSpeed } = useSettingsStore();
     const {
-        currentFolder,
+        currentFolder: storeCurrentFolder,
         setCurrentFolder,
-        images,
+        images: storeImages,
         setImages,
-        isLoading,
+        isLoading: storeIsLoading,
         setIsLoading,
-        mode,
+        mode: storeMode,
         setMode,
-        currentIndex,
+        currentIndex: storeCurrentIndex,
         setViewerState,
     } = useViewerStore();
+
+    // ============ FROZEN STATE REFS ============
+    // These refs hold the "frozen" state when the tab is inactive
+    // This prevents flickering when switching tabs
+    const frozenImagesRef = useRef<ImageInfo[]>([]);
+    const frozenFolderRef = useRef<FolderInfo | null>(null);
+    const frozenIndexRef = useRef<number>(0);
+    const frozenModeRef = useRef<ViewerMode>('vertical');
+    const frozenLoadingRef = useRef<boolean>(false);
+    const hasInitialized = useRef(false);
+
+    // Update frozen refs ONLY when active
+    useEffect(() => {
+        if (isActive) {
+            if (storeImages.length > 0) {
+                frozenImagesRef.current = storeImages;
+                frozenFolderRef.current = storeCurrentFolder;
+                frozenIndexRef.current = storeCurrentIndex;
+                hasInitialized.current = true;
+            }
+            frozenModeRef.current = storeMode;
+            frozenLoadingRef.current = storeIsLoading;
+        }
+    }, [isActive, storeImages, storeCurrentFolder, storeCurrentIndex, storeMode, storeIsLoading]);
+
+    // Use frozen state when inactive, live state when active
+    const currentFolder = isActive ? storeCurrentFolder : (frozenFolderRef.current || storeCurrentFolder);
+    const images = isActive ? storeImages : (frozenImagesRef.current.length > 0 ? frozenImagesRef.current : storeImages);
+    const currentIndex = isActive ? storeCurrentIndex : frozenIndexRef.current;
+    const mode = isActive ? storeMode : frozenModeRef.current;
+    const isLoading = isActive ? storeIsLoading : frozenLoadingRef.current;
+    // ============ END FROZEN STATE ============
 
     const [showControls, setShowControls] = useState(true);
     const [showWidthSlider, setShowWidthSlider] = useState(false);
@@ -432,7 +465,7 @@ export function ViewerPage({ folderPath }: ViewerPageProps) {
                         className={`h-full w-full transition-opacity duration-300 ${mode === 'vertical' ? 'opacity-100' : 'opacity-0'}`}
                     >
                         <VerticalViewer
-                            key={`${currentFolder.path}-${resumeIndex}-${resetKey}`}
+                            key={`${currentFolder.path}-${resetKey}`}
                             images={images}
                             onScrollPositionChange={saveProgress}
                             initialIndex={resumeIndex}
@@ -450,7 +483,7 @@ export function ViewerPage({ folderPath }: ViewerPageProps) {
                         className={`h-full w-full transition-opacity duration-300 ${mode === 'lateral' ? 'opacity-100' : 'opacity-0'}`}
                     >
                         <LateralViewer
-                            key={`${currentFolder.path}-${resumeIndex}-${resetKey}`}
+                            key={`${currentFolder.path}-${resetKey}`}
                             images={images}
                             onPageChange={saveProgress}
                             initialIndex={resumeIndex}

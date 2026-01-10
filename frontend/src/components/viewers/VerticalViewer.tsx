@@ -95,12 +95,13 @@ export function VerticalViewer({
     useEffect(() => {
         if (!parentRef.current || hasAppliedInitialScroll || images.length === 0) return;
 
-        const timer = setTimeout(() => {
+        // Apply scroll immediately via requestAnimationFrame (minimal delay, just wait for paint)
+        const applyScroll = () => {
             if (initialIndex >= 0 && initialIndex < images.length) {
                 const target = itemRefs.current[initialIndex];
                 if (target) {
                     console.log(`[VerticalViewer] Scrolling to initial index: ${initialIndex}`);
-                    target.scrollIntoView({ block: 'start' });
+                    target.scrollIntoView({ block: 'start', behavior: 'instant' });
                 }
             } else if (initialScrollPosition > 0) {
                 const node = parentRef.current;
@@ -111,9 +112,12 @@ export function VerticalViewer({
                 }
             }
             setHasAppliedInitialScroll(true);
-        }, 100); // Small delay to ensure DOM is ready
+        };
 
-        return () => clearTimeout(timer);
+        // Use double requestAnimationFrame to ensure DOM is ready
+        requestAnimationFrame(() => {
+            requestAnimationFrame(applyScroll);
+        });
     }, [initialIndex, initialScrollPosition, images.length, hasAppliedInitialScroll]);
 
     // Convert scroll speed (0-100) to pixels per second

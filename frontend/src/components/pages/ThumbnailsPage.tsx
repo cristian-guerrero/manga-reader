@@ -65,9 +65,10 @@ interface ImageData {
 
 interface ThumbnailsPageProps {
     folderPath?: string;
+    isActive?: boolean;
 }
 
-export function ThumbnailsPage({ folderPath }: ThumbnailsPageProps) {
+export function ThumbnailsPage({ folderPath, isActive = true }: ThumbnailsPageProps) {
     const { t } = useTranslation();
     const { goBack, navigate } = useNavigationStore();
     const [images, setImages] = useState<ImageData[]>([]);
@@ -184,10 +185,10 @@ export function ThumbnailsPage({ folderPath }: ThumbnailsPageProps) {
         try {
             // @ts-ignore - Wails generated bindings
             const imageList = await window.go?.main?.App?.GetImages(folderPath);
-            
+
             // Verificar si el componente sigue montado antes de actualizar estado
             if (!isMountedRef.current) return;
-            
+
             if (imageList && Array.isArray(imageList)) {
                 setImages(imageList);
                 if (imageList.length > 0) {
@@ -212,19 +213,19 @@ export function ThumbnailsPage({ folderPath }: ThumbnailsPageProps) {
             // Check if custom order exists
             // @ts-ignore - Wails generated bindings
             const hasCustom = await window.go?.main?.App?.HasCustomOrder(folderPath);
-            
+
             // Verificar de nuevo antes de actualizar estado
             if (!isMountedRef.current) return;
-            
+
             setHasCustomOrder(hasCustom || false);
 
             // Get the original order from backend (if it exists)
             // @ts-ignore - Wails generated bindings
             const origOrder = await window.go?.main?.App?.GetOriginalOrder(folderPath);
-            
+
             // Verificar de nuevo antes de actualizar estado
             if (!isMountedRef.current) return;
-            
+
             if (origOrder && Array.isArray(origOrder)) {
                 setOriginalOrder(origOrder);
             } else if (imageList && Array.isArray(imageList)) {
