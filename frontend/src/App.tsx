@@ -16,6 +16,7 @@ import { SettingsPage } from './components/pages/SettingsPage';
 import { DownloadPage } from './components/pages/DownloadPage';
 import { useNavigationStore } from './stores/navigationStore';
 import { useSettingsStore } from './stores/settingsStore';
+import { useTabStore } from './stores/tabStore';
 import { usePanicMode } from './hooks/usePanicMode';
 import { ToastProvider } from './components/common/Toast';
 import { EventsOn } from '../wailsjs/runtime';
@@ -89,6 +90,7 @@ function LoadingScreen() {
 // Page router component with optimized rendering
 function PageRouter() {
     const { currentPage, params } = useNavigationStore();
+    const { activeTabId } = useTabStore();
 
     // Create a stable key from params for comparison
     const paramsKey = useMemo(() => {
@@ -102,7 +104,7 @@ function PageRouter() {
     }, [currentPage, paramsKey]);
 
     return (
-        <div className="h-full w-full">
+        <div className="h-full w-full" key={activeTabId}>
             {pageContent}
         </div>
     );
@@ -172,7 +174,7 @@ function App() {
             } catch (error) {
                 console.error('[App] Failed to initialize app:', error);
                 // App can continue with defaults even if settings load fails
-                
+
                 // Try again when app_ready event fires as backup
                 unsubscribeAppReady = EventsOn('app_ready', async () => {
                     console.log('[App] Received app_ready event, retrying settings load');

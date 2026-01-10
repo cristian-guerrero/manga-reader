@@ -172,3 +172,17 @@ optimizaciones realizadas (RESUELTO):
 - Implementado file watching con fsnotify para detectar cambios en sistema de archivos del explorer
 - El explorer ahora se actualiza automáticamente cuando se agregan/eliminan carpetas externamente sin sobreescaneos
 - Eliminados sobreescaneos innecesarios que causaban lentitud en bibliotecas grandes
+----------------------
+Caracteristicas adicionales 9:
+- el explorer puede tener pestañas como las del navegador (chrome)
+- estas pestañas se pueden abrir con el click centrl sobre un archivo (abrir el visor) o una carpeta, abrir un explorer
+- estas pestañas se pueden cerrar con un boton X en la esquina superior derecha
+- las pestañas  van integradas en la barra de titulo de la app
+- las pestañas no se cerraran al cambiar de vista 
+- cada pestaña tiene su propia vista y sera navegable como la vista principal
+- por ahora solo se abren las pestañas desde el explorer, pero mas adelante se podran abrir desde cualquier vista (series, oneshot)
+- las pestañas se abriran en la carpeta clickeada,
+- validar el impacto en el rendimiento de la app
+- validar el impacto en el consumo de memoria de la app
+- (en conclusion una pestaña es como una nueva instancia de la app)
+- las pestanas visualmente seran una copia de la pestañas de chrome con su comportamiento.

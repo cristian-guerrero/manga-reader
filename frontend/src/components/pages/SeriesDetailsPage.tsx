@@ -8,7 +8,8 @@ import { useNavigationStore } from '../../stores/navigationStore';
 import { ChapterInfo, SeriesEntry } from '../../types';
 import { Tooltip } from '../common/Tooltip';
 import { SortControls } from '../common/SortControls';
-import { GridContainer, GridItem } from '../common/GridContainer';
+import { GridContainer } from '../common/GridContainer';
+import { GridItem } from '../common/GridItem';
 import { SearchBar } from '../common/SearchBar';
 import { MediaTile } from '../common/MediaTile';
 import { useThumbnails } from '../../hooks/useThumbnails';
@@ -108,7 +109,7 @@ export function SeriesDetailsPage({ seriesPath }: SeriesDetailsPageProps) {
                 if (found) {
                     setSeries(found);
                     // Load thumbnails (hook handles existing thumbnailUrl)
-                    loadThumbnails(found.chapters, (chapter) => chapter.coverImage, (chapter) => chapter.path);
+                    loadThumbnails(found.chapters, (chapter) => chapter.coverImage, (chapter) => chapter.path || '');
                 }
             }
         } catch (error) {

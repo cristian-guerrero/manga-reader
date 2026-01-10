@@ -1,9 +1,11 @@
 /**
  * Navigation Store - Manages app navigation state with proper history stack
+ * Refactored to support multiple tabs via tabStore
  */
 
 import { create } from 'zustand';
 import { PageType, NavigationState, FolderInfo } from '../types';
+import { useTabStore, Tab } from './tabStore';
 
 interface HistoryEntry {
     page: PageType;
@@ -17,7 +19,6 @@ interface NavigationStoreState extends NavigationState {
     setFolders: (folders: FolderInfo[] | ((prev: FolderInfo[]) => FolderInfo[])) => void;
 
     // Active menu page - tracks which menu item should be highlighted
-    // This can be different from currentPage (e.g., when viewing 'viewer' or 'series-details')
     activeMenuPage: PageType | null;
 
     // Actions
@@ -47,26 +48,34 @@ interface NavigationStoreState extends NavigationState {
     setExplorerState: (state: { currentPath: string | null; pathHistory: string[] } | null) => void;
 }
 
+// Internal state for things that are truly global (not per tab)
+let globalIsPanicMode = false;
+let globalIsProcessing = false;
+let globalFolders: FolderInfo[] = [];
+
 export const useNavigationStore = create<NavigationStoreState>((set, get) => ({
-    // Initial state
-    currentPage: 'home',
-    previousPage: null,
+    // These getters will return values from the active tab
+    currentPage: useTabStore.getState().getActiveTab().page,
+    previousPage: useTabStore.getState().getActiveTab().history.length > 1
+        ? useTabStore.getState().getActiveTab().history[useTabStore.getState().getActiveTab().history.length - 2].page
+        : null,
     fromPage: null,
-    params: {},
-    history: [{ page: 'home', params: {} }],
-    activeMenuPage: 'home',
-    isPanicMode: false,
-    isProcessing: false,
-    folders: [],
+    params: useTabStore.getState().getActiveTab().params,
+    history: useTabStore.getState().getActiveTab().history,
+    activeMenuPage: useTabStore.getState().getActiveTab().activeMenuPage,
+    thumbnailScrollPositions: useTabStore.getState().getActiveTab().thumbnailScrollPositions,
+    explorerState: useTabStore.getState().getActiveTab().explorerState,
+
+    // Global state
+    isPanicMode: globalIsPanicMode,
+    isProcessing: globalIsProcessing,
+    folders: globalFolders,
 
     // Actions
     navigate: (page, params = {}, activeMenuPageOverride = undefined) => {
-        const { currentPage, history } = get();
+        const activeTab = useTabStore.getState().getActiveTab();
+        const { history } = activeTab;
 
-        // Determine active menu page
-        // If override is provided, use it
-        // Otherwise, if page is a main menu page, use it
-        // For viewer/series-details, keep current activeMenuPage if no override
         let activeMenuPage: PageType | null;
         const mainPages: PageType[] = ['home', 'explorer', 'history', 'oneShot', 'series', 'download', 'settings'];
 
@@ -75,23 +84,17 @@ export const useNavigationStore = create<NavigationStoreState>((set, get) => ({
         } else if (mainPages.includes(page)) {
             activeMenuPage = page;
         } else {
-            // For viewer, series-details, thumbnails, etc., keep the current activeMenuPage
-            activeMenuPage = get().activeMenuPage || null;
+            activeMenuPage = activeTab.activeMenuPage || null;
         }
 
-        // Add current page to history before navigating
-        const newHistory = [
-            ...history,
-            { page, params }
-        ];
+        const newHistory = [...history, { page, params }];
 
-        set({
-            currentPage: page,
-            previousPage: currentPage,
-            fromPage: currentPage,
+        useTabStore.getState().updateActiveTab({
+            page,
             params,
             history: newHistory,
             activeMenuPage,
+            title: page.charAt(0).toUpperCase() + page.slice(1) // Simple title update
         });
 
         // Save main pages to settings for startup restore
@@ -102,112 +105,129 @@ export const useNavigationStore = create<NavigationStoreState>((set, get) => ({
                 useSettingsStore.getState().setLastPage(page);
             });
         }
+
+        // Force a re-render by setting a dummy value if needed, 
+        // but since components listen to useTabStore too, it might be fine.
+        // To be safe with existing useNavigationStore users, we trigger a local set.
+        set({});
     },
 
     goBack: () => {
-        const { history, currentPage } = get();
+        const activeTab = useTabStore.getState().getActiveTab();
+        const { history } = activeTab;
 
         if (history.length > 1) {
-            // Remove current page from history
             const newHistory = history.slice(0, -1);
             const previous = newHistory[newHistory.length - 1];
 
-            // Determine active menu page for the previous page
             const mainPages: PageType[] = ['home', 'explorer', 'history', 'oneShot', 'series', 'download', 'settings'];
             let activeMenuPage: PageType | null = previous.page;
             if (!mainPages.includes(previous.page)) {
-                // If going back to a non-main page, try to find the last main page in history
                 const lastMainPage = newHistory.slice().reverse().find(h => mainPages.includes(h.page));
-                activeMenuPage = lastMainPage ? lastMainPage.page : get().activeMenuPage || 'home';
+                activeMenuPage = lastMainPage ? lastMainPage.page : activeTab.activeMenuPage || 'home';
             }
 
-            set({
-                currentPage: previous.page,
-                previousPage: history.length > 2 ? newHistory[newHistory.length - 2].page : null,
-                fromPage: currentPage,
+            useTabStore.getState().updateActiveTab({
+                page: previous.page,
                 params: previous.params,
                 history: newHistory,
                 activeMenuPage,
+                title: previous.page.charAt(0).toUpperCase() + previous.page.slice(1)
             });
         } else {
-            // No history, go to home
-            set({
-                currentPage: 'home',
-                previousPage: null,
+            useTabStore.getState().updateActiveTab({
+                page: 'home',
                 params: {},
                 history: [{ page: 'home', params: {} }],
                 activeMenuPage: 'home',
+                title: 'Home'
             });
         }
+        set({});
     },
 
     setParams: (params) => {
-        const { history, currentPage } = get();
+        const activeTab = useTabStore.getState().getActiveTab();
+        const { history, page } = activeTab;
 
-        // Update params in current history entry
         const newHistory = [...history];
         if (newHistory.length > 0) {
-            newHistory[newHistory.length - 1] = {
-                page: currentPage,
-                params,
-            };
+            newHistory[newHistory.length - 1] = { page, params };
         }
 
-        set({ params, history: newHistory });
+        useTabStore.getState().updateActiveTab({ params, history: newHistory });
+        set({});
     },
 
     clearHistory: () => {
-        set({
+        useTabStore.getState().updateActiveTab({
             history: [{ page: 'home', params: {} }],
-            currentPage: 'home',
-            previousPage: null,
+            page: 'home',
             params: {},
             activeMenuPage: 'home',
+            title: 'Home'
         });
+        set({});
     },
 
-    // Panic mode - instantly clears the screen
     triggerPanic: () => {
-        set({
-            isPanicMode: true,
-            currentPage: 'settings',
-            previousPage: null,
-            params: {},
-            history: [{ page: 'settings', params: {} }],
-            activeMenuPage: 'settings',
-        });
+        globalIsPanicMode = true;
+        set({ isPanicMode: true });
+        // Panic also navigates active tab to settings as a safety
+        get().navigate('settings');
     },
 
     exitPanic: () => {
+        globalIsPanicMode = false;
         set({ isPanicMode: false });
     },
 
     setIsProcessing: (isProcessing) => {
+        globalIsProcessing = isProcessing;
         set({ isProcessing });
     },
 
-    // Thumbnail scroll state
-    thumbnailScrollPositions: {},
     setThumbnailScrollPosition: (folderPath, position) => {
-        set((state) => ({
+        const activeTab = useTabStore.getState().getActiveTab();
+        useTabStore.getState().updateActiveTab({
             thumbnailScrollPositions: {
-                ...state.thumbnailScrollPositions,
+                ...activeTab.thumbnailScrollPositions,
                 [folderPath]: position,
-            },
-        }));
+            }
+        });
+        set({});
     },
 
     setFolders: (folders) => {
         if (typeof folders === 'function') {
-            set((state) => ({ folders: folders(state.folders) }));
+            globalFolders = folders(globalFolders);
         } else {
-            set({ folders });
+            globalFolders = folders;
         }
+        set({ folders: globalFolders });
     },
 
-    // Explorer state preservation
-    explorerState: null,
     setExplorerState: (state) => {
-        set({ explorerState: state });
+        useTabStore.getState().updateActiveTab({ explorerState: state });
+        set({});
     },
 }));
+
+// Subscribe to tabStore changes to trigger re-renders in navigationStore consumers
+useTabStore.subscribe((tabState) => {
+    const activeTab = tabState.tabs.find(t => t.id === tabState.activeTabId) || tabState.tabs[0];
+
+    if (activeTab) {
+        useNavigationStore.setState({
+            currentPage: activeTab.page,
+            previousPage: activeTab.history.length > 1
+                ? activeTab.history[activeTab.history.length - 2].page
+                : null,
+            params: activeTab.params,
+            history: activeTab.history,
+            activeMenuPage: activeTab.activeMenuPage,
+            thumbnailScrollPositions: activeTab.thumbnailScrollPositions,
+            explorerState: activeTab.explorerState,
+        });
+    }
+});

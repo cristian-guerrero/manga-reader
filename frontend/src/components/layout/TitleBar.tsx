@@ -6,6 +6,8 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Tooltip } from '../common/Tooltip';
+import { TabList } from './TabList';
+import { useTabStore } from '../../stores/tabStore';
 
 // Icons
 const MinimizeIcon = () => (
@@ -40,6 +42,7 @@ interface TitleBarProps {
 export function TitleBar({ title }: TitleBarProps) {
     const { t } = useTranslation();
     const [isMaximized, setIsMaximized] = useState(false);
+    const { tabs } = useTabStore();
 
     // Check maximized state on mount
     useEffect(() => {
@@ -95,35 +98,39 @@ export function TitleBar({ title }: TitleBarProps) {
 
     return (
         <header
-            className="flex items-center justify-between h-10 select-none theme-transition wails-drag"
+            className="flex items-center justify-between h-12 select-none theme-transition wails-drag"
             style={{
-                backgroundColor: 'rgba(0, 0, 0, 0)',
+                backgroundColor: 'var(--color-surface-secondary)',
                 color: 'var(--color-titlebar-text)',
+                borderBottom: '1px solid var(--color-border-primary)'
             }}
         >
-            {/* App Logo and Title - Draggable */}
-            <div className="flex items-center gap-2 flex-1 drag h-full pl-3" onDoubleClick={handleMaximize}>
-                {/* Logo */}
-                <div
-                    className="flex items-center justify-center w-5 h-5 rounded transition-transform hover:scale-110 active:scale-95"
-                    style={{
-                        background: 'var(--gradient-accent)',
-                    }}
-                >
-                    <svg
-                        width="12"
-                        height="12"
-                        viewBox="0 0 24 24"
-                        fill="white"
+            {/* Left side: Logo and Tabs */}
+            <div className="flex items-center flex-1 h-full min-w-0">
+                {/* Logo - Still draggable but maybe smaller */}
+                <div className="flex items-center justify-center w-12 h-full flex-shrink-0 drag" onDoubleClick={handleMaximize}>
+                    <div
+                        className="flex items-center justify-center w-6 h-6 rounded transition-transform hover:scale-110 active:scale-95 shadow-lg"
+                        style={{
+                            background: 'var(--gradient-accent)',
+                        }}
                     >
-                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z" />
-                    </svg>
+                        <svg
+                            width="14"
+                            height="14"
+                            viewBox="0 0 24 24"
+                            fill="white"
+                        >
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z" />
+                        </svg>
+                    </div>
                 </div>
 
-                {/* Title */}
-                <span className="text-xs font-medium truncate">
-                    {title || t('common.appName')}
-                </span>
+                {/* Tabs */}
+                <TabList />
+
+                {/* Empty draggable area to fill the rest of the header */}
+                <div className="flex-1 h-full drag" onDoubleClick={handleMaximize} />
             </div>
 
             {/* Window Controls */}
@@ -136,7 +143,7 @@ export function TitleBar({ title }: TitleBarProps) {
                             e.stopPropagation();
                             handleMinimize();
                         }}
-                        className="flex items-center justify-center w-12 h-full transition-colors hover:bg-surface-tertiary hover:text-text-primary no-drag"
+                        className="flex items-center justify-center w-12 h-full transition-colors hover:bg-white/5 hover:text-text-primary no-drag"
                         style={{
                             color: 'var(--color-text-secondary)',
                         }}
@@ -154,7 +161,7 @@ export function TitleBar({ title }: TitleBarProps) {
                             e.stopPropagation();
                             handleMaximize();
                         }}
-                        className="flex items-center justify-center w-12 h-full transition-colors hover:bg-surface-tertiary hover:text-text-primary no-drag"
+                        className="flex items-center justify-center w-12 h-full transition-colors hover:bg-white/5 hover:text-text-primary no-drag"
                         style={{
                             color: 'var(--color-text-secondary)',
                         }}

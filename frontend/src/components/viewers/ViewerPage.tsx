@@ -9,6 +9,7 @@ import { LateralViewer } from './LateralViewer';
 import { useViewerStore } from '../../stores/viewerStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useNavigationStore } from '../../stores/navigationStore';
+import { useTabStore } from '../../stores/tabStore';
 import { Tooltip } from '../common/Tooltip';
 import { ImageInfo, FolderInfo } from '../../types';
 
@@ -101,6 +102,7 @@ export function ViewerPage({ folderPath }: ViewerPageProps) {
         mode,
         setMode,
         currentIndex,
+        setViewerState,
     } = useViewerStore();
 
     const [showControls, setShowControls] = useState(true);
@@ -136,6 +138,16 @@ export function ViewerPage({ folderPath }: ViewerPageProps) {
         if (!folderPath) return;
 
         const loadFolder = async () => {
+            // Optimization: If we already have the state for this folder in the current tab, skip loading
+            const activeTab = useTabStore.getState().getActiveTab();
+            if (activeTab.viewerState?.currentFolder?.path === folderPath && activeTab.viewerState.images.length > 0) {
+                console.log(`[ViewerPage] Tab switching optimization: Using existing state for ${folderPath}`);
+                setResumeIndex(activeTab.viewerState.currentIndex);
+                setResumeScrollPos(activeTab.viewerState.scrollPosition);
+                setIsLoading(false);
+                return;
+            }
+
             // Save current progress before switching if not a no-history session
             if (currentFolder && !isNoHistorySession) {
                 await saveProgress();
@@ -204,8 +216,9 @@ export function ViewerPage({ folderPath }: ViewerPageProps) {
                     setResumeIndex(targetIndex);
                     setResumeScrollPos(targetScroll);
 
-                    // Update store with new images and index
-                    useViewerStore.setState({
+                    // Update store with new images and index via the new setViewerState action
+                    // which correctly updates the tabStore as well
+                    setViewerState({
                         images: imgs,
                         currentIndex: targetIndex,
                         scrollPosition: targetScroll,
@@ -333,7 +346,7 @@ export function ViewerPage({ folderPath }: ViewerPageProps) {
         setResetKey(prev => prev + 1);
 
         // Force store update to trigger re-renders in children
-        useViewerStore.setState({
+        setViewerState({
             currentIndex: 0,
             scrollPosition: 0
         });
@@ -359,7 +372,9 @@ export function ViewerPage({ folderPath }: ViewerPageProps) {
 
     const hasChapterButtons = !!(chapterNav && (chapterNav.prevChapter || chapterNav.nextChapter));
 
-    if (isLoading) {
+    // If images is empty but we are loading OR we haven't even started loading a folderPath yet,
+    // show the loading screen.
+    if (isLoading || (folderPath && images.length === 0)) {
         return (
             <div
                 className="flex items-center justify-center h-full"

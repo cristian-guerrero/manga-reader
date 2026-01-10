@@ -9,6 +9,7 @@ import { GridContainer } from '../common/GridContainer';
 import { SearchBar } from '../common/SearchBar';
 import { Breadcrumb } from '../common/Breadcrumb';
 import { useThumbnails } from '../../hooks/useThumbnails';
+import { useTabStore } from '../../stores/tabStore';
 
 // Icons
 const TrashIcon = () => (
@@ -73,6 +74,7 @@ const saveSortPreferences = (path: string | null, sortBy: 'name' | 'date', sortO
 export function ExplorerPage() {
     const { t } = useTranslation();
     const { navigate, explorerState, setExplorerState, previousPage, fromPage, params, setParams } = useNavigationStore();
+    const { addTab } = useTabStore();
     const { showToast } = useToast();
 
     const [baseFolders, setBaseFolders] = useState<BaseFolder[]>([]);
@@ -238,6 +240,10 @@ export function ExplorerPage() {
             }
 
             setCurrentPath(path);
+
+            // Update tab title with current folder name
+            const folderName = path.split(/[\\/]/).filter(Boolean).pop() || path;
+            useTabStore.getState().updateActiveTab({ title: folderName });
 
             // Inicializar thumbnails que ya vienen del backend
             // NO cargar todos los thumbnails de una vez - se cargarán de forma lazy cuando sean visibles
@@ -505,6 +511,47 @@ export function ExplorerPage() {
         }
     };
 
+    const handleItemAuxClick = (e: React.MouseEvent, entry: ExplorerEntry | BaseFolder) => {
+        if (e.button === 1) { // Middle click
+            e.preventDefault();
+            e.stopPropagation();
+
+            if ('addedAt' in entry) {
+                // BaseFolder
+                addTab('explorer', {}, entry.name, {
+                    explorerState: {
+                        currentPath: entry.path,
+                        pathHistory: []
+                    }
+                });
+            } else {
+                const ent = entry as ExplorerEntry;
+                if (ent.isDirectory) {
+                    addTab('explorer', {}, ent.name, {
+                        explorerState: {
+                            currentPath: ent.path,
+                            pathHistory: [...pathHistory, currentPath!]
+                        }
+                    });
+                } else {
+                    // Open file in viewer tab
+                    if (currentPath) {
+                        const imageEntries = sortedEntries.filter(ent => !ent.isDirectory);
+                        const clickedIndex = imageEntries.findIndex(ent => ent.path === ent.path);
+                        const hasSubdirs = entries.some(ent => ent.isDirectory);
+
+                        addTab('viewer', {
+                            folder: currentPath,
+                            shallow: hasSubdirs ? 'true' : 'false',
+                            startIndex: clickedIndex >= 0 ? String(clickedIndex) : '0',
+                            targetPath: ent.path
+                        }, ent.name);
+                    }
+                }
+            }
+        }
+    };
+
     // Filter function for search
     const matchesSearch = (item: BaseFolder | ExplorerEntry, query: string): boolean => {
         if (!query.trim()) return true;
@@ -625,6 +672,7 @@ export function ExplorerPage() {
                                 name={folder.name}
                                 thumbnail={folder.thumbnailUrl || thumbnails[folder.path]}
                                 onClick={() => handleItemClick(folder)}
+                                onAuxClick={(e) => handleItemAuxClick(e, folder)}
                                 onVisible={async () => {
                                     if (!folder.hasImages || folder.thumbnailUrl || thumbnails[folder.path]) return;
                                     try {
@@ -660,6 +708,7 @@ export function ExplorerPage() {
                                 name={entry.name}
                                 thumbnail={entry.thumbnailUrl || thumbnails[entry.path]}
                                 onClick={() => handleItemClick(entry)}
+                                onAuxClick={(e) => handleItemAuxClick(e, entry)}
                                 onVisible={async () => {
                                     if (!entry.coverImage || entry.thumbnailUrl || thumbnails[entry.path]) return;
                                     await loadThumbnail(entry.path, entry.coverImage);
