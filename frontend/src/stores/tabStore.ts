@@ -49,6 +49,9 @@ interface TabStoreState {
     saveTabs: () => string;
     completeRestoration: (id: string) => void;
     restoreTabs: (savedTabs: string) => void;
+    // New backend format methods
+    saveTabsForBackend: () => { activeTabId: string; tabs: Array<{ id: string; title: string; page: string; params: Record<string, string> }> };
+    restoreTabsFromBackend: (data: { activeTabId: string; tabs: Array<{ id: string; title: string; page: string; params: Record<string, string> }> }) => void;
 }
 
 const createInitialTab = (): Tab => ({
@@ -209,6 +212,44 @@ export const useTabStore = create<TabStoreState>((set, get) => ({
         } catch (error) {
             console.error('[TabStore] Failed to restore tabs:', error);
         }
+    },
+
+    // Save tabs in backend format (minimal data)
+    saveTabsForBackend: () => {
+        const { tabs, activeTabId } = get();
+        return {
+            activeTabId,
+            tabs: tabs.map(tab => ({
+                id: tab.id,
+                title: tab.title,
+                page: tab.page,
+                params: tab.params
+            }))
+        };
+    },
+
+    // Restore tabs from backend format
+    restoreTabsFromBackend: (data) => {
+        if (!data.tabs || data.tabs.length === 0) return;
+
+        const restoredTabs: Tab[] = data.tabs.map((saved) => ({
+            id: saved.id || Math.random().toString(36).substring(2, 9),
+            title: saved.title || 'Home',
+            page: saved.page as PageType || 'home',
+            params: saved.params || {},
+            history: [{ page: saved.page as PageType || 'home', params: saved.params || {} }],
+            activeMenuPage: saved.page as PageType || 'home',
+            explorerState: null,
+            thumbnailScrollPositions: {},
+            viewerState: null,
+            restored: true, // Mark as restored so ViewerPage loads state from backend
+        }));
+
+        set({
+            tabs: restoredTabs,
+            activeTabId: data.activeTabId || restoredTabs[0].id
+        });
+        console.log('[TabStore] Restored', restoredTabs.length, 'tabs from backend');
     },
 }));
 

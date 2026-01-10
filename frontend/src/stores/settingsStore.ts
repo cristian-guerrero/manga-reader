@@ -28,7 +28,6 @@ interface SettingsState extends Settings {
     setProcessDroppedFolders: (process: boolean) => void;
     setTabMemorySaving: (enable: boolean) => void;
     setRestoreTabs: (enable: boolean) => void;
-    setSavedTabs: (tabs: string) => void;
 
     setLastPage: (page: string) => void;
     setEnabledMenuItems: (items: Record<string, boolean>) => void;
@@ -169,10 +168,6 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     setRestoreTabs: (restoreTabs) => {
         set({ restoreTabs });
         get().updateBackend('restoreTabs', restoreTabs);
-    },
-    setSavedTabs: (savedTabs) => {
-        set({ savedTabs });
-        get().updateBackend('savedTabs', savedTabs);
     },
 
     setLastPage: (lastPage) => {

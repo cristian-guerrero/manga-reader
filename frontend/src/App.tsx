@@ -194,10 +194,19 @@ function App() {
             try {
                 await loadSettings();
 
-                // Restore tabs if enabled
-                const { restoreTabs, savedTabs } = useSettingsStore.getState();
-                if (restoreTabs && savedTabs) {
-                    useTabStore.getState().restoreTabs(savedTabs);
+                // Restore tabs if enabled (using new tabs.json via backend)
+                const { restoreTabs } = useSettingsStore.getState();
+                if (restoreTabs) {
+                    try {
+                        // @ts-ignore
+                        const tabsData = await window.go?.main?.App?.GetTabs();
+                        if (tabsData && tabsData.tabs && tabsData.tabs.length > 0) {
+                            // Convert backend format to tabStore format
+                            useTabStore.getState().restoreTabsFromBackend(tabsData);
+                        }
+                    } catch (error) {
+                        console.error('[App] Failed to restore tabs:', error);
+                    }
                 }
 
                 // Restore last page after settings load (only if tabs weren't restored)
@@ -228,33 +237,49 @@ function App() {
         // Save tabs REACTIVELY when store changes (not on a blind interval)
         // But with a startup grace period to prevent saving during restoration
         const STARTUP_GRACE_PERIOD_MS = 3000;
-        let lastSavedTabs = '';
+        let lastSavedTabsJson = '';
         let appStartTime = Date.now();
+        let saveTabsDebounce: ReturnType<typeof setTimeout> | null = null;
 
         const unsubscribeTabStore = useTabStore.subscribe((state) => {
-            const { restoreTabs, setSavedTabs } = useSettingsStore.getState();
+            const { restoreTabs } = useSettingsStore.getState();
             if (!restoreTabs) return;
 
             // Skip saving during startup grace period
             if (Date.now() - appStartTime < STARTUP_GRACE_PERIOD_MS) {
-                console.log('[App] Skipping tab save during startup grace period');
                 return;
             }
 
-            const currentTabs = state.saveTabs();
-            if (currentTabs !== lastSavedTabs) {
-                lastSavedTabs = currentTabs;
-                setSavedTabs(currentTabs);
-                console.log('[App] Saved tabs state (reactive)');
+            // Debounce saving to avoid excessive backend calls
+            if (saveTabsDebounce) {
+                clearTimeout(saveTabsDebounce);
             }
+            saveTabsDebounce = setTimeout(async () => {
+                const tabsData = state.saveTabsForBackend();
+                const tabsJson = JSON.stringify(tabsData);
+                if (tabsJson !== lastSavedTabsJson) {
+                    lastSavedTabsJson = tabsJson;
+                    try {
+                        // @ts-ignore
+                        await window.go?.main?.App?.SaveTabs(tabsData);
+                    } catch (error) {
+                        console.error('[App] Failed to save tabs:', error);
+                    }
+                }
+            }, 500);
         });
 
-        // Also save on beforeunload (it may work for some browsers)
-        const handleBeforeUnload = () => {
-            const { restoreTabs, setSavedTabs } = useSettingsStore.getState();
+        // Also save on beforeunload
+        const handleBeforeUnload = async () => {
+            const { restoreTabs } = useSettingsStore.getState();
             if (restoreTabs) {
-                const savedTabs = useTabStore.getState().saveTabs();
-                setSavedTabs(savedTabs);
+                const tabsData = useTabStore.getState().saveTabsForBackend();
+                try {
+                    // @ts-ignore
+                    await window.go?.main?.App?.SaveTabs(tabsData);
+                } catch (error) {
+                    console.error('[App] Failed to save tabs on unload:', error);
+                }
             }
         };
 

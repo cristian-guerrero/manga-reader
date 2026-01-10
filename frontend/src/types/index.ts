@@ -122,8 +122,6 @@ export interface Settings {
     tabMemorySaving: boolean;
     /** Restore tabs on startup */
     restoreTabs: boolean;
-    /** Saved tabs state (JSON string) */
-    savedTabs: string;
 }
 
 
@@ -163,7 +161,6 @@ export const DEFAULT_SETTINGS: Settings = {
     themeAccents: {},
     tabMemorySaving: true,
     restoreTabs: false,
-    savedTabs: '',
 };
 
 
