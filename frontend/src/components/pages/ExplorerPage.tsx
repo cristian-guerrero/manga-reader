@@ -192,6 +192,15 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
 
             setBaseFolders(folders || []);
 
+            // Reset title to Explorer if we are at root
+            if (!currentPathRef.current) {
+                if (tabId) {
+                    useTabStore.getState().updateTab(tabId, { title: t('explorer.title') || 'Explorer' });
+                } else {
+                    useTabStore.getState().updateActiveTab({ title: t('explorer.title') || 'Explorer' });
+                }
+            }
+
             // Inicializar thumbnails que ya vienen del backend
             if (folders && folders.length > 0) {
                 const initialThumbs: Record<string, string> = {};
@@ -256,9 +265,13 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
 
             setCurrentPath(path);
 
-            // Update tab title with current folder name
+            // Update THIS tab's title with current folder name (not the active tab)
             const folderName = path.split(/[\\/]/).filter(Boolean).pop() || path;
-            useTabStore.getState().updateActiveTab({ title: folderName });
+            if (tabId) {
+                useTabStore.getState().updateTab(tabId, { title: folderName });
+            } else {
+                useTabStore.getState().updateActiveTab({ title: folderName });
+            }
 
             // Inicializar thumbnails que ya vienen del backend
             // NO cargar todos los thumbnails de una vez - se cargarán de forma lazy cuando sean visibles
@@ -361,15 +374,28 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
         } else {
             setCurrentPath(null);
             setPathHistory([]);
+
+            // Reset title to Explorer
+            if (tabId) {
+                useTabStore.getState().updateTab(tabId, { title: t('explorer.title') || 'Explorer' });
+            } else {
+                useTabStore.getState().updateActiveTab({ title: t('explorer.title') || 'Explorer' });
+            }
         }
     };
 
     const handleBreadcrumbClick = (path: string | null) => {
         if (path === null) {
-            // Navigate to root
             setCurrentPath(null);
             setPathHistory([]);
             setEntries([]);
+
+            // Reset title to Explorer
+            if (tabId) {
+                useTabStore.getState().updateTab(tabId, { title: t('explorer.title') || 'Explorer' });
+            } else {
+                useTabStore.getState().updateActiveTab({ title: t('explorer.title') || 'Explorer' });
+            }
         } else {
             // Navigate to specific path
             // Build segments to check navigation direction

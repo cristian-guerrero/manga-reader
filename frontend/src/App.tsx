@@ -156,7 +156,7 @@ function renderPage(page: string, params: Record<string, string>, isActive: bool
         case 'series':
             return <SeriesPage />;
         case 'series-details':
-            return <SeriesDetailsPage seriesPath={params.series} />;
+            return <SeriesDetailsPage seriesPath={params.series} tabId={tabId} />;
         case 'settings':
             return <SettingsPage />;
         case 'thumbnails':

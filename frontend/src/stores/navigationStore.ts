@@ -89,12 +89,21 @@ export const useNavigationStore = create<NavigationStoreState>((set, get) => ({
 
         const newHistory = [...history, { page, params }];
 
+        // Determine the title - use folder name for viewer pages
+        let newTitle = page.charAt(0).toUpperCase() + page.slice(1);
+        if (page === 'viewer' && params.folder) {
+            // Extract folder name from path
+            const folderPath = params.folder;
+            const folderName = folderPath.split(/[\\/]/).pop() || 'Viewer';
+            newTitle = folderName;
+        }
+
         useTabStore.getState().updateActiveTab({
             page,
             params,
             history: newHistory,
             activeMenuPage,
-            title: page.charAt(0).toUpperCase() + page.slice(1) // Simple title update
+            title: newTitle
         });
 
         // Save main pages to settings for startup restore
@@ -127,12 +136,20 @@ export const useNavigationStore = create<NavigationStoreState>((set, get) => ({
                 activeMenuPage = lastMainPage ? lastMainPage.page : activeTab.activeMenuPage || 'home';
             }
 
+            // Determine the title - use folder name for viewer pages
+            let newTitle = previous.page.charAt(0).toUpperCase() + previous.page.slice(1);
+            if (previous.page === 'viewer' && previous.params.folder) {
+                const folderPath = previous.params.folder;
+                const folderName = folderPath.split(/[\\/]/).pop() || 'Viewer';
+                newTitle = folderName;
+            }
+
             useTabStore.getState().updateActiveTab({
                 page: previous.page,
                 params: previous.params,
                 history: newHistory,
                 activeMenuPage,
-                title: previous.page.charAt(0).toUpperCase() + previous.page.slice(1)
+                title: newTitle
             });
         } else {
             useTabStore.getState().updateActiveTab({

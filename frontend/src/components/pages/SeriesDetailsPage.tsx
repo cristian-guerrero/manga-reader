@@ -33,6 +33,7 @@ const ImageIcon = () => (
 
 interface SeriesDetailsPageProps {
     seriesPath: string;
+    tabId?: string;
 }
 
 // Helper functions for sort preferences per series
@@ -60,10 +61,10 @@ const saveSeriesSortPreferences = (seriesPath: string, sortBy: 'name' | 'pages',
     }
 };
 
-export function SeriesDetailsPage({ seriesPath }: SeriesDetailsPageProps) {
+export function SeriesDetailsPage({ seriesPath, tabId }: SeriesDetailsPageProps) {
     const { t } = useTranslation();
     const { navigate, goBack } = useNavigationStore();
-    const { addTab } = useTabStore();
+    const { addTab, updateTab, updateActiveTab } = useTabStore();
     const [series, setSeries] = useState<SeriesEntry | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const { thumbnails, loadThumbnails } = useThumbnails(10);
@@ -110,6 +111,12 @@ export function SeriesDetailsPage({ seriesPath }: SeriesDetailsPageProps) {
                 const found = data.find((s: SeriesEntry) => s.path === seriesPath);
                 if (found) {
                     setSeries(found);
+                    // Update tab title with series name
+                    if (tabId) {
+                        updateTab(tabId, { title: found.name });
+                    } else {
+                        updateActiveTab({ title: found.name });
+                    }
                     // Load thumbnails (hook handles existing thumbnailUrl)
                     loadThumbnails(found.chapters, (chapter) => chapter.coverImage, (chapter) => chapter.path || '');
                 }
