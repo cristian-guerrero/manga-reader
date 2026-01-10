@@ -11,10 +11,8 @@ interface HistoryEntry {
 }
 
 interface NavigationStoreState extends NavigationState {
-    // History stack
+    fromPage: PageType | null;
     history: HistoryEntry[];
-
-    // Library State
     folders: FolderInfo[];
     setFolders: (folders: FolderInfo[] | ((prev: FolderInfo[]) => FolderInfo[])) => void;
 
@@ -53,6 +51,7 @@ export const useNavigationStore = create<NavigationStoreState>((set, get) => ({
     // Initial state
     currentPage: 'home',
     previousPage: null,
+    fromPage: null,
     params: {},
     history: [{ page: 'home', params: {} }],
     activeMenuPage: 'home',
@@ -70,7 +69,7 @@ export const useNavigationStore = create<NavigationStoreState>((set, get) => ({
         // For viewer/series-details, keep current activeMenuPage if no override
         let activeMenuPage: PageType | null;
         const mainPages: PageType[] = ['home', 'explorer', 'history', 'oneShot', 'series', 'download', 'settings'];
-        
+
         if (activeMenuPageOverride !== undefined) {
             activeMenuPage = activeMenuPageOverride;
         } else if (mainPages.includes(page)) {
@@ -89,6 +88,7 @@ export const useNavigationStore = create<NavigationStoreState>((set, get) => ({
         set({
             currentPage: page,
             previousPage: currentPage,
+            fromPage: currentPage,
             params,
             history: newHistory,
             activeMenuPage,
@@ -105,7 +105,7 @@ export const useNavigationStore = create<NavigationStoreState>((set, get) => ({
     },
 
     goBack: () => {
-        const { history } = get();
+        const { history, currentPage } = get();
 
         if (history.length > 1) {
             // Remove current page from history
@@ -124,6 +124,7 @@ export const useNavigationStore = create<NavigationStoreState>((set, get) => ({
             set({
                 currentPage: previous.page,
                 previousPage: history.length > 2 ? newHistory[newHistory.length - 2].page : null,
+                fromPage: currentPage,
                 params: previous.params,
                 history: newHistory,
                 activeMenuPage,

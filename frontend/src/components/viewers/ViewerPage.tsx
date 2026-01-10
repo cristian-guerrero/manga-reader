@@ -146,14 +146,14 @@ export function ViewerPage({ folderPath }: ViewerPageProps) {
                 // Check if we should use shallow loading (non-recursive)
                 const navParams = useNavigationStore.getState().params;
                 const useShallow = navParams && navParams.shallow === 'true';
-                
+
                 // @ts-ignore
                 const folderInfo = useShallow
                     ? await window.go?.main?.App?.GetFolderInfoShallow(folderPath)
                     : await window.go?.main?.App?.GetFolderInfo(folderPath);
-                
+
                 // @ts-ignore
-                const imageList = useShallow 
+                const imageList = useShallow
                     ? await window.go?.main?.App?.GetImagesShallow(folderPath)
                     : await window.go?.main?.App?.GetImages(folderPath);
 
@@ -173,11 +173,18 @@ export function ViewerPage({ folderPath }: ViewerPageProps) {
                     let targetIndex = 0;
                     let targetScroll = 0;
 
-                    // Check for explicit start index from navigation params (e.g. from Thumbnails)
+                    // Check for targetPath or explicit start index from navigation params
                     const navParams = useNavigationStore.getState().params;
+                    const targetPath = navParams?.targetPath;
                     const explicitStartIndex = navParams && navParams.startIndex ? parseInt(navParams.startIndex, 10) : -1;
 
-                    if (explicitStartIndex >= 0 && explicitStartIndex < imgs.length) {
+                    if (targetPath) {
+                        const pathIndex = imgs.findIndex(img => img.path === targetPath);
+                        if (pathIndex >= 0) {
+                            targetIndex = pathIndex;
+                            console.log(`[ViewerPage] Starting from target path index: ${targetIndex} (${targetPath})`);
+                        }
+                    } else if (explicitStartIndex >= 0 && explicitStartIndex < imgs.length) {
                         targetIndex = explicitStartIndex;
                         console.log(`[ViewerPage] Starting from requested index: ${targetIndex}`);
                     } else if (historyEntry) {
@@ -615,7 +622,7 @@ export function ViewerPage({ folderPath }: ViewerPageProps) {
                     )}
                 </div>
             </div>
-            
+
             {/* Click outside handler for speed slider */}
             {showSpeedSlider && (
                 <div

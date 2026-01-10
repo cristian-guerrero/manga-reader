@@ -262,7 +262,7 @@ const saveSortPreferences = (path: string | null, sortBy: 'name' | 'date', sortO
 
 export function ExplorerPage() {
     const { t } = useTranslation();
-    const { navigate, explorerState, setExplorerState, previousPage, params, setParams } = useNavigationStore();
+    const { navigate, explorerState, setExplorerState, previousPage, fromPage, params, setParams } = useNavigationStore();
     const { showToast } = useToast();
 
     const [baseFolders, setBaseFolders] = useState<BaseFolder[]>([]);
@@ -460,10 +460,13 @@ export function ExplorerPage() {
     useEffect(() => {
         isMountedRef.current = true;
 
-        // Only restore state if we were already in explorer (previousPage === 'explorer')
-        // This prevents restoring path when coming from other views like home, series, etc.
+        // Restore path if we have a saved state and we are returning from a sub-view (viewer/thumbnails)
+        // or not explicitly coming from a main top-level page
         const savedPath = explorerState?.currentPath;
-        if (previousPage === 'explorer' && savedPath) {
+        const mainPages = ['home', 'oneShot', 'series', 'history', 'download', 'settings'];
+        const isReturning = fromPage === 'viewer' || fromPage === 'thumbnails' || !mainPages.includes(previousPage || '');
+
+        if (isReturning && savedPath) {
             isInitializingRef.current = true;
             // Restore path history first
             setPathHistory(explorerState.pathHistory || []);
@@ -666,17 +669,26 @@ export function ExplorerPage() {
                 // It's a file - use the parent directory with shallow loading
                 // because the parent directory may have subdirectories
                 if (currentPath) {
-                    // Check if current directory has subdirectories
-                    const hasSubdirs = entries.some(ent => ent.isDirectory);
+                    // Find the index of this file among images in the CURRENT view (filtered and sorted)
+                    // This matches what the user sees on screen
+                    const imageEntries = sortedEntries.filter(ent => !ent.isDirectory);
+                    const clickedIndex = imageEntries.findIndex(ent => ent.path === e.path);
 
                     // Save explorer state before navigating to viewer
                     setExplorerState({
                         currentPath,
                         pathHistory,
                     });
+
+                    // Decide if we should use shallow loading
+                    const hasSubdirs = entries.some(ent => ent.isDirectory);
+
+                    // Navigate to viewer, passing the calculated startIndex and targetPath
                     navigate('viewer', {
                         folder: currentPath,
-                        shallow: hasSubdirs ? 'true' : 'false'
+                        shallow: hasSubdirs ? 'true' : 'false',
+                        startIndex: clickedIndex >= 0 ? String(clickedIndex) : '0',
+                        targetPath: e.path
                     }, 'explorer');
                 }
             }

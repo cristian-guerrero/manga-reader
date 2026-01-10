@@ -43,7 +43,7 @@ export function VerticalViewer({
 
     // State to track if initial scroll has been applied
     const [hasAppliedInitialScroll, setHasAppliedInitialScroll] = useState(false);
-    
+
     // Auto-scroll state
     const animationFrameIdRef = useRef<number | null>(null);
     const lastScrollTimeRef = useRef<number>(0);
@@ -96,7 +96,7 @@ export function VerticalViewer({
         if (!parentRef.current || hasAppliedInitialScroll || images.length === 0) return;
 
         const timer = setTimeout(() => {
-            if (initialIndex > 0 && initialIndex < images.length) {
+            if (initialIndex >= 0 && initialIndex < images.length) {
                 const target = itemRefs.current[initialIndex];
                 if (target) {
                     console.log(`[VerticalViewer] Scrolling to initial index: ${initialIndex}`);
@@ -161,7 +161,7 @@ export function VerticalViewer({
 
             const container = parentRef.current;
             const { scrollTop, scrollHeight, clientHeight } = container;
-            
+
             // Check if we've reached the bottom
             const maxScroll = scrollHeight - clientHeight;
             if (scrollTop >= maxScroll - 1) {
@@ -178,12 +178,12 @@ export function VerticalViewer({
             if (!userScrollingRef.current) {
                 // Accumulate scroll delta to handle very small values
                 accumulatedScroll += pixelsPerSecond * deltaTime;
-                
+
                 // Apply accumulated scroll when it reaches at least 0.5 pixels
                 if (Math.abs(accumulatedScroll) >= 0.5) {
                     const scrollToApply = accumulatedScroll;
                     accumulatedScroll = 0; // Reset accumulator
-                    
+
                     const newScrollTop = Math.min(scrollTop + scrollToApply, maxScroll);
                     container.scrollTop = newScrollTop;
                     lastScrollTimeRef.current = currentTime; // Mark when we last scrolled via auto-scroll
@@ -219,13 +219,13 @@ export function VerticalViewer({
         const handleManualScroll = () => {
             const currentTime = performance.now();
             const currentScrollTop = container.scrollTop;
-            
+
             // If scroll happened when auto-scroll is active, check if it was user-initiated
             // Auto-scroll updates scrollTop frequently, so we detect sudden large changes
             // or scroll events that happen outside of our auto-scroll animation frame
             const timeSinceLastAutoScroll = currentTime - lastScrollTimeRef.current;
             const scrollDelta = Math.abs(currentScrollTop - lastScrollTopRef.current);
-            
+
             // If scroll delta is significant and it's been a while since auto-scroll updated,
             // or if the scroll was in the opposite direction of auto-scroll, it's likely manual
             if (scrollDelta > 10 && timeSinceLastAutoScroll > 50) {
