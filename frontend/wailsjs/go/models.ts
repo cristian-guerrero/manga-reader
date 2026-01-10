@@ -308,6 +308,7 @@ export namespace persistence {
 	    downloadPath: string;
 	    clipboardAutoMonitor: boolean;
 	    autoResumeDownloads: boolean;
+	    tabMemorySaving: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new Settings(source);
@@ -340,6 +341,7 @@ export namespace persistence {
 	        this.downloadPath = source["downloadPath"];
 	        this.clipboardAutoMonitor = source["clipboardAutoMonitor"];
 	        this.autoResumeDownloads = source["autoResumeDownloads"];
+	        this.tabMemorySaving = source["tabMemorySaving"];
 	    }
 	}
 

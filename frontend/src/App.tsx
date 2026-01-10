@@ -92,11 +92,11 @@ function PageRouter({ tabId, isActive = true }: { tabId?: string; isActive?: boo
     const activeTabIdFromStore = useTabStore(state => state.activeTabId);
     const id = tabId || activeTabIdFromStore;
 
-    // In persistent mode, we want to ensure each PageRouter instance stays tied to its tab
-    // but the stores currently only reflect the active tab. So when inactive, 
-    // it will render the active tab's content. This is acceptable as long as it's hidden.
-
-    const { currentPage, params } = useNavigationStore();
+    // Read page and params from the specific tab, NOT the global navigation store
+    // This ensures each tab maintains its own state independently
+    const tab = useTabStore(state => state.tabs.find(t => t.id === id));
+    const currentPage = tab?.page || 'home';
+    const params = tab?.params || {};
 
     // Create a stable key from params for comparison
     const paramsKey = useMemo(() => {

@@ -55,6 +55,8 @@ type Settings struct {
 	ClipboardAutoMonitor bool `json:"clipboardAutoMonitor"`
 	// Auto resume incomplete downloads
 	AutoResumeDownloads bool `json:"autoResumeDownloads"`
+	// Tab memory saving mode (unmount inactive tabs)
+	TabMemorySaving bool `json:"tabMemorySaving"`
 }
 
 // DefaultSettings returns the default settings
@@ -94,6 +96,7 @@ func DefaultSettings() *Settings {
 		DownloadPath:         "", // empty means default
 		ClipboardAutoMonitor: false,
 		AutoResumeDownloads:  false,
+		TabMemorySaving:      true,
 	}
 }
 
@@ -280,6 +283,10 @@ func (sm *SettingsManager) Update(updates map[string]interface{}) error {
 		case "autoResumeDownloads":
 			if v, ok := value.(bool); ok {
 				sm.settings.AutoResumeDownloads = v
+			}
+		case "tabMemorySaving":
+			if v, ok := value.(bool); ok {
+				sm.settings.TabMemorySaving = v
 			}
 		}
 
