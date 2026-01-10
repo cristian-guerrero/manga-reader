@@ -12,6 +12,7 @@ import { GridItem } from '../common/GridItem';
 import { GridContainer } from '../common/GridContainer';
 import { SearchBar } from '../common/SearchBar';
 import { LibraryCard } from '../common/LibraryCard';
+import { useThumbnails } from '../../hooks/useThumbnails';
 
 // Icons
 const SeriesIcon = () => (
@@ -56,7 +57,7 @@ export function SeriesPage() {
     const { navigate } = useNavigationStore();
     const [series, setSeries] = useState<SeriesEntry[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [thumbnails, setThumbnails] = useState<Record<string, string>>({});
+    const { thumbnails, loadThumbnails, initializeThumbnails } = useThumbnails(10);
     const [history, setHistory] = useState<any[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
     const isMountedRef = useRef(true);
@@ -75,38 +76,6 @@ export function SeriesPage() {
         localStorage.setItem('series_sortOrder', sortOrder);
     }, [sortBy, sortOrder]);
 
-    const loadThumbnailsInParallel = useCallback(async (data: SeriesEntry[]) => {
-        if (!isMountedRef.current) return;
-        
-        const entriesWithCover = data.filter(entry => entry.coverImage);
-        
-        // Load thumbnails in parallel with batching to avoid overwhelming
-        const batchSize = 10;
-        for (let i = 0; i < entriesWithCover.length; i += batchSize) {
-            const batch = entriesWithCover.slice(i, i + batchSize);
-            const thumbnailPromises = batch.map(async (entry) => {
-                try {
-                    // @ts-ignore
-                    const thumb = await window.go?.main?.App?.GetThumbnail(entry.coverImage);
-                    return { id: entry.id, thumb };
-                } catch (error) {
-                    console.error('Failed to load thumbnail:', error);
-                    return null;
-                }
-            });
-            
-            const results = await Promise.all(thumbnailPromises);
-            if (!isMountedRef.current) return;
-            
-            const newThumbnails: Record<string, string> = {};
-            results.forEach(result => {
-                if (result?.thumb) {
-                    newThumbnails[result.id] = result.thumb;
-                }
-            });
-            setThumbnails((prev) => ({ ...prev, ...newThumbnails }));
-        }
-    }, []);
 
     const loadHistory = useCallback(async () => {
         try {
@@ -145,17 +114,17 @@ export function SeriesPage() {
 
             const seriesPromise = app.GetSeries();
             const data = await Promise.race([seriesPromise, timeoutPromise]) as any[];
-            
+
             console.log(`[SeriesPage] Series received: ${data?.length || 0} items`);
-            
+
             if (!isMountedRef.current) return;
 
             if (data && Array.isArray(data)) {
                 setSeries(data);
                 setIsLoading(false); // Show UI immediately with data
 
-                // Load thumbnails asynchronously without blocking UI
-                loadThumbnailsInParallel(data);
+                // Load thumbnails asynchronously (hook handles existing thumbnailUrl)
+                loadThumbnails(data, (entry) => entry.coverImage, (entry) => entry.id);
             } else {
                 setSeries([]);
                 setIsLoading(false);
@@ -167,7 +136,7 @@ export function SeriesPage() {
                 setIsLoading(false);
             }
         }
-    }, [loadThumbnailsInParallel]);
+    }, [loadThumbnails]);
 
     useEffect(() => {
         isMountedRef.current = true;
@@ -270,7 +239,7 @@ export function SeriesPage() {
 
     // Debounced search query
     const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
-    
+
     useEffect(() => {
         const timer = setTimeout(() => {
             setDebouncedSearchQuery(searchQuery);
@@ -352,7 +321,7 @@ export function SeriesPage() {
                         </button>
                     </div>
                 </div>
-                
+
                 {/* Search Bar */}
                 {series.length > 0 && (
                     <div className="mt-4">

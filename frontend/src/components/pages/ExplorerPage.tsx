@@ -41,217 +41,7 @@ interface ExplorerEntry {
     lastModified: number;
 }
 
-// Componente que carga thumbnail de forma lazy cuando es visible
-function LazyThumbnail({
-    entry,
-    thumbnails,
-    loadThumbnail
-}: {
-    entry: ExplorerEntry;
-    thumbnails: Record<string, string>;
-    loadThumbnail: (key: string, imagePath: string) => Promise<void>;
-}) {
-    const [isVisible, setIsVisible] = useState(false);
-    const [isLoading, setIsLoading] = useState(false);
-    const ref = useRef<HTMLDivElement>(null);
-    const loadingRef = useRef(false);
-
-    useEffect(() => {
-        const el = ref.current;
-        if (!el || isVisible) return;
-
-        const observer = new IntersectionObserver(
-            ([obsEntry]) => {
-                if (obsEntry.isIntersecting) {
-                    setIsVisible(true);
-                }
-            },
-            {
-                rootMargin: '200px',
-                threshold: 0.01
-            }
-        );
-
-        observer.observe(el);
-
-        // Immediate check in case it's already visible
-        const rect = el.getBoundingClientRect();
-        if (rect.top < window.innerHeight + 200 && rect.bottom > -200) {
-            setIsVisible(true);
-        }
-
-        return () => observer.disconnect();
-    }, [isVisible]);
-
-    // Cargar thumbnail cuando sea visible y no esté cargado
-    useEffect(() => {
-        if (!isVisible || !entry.coverImage || entry.thumbnailUrl || thumbnails[entry.path] || loadingRef.current) return;
-
-        loadingRef.current = true;
-        setIsLoading(true);
-
-        loadThumbnail(entry.path, entry.coverImage)
-            .finally(() => {
-                setIsLoading(false);
-                loadingRef.current = false;
-            });
-    }, [isVisible, entry, thumbnails, loadThumbnail]);
-
-    const thumbnailUrl = entry.thumbnailUrl || thumbnails[entry.path];
-
-    return (
-        <div ref={ref} className="w-full h-full bg-surface-tertiary overflow-hidden">
-            {isVisible ? (
-                thumbnailUrl ? (
-                    <img
-                        src={thumbnailUrl}
-                        alt={entry.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-0"
-                        onLoad={(e) => {
-                            (e.target as HTMLImageElement).classList.add('opacity-100');
-                        }}
-                    />
-                ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                        <div className="w-8 h-8 rounded-full border-2 border-accent/20 border-t-accent animate-spin" />
-                    </div>
-                )
-            ) : null}
-        </div>
-    );
-}
-
-// Componente lazy para base folders (necesita GetImages primero)
-function LazyBaseFolderThumbnail({
-    folder,
-    thumbnails,
-    loadThumbnail
-}: {
-    folder: BaseFolder;
-    thumbnails: Record<string, string>;
-    loadThumbnail: (key: string, imagePath: string) => Promise<void>;
-}) {
-    const [isVisible, setIsVisible] = useState(false);
-    const [isLoading, setIsLoading] = useState(false);
-    const ref = useRef<HTMLDivElement>(null);
-    const loadingRef = useRef(false);
-
-    useEffect(() => {
-        const el = ref.current;
-        if (!el || isVisible) return;
-
-        const observer = new IntersectionObserver(
-            ([obsEntry]) => {
-                if (obsEntry.isIntersecting) {
-                    setIsVisible(true);
-                }
-            },
-            {
-                rootMargin: '200px',
-                threshold: 0.01
-            }
-        );
-
-        observer.observe(el);
-
-        // Immediate check in case it's already visible
-        const rect = el.getBoundingClientRect();
-        if (rect.top < window.innerHeight + 200 && rect.bottom > -200) {
-            setIsVisible(true);
-        }
-
-        return () => observer.disconnect();
-    }, [isVisible]);
-
-    // Cargar thumbnail cuando sea visible y no esté cargado
-    useEffect(() => {
-        if (!isVisible || !folder.hasImages || folder.thumbnailUrl || thumbnails[folder.path] || loadingRef.current) return;
-
-        loadingRef.current = true;
-        setIsLoading(true);
-
-        // Para base folders, usar GetFolderInfoShallow para evitar escaneo recursivo
-        // Esto es mucho más rápido que GetImages que escanea todas las subcarpetas
-        (async () => {
-            try {
-                // @ts-ignore
-                const folderInfo = await window.go?.main?.App?.GetFolderInfoShallow(folder.path);
-                if (folderInfo && folderInfo.coverImage) {
-                    await loadThumbnail(folder.path, folderInfo.coverImage);
-                }
-            } catch (error) {
-                console.error('Failed to load thumbnail for folder:', folder.path, error);
-            } finally {
-                setIsLoading(false);
-                loadingRef.current = false;
-            }
-        })();
-    }, [isVisible, folder, thumbnails, loadThumbnail]);
-
-    const thumbnailUrl = folder.thumbnailUrl || thumbnails[folder.path];
-
-    return (
-        <div ref={ref} className="w-full h-full bg-surface-tertiary overflow-hidden">
-            {isVisible ? (
-                thumbnailUrl ? (
-                    <img
-                        src={thumbnailUrl}
-                        alt={folder.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-0"
-                        onLoad={(e) => {
-                            (e.target as HTMLImageElement).classList.add('opacity-100');
-                        }}
-                    />
-                ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                        <div className="w-8 h-8 rounded-full border-2 border-accent/20 border-t-accent animate-spin" />
-                    </div>
-                )
-            ) : null}
-        </div>
-    );
-}
-
-// Robust Lazy Image component using IntersectionObserver
-function LazyImage({ src, alt, className }: { src: string; alt: string; className?: string }) {
-    const [isVisible, setIsVisible] = useState(false);
-    const [ref, setRef] = useState<HTMLDivElement | null>(null);
-
-    useEffect(() => {
-        if (!ref || isVisible) return;
-
-        const observer = new IntersectionObserver(
-            ([entry]) => {
-                if (entry.isIntersecting) {
-                    setIsVisible(true);
-                }
-            },
-            { rootMargin: '400px' }
-        );
-
-        observer.observe(ref);
-        return () => observer.disconnect();
-    }, [ref, isVisible]);
-
-    return (
-        <div ref={setRef} className="w-full h-full bg-surface-tertiary overflow-hidden">
-            {isVisible ? (
-                <img
-                    src={src}
-                    alt={alt}
-                    className={className}
-                    onLoad={(e) => {
-                        (e.target as HTMLImageElement).classList.add('opacity-100');
-                    }}
-                />
-            ) : (
-                <div className="w-full h-full flex items-center justify-center">
-                    <div className="w-8 h-8 rounded-full border-2 border-accent/20 border-t-accent animate-spin" />
-                </div>
-            )}
-        </div>
-    );
-}
+import { MediaTile } from '../common/MediaTile';
 
 // Helper functions for sort preferences per path
 const getSortPreferences = (path: string | null) => {
@@ -830,95 +620,76 @@ export function ExplorerPage() {
                     {/* Base Folders View */}
                     {!currentPath && sortedBaseFolders.map((folder) => (
                         <GridItem key={folder.path}>
-                            <div
-                                className="group/card relative bg-surface-secondary rounded-xl overflow-hidden border border-white/5 hover:border-accent/50 transition-all hover:shadow-lg cursor-pointer animate-scale-in"
+                            <MediaTile
+                                id={folder.path}
+                                name={folder.name}
+                                thumbnail={folder.thumbnailUrl || thumbnails[folder.path]}
                                 onClick={() => handleItemClick(folder)}
-                            >
-                                {folder.hasImages ? (
-                                    <div className="aspect-[2/3] w-full relative overflow-hidden">
-                                        <LazyBaseFolderThumbnail
-                                            folder={folder}
-                                            thumbnails={thumbnails}
-                                            loadThumbnail={loadThumbnail}
-                                        />
-                                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-60 pointer-events-none" />
+                                onVisible={async () => {
+                                    if (!folder.hasImages || folder.thumbnailUrl || thumbnails[folder.path]) return;
+                                    try {
+                                        // @ts-ignore
+                                        const folderInfo = await window.go?.main?.App?.GetFolderInfoShallow(folder.path);
+                                        if (folderInfo && folderInfo.coverImage) {
+                                            await loadThumbnail(folder.path, folderInfo.coverImage);
+                                        }
+                                    } catch (error) {
+                                        console.error('Failed to load thumbnail for folder:', folder.path, error);
+                                    }
+                                }}
+                                onSecondaryAction={(e) => handleRemoveBaseFolder(folder.path, e)}
+                                secondaryActionIcon={<TrashIcon />}
+                                secondaryActionLabel={t('common.remove')}
+                                fallbackIcon={
+                                    <div className="p-4 rounded-xl bg-accent/10 text-accent">
+                                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                                            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+                                        </svg>
                                     </div>
-                                ) : (
-                                    <div className="aspect-[2/3] w-full flex items-center justify-center bg-surface-tertiary group-hover:bg-surface-elevated transition-colors">
-                                        <div className="p-4 rounded-xl bg-accent/10 text-accent">
-                                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                                                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
-                                            </svg>
-                                        </div>
-                                    </div>
-                                )}
-
-                                <div className="absolute top-2 right-2 z-20">
-                                    <Tooltip content={t('common.remove')} placement="left">
-                                        <button
-                                            onClick={(e) => handleRemoveBaseFolder(folder.path, e)}
-                                            className="p-2 rounded-full bg-red-500/20 text-red-500 opacity-0 group-hover/card:opacity-100 transition-opacity hover:bg-red-500/40 backdrop-blur-md"
-                                            aria-label={t('common.remove')}
-                                        >
-                                            <TrashIcon />
-                                        </button>
-                                    </Tooltip>
-                                </div>
-
-                                <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/90 to-transparent">
-                                    <h3 className="font-semibold text-white truncate text-shadow-sm" title={folder.path}>{folder.name}</h3>
-                                    <p className="text-xs text-white/60 truncate mt-1 font-mono opacity-80">{folder.path}</p>
-                                </div>
-                            </div>
+                                }
+                                footerLeft={<p className="text-xs text-white/50 truncate mt-1 font-mono">{folder.path}</p>}
+                            />
                         </GridItem>
                     ))}
 
                     {/* Directory View */}
                     {currentPath && sortedEntries.map((entry) => (
                         <GridItem key={entry.path}>
-                            <div
-                                className="group/card relative bg-surface-secondary rounded-xl overflow-hidden border border-white/5 hover:border-accent/50 transition-all hover:shadow-lg cursor-pointer animate-scale-in"
+                            <MediaTile
+                                id={entry.path}
+                                name={entry.name}
+                                thumbnail={entry.thumbnailUrl || thumbnails[entry.path]}
                                 onClick={() => handleItemClick(entry)}
-                            >
-                                {entry.hasImages ? (
-                                    <div className="aspect-[2/3] w-full relative overflow-hidden">
-                                        <LazyThumbnail
-                                            entry={entry}
-                                            thumbnails={thumbnails}
-                                            loadThumbnail={loadThumbnail}
-                                        />
-                                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-60 pointer-events-none" />
-                                    </div>
-                                ) : (
-                                    <div className="aspect-[2/3] w-full flex items-center justify-center bg-surface-tertiary group-hover:bg-surface-elevated transition-colors">
-                                        <svg className="w-12 h-12 text-text-secondary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
-                                            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
-                                        </svg>
-                                    </div>
-                                )}
-
-                                <div className="absolute bottom-0 left-0 right-0 p-3">
-                                    <h3 className="font-semibold text-white truncate text-shadow-sm">{entry.name}</h3>
-                                    <div className="flex items-center justify-between mt-1">
-                                        <span className="text-xs text-white/70">
-                                            {entry.isDirectory ? (entry.hasImages ? `${entry.imageCount} ${t('explorer.images')}` : t('explorer.folder')) : t('explorer.file')}
-                                        </span>
-                                        {entry.hasImages && (
-                                            <Tooltip content={t('explorer.openInViewer')} placement="left" className="z-10">
-                                                <button
-                                                    onClick={(e) => handleOpenInViewer(entry.path, e)}
-                                                    className="p-1.5 rounded-full bg-accent text-white hover:bg-accent-hover transform hover:scale-110 transition-all opacity-0 group-hover/card:opacity-100"
-                                                    aria-label={t('explorer.openInViewer')}
-                                                >
-                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                                                        <path d="M8 5v14l11-7z" />
-                                                    </svg>
-                                                </button>
-                                            </Tooltip>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
+                                onVisible={async () => {
+                                    if (!entry.coverImage || entry.thumbnailUrl || thumbnails[entry.path]) return;
+                                    await loadThumbnail(entry.path, entry.coverImage);
+                                }}
+                                fallbackIcon={
+                                    <svg className="w-12 h-12 text-accent/40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
+                                        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+                                    </svg>
+                                }
+                                footerLeft={
+                                    <span className="text-xs text-white/50">
+                                        {entry.isDirectory ? (entry.hasImages ? `${entry.imageCount} ${t('explorer.images')}` : t('explorer.folder')) : t('explorer.file')}
+                                    </span>
+                                }
+                                footerRight={
+                                    entry.hasImages && (
+                                        <Tooltip content={t('explorer.openInViewer')} placement="left">
+                                            <button
+                                                onClick={(e) => handleOpenInViewer(entry.path, e)}
+                                                className="p-1.5 rounded-full bg-accent text-white hover:bg-accent-hover transform hover:scale-110 transition-all opacity-0 group-hover/tile:opacity-100"
+                                                aria-label={t('explorer.openInViewer')}
+                                            >
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                                    <path d="M8 5v14l11-7z" />
+                                                </svg>
+                                            </button>
+                                        </Tooltip>
+                                    )
+                                }
+                            />
                         </GridItem>
                     ))}
                 </GridContainer>

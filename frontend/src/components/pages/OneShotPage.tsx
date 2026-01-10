@@ -9,6 +9,7 @@ import { GridContainer } from '../common/GridContainer';
 import { SearchBar } from '../common/SearchBar';
 import { LibraryCard } from '../common/LibraryCard';
 import { FolderInfo } from '../../types';
+import { useThumbnails } from '../../hooks/useThumbnails';
 
 // Icons
 const OneShotIcon = () => (
@@ -50,7 +51,7 @@ export function OneShotPage() {
     const { t } = useTranslation();
     const { showToast } = useToast();
     const [isLoading, setIsLoading] = useState(true);
-    const [thumbnails, setThumbnails] = useState<Record<string, string>>({});
+    const { thumbnails, loadThumbnails, initializeThumbnails } = useThumbnails(10);
     const [searchQuery, setSearchQuery] = useState('');
     const isMountedRef = useRef(true);
 
@@ -163,14 +164,8 @@ export function OneShotPage() {
                 setFolders(folderData);
                 setIsLoading(false); // Show UI immediately with data
 
-                // Initialize thumbnails state from the folder metadata
-                const initialThumbs: Record<string, string> = {};
-                for (const folder of folderData) {
-                    if (folder.thumbnailUrl) {
-                        initialThumbs[folder.path] = folder.thumbnailUrl;
-                    }
-                }
-                setThumbnails(initialThumbs);
+                // Load thumbnails (hook handles existing thumbnailUrl)
+                loadThumbnails(folderData, (f) => f.coverImage, (f) => f.path);
             } else {
                 setFolders([]);
                 setIsLoading(false);
@@ -184,23 +179,6 @@ export function OneShotPage() {
         }
     }, []);
 
-    const loadFolderThumbnail = async (folderPath: string) => {
-        try {
-            // Use GetFolderInfoShallow instead of GetImages to avoid recursive scanning
-            // This is much faster and only scans the immediate directory
-            // @ts-ignore - Wails generated bindings
-            const folderInfo = await window.go?.main?.App?.GetFolderInfoShallow(folderPath);
-            if (folderInfo && folderInfo.coverImage) {
-                // @ts-ignore - Wails generated bindings
-                const thumb = await window.go?.main?.App?.GetThumbnail(folderInfo.coverImage);
-                if (thumb) {
-                    setThumbnails((prev) => ({ ...prev, [folderPath]: thumb }));
-                }
-            }
-        } catch (error) {
-            console.error('Failed to load thumbnail:', error);
-        }
-    };
 
     const handleSelectFolder = async () => {
         try {
@@ -262,7 +240,7 @@ export function OneShotPage() {
 
     // Debounced search query
     const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
-    
+
     useEffect(() => {
         const timer = setTimeout(() => {
             setDebouncedSearchQuery(searchQuery);

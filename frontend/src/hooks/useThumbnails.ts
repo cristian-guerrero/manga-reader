@@ -10,7 +10,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 export function useThumbnails(batchSize: number = 10) {
     const [thumbnails, setThumbnails] = useState<Record<string, string>>({});
     const thumbnailsRef = useRef<Record<string, string>>({});
-    
+
     // Mantener ref sincronizado con el estado
     useEffect(() => {
         thumbnailsRef.current = thumbnails;
@@ -29,16 +29,26 @@ export function useThumbnails(batchSize: number = 10) {
         getKey: (entry: T) => string = (entry) => entry.path || entry.id || '',
         filterFn?: (entry: T) => boolean
     ) => {
-        // Filtrar entradas que necesitan thumbnail
-        const needsThumbnail = filterFn 
+        // Initial population from entries that already have thumbnailUrl
+        const existingThumbs: Record<string, string> = {};
+        entries.forEach(entry => {
+            const key = getKey(entry);
+            if (entry.thumbnailUrl && !thumbnailsRef.current[key]) {
+                existingThumbs[key] = entry.thumbnailUrl;
+                thumbnailsRef.current[key] = entry.thumbnailUrl;
+            }
+        });
+
+        if (Object.keys(existingThumbs).length > 0) {
+            setThumbnails(prev => ({ ...prev, ...existingThumbs }));
+        }
+
+        // Filter entries that still need thumbnail
+        const needsThumbnail = filterFn
             ? entries.filter(filterFn)
             : entries.filter(entry => {
                 const imagePath = getImagePath(entry);
-                // Si es una Promise, no podemos verificar aquí, se verificará después
                 if (imagePath instanceof Promise) return true;
-                // Verificar si ya tiene thumbnailUrl del backend o si ya está cargado
-                if (entry.thumbnailUrl) return false;
-                // Verificar en el ref (estado actual) sin causar re-renders
                 const key = getKey(entry);
                 return imagePath && !thumbnailsRef.current[key];
             });
