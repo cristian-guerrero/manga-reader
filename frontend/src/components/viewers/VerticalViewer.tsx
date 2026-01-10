@@ -300,9 +300,10 @@ export function VerticalViewer({
                             key={`${image.path}-${index}`}
                             ref={el => itemRefs.current[index] = el}
                             data-index={index}
-                            className="flex justify-center w-full min-h-[80vh]"
+                            className="flex justify-center w-full"
                             style={{
                                 width: '100%',
+                                minHeight: `calc(80vh * ${verticalWidth} / 100)`,
                                 // Use visibility: hidden for items out of range to keep their space? 
                                 // Actually, if we don't render the image, we can't know the height.
                                 // But keeping the placeholder height helps.
@@ -338,7 +339,8 @@ export function VerticalViewer({
                                     />
                                 ) : (
                                     <div
-                                        className="w-full aspect-[2/3] max-h-[80vh] flex items-center justify-center bg-zinc-900/20 rounded-lg animate-pulse"
+                                        className="w-full aspect-[2/3] flex items-center justify-center bg-zinc-900/20 rounded-lg animate-pulse"
+                                        style={{ maxHeight: `calc(80vh * ${verticalWidth} / 100)` }}
                                     >
                                         <span className="text-zinc-700 font-bold text-4xl">{index + 1}</span>
                                     </div>
