@@ -137,6 +137,7 @@ export const useTabStore = create<TabStoreState>((set, get) => ({
             title: tab.title,
             page: tab.page,
             params: tab.params,
+            explorerState: tab.explorerState,
         }));
         return JSON.stringify({ tabs: savedData, activeTabId });
     },
@@ -153,7 +154,7 @@ export const useTabStore = create<TabStoreState>((set, get) => ({
                     params: saved.params || {},
                     history: [{ page: saved.page || 'home', params: saved.params || {} }],
                     activeMenuPage: saved.page as PageType || 'home',
-                    explorerState: null,
+                    explorerState: saved.explorerState || null,
                     thumbnailScrollPositions: {},
                     viewerState: null,
                 }));

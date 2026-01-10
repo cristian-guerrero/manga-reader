@@ -131,8 +131,9 @@ export function ViewerPage({ folderPath, isActive = true }: ViewerPageProps) {
     }, [isActive, storeImages, storeCurrentFolder, storeCurrentIndex, storeMode, storeIsLoading]);
 
     // Use frozen state when inactive, live state when active
-    const currentFolder = isActive ? storeCurrentFolder : (frozenFolderRef.current || storeCurrentFolder);
-    const images = isActive ? storeImages : (frozenImagesRef.current.length > 0 ? frozenImagesRef.current : storeImages);
+    // IMPORTANT: Inactive tabs must NOT fall back to global store to prevent content bleeding
+    const currentFolder = isActive ? storeCurrentFolder : frozenFolderRef.current;
+    const images = isActive ? storeImages : frozenImagesRef.current;
     const currentIndex = isActive ? storeCurrentIndex : frozenIndexRef.current;
     const mode = isActive ? storeMode : frozenModeRef.current;
     const isLoading = isActive ? storeIsLoading : frozenLoadingRef.current;
@@ -169,6 +170,7 @@ export function ViewerPage({ folderPath, isActive = true }: ViewerPageProps) {
     // Load folder and images
     useEffect(() => {
         if (!folderPath) return;
+        if (!isActive) return; // Don't load if tab is not active - prevents content bleeding between tabs
 
         const loadFolder = async () => {
             // Optimization: If we already have the state for this folder in the current tab, skip loading
@@ -280,7 +282,7 @@ export function ViewerPage({ folderPath, isActive = true }: ViewerPageProps) {
 
         loadFolder();
         // loadFolder(); // Removed duplicate call
-    }, [folderPath]); // Removed other dependencies to avoid re-triggering loops
+    }, [folderPath, isActive]); // Added isActive to trigger loading when tab becomes active
 
 
     // Initial history save when folder is loaded

@@ -73,25 +73,28 @@ const saveSortPreferences = (path: string | null, sortBy: 'name' | 'date', sortO
 
 interface ExplorerPageProps {
     isActive?: boolean;
+    tabId?: string;
 }
 
-export function ExplorerPage({ isActive = true }: ExplorerPageProps) {
+export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
     const { t } = useTranslation();
     const { navigate, explorerState, setExplorerState, previousPage, fromPage, params, setParams } = useNavigationStore();
     const { addTab, getActiveTab } = useTabStore();
     const { showToast } = useToast();
 
-    // Get initial state from the TAB store, not the global navigation store
+    // Get initial state from the specific TAB, not the global active tab
     // This ensures each tab maintains its own explorer state
     const getInitialExplorerState = () => {
-        const tab = useTabStore.getState().getActiveTab();
+        const tabs = useTabStore.getState().tabs;
+        const tab = tabId ? tabs.find(t => t.id === tabId) : useTabStore.getState().getActiveTab();
         return tab?.explorerState || null;
     };
 
     const [baseFolders, setBaseFolders] = useState<BaseFolder[]>([]);
-    // Always start at root when mounting - state will be restored only if coming from explorer
-    const [currentPath, setCurrentPath] = useState<string | null>(() => getInitialExplorerState()?.currentPath || null);
-    const [pathHistory, setPathHistory] = useState<string[]>(() => getInitialExplorerState()?.pathHistory || []);
+    // Initialize from tab's explorerState
+    const initialState = getInitialExplorerState();
+    const [currentPath, setCurrentPath] = useState<string | null>(initialState?.currentPath || null);
+    const [pathHistory, setPathHistory] = useState<string[]>(initialState?.pathHistory || []);
     const [entries, setEntries] = useState<ExplorerEntry[]>([]);
     const [loading, setLoading] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
@@ -288,22 +291,15 @@ export function ExplorerPage({ isActive = true }: ExplorerPageProps) {
     useEffect(() => {
         isMountedRef.current = true;
 
-        // Restore path if we have a saved state and we are returning from a sub-view (viewer/thumbnails)
-        // or not explicitly coming from a main top-level page
-        const savedPath = explorerState?.currentPath;
-        const mainPages = ['home', 'oneShot', 'series', 'history', 'download', 'settings'];
-        const isReturning = fromPage === 'viewer' || fromPage === 'thumbnails' || !mainPages.includes(previousPage || '');
+        // First priority: Check if tab was restored with saved explorerState
+        const tabInitialState = getInitialExplorerState();
 
-        if (isReturning && savedPath) {
+        if (tabInitialState?.currentPath) {
+            // Tab was restored with saved state - load that directory
             isInitializingRef.current = true;
-            // Restore path history first
-            setPathHistory(explorerState.pathHistory || []);
-            // Load the directory - this will update currentPath and entries
-            // Defer loading slightly to allow UI to render first
             setTimeout(() => {
-                if (isMountedRef.current && savedPath) {
-                    loadDirectory(savedPath, false).finally(() => {
-                        // Mark initialization as complete after loadDirectory finishes
+                if (isMountedRef.current && tabInitialState.currentPath) {
+                    loadDirectory(tabInitialState.currentPath, false).finally(() => {
                         setTimeout(() => {
                             isInitializingRef.current = false;
                         }, 50);
@@ -311,10 +307,27 @@ export function ExplorerPage({ isActive = true }: ExplorerPageProps) {
                 }
             }, 0);
         } else {
-            // Coming from another view - always start at root (already set in useState)
-            setCurrentPath(null);
-            setPathHistory([]);
-            isInitializingRef.current = false;
+            // Fallback: Check global explorerState for returning from viewer/thumbnails
+            const savedPath = explorerState?.currentPath;
+            const mainPages = ['home', 'oneShot', 'series', 'history', 'download', 'settings'];
+            const isReturning = fromPage === 'viewer' || fromPage === 'thumbnails' || !mainPages.includes(previousPage || '');
+
+            if (isReturning && savedPath) {
+                isInitializingRef.current = true;
+                setPathHistory(explorerState.pathHistory || []);
+                setTimeout(() => {
+                    if (isMountedRef.current && savedPath) {
+                        loadDirectory(savedPath, false).finally(() => {
+                            setTimeout(() => {
+                                isInitializingRef.current = false;
+                            }, 50);
+                        });
+                    }
+                }, 0);
+            } else {
+                // Fresh tab with no saved state - already initialized to root via useState
+                isInitializingRef.current = false;
+            }
         }
 
         return () => {
@@ -323,15 +336,22 @@ export function ExplorerPage({ isActive = true }: ExplorerPageProps) {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []); // Only run on mount
 
-    // Save explorer state to store when it changes (but not during initialization and only when active)
+    // Save explorer state to the specific TAB when it changes (but not during initialization and only when active)
     useEffect(() => {
-        if (!isInitializingRef.current && isActive) {
-            setExplorerState({
-                currentPath,
-                pathHistory,
-            });
+        if (!isInitializingRef.current && isActive && tabId) {
+            // Update this specific tab's explorerState in tabStore
+            const tabs = useTabStore.getState().tabs;
+            const tabIndex = tabs.findIndex(t => t.id === tabId);
+            if (tabIndex >= 0) {
+                useTabStore.setState({
+                    tabs: tabs.map((t, i) => i === tabIndex ? {
+                        ...t,
+                        explorerState: { currentPath, pathHistory }
+                    } : t)
+                });
+            }
         }
-    }, [currentPath, pathHistory, setExplorerState, isActive]);
+    }, [currentPath, pathHistory, isActive, tabId]);
 
     const handleBack = () => {
         if (pathHistory.length > 0) {

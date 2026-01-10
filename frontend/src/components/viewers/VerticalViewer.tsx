@@ -43,6 +43,8 @@ export function VerticalViewer({
 
     // State to track if initial scroll has been applied
     const [hasAppliedInitialScroll, setHasAppliedInitialScroll] = useState(false);
+    // Track which initialIndex was applied so we can re-apply if it changes
+    const appliedInitialIndexRef = useRef<number>(-1);
 
     // Auto-scroll state
     const animationFrameIdRef = useRef<number | null>(null);
@@ -93,7 +95,11 @@ export function VerticalViewer({
 
     // Handle initial scroll/resume
     useEffect(() => {
-        if (!parentRef.current || hasAppliedInitialScroll || images.length === 0) return;
+        if (!parentRef.current || images.length === 0) return;
+
+        // Skip if we already applied THIS specific initialIndex
+        // But re-apply if initialIndex changed (e.g., from 0 to 20)
+        if (hasAppliedInitialScroll && appliedInitialIndexRef.current === initialIndex) return;
 
         // Apply scroll immediately via requestAnimationFrame (minimal delay, just wait for paint)
         const applyScroll = () => {
@@ -102,6 +108,7 @@ export function VerticalViewer({
                 if (target) {
                     console.log(`[VerticalViewer] Scrolling to initial index: ${initialIndex}`);
                     target.scrollIntoView({ block: 'start', behavior: 'instant' });
+                    appliedInitialIndexRef.current = initialIndex;
                 }
             } else if (initialScrollPosition > 0) {
                 const node = parentRef.current;
