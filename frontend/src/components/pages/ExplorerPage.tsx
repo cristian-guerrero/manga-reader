@@ -66,10 +66,20 @@ function LazyThumbnail({
                     setIsVisible(true);
                 }
             },
-            { rootMargin: '400px' }
+            {
+                rootMargin: '200px',
+                threshold: 0.01
+            }
         );
 
         observer.observe(el);
+
+        // Immediate check in case it's already visible
+        const rect = el.getBoundingClientRect();
+        if (rect.top < window.innerHeight + 200 && rect.bottom > -200) {
+            setIsVisible(true);
+        }
+
         return () => observer.disconnect();
     }, [isVisible]);
 
@@ -136,10 +146,20 @@ function LazyBaseFolderThumbnail({
                     setIsVisible(true);
                 }
             },
-            { rootMargin: '400px' }
+            {
+                rootMargin: '200px',
+                threshold: 0.01
+            }
         );
 
         observer.observe(el);
+
+        // Immediate check in case it's already visible
+        const rect = el.getBoundingClientRect();
+        if (rect.top < window.innerHeight + 200 && rect.bottom > -200) {
+            setIsVisible(true);
+        }
+
         return () => observer.disconnect();
     }, [isVisible]);
 
@@ -737,7 +757,7 @@ export function ExplorerPage() {
 
     return (
         <div
-            className="h-full overflow-auto p-6 flex flex-col"
+            className="h-full p-6 flex flex-col"
             style={{ backgroundColor: 'var(--color-surface-primary)' }}
         >
             {/* Header */}
@@ -806,7 +826,7 @@ export function ExplorerPage() {
 
             {/* Content */}
             <div className="flex-1 overflow-auto pr-2">
-                <GridContainer>
+                <GridContainer key={currentPath || 'root'}>
                     {/* Base Folders View */}
                     {!currentPath && sortedBaseFolders.map((folder) => (
                         <GridItem key={folder.path}>
