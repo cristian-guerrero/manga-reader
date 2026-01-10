@@ -13,7 +13,7 @@ export function TabList() {
     };
 
     return (
-        <div className="flex items-center h-full pl-2 no-drag overflow-x-auto no-scrollbar max-w-[calc(100vw-300px)]">
+        <div className="flex items-center h-full no-drag overflow-x-auto no-scrollbar max-w-[calc(100vw-300px)]">
             {tabs.map((tab, index) => (
                 <div
                     key={tab.id}
@@ -32,8 +32,8 @@ export function TabList() {
                     {/* Tab Background - Floating Rounded Pill */}
                     <div
                         className={`absolute inset-0 transition-all duration-200 rounded-[6px] ${activeTabId === tab.id
-                                ? 'bg-white/10 opacity-100 shadow-sm'
-                                : 'bg-transparent group-hover:bg-white/5'
+                            ? 'bg-white/10 opacity-100 shadow-sm'
+                            : 'bg-transparent group-hover:bg-white/5'
                             }`}
                     />
 
@@ -55,8 +55,8 @@ export function TabList() {
                                 className={`flex items-center justify-center w-5 h-5 rounded-md hover:bg-white/20 transition-all ${activeTabId === tab.id ? 'opacity-70' : 'opacity-30 group-hover:opacity-60'
                                     } hover:!opacity-100`}
                             >
-                                <svg width="9" height="9" viewBox="0 0 12 12" fill="currentColor">
-                                    <path d="M11 1.27L10.73 1 6 5.73 1.27 1 1 1.27 5.73 6 1 10.73 1.27 11 6 6.27 10.73 11 11 10.73 6.27 6 11 1.27z" />
+                                <svg width="8" height="8" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+                                    <path d="M1 1L9 9M9 1L1 9" />
                                 </svg>
                             </button>
                         )}
