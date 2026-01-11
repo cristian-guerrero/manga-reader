@@ -17,8 +17,8 @@ import {
     useExplorerSearch,
     useExplorerNavigation,
     useExplorerRestoration,
-} from '@features/explorer/hooks';
-import { BaseFolder, ExplorerEntry } from '@features/explorer/types';
+} from './hooks';
+import { BaseFolder, ExplorerEntry } from './types';
 
 // Icons
 const TrashIcon = () => (
