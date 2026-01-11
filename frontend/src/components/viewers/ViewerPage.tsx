@@ -329,8 +329,18 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
                 setResumeScrollPos(tabScrollPosition); // Set percentage, VerticalViewer will convert
             }
             
-            // Reset lastProcessedParamsRef when switching tabs to allow processing navigation params
-            lastProcessedParamsRef.current = null;
+            // Mark current params as processed to prevent navigation seek from applying old params
+            // This is important when switching tabs - we want to use the saved state, not old navigation params
+            const currentParams = tab?.params;
+            if (currentParams && (currentParams.targetPath || currentParams.startIndex)) {
+                lastProcessedParamsRef.current = { 
+                    targetPath: currentParams.targetPath, 
+                    startIndex: currentParams.startIndex 
+                };
+                console.log(`[ViewerPage] Tab activated: Marked current params as processed to prevent applying old navigation`);
+            } else {
+                lastProcessedParamsRef.current = null;
+            }
         } else if (tabCurrentIndex === resumeIndex) {
             console.log(`[ViewerPage] Tab activated: Already synced (resumeIndex=${resumeIndex}, tabCurrentIndex=${tabCurrentIndex})`);
             // Update lastSynced even if already synced to prevent duplicate work
@@ -342,8 +352,18 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
                 setResumeScrollPos(tabScrollPosition); // Set percentage, VerticalViewer will convert
             }
             
-            // Reset lastProcessedParamsRef when switching tabs to allow processing navigation params
-            lastProcessedParamsRef.current = null;
+            // Mark current params as processed to prevent navigation seek from applying old params
+            // This is important when switching tabs - we want to use the saved state, not old navigation params
+            const currentParams = tab?.params;
+            if (currentParams && (currentParams.targetPath || currentParams.startIndex)) {
+                lastProcessedParamsRef.current = { 
+                    targetPath: currentParams.targetPath, 
+                    startIndex: currentParams.startIndex 
+                };
+                console.log(`[ViewerPage] Tab activated: Marked current params as processed to prevent applying old navigation`);
+            } else {
+                lastProcessedParamsRef.current = null;
+            }
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isActive, tabId, folderPath]); // Include tabId and folderPath to re-sync when switching tabs
