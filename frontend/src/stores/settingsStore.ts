@@ -8,7 +8,7 @@ import { applyTheme, getThemeById, darkTheme } from '../themes';
 import { AppAPI } from '../services/api/appAPI';
 import { errorService } from '../services/errorService';
 
-interface SettingsState extends Settings {
+export interface SettingsState extends Settings {
     // Actions
     setLanguage: (language: string) => void;
     setTheme: (themeId: string) => void;

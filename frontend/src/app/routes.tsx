@@ -16,7 +16,7 @@ const SeriesDetailsPage = lazy(() => import('../components/pages/SeriesDetailsPa
 const HistoryPage = lazy(() => import('../features/history/HistoryPage').then(m => ({ default: m.default || m.HistoryPage })));
 const ExplorerPage = lazy(() => import('../components/pages/ExplorerPage').then(m => ({ default: m.ExplorerPage })));
 const ThumbnailsPage = lazy(() => import('../components/pages/ThumbnailsPage').then(m => ({ default: m.default || m.ThumbnailsPage })));
-const SettingsPage = lazy(() => import('../components/pages/SettingsPage').then(m => ({ default: m.default || m.SettingsPage })));
+const SettingsPage = lazy(() => import('../features/settings/SettingsPage').then(m => ({ default: m.default || m.SettingsPage })));
 const DownloadPage = lazy(() => import('../features/download/DownloadPage').then(m => ({ default: m.default || m.DownloadPage })));
 
 /**
