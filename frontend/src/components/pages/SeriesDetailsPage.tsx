@@ -14,6 +14,7 @@ import { SearchBar } from '../common/SearchBar';
 import { MediaTile } from '../common/MediaTile';
 import { useThumbnails } from '../../hooks/useThumbnails';
 import { useTabStore } from '../../stores/tabStore';
+import { AppAPI } from '../../services/api/appAPI';
 
 // Icons
 const ChevronLeftIcon = () => (
@@ -105,8 +106,7 @@ export function SeriesDetailsPage({ seriesPath, tabId }: SeriesDetailsPageProps)
     const loadSeriesDetails = async () => {
         setIsLoading(true);
         try {
-            // @ts-ignore
-            const data = await window.go?.main?.App?.GetSeries();
+            const data = await AppAPI.getSeries();
             if (data && Array.isArray(data)) {
                 const found = data.find((s: SeriesEntry) => s.path === seriesPath);
                 if (found) {

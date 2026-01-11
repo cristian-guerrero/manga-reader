@@ -16,6 +16,7 @@ import { Toggle } from '../common/Toggle';
 import { SectionHeader } from '../common/SectionHeader';
 import { HelpDialog } from '../common/HelpDialog';
 import { languages, changeLanguage } from '../../i18n';
+import { AppAPI } from '../../services/api/appAPI';
 
 export const SettingsPage: React.FC = () => {
     const { t } = useTranslation();
@@ -83,7 +84,7 @@ export const SettingsPage: React.FC = () => {
         try {
             // Clear backend data (history, library, series, thumbnails, downloads)
             // @ts-ignore
-            await window.go?.main?.App?.ClearAllData();
+            await AppAPI.clearAllData();
 
             // Clear localStorage data (tabs and viewer states)
             const { clearAllStorage } = await import('../../utils/storage');

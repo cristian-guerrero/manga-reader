@@ -2,18 +2,12 @@
  * MainLayout - Main application layout with title bar, sidebar, and content area
  */
 
-import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigationStore } from '../../stores/navigationStore';
-
-
 import { Sidebar } from './Sidebar';
 import { TitleBar } from './TitleBar';
-import { OnFileDrop, OnFileDropOff, EventsOn } from '../../../wailsjs/runtime';
-import { useToast } from '../common/Toast';
-import { useSettingsStore } from '../../stores/settingsStore';
-import * as AppBackend from '../../../wailsjs/go/main/App';
-import alertSound from '../../assets/sounds/alert.mp3';
+import { useDragAndDrop } from '../../hooks/useDragAndDrop';
+import { useClipboardMonitor } from '../../hooks/useClipboardMonitor';
 
 interface MainLayoutProps {
     children: React.ReactNode;
@@ -21,178 +15,11 @@ interface MainLayoutProps {
 
 export function MainLayout({ children }: MainLayoutProps) {
     const { t } = useTranslation();
-    const { isPanicMode, isProcessing, setIsProcessing, currentPage } = useNavigationStore();
-    const { showToast } = useToast();
-    const { processDroppedFolders } = useSettingsStore();
+    const { isPanicMode, isProcessing } = useNavigationStore();
 
-
-    // Handle drag and drop
-    useEffect(() => {
-        // Register drop listener
-        OnFileDrop(async (x, y, paths) => {
-            if (paths && paths.length > 0) {
-                // Get current settings from store to avoid closure capture issues
-                const currentSettings = useSettingsStore.getState();
-                const processDropped = currentSettings.processDroppedFolders;
-
-                try {
-                    setIsProcessing(true);
-                    // Resolve all paths to folders (e.g. if someone drags a .jpg)
-                    const resolvedPaths = (await Promise.all(
-                        paths.map(async (p) => {
-                            // @ts-ignore
-                            return await window.go?.main?.App?.ResolveFolder(p);
-                        })
-                    )) as string[];
-
-                    // Deduplicate folders (to avoid processing the same folder multiple times if several files are dragged)
-                    const uniqueFolders = Array.from(new Set(resolvedPaths));
-
-                    // Determine if we need to navigate or just add
-                    if (uniqueFolders.length === 1) {
-                        const path = uniqueFolders[0];
-                        let isSeries = false;
-                        let finalPath = path;
-
-                        if (processDropped) {
-                            try {
-                                // @ts-ignore
-                                const result = await window.go?.main?.App?.AddFolder(path);
-                                if (result) {
-                                    finalPath = result.path;
-                                    isSeries = result.isSeries;
-                                }
-                            } catch (error) {
-                                console.error('Failed to add folder:', error);
-                                showToast(t('oneShot.addFailed'), 'error');
-                            }
-                        } else {
-                            // @ts-ignore
-                            isSeries = await window.go?.main?.App?.IsSeries(path);
-                        }
-
-                        // @ts-ignore
-                        const navigate = useNavigationStore.getState().navigate;
-
-                        if (isSeries && processDropped) {
-                            // If it's a series, set activeMenuPage to 'series'
-                            navigate('series-details', { series: finalPath }, 'series');
-                        } else {
-                            // If it's a oneshot, set activeMenuPage to 'oneShot'
-                            navigate('viewer', {
-                                folder: finalPath,
-                                noHistory: !processDropped ? 'true' : 'false'
-                            }, 'oneShot');
-                        }
-                        showToast(`Opening: ${finalPath.split(/[\\/]/).pop()}`, 'success');
-                    } else {
-                        let addedCount = 0;
-                        for (const path of uniqueFolders) {
-                            try {
-                                if (processDropped) {
-                                    // @ts-ignore
-                                    await window.go?.main?.App?.AddFolder(path);
-                                    addedCount++;
-                                }
-                            } catch (error) {
-                                console.error('Failed to add folder:', error);
-                            }
-                        }
-                        if (addedCount > 0) {
-                            showToast(`Added ${addedCount} folders to library`, 'success');
-                        } else if (!processDropped) {
-                            showToast("Drag & Drop processing is disabled in settings", "info");
-                        }
-                    }
-                } catch (e) {
-                    console.error("Failed to process dropped items", e);
-                    showToast("Failed to process dropped items", "error");
-                } finally {
-                    setIsProcessing(false);
-                }
-            }
-        }, false);
-
-
-
-        return () => {
-            // Cleanup
-            OnFileDropOff();
-        };
-    }, []);
-
-    // Global clipboard monitoring - works from any page
-    useEffect(() => {
-        // Listen for clipboard URL detection from backend
-        const unoff = EventsOn('clipboard_url_detected', async (text: string) => {
-            if (!text) return;
-
-            // Check if clipboard monitoring is enabled
-            const currentSettings = useSettingsStore.getState();
-            if (!currentSettings.clipboardAutoMonitor) {
-                return;
-            }
-
-            // Hitomi Series Detection: Don't auto-start, just show toast
-            const isHitomi = text.includes('hitomi.la');
-            const isHitomiSeries = isHitomi && (
-                text.includes('/artist/') ||
-                text.includes('/series/') ||
-                text.includes('/tag/') ||
-                text.includes('/character/') ||
-                text.includes('/group/') ||
-                text.includes('index-') ||
-                text.includes('search.html') ||
-                text.includes('?q=')
-            );
-
-            // Manga18.club Series Detection: Don't auto-start series, just show toast
-            const isManga18 = text.includes('manga18.club');
-            const isManga18Series = isManga18 && text.includes('/manhwa/') && !text.includes('/chap-');
-
-            // For series URLs, don't auto-start - user must go to download page
-            if (isHitomiSeries || isManga18Series) {
-                showToast(t('download.seriesDetectedClipboard') || 'Series detected. Go to Downloads page to select chapters', 'info');
-                return;
-            }
-
-            // For single chapters, auto-start download
-            try {
-                // Check if it's a series or single chapter
-                const info = await (AppBackend as any).FetchMangaInfo(text);
-
-                if (info.Type === 'series') {
-                    // It's a series - don't auto-start, just show toast
-                    showToast(t('download.seriesDetectedClipboard') || 'Series detected. Go to Downloads page to select chapters', 'info');
-                } else {
-                    // It's a single chapter - start download automatically
-                    await AppBackend.StartDownload(text, "", "");
-
-                    // Play alert sound
-                    const audio = new Audio(alertSound);
-                    audio.play().catch(e => console.error('Failed to play alert sound:', e));
-
-                    showToast(t('download.startedFromClipboard') || 'Download started from clipboard', 'success');
-                }
-            } catch (err: any) {
-                // If FetchMangaInfo fails, try to start download anyway (might be a valid URL)
-                try {
-                    await AppBackend.StartDownload(text, "", "");
-
-                    // Play alert sound
-                    const audio = new Audio(alertSound);
-                    audio.play().catch(e => console.error('Failed to play alert sound:', e));
-
-                    showToast(t('download.startedFromClipboard') || 'Download started from clipboard', 'success');
-                } catch (downloadErr: any) {
-                    // If both fail, show error
-                    showToast(err.toString() || 'Failed to process clipboard URL', 'error');
-                }
-            }
-        });
-
-        return () => unoff();
-    }, [t, showToast]);
+    // Use hooks for drag & drop and clipboard monitoring
+    useDragAndDrop();
+    useClipboardMonitor();
 
     return (
         <div

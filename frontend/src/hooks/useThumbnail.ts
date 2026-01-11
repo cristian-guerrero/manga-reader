@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { AppAPI } from '../services/api/appAPI';
 
 /**
  * Hook para cargar un thumbnail individual de forma lazy (cuando se hace visible)
@@ -124,8 +125,7 @@ export function useThumbnail(
                                 return;
                             }
 
-                            // @ts-ignore
-                            const thumb = await window.go?.main?.App?.GetThumbnail(actualImagePath);
+                            const thumb = await AppAPI.getThumbnail(actualImagePath);
                             
                             // Verificar una vez más antes de actualizar estado
                             if (!isMountedRef.current) {

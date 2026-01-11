@@ -13,6 +13,7 @@ import { GridContainer } from '../common/GridContainer';
 import { GridItem } from '../common/GridItem';
 import { useTabStore } from '../../stores/tabStore';
 import { EventsOn, EventsOff } from '../../../wailsjs/runtime';
+import { AppAPI } from '../../services/api/appAPI';
 
 // Icons
 const ClockIcon = () => (
@@ -194,11 +195,9 @@ function SimpleThumbnail({ entry }: { entry: HistoryEntry }) {
                     // This is much faster and follows the pattern from ExplorerPage
                     const loadTimer = setTimeout(async () => {
                         try {
-                            // @ts-ignore
-                            const folderInfo = await window.go?.main?.App?.GetFolderInfoShallow(entry.folderPath);
+                            const folderInfo = await AppAPI.getFolderInfoShallow(entry.folderPath);
                             if (folderInfo && folderInfo.coverImage) {
-                                // @ts-ignore
-                                const thumb = await window.go?.main?.App?.GetThumbnail(folderInfo.coverImage);
+                                const thumb = await AppAPI.getThumbnail(folderInfo.coverImage);
                                 if (thumb) {
                                     // Cache the thumbnail
                                     thumbnailCache.set(entry.id, thumb);
@@ -273,29 +272,12 @@ export function HistoryPage() {
         if (!isMountedRef.current) return;
 
         try {
-            // @ts-ignore - Wails generated bindings
-            const app = window.go?.main?.App;
-            if (!app?.GetHistory) {
-                // Bindings not available - this shouldn't happen in normal operation
-                console.warn('[HistoryPage] Bindings not available yet');
-                if (isMountedRef.current) {
-                    setIsLoading(false);
-                }
-                return;
-            }
-
             // Set loading state
             if (isMountedRef.current) {
                 setIsLoading(true);
             }
 
-            // Add timeout to prevent hanging
-            const timeoutPromise = new Promise((_, reject) => {
-                setTimeout(() => reject(new Error('Timeout loading history')), 10000); // 10 second timeout
-            });
-
-            const historyPromise = app.GetHistory();
-            const entries = await Promise.race([historyPromise, timeoutPromise]) as any[];
+            const entries = await AppAPI.getHistory();
 
             if (!isMountedRef.current) return;
 
@@ -362,11 +344,12 @@ export function HistoryPage() {
     const handleRemove = async (entry: HistoryEntry, e: React.MouseEvent) => {
         e.stopPropagation();
         try {
-            // @ts-ignore - Wails generated bindings
-            await window.go?.main?.App?.RemoveHistory(entry.folderPath);
+            await AppAPI.removeHistory(entry.folderPath);
             setHistory((prev) => prev.filter((h) => h.id !== entry.id));
         } catch (error) {
             console.error('Failed to remove history entry:', error);
+            // Error is already logged by AppAPI, just show user-friendly message
+            showToast(t('history.removeError') || 'Failed to remove history entry', 'error');
         }
     };
 
@@ -376,8 +359,7 @@ export function HistoryPage() {
 
     const confirmClearAll = async () => {
         try {
-            // @ts-ignore - Wails generated bindings
-            await window.go?.main?.App?.ClearHistory();
+            await AppAPI.clearHistory();
             setHistory([]);
             setIsClearHistoryOpen(false);
             showToast(t('history.clearSuccess') || 'History cleared successfully', 'success');

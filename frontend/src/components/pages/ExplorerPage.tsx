@@ -177,20 +177,7 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
 
     const loadBaseFolders = async () => {
         try {
-            // @ts-ignore
-            const app = window.go?.main?.App;
-            if (!app?.GetBaseFolders) {
-                console.warn('[ExplorerPage] Bindings not available yet');
-                return;
-            }
-
-            // Add timeout to prevent hanging
-            const timeoutPromise = new Promise((_, reject) => {
-                setTimeout(() => reject(new Error('Timeout loading base folders')), 10000); // 10 second timeout
-            });
-
-            const foldersPromise = app.GetBaseFolders();
-            const folders = await Promise.race([foldersPromise, timeoutPromise]) as BaseFolder[];
+            const folders = await AppAPI.getBaseFolders();
 
             setBaseFolders(folders || []);
 
@@ -241,21 +228,7 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
 
         setLoading(true);
         try {
-            // @ts-ignore
-            const app = window.go?.main?.App;
-            if (!app?.ExploreFolder) {
-                console.warn('[ExplorerPage] Bindings not available yet');
-                setLoading(false);
-                return;
-            }
-
-            // Add timeout to prevent hanging
-            const timeoutPromise = new Promise((_, reject) => {
-                setTimeout(() => reject(new Error('Timeout loading directory')), 10000); // 10 second timeout
-            });
-
-            const itemsPromise = app.ExploreFolder(path);
-            const items = await Promise.race([itemsPromise, timeoutPromise]) as ExplorerEntry[];
+            const items = await AppAPI.exploreFolder(path);
 
             if (!isMountedRef.current) return;
 

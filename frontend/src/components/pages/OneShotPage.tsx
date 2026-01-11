@@ -11,6 +11,7 @@ import { LibraryCard } from '../common/LibraryCard';
 import { FolderInfo } from '../../types';
 import { useThumbnails } from '../../hooks/useThumbnails';
 import { useTabStore } from '../../stores/tabStore';
+import { AppAPI } from '../../services/api/appAPI';
 
 // Icons
 const OneShotIcon = () => (
@@ -125,29 +126,12 @@ export function OneShotPage() {
         if (!isMountedRef.current) return;
 
         try {
-            // @ts-ignore - Wails generated bindings
-            const app = window.go?.main?.App;
-            if (!app?.GetLibrary) {
-                // Bindings not available - this shouldn't happen in normal operation
-                console.warn('[OneShotPage] Bindings not available yet');
-                if (isMountedRef.current) {
-                    setIsLoading(false);
-                }
-                return;
-            }
-
             // Set loading state
             if (isMountedRef.current) {
                 setIsLoading(true);
             }
 
-            // Add timeout to prevent hanging
-            const timeoutPromise = new Promise((_, reject) => {
-                setTimeout(() => reject(new Error('Timeout loading library')), 10000); // 10 second timeout
-            });
-
-            const libraryPromise = app.GetLibrary();
-            const library = await Promise.race([libraryPromise, timeoutPromise]) as any[];
+            const library = await AppAPI.getLibrary();
 
             console.log(`[OneShotPage] Library received: ${library?.length || 0} items`);
 
@@ -184,13 +168,11 @@ export function OneShotPage() {
 
     const handleSelectFolder = async () => {
         try {
-            // @ts-ignore - Wails generated bindings
-            const folderPath = await window.go?.main?.App?.SelectFolder();
+            const folderPath = await AppAPI.selectFolder();
             if (folderPath) {
                 try {
                     setIsProcessing(true);
-                    // @ts-ignore
-                    const result = await window.go?.main?.App?.AddFolder(folderPath);
+                    const result = await AppAPI.addFolder(folderPath);
                     if (result) {
                         if (result.isSeries) {
                             // If it's a series, set activeMenuPage to 'series'
@@ -229,8 +211,7 @@ export function OneShotPage() {
     const handleRemoveFolder = async (folder: FolderInfo, e: React.MouseEvent) => {
         e.stopPropagation();
         try {
-            // @ts-ignore - Wails generated bindings
-            await window.go?.main?.App?.RemoveLibraryEntry(folder.path);
+            await AppAPI.removeLibraryEntry(folder.path);
             setFolders((prev: FolderInfo[]) => prev.filter((f: FolderInfo) => f.path !== folder.path));
         } catch (error) {
             console.error('Failed to remove folder:', error);
@@ -240,8 +221,7 @@ export function OneShotPage() {
     const handleClearAll = async () => {
         if (!window.confirm(t('oneShot.confirmClear'))) return;
         try {
-            // @ts-ignore
-            await window.go?.main?.App?.ClearLibrary();
+            await AppAPI.clearLibrary();
             setFolders([]);
         } catch (error) {
             console.error('Failed to clear library:', error);

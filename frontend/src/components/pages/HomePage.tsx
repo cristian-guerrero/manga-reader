@@ -9,6 +9,8 @@ import { EventsOn, EventsOff } from '../../../wailsjs/runtime';
 import { Button } from '../common/Button';
 import { Tooltip } from '../common/Tooltip';
 import { useTabStore } from '../../stores/tabStore';
+import { AppAPI } from '../../services/api/appAPI';
+import { useToast } from '../common/Toast';
 
 // Icons
 const FolderPlusIcon = () => (
@@ -116,16 +118,14 @@ function ThumbnailComponent({ entryId, folderPath }: { entryId: string; folderPa
                             // Use GetFolderInfoShallow (only scans immediate directory, not recursive)
                             // This is much faster than GetImages which scans all subdirectories recursively
                             // Based on how ExplorerPage does it for better performance
-                            // @ts-ignore
-                            const folderInfo = await window.go?.main?.App?.GetFolderInfoShallow(folderPath);
+                            const folderInfo = await AppAPI.getFolderInfoShallow(folderPath);
                             if (!isMountedRef.current) {
                                 loadingRef.current = false;
                                 return;
                             }
 
                             if (folderInfo && folderInfo.coverImage) {
-                                // @ts-ignore
-                                const thumb = await window.go?.main?.App?.GetThumbnail(folderInfo.coverImage);
+                                const thumb = await AppAPI.getThumbnail(folderInfo.coverImage);
 
                                 if (!isMountedRef.current) {
                                     loadingRef.current = false;
@@ -187,6 +187,7 @@ export function HomePage() {
     const { t } = useTranslation();
     const { navigate } = useNavigationStore();
     const { addTab } = useTabStore();
+    const { showToast } = useToast();
     const [historyEntries, setHistoryEntries] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const isMountedRef = useRef(true);
@@ -201,23 +202,12 @@ export function HomePage() {
         if (!isMountedRef.current) return;
 
         try {
-            // @ts-ignore
-            const app = window.go?.main?.App;
-            if (!app?.GetHistory) {
-                // Bindings not available - this shouldn't happen in normal operation
-                console.warn('[HomePage] Bindings not available yet');
-                if (isMountedRef.current) {
-                    setIsLoading(false);
-                }
-                return;
-            }
-
             // Set loading state
             if (isMountedRef.current) {
                 setIsLoading(true);
             }
 
-            const entries = await app.GetHistory();
+            const entries = await AppAPI.getHistory();
             console.log(`[HomePage] History received: ${entries?.length || 0} items`);
 
             if (!isMountedRef.current) return;
@@ -285,11 +275,12 @@ export function HomePage() {
     const handleRemoveHistory = async (path: string, e: React.MouseEvent) => {
         e.stopPropagation();
         try {
-            // @ts-ignore
-            await window.go?.main?.App?.RemoveHistory(path);
+            await AppAPI.removeHistory(path);
             // The list will refresh via the history_updated event
         } catch (error) {
             console.error('Failed to remove history', error);
+            // Error is already logged by AppAPI, show user-friendly message
+            showToast(t('history.removeError') || 'Failed to remove history', 'error');
         }
     };
 

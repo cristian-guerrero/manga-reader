@@ -5,6 +5,8 @@
 import { create } from 'zustand';
 import { Settings, DEFAULT_SETTINGS } from '../types';
 import { applyTheme, getThemeById, darkTheme } from '../themes';
+import { AppAPI } from '../services/api/appAPI';
+import { errorService } from '../services/errorService';
 
 interface SettingsState extends Settings {
     // Actions
@@ -202,32 +204,19 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
 
     updateBackend: async (key: string, value: any) => {
         try {
-            // @ts-ignore
-            await window.go?.main?.App?.UpdateSettings({ [key]: value });
+            await AppAPI.updateSettings({ [key]: value });
             console.log(`[SettingsStore] Backend updated: ${key}`, value);
         } catch (error) {
-            console.error(`[SettingsStore] Failed to update backend for ${key}:`, error);
+            errorService.handle(error, {
+                component: 'SettingsStore',
+                action: 'updateBackend',
+                details: { key, value }
+            }, { showToast: false });
         }
     },
     loadSettings: async () => {
         try {
-            // @ts-ignore
-            const app = window.go?.main?.App;
-            if (!app?.GetSettings) {
-                console.warn('[SettingsStore] Bindings not available yet, using defaults');
-                // Apply default theme if bindings not available
-                const theme = getThemeById(DEFAULT_SETTINGS.theme) || darkTheme;
-                applyTheme(theme);
-                return;
-            }
-
-            // Add timeout to prevent hanging
-            const timeoutPromise = new Promise((_, reject) => {
-                setTimeout(() => reject(new Error('Timeout loading settings')), 5000); // 5 second timeout
-            });
-
-            const settingsPromise = app.GetSettings();
-            const settings = await Promise.race([settingsPromise, timeoutPromise]) as any;
+            const settings = await AppAPI.getSettings();
 
             if (settings) {
                 set(settings);
@@ -242,7 +231,10 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
                 applyTheme(theme);
             }
         } catch (error) {
-            console.error('[SettingsStore] Failed to load settings:', error);
+            errorService.handle(error, {
+                component: 'SettingsStore',
+                action: 'loadSettings'
+            }, { showToast: false });
             // Apply default theme on error
             const theme = getThemeById(DEFAULT_SETTINGS.theme) || darkTheme;
             applyTheme(theme);
@@ -256,14 +248,16 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
             const filteredSettings: any = {};
             const keys = Object.keys(DEFAULT_SETTINGS);
 
-            // @ts-ignore
-            keys.forEach(key => filteredSettings[key] = state[key]);
+            keys.forEach(key => {
+                filteredSettings[key] = state[key as keyof Settings];
+            });
 
-            // @ts-ignore
-            await window.go?.main?.App?.SaveSettings(filteredSettings);
-            // console.log('Settings saved');
+            await AppAPI.saveSettings(filteredSettings as Settings);
         } catch (error) {
-            console.error('Failed to save settings:', error);
+            errorService.handle(error, {
+                component: 'SettingsStore',
+                action: 'saveSettings'
+            }, { showToast: false });
         }
     },
 

@@ -23,6 +23,7 @@ import { useNavigationStore } from '../../stores/navigationStore';
 import { GridContainer } from '../common/GridContainer';
 import { GridItem } from '../common/GridItem';
 import { useThumbnail } from '../../hooks/useThumbnail';
+import { AppAPI } from '../../services/api/appAPI';
 
 // Icons
 const ResetIcon = () => (
@@ -184,8 +185,7 @@ export function ThumbnailsPage({ folderPath, isActive = true, tabId }: Thumbnail
 
         if (!silent && isMountedRef.current) setIsLoading(true);
         try {
-            // @ts-ignore - Wails generated bindings
-            const imageList = await window.go?.main?.App?.GetImages(folderPath);
+            const imageList = await AppAPI.getImages(folderPath);
 
             // Verificar si el componente sigue montado antes de actualizar estado
             if (!isMountedRef.current) return;
@@ -212,8 +212,7 @@ export function ThumbnailsPage({ folderPath, isActive = true, tabId }: Thumbnail
             if (!isMountedRef.current) return;
 
             // Check if custom order exists
-            // @ts-ignore - Wails generated bindings
-            const hasCustom = await window.go?.main?.App?.HasCustomOrder(folderPath);
+            const hasCustom = await AppAPI.hasCustomOrder(folderPath);
 
             // Verificar de nuevo antes de actualizar estado
             if (!isMountedRef.current) return;
@@ -221,8 +220,7 @@ export function ThumbnailsPage({ folderPath, isActive = true, tabId }: Thumbnail
             setHasCustomOrder(hasCustom || false);
 
             // Get the original order from backend (if it exists)
-            // @ts-ignore - Wails generated bindings
-            const origOrder = await window.go?.main?.App?.GetOriginalOrder(folderPath);
+            const origOrder = await AppAPI.getOriginalOrder(folderPath);
 
             // Verificar de nuevo antes de actualizar estado
             if (!isMountedRef.current) return;
@@ -308,8 +306,7 @@ export function ThumbnailsPage({ folderPath, isActive = true, tabId }: Thumbnail
             if (folderPath) {
                 try {
                     const customOrder = newOrder.map((img) => img.name);
-                    // @ts-ignore - Wails generated bindings
-                    await window.go?.main?.App?.SaveImageOrder(folderPath, customOrder, originalOrder);
+                    await AppAPI.saveImageOrder(folderPath, customOrder, originalOrder);
                     console.log('Order auto-saved');
                 } catch (error) {
                     console.error('Failed to auto-save order:', error);
@@ -322,8 +319,7 @@ export function ThumbnailsPage({ folderPath, isActive = true, tabId }: Thumbnail
         if (!folderPath || !confirm(t('thumbnails.confirmReset'))) return;
 
         try {
-            // @ts-ignore - Wails generated bindings
-            await window.go?.main?.App?.ResetImageOrder(folderPath);
+            await AppAPI.resetImageOrder(folderPath);
             setHasCustomOrder(false);
             loadImages();
         } catch (error) {

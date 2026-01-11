@@ -14,6 +14,7 @@ import { SearchBar } from '../common/SearchBar';
 import { LibraryCard } from '../common/LibraryCard';
 import { useThumbnails } from '../../hooks/useThumbnails';
 import { useTabStore } from '../../stores/tabStore';
+import { AppAPI } from '../../services/api/appAPI';
 
 // Icons
 const SeriesIcon = () => (
@@ -81,8 +82,7 @@ export function SeriesPage() {
 
     const loadHistory = useCallback(async () => {
         try {
-            // @ts-ignore
-            const data = await window.go?.main?.App?.GetHistory();
+            const data = await AppAPI.getHistory();
             if (data && isMountedRef.current) setHistory(data);
         } catch (error) {
             console.error('Failed to load history:', error);
@@ -93,29 +93,12 @@ export function SeriesPage() {
         if (!isMountedRef.current) return;
 
         try {
-            // @ts-ignore
-            const app = window.go?.main?.App;
-            if (!app?.GetSeries) {
-                // Bindings not available - this shouldn't happen in normal operation
-                console.warn('[SeriesPage] Bindings not available yet');
-                if (isMountedRef.current) {
-                    setIsLoading(false);
-                }
-                return;
-            }
-
             // Set loading state
             if (isMountedRef.current) {
                 setIsLoading(true);
             }
 
-            // Add timeout to prevent hanging
-            const timeoutPromise = new Promise((_, reject) => {
-                setTimeout(() => reject(new Error('Timeout loading series')), 10000); // 10 second timeout
-            });
-
-            const seriesPromise = app.GetSeries();
-            const data = await Promise.race([seriesPromise, timeoutPromise]) as any[];
+            const data = await AppAPI.getSeries();
 
             console.log(`[SeriesPage] Series received: ${data?.length || 0} items`);
 
@@ -179,11 +162,9 @@ export function SeriesPage() {
 
     const handleSelectFolder = async () => {
         try {
-            // @ts-ignore
-            const folderPath = await window.go?.main?.App?.SelectFolder();
+            const folderPath = await AppAPI.selectFolder();
             if (folderPath) {
-                // @ts-ignore
-                await window.go?.main?.App?.AddFolder(folderPath);
+                await AppAPI.addFolder(folderPath);
                 // The event 'series_updated' will trigger reloading if it was a series
                 // If it was a folder, it will be added to library
             }
@@ -228,8 +209,7 @@ export function SeriesPage() {
     const handleRemoveSeries = async (entry: SeriesEntry, e: React.MouseEvent) => {
         e.stopPropagation();
         try {
-            // @ts-ignore
-            await window.go?.main?.App?.RemoveSeries(entry.path);
+            await AppAPI.removeSeries(entry.path);
             setSeries((prev) => prev.filter((s) => s.path !== entry.path));
         } catch (error) {
             console.error('Failed to remove series:', error);
@@ -239,8 +219,7 @@ export function SeriesPage() {
     const handleClearAll = async () => {
         if (!window.confirm(t('series.confirmClear'))) return;
         try {
-            // @ts-ignore
-            await window.go?.main?.App?.ClearSeries();
+            await AppAPI.clearSeries();
             setSeries([]);
         } catch (error) {
             console.error('Failed to clear series:', error);
