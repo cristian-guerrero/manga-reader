@@ -6,6 +6,7 @@
 import { create } from 'zustand';
 import { PageType, NavigationState, FolderInfo } from '../types';
 import { useTabStore, Tab } from './tabStore';
+import { MAIN_PAGES, MAIN_PAGES_TO_SAVE } from '../constants';
 
 interface HistoryEntry {
     page: PageType;
@@ -77,11 +78,10 @@ export const useNavigationStore = create<NavigationStoreState>((set, get) => ({
         const { history } = activeTab;
 
         let activeMenuPage: PageType | null;
-        const mainPages: PageType[] = ['home', 'explorer', 'history', 'oneShot', 'series', 'download', 'settings'];
 
         if (activeMenuPageOverride !== undefined) {
             activeMenuPage = activeMenuPageOverride;
-        } else if (mainPages.includes(page)) {
+        } else if (MAIN_PAGES.includes(page)) {
             activeMenuPage = page;
         } else {
             activeMenuPage = activeTab.activeMenuPage || null;
@@ -108,8 +108,7 @@ export const useNavigationStore = create<NavigationStoreState>((set, get) => ({
         });
 
         // Save main pages to settings for startup restore
-        const mainPagesToSave = ['home', 'oneShot', 'series', 'history', 'download', 'settings'];
-        if (mainPagesToSave.includes(page)) {
+        if (MAIN_PAGES_TO_SAVE.includes(page)) {
             // @ts-ignore - Dynamic import to avoid circular dependency
             import('./settingsStore').then(({ useSettingsStore }) => {
                 useSettingsStore.getState().setLastPage(page);
@@ -130,10 +129,9 @@ export const useNavigationStore = create<NavigationStoreState>((set, get) => ({
             const newHistory = history.slice(0, -1);
             const previous = newHistory[newHistory.length - 1];
 
-            const mainPages: PageType[] = ['home', 'explorer', 'history', 'oneShot', 'series', 'download', 'settings'];
             let activeMenuPage: PageType | null = previous.page;
-            if (!mainPages.includes(previous.page)) {
-                const lastMainPage = newHistory.slice().reverse().find(h => mainPages.includes(h.page));
+            if (!MAIN_PAGES.includes(previous.page)) {
+                const lastMainPage = newHistory.slice().reverse().find(h => MAIN_PAGES.includes(h.page));
                 activeMenuPage = lastMainPage ? lastMainPage.page : activeTab.activeMenuPage || 'home';
             }
 

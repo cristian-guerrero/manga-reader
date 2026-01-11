@@ -10,6 +10,8 @@ import { SearchBar } from '../common/SearchBar';
 import { Breadcrumb } from '../common/Breadcrumb';
 import { useThumbnails } from '../../hooks/useThumbnails';
 import { useTabStore } from '../../stores/tabStore';
+import { AppAPI } from '../../services/api/appAPI';
+import { MAIN_PAGES_TO_SAVE } from '../../constants';
 
 // Icons
 const TrashIcon = () => (
@@ -322,8 +324,7 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
         } else {
             // Fallback: Check global explorerState for returning from viewer/thumbnails
             const savedPath = explorerState?.currentPath;
-            const mainPages = ['home', 'oneShot', 'series', 'history', 'download', 'settings'];
-            const isReturning = fromPage === 'viewer' || fromPage === 'thumbnails' || (previousPage && !mainPages.includes(previousPage));
+            const isReturning = fromPage === 'viewer' || fromPage === 'thumbnails' || (previousPage && !MAIN_PAGES_TO_SAVE.includes(previousPage));
 
             if (isReturning && savedPath) {
                 isInitializingRef.current = true;
@@ -492,11 +493,9 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
 
     const handleAddBaseFolder = async () => {
         try {
-            // @ts-ignore
-            const path = await window.go.main.App.SelectFolder();
+            const path = await AppAPI.selectFolder();
             if (path) {
-                // @ts-ignore
-                await window.go.main.App.AddBaseFolder(path);
+                await AppAPI.addBaseFolder(path);
                 showToast(t('explorer.folderAdded') || "Folder added to explorer", "success");
                 // Navigate to the newly added folder
                 setPathHistory([]);
@@ -516,8 +515,7 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
     const handleRemoveBaseFolder = async (path: string, e: React.MouseEvent) => {
         e.stopPropagation();
         try {
-            // @ts-ignore
-            await window.go.main.App.RemoveBaseFolder(path);
+            await AppAPI.removeBaseFolder(path);
             showToast(t('explorer.folderRemoved') || "Folder removed", "success");
 
             // Always go back to root when removing a folder
@@ -766,8 +764,7 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
                                 onVisible={async () => {
                                     if (!folder.hasImages || folder.thumbnailUrl || thumbnails[folder.path]) return;
                                     try {
-                                        // @ts-ignore
-                                        const folderInfo = await window.go?.main?.App?.GetFolderInfoShallow(folder.path);
+                                        const folderInfo = await AppAPI.getFolderInfoShallow(folder.path);
                                         if (folderInfo && folderInfo.coverImage) {
                                             await loadThumbnail(folder.path, folderInfo.coverImage);
                                         }
