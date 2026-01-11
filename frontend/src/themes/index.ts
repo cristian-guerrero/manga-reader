@@ -5,6 +5,7 @@
 
 // Import pixel theme CSS
 import './pixel.css';
+import { AppAPI } from '../services/api/appAPI';
 
 export interface ThemeColors {
     // Accent
@@ -520,13 +521,11 @@ export async function applyTheme(theme: Theme, customAccentColor?: string): Prom
             }
         });
 
-        // @ts-ignore
-        if (window.go && window.go.main && window.go.main.App && window.go.main.App.UpdateTaskbarIcon) {
-            // @ts-ignore
-            window.go.main.App.UpdateTaskbarIcon(iconData);
-        }
+        // Update taskbar icon via AppAPI
+        await AppAPI.updateTaskbarIcon(iconData);
     } catch (err) {
         console.error('Failed to update taskbar icon:', err);
+        // Don't throw - taskbar icon update failure shouldn't break theme application
     }
 }
 

@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
+import { AppAPI } from '../services/api/appAPI';
 
 /**
  * Hook para cargar thumbnails en paralelo por lotes
@@ -67,8 +68,7 @@ export function useThumbnails(batchSize: number = 10) {
                     }
                     if (!imagePath) return null;
 
-                    // @ts-ignore
-                    const thumb = await window.go?.main?.App?.GetThumbnail(imagePath);
+                    const thumb = await AppAPI.getThumbnail(imagePath);
                     return { key: getKey(entry), thumb };
                 } catch (error) {
                     console.error('Failed to load thumbnail:', error);
@@ -107,8 +107,7 @@ export function useThumbnails(batchSize: number = 10) {
         if (thumbnailsRef.current[key]) return;
 
         try {
-            // @ts-ignore
-            const thumb = await window.go?.main?.App?.GetThumbnail(imagePath);
+            const thumb = await AppAPI.getThumbnail(imagePath);
             if (thumb) {
                 setThumbnails((prev) => {
                     // Solo agregar si no existe ya

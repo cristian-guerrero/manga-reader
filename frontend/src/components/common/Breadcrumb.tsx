@@ -18,6 +18,7 @@ interface BreadcrumbProps {
     currentPath: string | null;
     baseFolders: BaseFolder[];
     onNavigate: (path: string | null) => void;
+    onAuxClick?: (e: React.MouseEvent, path: string | null, name: string) => void;
     rootLabel?: string;
 }
 
@@ -89,7 +90,7 @@ const buildBreadcrumbSegments = (
     return segments;
 };
 
-export function Breadcrumb({ currentPath, baseFolders, onNavigate, rootLabel }: BreadcrumbProps) {
+export function Breadcrumb({ currentPath, baseFolders, onNavigate, onAuxClick, rootLabel }: BreadcrumbProps) {
     const { t } = useTranslation();
     const label = rootLabel || t('explorer.title') || 'Explorer';
     const breadcrumbSegments = buildBreadcrumbSegments(currentPath, baseFolders, label);
@@ -101,19 +102,19 @@ export function Breadcrumb({ currentPath, baseFolders, onNavigate, rootLabel }: 
                     const isLast = index === breadcrumbSegments.length - 1;
                     // Make clickable if: not the last segment AND (going to root OR path is different from current)
                     const isClickable = !isLast && (
-                        (segment.path === null && currentPath !== null) || 
+                        (segment.path === null && currentPath !== null) ||
                         (segment.path !== null && segment.path !== currentPath)
                     );
-                    
+
                     return (
                         <div key={index} className="flex items-center gap-2 flex-shrink-0">
                             {index > 0 && (
-                                <svg 
-                                    width="16" 
-                                    height="16" 
-                                    viewBox="0 0 24 24" 
-                                    fill="none" 
-                                    stroke="currentColor" 
+                                <svg
+                                    width="16"
+                                    height="16"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
                                     strokeWidth="2"
                                     className="text-text-secondary/50 flex-shrink-0"
                                 >
@@ -123,13 +124,14 @@ export function Breadcrumb({ currentPath, baseFolders, onNavigate, rootLabel }: 
                             {isClickable ? (
                                 <button
                                     onClick={() => onNavigate(segment.path)}
+                                    onAuxClick={(e) => onAuxClick?.(e, segment.path, segment.name)}
                                     className="text-text-primary hover:text-accent transition-colors truncate max-w-[200px] px-2 py-1 rounded hover:bg-white/5 text-sm"
                                     title={segment.path || segment.name}
                                 >
                                     {segment.name}
                                 </button>
                             ) : (
-                                <span 
+                                <span
                                     className={`${isLast ? 'text-text-primary font-semibold text-base' : 'text-text-secondary text-sm'} truncate max-w-[200px]`}
                                     title={segment.path || segment.name}
                                 >

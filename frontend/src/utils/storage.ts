@@ -2,10 +2,7 @@
  * LocalStorage utilities for persisting app state
  */
 
-const STORAGE_KEYS = {
-    TABS: 'manga-visor2-tabs',
-    VIEWER_STATES: 'manga-visor2-viewer-states',
-} as const;
+import { STORAGE_KEYS, VIEWER_STATE_LIMITS } from '../constants';
 
 export interface SavedTab {
     id: string;
@@ -77,7 +74,7 @@ export function saveViewerStateToLocalStorage(folderPath: string, currentIndex: 
             verticalWidth,
         };
         localStorage.setItem(STORAGE_KEYS.VIEWER_STATES, JSON.stringify(states));
-        console.log(`[Storage] Saved viewer state to localStorage: index=${currentIndex}, width=${verticalWidth} for ${folderPath}`);
+        console.log(`[Storage] Saved viewer state to localStorage: index=${currentIndex}, width=${verticalWidth} `);
     } catch (error) {
         console.error('[Storage] Failed to save viewer state to localStorage:', error);
         // Handle quota exceeded errors
@@ -134,17 +131,18 @@ function clearOldViewerStates(): void {
     try {
         const states = loadAllViewerStates();
         const entries = Object.entries(states);
-        if (entries.length <= 100) return; // Don't clear if under limit
+        const maxStates = VIEWER_STATE_LIMITS.MAX_STORED_STATES;
+        if (entries.length <= maxStates) return; // Don't clear if under limit
         
         // Sort by most recent (assuming folder paths contain timestamps or use insertion order)
-        // For now, keep the last 100 entries
-        const sorted = entries.slice(-100);
+        // For now, keep the last N entries
+        const sorted = entries.slice(-maxStates);
         const cleaned: Record<string, ViewerState> = {};
         for (const [path, state] of sorted) {
             cleaned[path] = state;
         }
         localStorage.setItem(STORAGE_KEYS.VIEWER_STATES, JSON.stringify(cleaned));
-        console.log(`[Storage] Cleared ${entries.length - 100} old viewer states`);
+        console.log(`[Storage] Cleared ${entries.length - maxStates} old viewer states`);
     } catch (error) {
         console.error('[Storage] Failed to clear old viewer states:', error);
     }

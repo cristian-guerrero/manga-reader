@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, ReactNode } from 'react';
-import { Tooltip } from './Tooltip';
+import { Tooltip } from '../ui/Tooltip';
 
 interface MediaTileProps {
     id: string;

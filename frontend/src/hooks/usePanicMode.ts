@@ -5,7 +5,7 @@
 
 import { useEffect, useCallback } from 'react';
 import { useHotkeys } from 'react-hotkeys-hook';
-import { useNavigationStore } from '../stores/navigationStore';
+import { useNavigation } from './useNavigation';
 import { useSettingsStore } from '../stores/settingsStore';
 
 interface UsePanicModeOptions {
@@ -14,7 +14,7 @@ interface UsePanicModeOptions {
 
 export function usePanicMode(options: UsePanicModeOptions = {}) {
     const { enabled = true } = options;
-    const { triggerPanic, exitPanic, isPanicMode } = useNavigationStore();
+    const { triggerPanic, exitPanic, isPanicMode } = useNavigation();
     const { panicKey } = useSettingsStore();
 
     // Handle panic trigger

@@ -5,7 +5,7 @@
 
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Tooltip } from '../common/Tooltip';
+import { Tooltip } from '../ui/Tooltip';
 import { TabList } from './TabList';
 import { useTabStore } from '../../stores/tabStore';
 import { useSettingsStore } from '../../stores/settingsStore';
