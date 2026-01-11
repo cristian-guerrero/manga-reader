@@ -3,14 +3,8 @@
  */
 
 import { useState, useCallback } from 'react';
-import { ImageOrderAPI } from '../services/api/imageOrderAPI';
-
-interface ImageData {
-    path: string;
-    name: string;
-    index: number;
-    modTime?: number;
-}
+import { ImageOrderAPI } from '@services/api/imageOrderAPI';
+import type { ImageData } from '../types';
 
 interface UseThumbnailsPageSortOptions {
     folderPath?: string;

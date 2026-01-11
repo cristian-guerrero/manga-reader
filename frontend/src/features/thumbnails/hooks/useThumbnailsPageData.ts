@@ -3,16 +3,9 @@
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { ImageAPI } from '../services/api/imageAPI';
-import { ImageOrderAPI } from '../services/api/imageOrderAPI';
-
-interface ImageData {
-    path: string;
-    name: string;
-    index: number;
-    modTime?: number;
-    thumbnailUrl?: string;
-}
+import { ImageAPI } from '@services/api/imageAPI';
+import { ImageOrderAPI } from '@services/api/imageOrderAPI';
+import type { ImageData } from '../types';
 
 interface UseThumbnailsPageDataOptions {
     folderPath?: string;

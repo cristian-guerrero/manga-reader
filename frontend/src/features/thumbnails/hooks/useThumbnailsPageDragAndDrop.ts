@@ -5,14 +5,8 @@
 import { useState, useCallback } from 'react';
 import { DragStartEvent, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove } from '@dnd-kit/sortable';
-import { ImageOrderAPI } from '../services/api/imageOrderAPI';
-
-interface ImageData {
-    path: string;
-    name: string;
-    index: number;
-    modTime?: number;
-}
+import { ImageOrderAPI } from '@services/api/imageOrderAPI';
+import type { ImageData } from '../types';
 
 interface UseThumbnailsPageDragAndDropOptions {
     folderPath?: string;
