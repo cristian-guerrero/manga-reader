@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useNavigation } from '../../hooks/useNavigation';
-import { Tooltip } from '../common/Tooltip';
+import { Tooltip } from '../ui/Tooltip';
 
 // Icons
 interface NavItem {

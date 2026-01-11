@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigation } from '../../hooks/useNavigation';
 import { useToast } from '../common/Toast';
-import { Tooltip } from '../common/Tooltip';
+import { Tooltip } from '../ui/Tooltip';
 import { SortControls } from '../common/SortControls';
 import { GridItem } from '../common/GridItem';
 import { GridContainer } from '../common/GridContainer';

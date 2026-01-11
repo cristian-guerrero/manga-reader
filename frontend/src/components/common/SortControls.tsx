@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { Tooltip } from './Tooltip';
+import { Tooltip } from '../ui/Tooltip';
 
 // Icons
 const SortAscIcon = () => (
