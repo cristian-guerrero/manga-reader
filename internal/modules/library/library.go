@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -355,4 +356,150 @@ func (m *Module) unwrapArchiveRoot(path string) string {
 
 		return path
 	}
+}
+
+func (m *Module) GetImages(path string, settings *persistence.Settings, orders *persistence.OrdersManager) ([]persistence.ImageInfo, error) {
+	folderPath := m.ResolveFolder(path)
+	images, err := m.fileLoader.GetImages(folderPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if settings.MinImageSize > 0 {
+		var filtered []fileloader.ImageInfo
+		minBytes := settings.MinImageSize * 1024
+		for _, img := range images {
+			if img.Size >= minBytes {
+				filtered = append(filtered, img)
+			}
+		}
+		if len(filtered) > 0 {
+			images = filtered
+		}
+	}
+
+	dirHash := m.fileLoader.RegisterDirectory(folderPath)
+	baseURL := m.getBaseURL()
+
+	result := make([]persistence.ImageInfo, len(images))
+
+	for i, img := range images {
+		relPath, _ := filepath.Rel(folderPath, img.Path)
+		// Ensure relPath uses forward slashes for URLs
+		relPath = filepath.ToSlash(relPath)
+		result[i] = persistence.ImageInfo{
+			Path:         img.Path,
+			ThumbnailURL: fmt.Sprintf("%s/thumbnails?did=%s&fid=%s", baseURL, dirHash, url.QueryEscape(relPath)),
+			ImageURL:     fmt.Sprintf("%s/images?did=%s&fid=%s", baseURL, dirHash, url.QueryEscape(relPath)),
+			Name:         img.Name,
+			Extension:    img.Extension,
+			Size:         img.Size,
+			Index:        img.Index,
+			ModTime:      img.ModTime,
+		}
+	}
+
+	// Check Custom Order
+	customOrder := orders.GetOrder(folderPath)
+	if customOrder != nil && len(customOrder) > 0 {
+		orderMap := make(map[string]int)
+		for i, name := range customOrder {
+			orderMap[name] = i
+		}
+
+		sort.Slice(result, func(i, j int) bool {
+			idxI, existsI := orderMap[result[i].Name]
+			idxJ, existsJ := orderMap[result[j].Name]
+
+			if existsI && existsJ {
+				return idxI < idxJ
+			}
+			if existsI {
+				return true
+			}
+			if existsJ {
+				return false
+			}
+			return result[i].Name < result[j].Name
+		})
+
+		for i := range result {
+			result[i].Index = i
+		}
+	}
+
+	return result, nil
+}
+
+func (m *Module) GetImagesShallow(path string, settings *persistence.Settings, orders *persistence.OrdersManager) ([]persistence.ImageInfo, error) {
+	folderPath := m.ResolveFolder(path)
+	images, err := m.fileLoader.GetImagesShallow(folderPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if settings.MinImageSize > 0 {
+		var filtered []fileloader.ImageInfo
+		minBytes := settings.MinImageSize * 1024
+		for _, img := range images {
+			if img.Size >= minBytes {
+				filtered = append(filtered, img)
+			}
+		}
+		if len(filtered) > 0 {
+			images = filtered
+		}
+	}
+
+	dirHash := m.fileLoader.RegisterDirectory(folderPath)
+	baseURL := m.getBaseURL()
+
+	result := make([]persistence.ImageInfo, len(images))
+
+	for i, img := range images {
+		relPath, _ := filepath.Rel(folderPath, img.Path)
+		// Ensure relPath uses forward slashes for URLs
+		relPath = filepath.ToSlash(relPath)
+		result[i] = persistence.ImageInfo{
+			Path:         img.Path,
+			ThumbnailURL: fmt.Sprintf("%s/thumbnails?did=%s&fid=%s", baseURL, dirHash, url.QueryEscape(relPath)),
+			ImageURL:     fmt.Sprintf("%s/images?did=%s&fid=%s", baseURL, dirHash, url.QueryEscape(relPath)),
+			Name:         img.Name,
+			Extension:    img.Extension,
+			Size:         img.Size,
+			Index:        img.Index,
+			ModTime:      img.ModTime,
+		}
+	}
+
+	// Check Custom Order
+	customOrder := orders.GetOrder(folderPath)
+	if customOrder != nil && len(customOrder) > 0 {
+		orderMap := make(map[string]int)
+		for i, name := range customOrder {
+			orderMap[name] = i
+		}
+
+		sort.Slice(result, func(i, j int) bool {
+			idxI, existsI := orderMap[result[i].Name]
+			idxJ, existsJ := orderMap[result[j].Name]
+
+			if existsI && existsJ {
+				return idxI < idxJ
+			}
+			if existsI {
+				return true
+			}
+			if existsJ {
+				return false
+			}
+			return result[i].Name < result[j].Name
+		})
+
+		for i := range result {
+			result[i].Index = i
+		}
+	}
+
+	return result, nil
 }

@@ -84,11 +84,11 @@ export const SettingsPage: React.FC = () => {
             // Clear backend data (history, library, series, thumbnails, downloads)
             // @ts-ignore
             await window.go?.main?.App?.ClearAllData();
-            
+
             // Clear localStorage data (tabs and viewer states)
             const { clearAllStorage } = await import('../../utils/storage');
             clearAllStorage();
-            
+
             // Reset tabs to initial state (single home tab)
             // Create a fresh home tab
             const homeTabId = Math.random().toString(36).substring(2, 9);
@@ -107,7 +107,7 @@ export const SettingsPage: React.FC = () => {
                 }],
                 activeTabId: homeTabId,
             });
-            
+
             setIsClearCacheOpen(false);
             showToast(t('settings.clearCacheSuccess') || 'Cache cleared successfully', 'success');
         } catch (error) {
@@ -444,35 +444,6 @@ export const SettingsPage: React.FC = () => {
                 <section className="animate-slide-up" style={{ animationDelay: '0.4s' }}>
                     <SectionHeader title={t('settings.advanced', 'Advanced')} />
 
-                    <SettingRow label={t('settings.preloadImages', 'Preload Images')}>
-                        <Toggle
-                            checked={preloadImages}
-                            onChange={setPreloadImages}
-                        />
-                    </SettingRow>
-
-                    {
-                        preloadImages && (
-                            <SettingRow label={t('settings.preloadCount', 'Preload Count')}>
-                                <div className="flex items-center gap-4">
-                                    <input
-                                        type="range"
-                                        min="1"
-                                        max="10"
-                                        value={preloadCount}
-                                        onChange={(e) => setPreloadCount(Number(e.target.value))}
-                                        className="flex-1 max-w-32"
-                                    />
-                                    <span
-                                        className="text-sm font-medium w-8 text-right"
-                                        style={{ color: 'var(--color-text-secondary)' }}
-                                    >
-                                        {preloadCount}
-                                    </span>
-                                </div>
-                            </SettingRow>
-                        )
-                    }
 
                     <SettingRow label={t('settings.showImageInfo', 'Show Image Info')}>
                         <Toggle

@@ -16,7 +16,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	stdruntime "runtime"
-	"sort"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -386,168 +385,12 @@ func (a *App) SelectFolder() (string, error) {
 // This logic was in `app.go` before.
 
 func (a *App) GetImages(path string) ([]persistence.ImageInfo, error) {
-	// Re-implementing GetImages here using shared logic or duplicating it for now to avoid breaking changes
-	// Ideally this should be in a shared service.
-
-	// Delegate to fileLoader directly?
-	// But we need to generate URLs.
-	// Let's copy-paste the logic from original App.go but fix references.
-
-	folderPath := a.libraryMod.ResolveFolder(path) // Use library mod for resolution
-	images, err := a.fileLoader.GetImages(folderPath)
-	if err != nil {
-		return nil, err
-	}
-
-	settings := a.settings.Get()
-	if settings.MinImageSize > 0 {
-		var filtered []fileloader.ImageInfo
-		minBytes := settings.MinImageSize * 1024
-		for _, img := range images {
-			if img.Size >= minBytes {
-				filtered = append(filtered, img)
-			}
-		}
-		if len(filtered) > 0 {
-			images = filtered
-		}
-	}
-
-	dirHash := a.fileLoader.RegisterDirectory(folderPath)
-	baseURL := a.getBaseURL()
-
-	// Define return type anonymously or use a named type if I define one.
-	// Since Wails uses the return value, anonymous struct slice works fine for runtime,
-	// but for Go code clarity I should probably define it.
-	// Return type matches `GetImages` signature.
-
-	// struct defined inline below
-
-	// Use named struct matching the return signature
-	result := make([]persistence.ImageInfo, len(images))
-
-	for i, img := range images {
-		relPath, _ := filepath.Rel(folderPath, img.Path)
-		result[i] = persistence.ImageInfo{
-			Path:         img.Path,
-			ThumbnailURL: fmt.Sprintf("%s/thumbnails?did=%s&fid=%s", baseURL, dirHash, url.QueryEscape(relPath)),
-			ImageURL:     fmt.Sprintf("%s/images?did=%s&fid=%s", baseURL, dirHash, url.QueryEscape(relPath)),
-			Name:         img.Name,
-			Extension:    img.Extension,
-			Size:         img.Size,
-			Index:        img.Index,
-			ModTime:      img.ModTime,
-		}
-	}
-
-	// Check Custom Order
-	customOrder := a.orders.GetOrder(folderPath)
-	if customOrder != nil && len(customOrder) > 0 {
-		// Create a map for fast lookup of custom index
-		orderMap := make(map[string]int)
-		for i, name := range customOrder {
-			orderMap[name] = i
-		}
-
-		// Sort the result slice based on custom orders
-		sort.Slice(result, func(i, j int) bool {
-			idxI, existsI := orderMap[result[i].Name]
-			idxJ, existsJ := orderMap[result[j].Name]
-
-			if existsI && existsJ {
-				return idxI < idxJ
-			}
-			if existsI {
-				return true
-			}
-			if existsJ {
-				return false
-			}
-			// If neither in custom order, keep original relative order (sort by name as fallback)
-			return result[i].Name < result[j].Name
-		})
-
-		// Update indices to match new order
-		for i := range result {
-			result[i].Index = i
-		}
-	}
-
-	return result, nil
+	return a.libraryMod.GetImages(path, a.settings.Get(), a.orders)
 }
 
 // GetImagesShallow returns a list of images in the specified folder (non-recursive, only immediate directory)
 func (a *App) GetImagesShallow(path string) ([]persistence.ImageInfo, error) {
-	folderPath := a.libraryMod.ResolveFolder(path)
-	images, err := a.fileLoader.GetImagesShallow(folderPath)
-	if err != nil {
-		return nil, err
-	}
-
-	settings := a.settings.Get()
-	if settings.MinImageSize > 0 {
-		var filtered []fileloader.ImageInfo
-		minBytes := settings.MinImageSize * 1024
-		for _, img := range images {
-			if img.Size >= minBytes {
-				filtered = append(filtered, img)
-			}
-		}
-		if len(filtered) > 0 {
-			images = filtered
-		}
-	}
-
-	dirHash := a.fileLoader.RegisterDirectory(folderPath)
-	baseURL := a.getBaseURL()
-
-	result := make([]persistence.ImageInfo, len(images))
-
-	for i, img := range images {
-		relPath, _ := filepath.Rel(folderPath, img.Path)
-		result[i] = persistence.ImageInfo{
-			Path:         img.Path,
-			ThumbnailURL: fmt.Sprintf("%s/thumbnails?did=%s&fid=%s", baseURL, dirHash, url.QueryEscape(relPath)),
-			ImageURL:     fmt.Sprintf("%s/images?did=%s&fid=%s", baseURL, dirHash, url.QueryEscape(relPath)),
-			Name:         img.Name,
-			Extension:    img.Extension,
-			Size:         img.Size,
-			Index:        img.Index,
-			ModTime:      img.ModTime,
-		}
-	}
-
-	// Check Custom Order
-	customOrder := a.orders.GetOrder(folderPath)
-	if customOrder != nil && len(customOrder) > 0 {
-		orderMap := make(map[string]int)
-		for i, name := range customOrder {
-			orderMap[name] = i
-		}
-
-		sort.Slice(result, func(i, j int) bool {
-			idxI, existsI := orderMap[result[i].Name]
-			idxJ, existsJ := orderMap[result[j].Name]
-
-			if existsI && existsJ {
-				return idxI < idxJ
-			}
-			if existsI {
-				return true
-			}
-			if existsJ {
-				return false
-			}
-			return result[i].Name < result[j].Name
-		})
-
-		// Update indices to match new order
-		for i := range result {
-			result[i].Index = i
-		}
-	}
-
-	return result, nil
+	return a.libraryMod.GetImagesShallow(path, a.settings.Get(), a.orders)
 }
 
 // GetFolderInfo delegates to Library module
