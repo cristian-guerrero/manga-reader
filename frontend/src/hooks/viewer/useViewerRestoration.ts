@@ -6,7 +6,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { ImageInfo, HistoryEntry } from '../../types';
 import { AppAPI } from '../../services/api/appAPI';
-import { loadViewerStateFromLocalStorage } from '../../utils/storage';
+import { ViewerPersistenceService } from '../../services/persistence';
 import { useTabStore } from '../../stores/tabStore';
 
 interface UseViewerRestorationOptions {
@@ -102,7 +102,7 @@ export function useViewerRestoration({
             try {
                 // Load saved state and history in parallel
                 const [savedState, historyEntry] = await Promise.all([
-                    loadViewerStateFromLocalStorage(folderPath),
+                    Promise.resolve(ViewerPersistenceService.load(folderPath)),
                     AppAPI.getHistoryEntry(folderPath),
                 ]);
 

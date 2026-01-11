@@ -8,7 +8,7 @@ import { EventsOn } from '../../wailsjs/runtime';
 import { useSettingsStore } from '../stores/settingsStore';
 import { useTabStore } from '../stores/tabStore';
 import { useNavigationStore } from '../stores/navigationStore';
-import { loadTabsFromLocalStorage } from '../utils/storage';
+import { TabPersistenceService } from '../services/persistence';
 import { MAIN_PAGES_TO_SAVE } from '../constants';
 
 /**
@@ -28,7 +28,7 @@ export function useAppInitialization() {
                 const { restoreTabs } = useSettingsStore.getState();
                 if (restoreTabs) {
                     try {
-                        const tabsData = loadTabsFromLocalStorage();
+                        const tabsData = TabPersistenceService.load();
                         if (tabsData && tabsData.tabs && tabsData.tabs.length > 0) {
                             // Convert localStorage format to tabStore format
                             useTabStore.getState().restoreTabsFromBackend({

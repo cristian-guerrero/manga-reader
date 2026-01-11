@@ -15,7 +15,7 @@ import { useSettingsStore } from '../../stores/settingsStore';
 import { useNavigationStore } from '../../stores/navigationStore';
 import { useTabStore } from '../../stores/tabStore';
 import { ImageInfo, FolderInfo, ViewerMode } from '../../types';
-import { saveViewerStateToLocalStorage, loadViewerStateFromLocalStorage } from '../../utils/storage';
+import { ViewerPersistenceService } from '../../services/persistence';
 import { useChapterNavigation } from '../../hooks/viewer/useChapterNavigation';
 import { useViewerHistory } from '../../hooks/viewer/useViewerHistory';
 import { AppAPI } from '../../services/api/appAPI';
@@ -61,13 +61,25 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
 
     const [showControls, setShowControls] = useState(true);
     const [showWidthSlider, setShowWidthSlider] = useState(false);
-    // Local state for resume position - initialize from tabState or params to avoid showing index 0 on restore
+    // Local state for resume position - initialize from tabState, localStorage, or params to avoid showing index 0 on restore
     const [resumeIndex, setResumeIndex] = useState(() => {
         // Initialize from tabState if available (for restore scenarios)
         const initialTab = useTabStore.getState().tabs.find(t => t.id === tabId);
         const initialTabState = initialTab?.viewerState;
         if (initialTabState?.currentIndex !== undefined && initialTabState.currentIndex >= 0) {
             return initialTabState.currentIndex;
+        }
+        // If viewerState is null but we have folderPath, try to load from localStorage
+        // This helps on restore when viewerState is null but we have saved state
+        if (folderPath) {
+            try {
+                const savedState = ViewerPersistenceService.load(folderPath);
+                if (savedState && savedState.currentIndex >= 0) {
+                    return savedState.currentIndex;
+                }
+            } catch (error) {
+                // Ignore errors in initialization
+            }
         }
         // If viewerState is null but we have params with targetPath or startIndex, try to use those
         // This helps on restore when viewerState is null but params have the navigation info
@@ -140,7 +152,10 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
                 const targetWidth = updates.width !== undefined ? updates.width : ((tabViewerState?.verticalWidth || 0) !== 0 ? (tabViewerState?.verticalWidth || verticalWidth) : verticalWidth);
 
                 // Save to localStorage instead of backend
-                saveViewerStateToLocalStorage(folderPath, targetIndex, targetWidth);
+                ViewerPersistenceService.save(folderPath, {
+                    currentIndex: targetIndex,
+                    verticalWidth: targetWidth
+                });
                 console.log(`[ViewerPage] Saved viewer state to localStorage: index=${targetIndex}, width=${targetWidth}`);
             } catch (error) {
                 console.error('[ViewerPage] Failed to save viewer state:', error);
@@ -325,11 +340,13 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
 
         const loadFolder = async () => {
             const activeTab = useTabStore.getState().tabs.find(t => t.id === tabId);
+            // Save restored flag BEFORE clearing it - we need it for prioritization logic
             const isRestored = activeTab?.restored;
 
             if (isRestored) {
                 console.log(`[ViewerPage] Restored tab detected for ${folderPath}. Forcing refresh to update stale URLs.`);
                 // Clear restored flag so we don't force refresh every time we switch back to this tab
+                // BUT keep the value in isRestored variable for use in prioritization logic below
                 useTabStore.getState().updateTab(tabId!, { restored: false });
             }
 
@@ -357,7 +374,7 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
                 const historyEntry = await AppAPI.getHistoryEntry(folderPath);
 
                 // NEW: Fetch viewer state from localStorage (primary source for restoration)
-                const savedViewerState = loadViewerStateFromLocalStorage(folderPath);
+                const savedViewerState = ViewerPersistenceService.load(folderPath);
 
                 if (folderInfo) {
                     updateTabState({ currentFolder: folderInfo as FolderInfo });
@@ -394,12 +411,19 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
                         targetScroll = currentTabScroll; // Store percentage for now
                     }
 
-                    if (isRestored && savedViewerState && savedViewerState.currentIndex > 0 && savedViewerState.currentIndex < imgs.length) {
+                    // PRIORITIZATION: Always prioritize savedViewerState over targetPath when restoring
+                    // This prevents targetPath (which may be stale from tab creation) from overriding saved position
+                    if (isRestored && savedViewerState && savedViewerState.currentIndex >= 0 && savedViewerState.currentIndex < imgs.length) {
                         // When restoring, prioritize backend state over params
                         targetIndex = savedViewerState.currentIndex;
                         console.log(`[ViewerPage] Restoring from BACKEND state (ignoring params): index=${targetIndex}`);
+                    } else if (savedViewerState && savedViewerState.currentIndex >= 0 && savedViewerState.currentIndex < imgs.length) {
+                        // If we have saved state, use it (even if not restored flag, to handle multiple loadFolder executions)
+                        // This prevents targetPath from overriding saved position on second execution
+                        targetIndex = savedViewerState.currentIndex;
+                        console.log(`[ViewerPage] Resuming from BACKEND state (ignoring targetPath): index=${targetIndex}`);
                     } else if (targetPath && !isRestored) {
-                        // Only use targetPath if NOT restoring (new navigation)
+                        // Only use targetPath if NOT restoring (new navigation) AND no saved state exists
                         const pathIndex = imgs.findIndex(img => img.path === targetPath);
                         if (pathIndex >= 0) {
                             targetIndex = pathIndex;
@@ -409,11 +433,7 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
                         // Only use startIndex if NOT restoring (new navigation)
                         targetIndex = explicitStartIndex;
                         console.log(`[ViewerPage] Starting from EXPLICIT INDEX: ${targetIndex}`);
-                    } else if (savedViewerState && savedViewerState.currentIndex > 0 && savedViewerState.currentIndex < imgs.length) {
-                        // Fallback to backend state if no explicit navigation
-                        targetIndex = savedViewerState.currentIndex;
-                        console.log(`[ViewerPage] Resuming from BACKEND state: index=${targetIndex}`);
-                    } else if (historyEntry && historyEntry.lastImageIndex > 0 && historyEntry.lastImageIndex < imgs.length) {
+                    } else if (historyEntry && historyEntry.lastImageIndex >= 0 && historyEntry.lastImageIndex < imgs.length) {
                         // Fallback to history if no saved state
                         targetIndex = historyEntry.lastImageIndex;
                         console.log(`[ViewerPage] Resuming from history index: ${targetIndex}`);

@@ -1,6 +1,9 @@
 /**
- * Viewer Store - Manages viewer state
- * Refactored to support multiple tabs via tabStore
+ * Viewer Store - Compatibility wrapper for viewer operations
+ * DEPRECATED: Use useViewer hook instead for new code
+ * This store is maintained for backward compatibility
+ * 
+ * Note: State should be read directly from tabStore, not from this store
  */
 
 import { create } from 'zustand';
@@ -40,151 +43,219 @@ interface ViewerStoreState extends ViewerState {
     hasNext: () => boolean;
     hasPrev: () => boolean;
 
-    // Internal helpers (should be treated as private)
+    // Internal helpers (for backward compatibility)
     _updateTabState: (updates: Partial<ViewerState>) => void;
     _updateTabStateById: (id: string, updates: Partial<ViewerState>) => void;
 }
 
 // Initial state values for when a tab has no viewerState yet
-const defaultViewerState = {
+const defaultViewerState: Partial<ViewerState> = {
     currentFolder: null,
     images: [],
     currentIndex: 0,
-    mode: 'vertical' as ViewerMode,
+    mode: 'vertical',
     isLoading: false,
     zoomLevel: 1,
     scrollPosition: 0,
-    verticalWidth: 0, // 0 means use global default
+    verticalWidth: 0,
+};
+
+// Helper to update viewer state for a specific tab
+function updateTabViewerState(tabId: string, updates: Partial<ViewerState>) {
+    const tab = useTabStore.getState().tabs.find(t => t.id === tabId);
+    if (!tab) return;
+
+    const currentState = tab.viewerState || defaultViewerState;
+    useTabStore.getState().updateTab(tabId, {
+        viewerState: { ...currentState, ...updates } as ViewerState
+    });
+}
+
+// Initialize state from active tab
+const getInitialState = () => {
+    const activeTab = useTabStore.getState().getActiveTab();
+    const viewerState = activeTab.viewerState || defaultViewerState;
+    return {
+        currentFolder: viewerState.currentFolder ?? null,
+        images: viewerState.images ?? [],
+        currentIndex: viewerState.currentIndex ?? 0,
+        mode: viewerState.mode ?? 'vertical',
+        isLoading: viewerState.isLoading ?? false,
+        zoomLevel: viewerState.zoomLevel ?? 1,
+        scrollPosition: viewerState.scrollPosition ?? 0,
+        verticalWidth: viewerState.verticalWidth ?? 0,
+    };
 };
 
 export const useViewerStore = create<ViewerStoreState>((set, get) => ({
-    // Proxy properties
-    currentFolder: useTabStore.getState().getActiveTab().viewerState?.currentFolder ?? defaultViewerState.currentFolder,
-    images: useTabStore.getState().getActiveTab().viewerState?.images ?? defaultViewerState.images,
-    currentIndex: useTabStore.getState().getActiveTab().viewerState?.currentIndex ?? defaultViewerState.currentIndex,
-    mode: useTabStore.getState().getActiveTab().viewerState?.mode ?? defaultViewerState.mode,
-    isLoading: useTabStore.getState().getActiveTab().viewerState?.isLoading ?? defaultViewerState.isLoading,
-    zoomLevel: useTabStore.getState().getActiveTab().viewerState?.zoomLevel ?? defaultViewerState.zoomLevel,
-    scrollPosition: useTabStore.getState().getActiveTab().viewerState?.scrollPosition ?? defaultViewerState.scrollPosition,
-    verticalWidth: useTabStore.getState().getActiveTab().viewerState?.verticalWidth ?? defaultViewerState.verticalWidth,
+    ...getInitialState(),
 
     // Image navigation
     setCurrentIndex: (index) => {
-        const { images } = get();
+        const activeTab = useTabStore.getState().getActiveTab();
+        const viewerState = activeTab.viewerState;
+        const images = viewerState?.images ?? [];
         if (index >= 0 && index < images.length) {
-            get()._updateTabState({ currentIndex: index });
+            updateTabViewerState(activeTab.id, { currentIndex: index });
         }
     },
 
     nextImage: () => {
-        const { currentIndex, images } = get();
+        const activeTab = useTabStore.getState().getActiveTab();
+        const viewerState = activeTab.viewerState;
+        const currentIndex = viewerState?.currentIndex ?? 0;
+        const images = viewerState?.images ?? [];
         if (currentIndex < images.length - 1) {
-            get()._updateTabState({ currentIndex: currentIndex + 1 });
+            updateTabViewerState(activeTab.id, { currentIndex: currentIndex + 1 });
         }
     },
 
     prevImage: () => {
-        const { currentIndex } = get();
+        const activeTab = useTabStore.getState().getActiveTab();
+        const viewerState = activeTab.viewerState;
+        const currentIndex = viewerState?.currentIndex ?? 0;
         if (currentIndex > 0) {
-            get()._updateTabState({ currentIndex: currentIndex - 1 });
+            updateTabViewerState(activeTab.id, { currentIndex: currentIndex - 1 });
         }
     },
 
     goToImage: (index) => {
-        const { images } = get();
+        const activeTab = useTabStore.getState().getActiveTab();
+        const viewerState = activeTab.viewerState;
+        const images = viewerState?.images ?? [];
         if (index >= 0 && index < images.length) {
-            get()._updateTabState({ currentIndex: index, scrollPosition: 0 });
+            updateTabViewerState(activeTab.id, { currentIndex: index, scrollPosition: 0 });
         }
     },
 
     // Folder management
     setCurrentFolder: (folder) => {
-        get()._updateTabState({ currentFolder: folder });
+        const activeTab = useTabStore.getState().getActiveTab();
+        updateTabViewerState(activeTab.id, { currentFolder: folder });
     },
 
     setImages: (images) => {
-        get()._updateTabState({ images, currentIndex: 0, scrollPosition: 0 });
+        const activeTab = useTabStore.getState().getActiveTab();
+        updateTabViewerState(activeTab.id, { images, currentIndex: 0, scrollPosition: 0 });
     },
 
     clearViewer: () => {
-        get()._updateTabState(defaultViewerState);
+        const activeTab = useTabStore.getState().getActiveTab();
+        updateTabViewerState(activeTab.id, defaultViewerState as ViewerState);
     },
 
     // Viewer mode
     setMode: (mode) => {
-        get()._updateTabState({ mode });
+        const activeTab = useTabStore.getState().getActiveTab();
+        updateTabViewerState(activeTab.id, { mode });
     },
 
     // Loading state
     setIsLoading: (isLoading) => {
-        get()._updateTabState({ isLoading });
+        const activeTab = useTabStore.getState().getActiveTab();
+        updateTabViewerState(activeTab.id, { isLoading });
     },
 
     // Zoom
     setZoomLevel: (level) => {
         const clampedLevel = Math.min(5, Math.max(0.1, level));
-        get()._updateTabState({ zoomLevel: clampedLevel });
+        const activeTab = useTabStore.getState().getActiveTab();
+        updateTabViewerState(activeTab.id, { zoomLevel: clampedLevel });
     },
 
     zoomIn: () => {
-        const { zoomLevel } = get();
-        get()._updateTabState({ zoomLevel: Math.min(5, zoomLevel + 0.25) });
+        const activeTab = useTabStore.getState().getActiveTab();
+        const viewerState = activeTab.viewerState;
+        const zoomLevel = viewerState?.zoomLevel ?? 1;
+        updateTabViewerState(activeTab.id, { zoomLevel: Math.min(5, zoomLevel + 0.25) });
     },
 
     zoomOut: () => {
-        const { zoomLevel } = get();
-        get()._updateTabState({ zoomLevel: Math.max(0.1, zoomLevel - 0.25) });
+        const activeTab = useTabStore.getState().getActiveTab();
+        const viewerState = activeTab.viewerState;
+        const zoomLevel = viewerState?.zoomLevel ?? 1;
+        updateTabViewerState(activeTab.id, { zoomLevel: Math.max(0.1, zoomLevel - 0.25) });
     },
 
     resetZoom: () => {
-        get()._updateTabState({ zoomLevel: 1 });
+        const activeTab = useTabStore.getState().getActiveTab();
+        updateTabViewerState(activeTab.id, { zoomLevel: 1 });
     },
 
     // Scroll position
     setScrollPosition: (scrollPosition) => {
-        get()._updateTabState({ scrollPosition });
+        const activeTab = useTabStore.getState().getActiveTab();
+        updateTabViewerState(activeTab.id, { scrollPosition });
     },
 
     // Computed
     getCurrentImage: () => {
-        const { images, currentIndex } = get();
+        const activeTab = useTabStore.getState().getActiveTab();
+        const viewerState = activeTab.viewerState;
+        const images = viewerState?.images ?? [];
+        const currentIndex = viewerState?.currentIndex ?? 0;
         return images[currentIndex] || null;
     },
 
     hasNext: () => {
-        const { currentIndex, images } = get();
+        const activeTab = useTabStore.getState().getActiveTab();
+        const viewerState = activeTab.viewerState;
+        const currentIndex = viewerState?.currentIndex ?? 0;
+        const images = viewerState?.images ?? [];
         return currentIndex < images.length - 1;
     },
 
     hasPrev: () => {
-        const { currentIndex } = get();
+        const activeTab = useTabStore.getState().getActiveTab();
+        const viewerState = activeTab.viewerState;
+        const currentIndex = viewerState?.currentIndex ?? 0;
         return currentIndex > 0;
     },
 
     setViewerState: (updates) => {
-        get()._updateTabState(updates);
+        const activeTab = useTabStore.getState().getActiveTab();
+        updateTabViewerState(activeTab.id, updates);
     },
 
-    // Internal helper to update tabStore for active tab
-    _updateTabState: (updates: any) => {
+    // Internal helper to update tabStore for active tab (for backward compatibility)
+    _updateTabState: (updates) => {
         const activeTabId = useTabStore.getState().activeTabId;
         if (activeTabId) {
-            // Only update tabStore, not local state (local state is deprecated)
-            get()._updateTabStateById(activeTabId, updates);
+            updateTabViewerState(activeTabId, updates);
         }
     },
 
-    // Internal helper to update tabStore by ID
-    _updateTabStateById: (id: string, updates: any) => {
-        const tab = useTabStore.getState().tabs.find(t => t.id === id);
-        if (!tab) return;
-
-        const currentState = tab.viewerState || defaultViewerState;
-        useTabStore.getState().updateTab(id, {
-            viewerState: { ...currentState, ...updates }
-        });
-    }
+    // Internal helper to update tabStore by ID (for backward compatibility)
+    _updateTabStateById: (id, updates) => {
+        updateTabViewerState(id, updates);
+    },
 }));
 
-// REMOVED: Subscription to tabStore that caused circular updates and unnecessary re-renders
-// Components should read directly from tabStore instead of using viewerStore state
+// Subscribe to tabStore changes to keep viewerStore state in sync (for backward compatibility)
+useTabStore.subscribe((tabState) => {
+    const activeTab = tabState.tabs.find(t => t.id === tabState.activeTabId) || tabState.tabs[0];
+    if (activeTab?.viewerState) {
+        const viewerState = activeTab.viewerState;
+        useViewerStore.setState({
+            currentFolder: viewerState.currentFolder,
+            images: viewerState.images,
+            currentIndex: viewerState.currentIndex,
+            mode: viewerState.mode,
+            isLoading: viewerState.isLoading,
+            zoomLevel: viewerState.zoomLevel,
+            scrollPosition: viewerState.scrollPosition,
+            verticalWidth: viewerState.verticalWidth ?? 0,
+        });
+    } else {
+        useViewerStore.setState({
+            currentFolder: null,
+            images: [],
+            currentIndex: 0,
+            mode: 'vertical',
+            isLoading: false,
+            zoomLevel: 1,
+            scrollPosition: 0,
+            verticalWidth: 0,
+        });
+    }
+});

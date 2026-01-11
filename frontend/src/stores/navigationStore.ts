@@ -1,11 +1,13 @@
 /**
- * Navigation Store - Manages app navigation state with proper history stack
- * Refactored to support multiple tabs via tabStore
+ * Navigation Store - Compatibility wrapper
+ * DEPRECATED: Use useNavigation hook instead for new code
+ * This store is maintained for backward compatibility
  */
 
 import { create } from 'zustand';
 import { PageType, NavigationState, FolderInfo } from '../types';
-import { useTabStore, Tab } from './tabStore';
+import { useTabStore } from './tabStore';
+import { useGlobalNavigationStore } from './globalNavigationStore';
 import { MAIN_PAGES, MAIN_PAGES_TO_SAVE } from '../constants';
 
 interface HistoryEntry {
@@ -28,12 +30,12 @@ interface NavigationStoreState extends NavigationState {
     setParams: (params: Record<string, string>) => void;
     clearHistory: () => void;
 
-    // Panic mode
+    // Panic mode (from globalNavigationStore)
     isPanicMode: boolean;
     triggerPanic: () => void;
     exitPanic: () => void;
 
-    // Processing mode (e.g. ZIP extraction)
+    // Processing mode (from globalNavigationStore)
     isProcessing: boolean;
     setIsProcessing: (isProcessing: boolean) => void;
 
@@ -49,11 +51,6 @@ interface NavigationStoreState extends NavigationState {
     setExplorerState: (state: { currentPath: string | null; pathHistory: string[] } | null) => void;
 }
 
-// Internal state for things that are truly global (not per tab)
-let globalIsPanicMode = false;
-let globalIsProcessing = false;
-let globalFolders: FolderInfo[] = [];
-
 export const useNavigationStore = create<NavigationStoreState>((set, get) => ({
     // These getters will return values from the active tab
     currentPage: useTabStore.getState().getActiveTab().page,
@@ -67,10 +64,10 @@ export const useNavigationStore = create<NavigationStoreState>((set, get) => ({
     thumbnailScrollPositions: useTabStore.getState().getActiveTab().thumbnailScrollPositions,
     explorerState: useTabStore.getState().getActiveTab().explorerState,
 
-    // Global state
-    isPanicMode: globalIsPanicMode,
-    isProcessing: globalIsProcessing,
-    folders: globalFolders,
+    // Global state from globalNavigationStore
+    isPanicMode: useGlobalNavigationStore.getState().isPanicMode,
+    isProcessing: useGlobalNavigationStore.getState().isProcessing,
+    folders: useGlobalNavigationStore.getState().folders,
 
     // Actions
     navigate: (page, params = {}, activeMenuPageOverride = undefined) => {
@@ -92,7 +89,6 @@ export const useNavigationStore = create<NavigationStoreState>((set, get) => ({
         // Determine the title - use folder name for viewer pages
         let newTitle = page.charAt(0).toUpperCase() + page.slice(1);
         if (page === 'viewer' && params.folder) {
-            // Extract folder name from path
             const folderPath = params.folder;
             const folderName = folderPath.split(/[\\/]/).pop() || 'Viewer';
             newTitle = folderName;
@@ -100,7 +96,7 @@ export const useNavigationStore = create<NavigationStoreState>((set, get) => ({
 
         useTabStore.getState().updateActiveTab({
             page,
-            fromPage: activeTab.page, // Save previous page as fromPage
+            fromPage: activeTab.page,
             params,
             history: newHistory,
             activeMenuPage,
@@ -109,15 +105,12 @@ export const useNavigationStore = create<NavigationStoreState>((set, get) => ({
 
         // Save main pages to settings for startup restore
         if (MAIN_PAGES_TO_SAVE.includes(page)) {
-            // @ts-ignore - Dynamic import to avoid circular dependency
             import('./settingsStore').then(({ useSettingsStore }) => {
                 useSettingsStore.getState().setLastPage(page);
             });
         }
 
-        // Force a re-render by setting a dummy value if needed, 
-        // but since components listen to useTabStore too, it might be fine.
-        // To be safe with existing useNavigationStore users, we trigger a local set.
+        // Force a re-render by setting a dummy value
         set({});
     },
 
@@ -187,20 +180,18 @@ export const useNavigationStore = create<NavigationStoreState>((set, get) => ({
     },
 
     triggerPanic: () => {
-        globalIsPanicMode = true;
-        set({ isPanicMode: true });
-        // Panic also navigates active tab to settings as a safety
-        get().navigate('settings');
+        useGlobalNavigationStore.getState().triggerPanic();
+        set({ isPanicMode: useGlobalNavigationStore.getState().isPanicMode });
     },
 
     exitPanic: () => {
-        globalIsPanicMode = false;
-        set({ isPanicMode: false });
+        useGlobalNavigationStore.getState().exitPanic();
+        set({ isPanicMode: useGlobalNavigationStore.getState().isPanicMode });
     },
 
     setIsProcessing: (isProcessing) => {
-        globalIsProcessing = isProcessing;
-        set({ isProcessing });
+        useGlobalNavigationStore.getState().setIsProcessing(isProcessing);
+        set({ isProcessing: useGlobalNavigationStore.getState().isProcessing });
     },
 
     setThumbnailScrollPosition: (folderPath, position) => {
@@ -215,12 +206,8 @@ export const useNavigationStore = create<NavigationStoreState>((set, get) => ({
     },
 
     setFolders: (folders) => {
-        if (typeof folders === 'function') {
-            globalFolders = folders(globalFolders);
-        } else {
-            globalFolders = folders;
-        }
-        set({ folders: globalFolders });
+        useGlobalNavigationStore.getState().setFolders(folders);
+        set({ folders: useGlobalNavigationStore.getState().folders });
     },
 
     setExplorerState: (state) => {
@@ -247,4 +234,13 @@ useTabStore.subscribe((tabState) => {
             fromPage: activeTab.fromPage || null,
         });
     }
+});
+
+// Subscribe to globalNavigationStore changes
+useGlobalNavigationStore.subscribe((state) => {
+    useNavigationStore.setState({
+        isPanicMode: state.isPanicMode,
+        isProcessing: state.isProcessing,
+        folders: state.folders,
+    });
 });
