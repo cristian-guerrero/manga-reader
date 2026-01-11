@@ -3,7 +3,7 @@
  */
 
 import { useTranslation } from 'react-i18next';
-import { LoadingSpinner } from '../ui/LoadingSpinner';
+import { LoadingSpinner } from '../../components/ui/LoadingSpinner';
 
 export function ViewerLoadingState() {
     const { t } = useTranslation();

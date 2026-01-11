@@ -3,7 +3,7 @@
  */
 
 import { useTranslation } from 'react-i18next';
-import { EmptyState } from '../ui/EmptyState';
+import { EmptyState } from '../../components/ui/EmptyState';
 
 interface ViewerEmptyStateProps {
     onBack: () => void;

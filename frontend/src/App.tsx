@@ -2,18 +2,21 @@
  * App - Main application component
  */
 
-import { Suspense, useMemo, memo } from 'react';
+import { Suspense, useMemo, memo, lazy } from 'react';
 import { MainLayout } from './components/layout/MainLayout';
-import { HomePage } from './components/pages/HomePage';
-import { ViewerPage } from './components/viewers/ViewerPage';
-import { OneShotPage } from './components/pages/OneShotPage';
-import { SeriesPage } from './components/pages/SeriesPage';
-import { SeriesDetailsPage } from './components/pages/SeriesDetailsPage';
-import { HistoryPage } from './components/pages/HistoryPage';
-import { ExplorerPage } from './components/pages/ExplorerPage';
-import { ThumbnailsPage } from './components/pages/ThumbnailsPage';
-import { SettingsPage } from './components/pages/SettingsPage';
-import { DownloadPage } from './components/pages/DownloadPage';
+
+// Lazy load pages for code splitting
+// Handle both named and default exports
+const HomePage = lazy(() => import('./components/pages/HomePage').then(m => ({ default: m.default || m.HomePage })));
+const ViewerPage = lazy(() => import('./features/viewer/ViewerPage').then(m => ({ default: m.default || m.ViewerPage })));
+const OneShotPage = lazy(() => import('./components/pages/OneShotPage').then(m => ({ default: m.default || m.OneShotPage })));
+const SeriesPage = lazy(() => import('./components/pages/SeriesPage').then(m => ({ default: m.default || m.SeriesPage })));
+const SeriesDetailsPage = lazy(() => import('./components/pages/SeriesDetailsPage').then(m => ({ default: m.default || m.SeriesDetailsPage })));
+const HistoryPage = lazy(() => import('./components/pages/HistoryPage').then(m => ({ default: m.default || m.HistoryPage })));
+const ExplorerPage = lazy(() => import('./components/pages/ExplorerPage').then(m => ({ default: m.ExplorerPage })));
+const ThumbnailsPage = lazy(() => import('./components/pages/ThumbnailsPage').then(m => ({ default: m.default || m.ThumbnailsPage })));
+const SettingsPage = lazy(() => import('./components/pages/SettingsPage').then(m => ({ default: m.default || m.SettingsPage })));
+const DownloadPage = lazy(() => import('./components/pages/DownloadPage').then(m => ({ default: m.DownloadPage })));
 import { useTabStore } from './stores/tabStore';
 import { useSettingsStore } from './stores/settingsStore';
 import { usePanicMode } from './hooks/usePanicMode';
