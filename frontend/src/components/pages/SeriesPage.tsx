@@ -4,16 +4,12 @@
 
 import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigation } from '../../hooks/useNavigation';
+import { useNavigation } from '../../hooks';
 import { EventsOn, EventsOff } from '../../../wailsjs/runtime';
 import { SeriesEntry } from '../../types';
-import { SortControls } from '../common/SortControls';
-import { GridItem } from '../common/GridItem';
-import { GridContainer } from '../common/GridContainer';
-import { SearchBar } from '../common/SearchBar';
-import { LibraryCard } from '../common/LibraryCard';
+import { SortControls, GridItem, GridContainer, SearchBar, LibraryCard } from '../../shared/components';
 import { useThumbnails } from '../../hooks/useThumbnails';
-import { useTabStore } from '../../stores/tabStore';
+import { useTabStore } from '../../stores';
 import { AppAPI } from '../../services/api/appAPI';
 
 // Icons

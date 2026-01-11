@@ -16,15 +16,13 @@ import {
     useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { useNavigation } from '../../hooks/useNavigation';
-import { GridContainer } from '../common/GridContainer';
-import { GridItem } from '../common/GridItem';
+import { useNavigation } from '../../hooks';
+import { GridContainer, GridItem, LoadingSpinner } from '../../shared/components';
 import { useThumbnail } from '../../hooks/useThumbnail';
 import { useThumbnailsPageData } from '../../hooks/useThumbnailsPageData';
 import { useThumbnailsPageScroll } from '../../hooks/useThumbnailsPageScroll';
 import { useThumbnailsPageSort } from '../../hooks/useThumbnailsPageSort';
 import { useThumbnailsPageDragAndDrop } from '../../hooks/useThumbnailsPageDragAndDrop';
-import { LoadingSpinner } from '../ui/LoadingSpinner';
 
 // Icons
 const ResetIcon = () => (

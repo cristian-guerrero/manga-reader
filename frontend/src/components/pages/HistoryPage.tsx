@@ -4,14 +4,9 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigation } from '../../hooks/useNavigation';
-import { useSettingsStore } from '../../stores/settingsStore';
-import { useToast } from '../common/Toast';
-import { ConfirmDialog } from '../common/ConfirmDialog';
-import { Tooltip } from '../common/Tooltip';
-import { GridContainer } from '../common/GridContainer';
-import { GridItem } from '../common/GridItem';
-import { useTabStore } from '../../stores/tabStore';
+import { useNavigation } from '../../hooks';
+import { useSettingsStore, useTabStore } from '../../stores';
+import { useToast, ConfirmDialog, Tooltip, GridContainer, GridItem } from '../../shared/components';
 import { EventsOn, EventsOff } from '../../../wailsjs/runtime';
 import { AppAPI } from '../../services/api/appAPI';
 

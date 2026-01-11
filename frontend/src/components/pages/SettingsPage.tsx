@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useSettingsStore } from '../../stores/settingsStore';
-import { useTabStore } from '../../stores/tabStore';
+import { useSettingsStore, useTabStore } from '../../stores';
 import { builtInThemes, ACCENT_COLORS } from '../../themes';
 import {
     Palette,
@@ -9,12 +8,7 @@ import {
     RefreshCcw,
     RotateCcw
 } from 'lucide-react';
-import { Button } from '../common/Button';
-import { useToast } from '../common/Toast';
-import { ConfirmDialog } from '../common/ConfirmDialog';
-import { Toggle } from '../common/Toggle';
-import { SectionHeader } from '../common/SectionHeader';
-import { HelpDialog } from '../common/HelpDialog';
+import { Button, useToast, ConfirmDialog, Toggle, SectionHeader, HelpDialog } from '../../shared/components';
 import { languages, changeLanguage } from '../../i18n';
 import { AppAPI } from '../../services/api/appAPI';
 

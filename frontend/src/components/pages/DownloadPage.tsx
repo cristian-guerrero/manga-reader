@@ -1,14 +1,10 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useSettingsStore } from '../../stores/settingsStore';
-import { useNavigation } from '../../hooks/useNavigation';
-import { useToast } from '../common/Toast';
-import { Button } from '../common/Button';
-import { Toggle } from '../common/Toggle';
-import { HelpDialog } from '../common/HelpDialog';
+import { useSettingsStore } from '../../stores';
+import { useNavigation } from '../../hooks';
+import { useToast, Button, Toggle, HelpDialog, Tooltip } from '../../shared/components';
 import { EventsOn } from '../../../wailsjs/runtime/runtime';
 import * as AppBackend from '../../../wailsjs/go/main/App';
-import { Tooltip } from '../common/Tooltip';
 import { downloader } from '../../../wailsjs/go/models';
 
 interface DownloadJob {

@@ -4,13 +4,11 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigation } from '../../hooks/useNavigation';
+import { useNavigation } from '../../hooks';
 import { EventsOn, EventsOff } from '../../../wailsjs/runtime';
-import { Button } from '../common/Button';
-import { Tooltip } from '../common/Tooltip';
-import { useTabStore } from '../../stores/tabStore';
+import { Button, Tooltip, useToast } from '../../shared/components';
+import { useTabStore } from '../../stores';
 import { AppAPI } from '../../services/api/appAPI';
-import { useToast } from '../common/Toast';
 
 // Icons
 const FolderPlusIcon = () => (
