@@ -11,9 +11,9 @@ import { ChapterNavigation } from './ChapterNavigation';
 import { ViewerContent } from './components/ViewerContent';
 import { ViewerLoadingState } from './ViewerLoadingState';
 import { ViewerEmptyState } from './ViewerEmptyState';
-import { useViewer, useNavigation } from '../../hooks';
-import { useSettingsStore, useTabStore } from '../../stores';
-import { AppAPI } from '../../services/api/appAPI';
+import { useViewer, useNavigation } from '@hooks';
+import { useSettingsStore, useTabStore } from '@stores';
+import { AppAPI } from '@services/api/appAPI';
 import {
     useViewerState,
     useViewerFolderLoading,

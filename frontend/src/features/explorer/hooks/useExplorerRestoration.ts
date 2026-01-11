@@ -4,9 +4,9 @@
  */
 
 import { useEffect, useRef } from 'react';
-import { useNavigation } from '../../../hooks';
-import { MAIN_PAGES_TO_SAVE } from '../../../constants';
-import { useTabStore } from '../../../stores';
+import { useNavigation } from '@hooks';
+import { MAIN_PAGES_TO_SAVE } from '@constants';
+import { useTabStore } from '@stores';
 
 interface UseExplorerRestorationOptions {
     tabId?: string;

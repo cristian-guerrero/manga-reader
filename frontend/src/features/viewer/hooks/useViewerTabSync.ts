@@ -4,7 +4,7 @@
  */
 
 import { useEffect } from 'react';
-import { useTabStore } from '../../../stores';
+import { useTabStore } from '@stores';
 
 interface UseViewerTabSyncOptions {
     tabId?: string;

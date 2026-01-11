@@ -5,11 +5,11 @@
 
 import { useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigation } from '../../hooks';
-import { useThumbnails } from '../../hooks/useThumbnails';
-import { Tooltip, SortControls, GridItem, GridContainer, SearchBar, Breadcrumb, MediaTile, useToast } from '../../shared/components';
-import { AppAPI } from '../../services/api/appAPI';
-import type { PageType } from '../../types';
+import { useNavigation } from '@hooks';
+import { useThumbnails } from '@hooks/useThumbnails';
+import { Tooltip, SortControls, GridItem, GridContainer, SearchBar, Breadcrumb, MediaTile, useToast } from '@shared/components';
+import { AppAPI } from '@services/api/appAPI';
+import type { PageType } from '@types';
 import {
     useExplorerState,
     useExplorerSorting,
@@ -17,8 +17,8 @@ import {
     useExplorerSearch,
     useExplorerNavigation,
     useExplorerRestoration,
-} from '../../features/explorer/hooks';
-import { BaseFolder, ExplorerEntry } from '../../features/explorer/types';
+} from '@features/explorer/hooks';
+import { BaseFolder, ExplorerEntry } from '@features/explorer/types';
 
 // Icons
 const TrashIcon = () => (

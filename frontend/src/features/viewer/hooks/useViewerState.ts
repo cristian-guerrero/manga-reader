@@ -4,9 +4,9 @@
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { useTabStore, useSettingsStore } from '../../../stores';
-import { useViewer } from '../../../hooks';
-import { ViewerPersistenceService } from '../../../services/persistence';
+import { useTabStore, useSettingsStore } from '@stores';
+import { useViewer } from '@hooks';
+import { ViewerPersistenceService } from '@services/persistence';
 
 interface UseViewerStateOptions {
     folderPath?: string;

@@ -4,8 +4,8 @@
  */
 
 import { useEffect } from 'react';
-import { useTabStore } from '../../../stores';
-import { ImageInfo, FolderInfo } from '../../../types';
+import { useTabStore } from '@stores';
+import { ImageInfo, FolderInfo } from '@types';
 
 interface UseViewerNavigationSeekOptions {
     tabId?: string;

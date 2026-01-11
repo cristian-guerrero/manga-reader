@@ -5,7 +5,7 @@
 
 import { VerticalViewer } from '../VerticalViewer';
 import { LateralViewer } from '../LateralViewer';
-import { ViewerMode, ImageInfo } from '../../../types';
+import { ViewerMode, ImageInfo } from '@types';
 
 interface ViewerContentProps {
     mode: ViewerMode;

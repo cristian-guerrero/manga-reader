@@ -2,8 +2,8 @@
  * ViewerControls - Top control bar for the viewer
  */
 
-import { FolderInfo, ViewerMode } from '../../types';
-import { Tooltip } from '../../shared/components';
+import { FolderInfo, ViewerMode } from '@types';
+import { Tooltip } from '@shared/components';
 
 // Icons
 const BackIcon = () => (

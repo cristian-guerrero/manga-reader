@@ -4,9 +4,9 @@
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useTabStore } from '../../../stores';
-import { AppAPI } from '../../../services/api/appAPI';
-import { useToast } from '../../../shared/components';
+import { useTabStore } from '@stores';
+import { AppAPI } from '@services/api/appAPI';
+import { useToast } from '@shared/components';
 import { useTranslation } from 'react-i18next';
 import { BaseFolder, ExplorerEntry } from '../types';
 

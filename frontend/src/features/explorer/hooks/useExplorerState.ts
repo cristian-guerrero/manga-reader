@@ -4,7 +4,7 @@
  */
 
 import { useState, useRef, useEffect } from 'react';
-import { useTabStore } from '../../../stores';
+import { useTabStore } from '@stores';
 
 interface ExplorerState {
     currentPath: string | null;

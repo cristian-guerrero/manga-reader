@@ -5,10 +5,10 @@
 
 import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useTabStore } from '../../../stores';
-import { AppAPI } from '../../../services/api/appAPI';
+import { useTabStore } from '@stores';
+import { AppAPI } from '@services/api/appAPI';
 import { ExplorerEntry, BaseFolder } from '../types';
-import type { PageType } from '../../../types';
+import type { PageType } from '@types';
 
 interface UseExplorerNavigationOptions {
     tabId?: string;

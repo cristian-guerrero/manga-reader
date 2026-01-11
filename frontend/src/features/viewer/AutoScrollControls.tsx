@@ -2,7 +2,7 @@
  * AutoScrollControls - Controls for auto-scrolling in vertical mode
  */
 
-import { Tooltip } from '../../shared/components';
+import { Tooltip } from '@shared/components';
 
 const PlayIcon = () => (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
