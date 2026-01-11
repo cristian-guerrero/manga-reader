@@ -77,7 +77,7 @@ export function saveViewerStateToLocalStorage(folderPath: string, currentIndex: 
             verticalWidth,
         };
         localStorage.setItem(STORAGE_KEYS.VIEWER_STATES, JSON.stringify(states));
-        console.log(`[Storage] Saved viewer state to localStorage: index=${currentIndex}, width=${verticalWidth} for ${folderPath}`);
+        console.log(`[Storage] Saved viewer state to localStorage: index=${currentIndex}, width=${verticalWidth} `);
     } catch (error) {
         console.error('[Storage] Failed to save viewer state to localStorage:', error);
         // Handle quota exceeded errors

@@ -21,6 +21,8 @@ export interface ImageInfo {
     size: number;
     /** Index in the current folder */
     index: number;
+    /** Modification time (timestamp) */
+    modTime?: number;
 }
 
 export interface FolderInfo {
