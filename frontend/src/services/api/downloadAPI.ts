@@ -39,18 +39,22 @@ export class DownloadAPI extends BaseAPI {
 
     /**
      * Start download from URL
+     * Throws error on failure (no defaultValue to allow proper error handling)
      */
     static async startDownload(url: string, seriesPath: string = '', chapterPath: string = ''): Promise<string> {
         return this.call(
             async () => {
                 const result = await AppBackend.StartDownload(url, seriesPath, chapterPath);
-                return result || '';
+                if (!result || result === '') {
+                    throw new Error('Failed to start download: backend returned empty result');
+                }
+                return result;
             },
             {
                 component: 'DownloadAPI',
                 action: 'startDownload',
-                details: { url },
-                defaultValue: '' // Return empty string on error
+                details: { url }
+                // No defaultValue - let error propagate so caller can handle it properly
             }
         );
     }
