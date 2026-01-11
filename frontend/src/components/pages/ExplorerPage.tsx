@@ -465,6 +465,31 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
         }
     };
 
+    const handleBreadcrumbAuxClick = (e: React.MouseEvent, path: string | null, name: string) => {
+        if (e.button === 1) { // Middle click
+            e.preventDefault();
+            e.stopPropagation();
+
+            if (path === null) {
+                // Root - open new explorer tab at root
+                addTab('explorer', {}, t('explorer.title') || 'Explorer', {
+                    explorerState: {
+                        currentPath: null,
+                        pathHistory: []
+                    }
+                }, false);
+            } else {
+                // Specific path
+                addTab('explorer', {}, name, {
+                    explorerState: {
+                        currentPath: path,
+                        pathHistory: []
+                    }
+                }, false);
+            }
+        }
+    };
+
     const handleAddBaseFolder = async () => {
         try {
             // @ts-ignore
@@ -684,6 +709,7 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
                             currentPath={currentPath}
                             baseFolders={baseFolders}
                             onNavigate={handleBreadcrumbClick}
+                            onAuxClick={handleBreadcrumbAuxClick}
                         />
                     </div>
 
