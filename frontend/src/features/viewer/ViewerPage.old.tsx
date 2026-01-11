@@ -1,6 +1,7 @@
 /**
  * ViewerPage - Main viewer page that manages vertical and lateral modes
  * Refactored to use custom hooks and extracted components for better separation of concerns
+ * @deprecated - use ViewerPage.tsx instead
  */
 
 import { useEffect, useState, useCallback, useRef } from 'react';

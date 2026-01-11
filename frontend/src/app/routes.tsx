@@ -17,7 +17,7 @@ const HistoryPage = lazy(() => import('../components/pages/HistoryPage').then(m 
 const ExplorerPage = lazy(() => import('../components/pages/ExplorerPage').then(m => ({ default: m.ExplorerPage })));
 const ThumbnailsPage = lazy(() => import('../components/pages/ThumbnailsPage').then(m => ({ default: m.default || m.ThumbnailsPage })));
 const SettingsPage = lazy(() => import('../components/pages/SettingsPage').then(m => ({ default: m.default || m.SettingsPage })));
-const DownloadPage = lazy(() => import('../components/pages/DownloadPage').then(m => ({ default: m.DownloadPage })));
+const DownloadPage = lazy(() => import('../features/download/DownloadPage').then(m => ({ default: m.default || m.DownloadPage })));
 
 /**
  * Route configuration mapping page types to components

@@ -1,9 +1,13 @@
 /**
  * Shared Components - Re-export all shared/common components
+ * 
+ * Note: Components from common/ are re-exports from ui/ for backward compatibility.
+ * For new code, prefer importing directly from @components/ui
  */
 
+// Common components (re-exports from ui/)
 export { Breadcrumb } from '../../components/common/Breadcrumb';
-export { Button } from '../../components/common/Button';
+export { Button, type ButtonProps } from '../../components/common/Button';
 export { ConfirmDialog } from '../../components/common/ConfirmDialog';
 export { ErrorBoundary } from '../../components/common/ErrorBoundary';
 export { GridContainer } from '../../components/common/GridContainer';
@@ -19,10 +23,7 @@ export { default as ToastProvider } from '../../components/common/Toast';
 export { Toggle } from '../../components/common/Toggle';
 export { Tooltip } from '../../components/common/Tooltip';
 
-// UI Components
+// UI-only components (not in common/)
 export { LoadingSpinner } from '../../components/ui/LoadingSpinner';
 export { EmptyState } from '../../components/ui/EmptyState';
 export { ErrorDisplay } from '../../components/ui/ErrorDisplay';
-export { Button as UIButton, type ButtonProps } from '../../components/ui/Button';
-export { Toggle as UIToggle } from '../../components/ui/Toggle';
-export { Tooltip as UITooltip } from '../../components/ui/Tooltip';

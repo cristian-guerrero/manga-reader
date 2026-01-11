@@ -95,6 +95,13 @@ export class AppAPI {
     // Download operations - delegate to DownloadAPI
     static fetchMangaInfo = DownloadAPI.fetchMangaInfo;
     static startDownload = DownloadAPI.startDownload;
+    static getDownloadHistory = DownloadAPI.getDownloadHistory;
+    static clearDownloadHistory = DownloadAPI.clearDownloadHistory;
+    static removeDownloadJob = DownloadAPI.removeDownloadJob;
+    static resumeIncompleteDownloads = DownloadAPI.resumeIncompleteDownloads;
+    static addDownloadedFolder = DownloadAPI.addDownloadedFolder;
+    static addDownloadedSeries = DownloadAPI.addDownloadedSeries;
+    static openInFileManager = DownloadAPI.openInFileManager;
 
     // Settings operations - delegate to SettingsAPI
     static getSettings = SettingsAPI.getSettings;

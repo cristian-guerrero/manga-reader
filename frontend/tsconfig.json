@@ -22,15 +22,25 @@
     "baseUrl": ".",
     "paths": {
       "@app/*": ["src/app/*"],
+      "@app": ["src/app"],
       "@features/*": ["src/features/*"],
+      "@features": ["src/features"],
       "@shared/*": ["src/shared/*"],
+      "@shared": ["src/shared"],
       "@services/*": ["src/services/*"],
+      "@services": ["src/services"],
       "@stores/*": ["src/stores/*"],
+      "@stores": ["src/stores"],
       "@hooks/*": ["src/hooks/*"],
+      "@hooks": ["src/hooks"],
       "@components/*": ["src/components/*"],
+      "@components": ["src/components"],
       "@types/*": ["src/types/*"],
+      "@types": ["src/types"],
       "@utils/*": ["src/utils/*"],
-      "@constants/*": ["src/constants/*"]
+      "@utils": ["src/utils"],
+      "@constants/*": ["src/constants/*"],
+      "@constants": ["src/constants"]
     }
   },
   "include": [
