@@ -202,6 +202,10 @@ export function SelectFolder() {
   return window['go']['main']['App']['SelectFolder']();
 }
 
+export function SetThumbnailsPaused(arg1) {
+  return window['go']['main']['App']['SetThumbnailsPaused'](arg1);
+}
+
 export function StartDownload(arg1, arg2, arg3) {
   return window['go']['main']['App']['StartDownload'](arg1, arg2, arg3);
 }

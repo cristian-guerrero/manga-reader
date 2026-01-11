@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSettingsStore } from '../../stores/settingsStore';
+import { useTabStore } from '../../stores/tabStore';
 import { builtInThemes, ACCENT_COLORS } from '../../themes';
 import {
     Palette,
@@ -80,8 +81,33 @@ export const SettingsPage: React.FC = () => {
 
     const confirmClearCache = async () => {
         try {
+            // Clear backend data (history, library, series, thumbnails, downloads)
             // @ts-ignore
             await window.go?.main?.App?.ClearAllData();
+            
+            // Clear localStorage data (tabs and viewer states)
+            const { clearAllStorage } = await import('../../utils/storage');
+            clearAllStorage();
+            
+            // Reset tabs to initial state (single home tab)
+            // Create a fresh home tab
+            const homeTabId = Math.random().toString(36).substring(2, 9);
+            useTabStore.setState({
+                tabs: [{
+                    id: homeTabId,
+                    title: 'Home',
+                    page: 'home' as const,
+                    fromPage: null,
+                    params: {},
+                    history: [{ page: 'home' as const, params: {} }],
+                    activeMenuPage: 'home' as const,
+                    explorerState: null,
+                    thumbnailScrollPositions: {},
+                    viewerState: null,
+                }],
+                activeTabId: homeTabId,
+            });
+            
             setIsClearCacheOpen(false);
             showToast(t('settings.clearCacheSuccess') || 'Cache cleared successfully', 'success');
         } catch (error) {

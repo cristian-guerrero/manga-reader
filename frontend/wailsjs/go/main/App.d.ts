@@ -105,6 +105,8 @@ export function SaveWindowState():Promise<void>;
 
 export function SelectFolder():Promise<string>;
 
+export function SetThumbnailsPaused(arg1:boolean):Promise<void>;
+
 export function StartDownload(arg1:string,arg2:string,arg3:string):Promise<string>;
 
 export function UpdateSettings(arg1:Record<string, any>):Promise<void>;

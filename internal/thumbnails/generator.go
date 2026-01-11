@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"golang.org/x/image/draw"
@@ -35,6 +36,7 @@ type Generator struct {
 	mu        sync.RWMutex
 	pending   sync.Map      // map[string]chan struct{} for deduplicating generation
 	semaphore chan struct{} // Global limit for concurrent generation
+	paused    atomic.Bool   // Whether generation is currently paused
 }
 
 // NewGenerator creates a new thumbnail generator
@@ -130,8 +132,23 @@ func (g *Generator) loadCachedThumbnail(imagePath string) (string, error) {
 	return fmt.Sprintf("data:image/jpeg;base64,%s", base64Data), nil
 }
 
+// SetPaused toggles the pause state of the generator
+func (g *Generator) SetPaused(paused bool) {
+	g.paused.Store(paused)
+	if paused {
+		fmt.Println("[Generator] Thumbnail generation paused")
+	} else {
+		fmt.Println("[Generator] Thumbnail generation resumed")
+	}
+}
+
 // generateThumbnail generates a thumbnail for an image
 func (g *Generator) generateThumbnail(imagePath string) (string, error) {
+	// Check if paused - return error immediately to avoid blocking connections
+	if g.paused.Load() {
+		return "", fmt.Errorf("generation paused")
+	}
+
 	// Acquire semaphore to limit concurrency
 	g.semaphore <- struct{}{}
 	defer func() { <-g.semaphore }()
@@ -303,6 +320,11 @@ func (g *Generator) PreloadThumbnails(imagePaths []string) {
 	semaphore := make(chan struct{}, 4)
 
 	for _, path := range imagePaths {
+		// Stop preloading if generator is paused
+		if g.paused.Load() {
+			break
+		}
+
 		if g.IsCached(path) {
 			continue
 		}
