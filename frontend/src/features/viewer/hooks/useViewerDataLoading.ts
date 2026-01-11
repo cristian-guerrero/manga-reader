@@ -4,10 +4,10 @@
  */
 
 import { useEffect, useState } from 'react';
-import { useTabStore } from '../../stores/tabStore';
-import { AppAPI } from '../../services/api/appAPI';
-import { ViewerPersistenceService } from '../../services/persistence';
-import { ImageInfo, FolderInfo } from '../../types';
+import { useTabStore } from '../../../stores/tabStore';
+import { AppAPI } from '../../../services/api/appAPI';
+import { ViewerPersistenceService } from '../../../services/persistence';
+import { ImageInfo, FolderInfo } from '../../../types';
 
 interface UseViewerDataLoadingOptions {
     folderPath?: string;

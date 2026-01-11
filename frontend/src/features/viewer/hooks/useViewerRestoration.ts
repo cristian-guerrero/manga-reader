@@ -4,10 +4,10 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
-import { ImageInfo, HistoryEntry } from '../../types';
-import { AppAPI } from '../../services/api/appAPI';
-import { ViewerPersistenceService } from '../../services/persistence';
-import { useTabStore } from '../../stores/tabStore';
+import { ImageInfo, HistoryEntry } from '../../../types';
+import { AppAPI } from '../../../services/api/appAPI';
+import { ViewerPersistenceService } from '../../../services/persistence';
+import { useTabStore } from '../../../stores/tabStore';
 
 interface UseViewerRestorationOptions {
     folderPath: string;

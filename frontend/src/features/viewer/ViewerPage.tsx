@@ -13,14 +13,16 @@ import { ViewerLoadingState } from './ViewerLoadingState';
 import { ViewerEmptyState } from './ViewerEmptyState';
 import { useViewer, useNavigation } from '../../hooks';
 import { useSettingsStore, useTabStore } from '../../stores';
-import { useChapterNavigation } from '../../hooks/viewer/useChapterNavigation';
-import { useViewerHistory } from '../../hooks/viewer/useViewerHistory';
 import { AppAPI } from '../../services/api/appAPI';
-import { useViewerState } from './hooks/useViewerState';
-import { useViewerFolderLoading } from './hooks/useViewerFolderLoading';
-import { useViewerTabSync } from './hooks/useViewerTabSync';
-import { useViewerNavigationSeek } from './hooks/useViewerNavigationSeek';
-import { useViewerControls } from './hooks/useViewerControls';
+import {
+    useViewerState,
+    useViewerFolderLoading,
+    useViewerTabSync,
+    useViewerNavigationSeek,
+    useViewerControls,
+    useChapterNavigation,
+    useViewerHistory,
+} from './hooks';
 
 interface ViewerPageProps {
     folderPath?: string;

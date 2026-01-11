@@ -16,8 +16,7 @@ import { useSettingsStore } from '../../stores/settingsStore';
 import { useTabStore } from '../../stores/tabStore';
 import { ImageInfo, FolderInfo, ViewerMode } from '../../types';
 import { ViewerPersistenceService } from '../../services/persistence';
-import { useChapterNavigation } from '../../hooks/viewer/useChapterNavigation';
-import { useViewerHistory } from '../../hooks/viewer/useViewerHistory';
+import { useChapterNavigation, useViewerHistory } from '../../features/viewer/hooks';
 import { AppAPI } from '../../services/api/appAPI';
 
 // Icons removed - now in component files

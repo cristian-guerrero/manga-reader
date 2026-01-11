@@ -3,7 +3,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { AppAPI } from '../../services/api/appAPI';
+import { AppAPI } from '../../../services/api/appAPI';
 
 interface ChapterNavigation {
     prevChapter?: { path: string; name: string };

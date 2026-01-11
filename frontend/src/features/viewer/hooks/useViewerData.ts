@@ -3,8 +3,8 @@
  */
 
 import { useState, useEffect } from 'react';
-import { FolderInfo, ImageInfo } from '../../types';
-import { AppAPI } from '../../services/api/appAPI';
+import { FolderInfo, ImageInfo } from '../../../types';
+import { AppAPI } from '../../../services/api/appAPI';
 
 interface UseViewerDataOptions {
     folderPath: string | undefined;

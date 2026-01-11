@@ -3,8 +3,8 @@
  */
 
 import { useCallback } from 'react';
-import { FolderInfo, ImageInfo } from '../../types';
-import { AppAPI } from '../../services/api/appAPI';
+import { FolderInfo, ImageInfo } from '../../../types';
+import { AppAPI } from '../../../services/api/appAPI';
 
 interface UseViewerHistoryOptions {
     currentFolder: FolderInfo | null;
