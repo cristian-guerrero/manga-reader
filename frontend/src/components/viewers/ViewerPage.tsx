@@ -12,6 +12,7 @@ import { useNavigationStore } from '../../stores/navigationStore';
 import { useTabStore } from '../../stores/tabStore';
 import { Tooltip } from '../common/Tooltip';
 import { ImageInfo, FolderInfo, ViewerMode } from '../../types';
+import { saveViewerStateToLocalStorage, loadViewerStateFromLocalStorage } from '../../utils/storage';
 
 // Icons
 const VerticalIcon = () => (
@@ -108,38 +109,50 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
         }
     }, [tabId, _updateTabStateById, globalSetViewerState]);
 
-    // Get current state for this specific tab
+    // Get current state for this specific tab - single source of truth
     const tabState = useTabStore(state => state.tabs.find(t => t.id === tabId)?.viewerState);
 
-    // Live state from store (for the active tab) or from the tab object directly
-    const storeState = useViewerStore(state => ({
-        currentFolder: state.currentFolder,
-        images: state.images,
-        currentIndex: state.currentIndex,
-        mode: state.mode,
-        isLoading: state.isLoading,
-        verticalWidth: state.verticalWidth
-    }));
-
-    const currentFolder = isActive ? storeState.currentFolder : (tabState?.currentFolder || null);
-    const images = isActive ? storeState.images : (tabState?.images || []);
-    const currentIndex = isActive ? storeState.currentIndex : (tabState?.currentIndex || 0);
-    const mode = isActive ? storeState.mode : (tabState?.mode || 'vertical');
-    const isLoading = isActive ? storeState.isLoading : (tabState?.isLoading || false);
+    // Use tabState directly for both active and inactive tabs (no longer use viewerStore state)
+    const currentFolder = tabState?.currentFolder || null;
+    const images = tabState?.images || [];
+    const currentIndex = tabState?.currentIndex || 0;
+    const mode = tabState?.mode || 'vertical';
+    const isLoading = tabState?.isLoading || false;
 
     // Per-manga zoom state (defaults to settings level if store doesn't have it)
-    const currentVerticalWidth = isActive ? (storeState.verticalWidth || verticalWidth) : (tabState?.verticalWidth || verticalWidth);
+    const currentVerticalWidth = (tabState?.verticalWidth || 0) !== 0 ? (tabState?.verticalWidth || verticalWidth) : verticalWidth;
 
     const [showControls, setShowControls] = useState(true);
     const [showWidthSlider, setShowWidthSlider] = useState(false);
-    // Local state for resume position - avoids timing issues with store
-    const [resumeIndex, setResumeIndex] = useState(0);
+    // Local state for resume position - initialize from tabState or params to avoid showing index 0 on restore
+    const [resumeIndex, setResumeIndex] = useState(() => {
+        // Initialize from tabState if available (for restore scenarios)
+        const initialTab = useTabStore.getState().tabs.find(t => t.id === tabId);
+        const initialTabState = initialTab?.viewerState;
+        if (initialTabState?.currentIndex !== undefined && initialTabState.currentIndex >= 0) {
+            return initialTabState.currentIndex;
+        }
+        // If viewerState is null but we have params with targetPath or startIndex, try to use those
+        // This helps on restore when viewerState is null but params have the navigation info
+        const params = initialTab?.params;
+        if (params?.startIndex) {
+            const startIndex = parseInt(params.startIndex, 10);
+            if (!isNaN(startIndex) && startIndex >= 0) {
+                return startIndex;
+            }
+        }
+        return 0;
+    });
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [resumeScrollPos, setResumeScrollPos] = useState(0);
     const [resetKey, setResetKey] = useState(0);
     const controlsTimeoutRef = useRef<any>(null);
     // Debounce timer for saving viewer state to backend
     const saveViewerStateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    // Track last synced index to avoid loops when syncing resumeIndex
+    const lastSyncedIndexRef = useRef<number>(-1);
+    // Track last processed navigation params to avoid reprocessing old params when switching tabs
+    const lastProcessedParamsRef = useRef<{ targetPath?: string; startIndex?: string } | null>(null);
     // Auto-scroll state
     const [isAutoScrolling, setIsAutoScrolling] = useState(false);
     const [showSpeedSlider, setShowSpeedSlider] = useState(false);
@@ -188,17 +201,20 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
         // Debounce save to backend
         saveViewerStateTimerRef.current = setTimeout(async () => {
             try {
-                const state = useViewerStore.getState();
-                const targetIndex = updates.index !== undefined ? updates.index : state.currentIndex;
-                const targetWidth = updates.width !== undefined ? updates.width : (state.verticalWidth || verticalWidth);
+                // Get current state from tabStore (single source of truth)
+                const tab = useTabStore.getState().tabs.find(t => t.id === tabId);
+                const tabViewerState = tab?.viewerState;
+                const targetIndex = updates.index !== undefined ? updates.index : (tabViewerState?.currentIndex ?? 0);
+                const targetWidth = updates.width !== undefined ? updates.width : ((tabViewerState?.verticalWidth || 0) !== 0 ? (tabViewerState?.verticalWidth || verticalWidth) : verticalWidth);
 
-                // @ts-ignore
-                await window.go?.main?.App?.SaveViewerState(folderPath, targetIndex, targetWidth);
+                // Save to localStorage instead of backend
+                saveViewerStateToLocalStorage(folderPath, targetIndex, targetWidth);
+                console.log(`[ViewerPage] Saved viewer state to localStorage: index=${targetIndex}, width=${targetWidth} for ${folderPath}`);
             } catch (error) {
                 console.error('[ViewerPage] Failed to save viewer state:', error);
             }
         }, 500);
-    }, [folderPath, verticalWidth, updateTabState]);
+    }, [folderPath, verticalWidth, updateTabState, tabId]);
 
     // Callbacks for viewer components moved to top level to obey Rules of Hooks
     const handleRestorationComplete = useCallback(() => {
@@ -232,6 +248,45 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
         setIsNoHistorySession(noHistory);
     }, [folderPath]);
 
+    // Sync resumeIndex with currentIndex when tab becomes active
+    // This ensures the viewer scrolls to the correct position when switching tabs
+    // This is critical for tabs, explorer, oneshot, and restore on startup
+    useEffect(() => {
+        if (!isActive) {
+            // Reset lastSyncedIndexRef when tab becomes inactive so we sync again when it becomes active
+            lastSyncedIndexRef.current = -1;
+            // Also reset last processed params
+            lastProcessedParamsRef.current = null;
+            return;
+        }
+        if (images.length === 0) return;
+        if (!folderPath) return;
+
+        // Read currentIndex directly from tabState to ensure we have the latest value
+        const tab = useTabStore.getState().tabs.find(t => t.id === tabId);
+        const tabCurrentIndex = tab?.viewerState?.currentIndex ?? 0;
+        
+        // When tab becomes active, sync resumeIndex with currentIndex from tabState
+        // This ensures we resume at the correct position when switching tabs
+        // Always sync if currentIndex is valid and different from resumeIndex, regardless of lastSynced
+        // because lastSynced might be updated by navigation seek which runs later
+        // Also reset lastProcessedParamsRef to allow processing new navigation params when switching tabs
+        if (tabCurrentIndex >= 0 && tabCurrentIndex < images.length && tabCurrentIndex !== resumeIndex) {
+            console.log(`[ViewerPage] Tab activated: Syncing resumeIndex from ${resumeIndex} to ${tabCurrentIndex} for tab ${tabId} (currentIndex from store: ${currentIndex}, lastSynced: ${lastSyncedIndexRef.current})`);
+            setResumeIndex(tabCurrentIndex);
+            lastSyncedIndexRef.current = tabCurrentIndex;
+            // Reset lastProcessedParamsRef when switching tabs to allow processing navigation params
+            lastProcessedParamsRef.current = null;
+        } else if (tabCurrentIndex === resumeIndex) {
+            console.log(`[ViewerPage] Tab activated: Already synced (resumeIndex=${resumeIndex}, tabCurrentIndex=${tabCurrentIndex})`);
+            // Update lastSynced even if already synced to prevent duplicate work
+            lastSyncedIndexRef.current = tabCurrentIndex;
+            // Reset lastProcessedParamsRef when switching tabs to allow processing navigation params
+            lastProcessedParamsRef.current = null;
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isActive, tabId, folderPath]); // Include tabId and folderPath to re-sync when switching tabs
+
     // Load folder and images
     useEffect(() => {
         if (!folderPath) return;
@@ -242,10 +297,18 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
         const isRestoredFromState = activeTabFromState?.restored;
 
         if (!isRestoredFromState && images.length > 0 && currentFolder?.path === folderPath) {
-            console.log(`[ViewerPage] Eager check: Using existing images for ${folderPath}. Resuming at index ${currentIndex}`);
+            console.log(`[ViewerPage] Eager check: Using existing images for ${folderPath}. Resuming at index ${currentIndex} (resumeIndex: ${resumeIndex}, lastSynced: ${lastSyncedIndexRef.current})`);
             // Important: ensure resumeIndex is updated to our last known position
             // so child components like VerticalViewer re-scroll correctly
-            setResumeIndex(currentIndex);
+            // Always update if resumeIndex doesn't match currentIndex, regardless of lastSynced
+            // because resumeIndex might not have been updated yet due to React state batching
+            if (currentIndex !== resumeIndex) {
+                console.log(`[ViewerPage] Eager check: Updating resumeIndex from ${resumeIndex} to ${currentIndex}`);
+                setResumeIndex(currentIndex);
+                lastSyncedIndexRef.current = currentIndex;
+            } else {
+                console.log(`[ViewerPage] Eager check: Already synced (resumeIndex=${resumeIndex}, currentIndex=${currentIndex})`);
+            }
             return;
         }
 
@@ -284,9 +347,8 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
                 // @ts-ignore
                 const historyEntry = await window.go?.main?.App?.GetHistoryEntry(folderPath);
 
-                // NEW: Fetch viewer state from backend (primary source for restoration)
-                // @ts-ignore
-                const savedViewerState = await window.go?.main?.App?.GetViewerState(folderPath);
+                // NEW: Fetch viewer state from localStorage (primary source for restoration)
+                const savedViewerState = loadViewerStateFromLocalStorage(folderPath);
 
                 if (folderInfo) {
                     updateTabState({ currentFolder: folderInfo as FolderInfo });
@@ -307,21 +369,30 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
                     const explicitStartIndex = tabParams.startIndex ? parseInt(tabParams.startIndex, 10) : -1;
 
                     // PRIORITIZATION LOGIC:
-                    // 1. targetPath specified in navigation params (Explicit user click)
-                    // 2. explicitStartIndex in navigation params (Explicit user click)
-                    // 3. savedViewerState from backend (Resume from last session)
+                    // If tab is being restored, ignore params.targetPath and use backend state instead
+                    // This ensures we use the latest scroll position, not the initial click position
+                    // 1. savedViewerState from backend (Resume from last session) - PRIORITY when restoring
+                    // 2. targetPath specified in navigation params (Explicit user click) - Only if NOT restoring
+                    // 3. explicitStartIndex in navigation params (Explicit user click) - Only if NOT restoring
                     // 4. history entry (Legacy fallback)
 
-                    if (targetPath) {
+                    if (isRestored && savedViewerState && savedViewerState.currentIndex > 0 && savedViewerState.currentIndex < imgs.length) {
+                        // When restoring, prioritize backend state over params
+                        targetIndex = savedViewerState.currentIndex;
+                        console.log(`[ViewerPage] Restoring from BACKEND state (ignoring params): index=${targetIndex}`);
+                    } else if (targetPath && !isRestored) {
+                        // Only use targetPath if NOT restoring (new navigation)
                         const pathIndex = imgs.findIndex(img => img.path === targetPath);
                         if (pathIndex >= 0) {
                             targetIndex = pathIndex;
                             console.log(`[ViewerPage] Starting from TARGET PATH: ${targetIndex} (${targetPath})`);
                         }
-                    } else if (explicitStartIndex >= 0 && explicitStartIndex < imgs.length) {
+                    } else if (explicitStartIndex >= 0 && explicitStartIndex < imgs.length && !isRestored) {
+                        // Only use startIndex if NOT restoring (new navigation)
                         targetIndex = explicitStartIndex;
                         console.log(`[ViewerPage] Starting from EXPLICIT INDEX: ${targetIndex}`);
                     } else if (savedViewerState && savedViewerState.currentIndex > 0 && savedViewerState.currentIndex < imgs.length) {
+                        // Fallback to backend state if no explicit navigation
                         targetIndex = savedViewerState.currentIndex;
                         console.log(`[ViewerPage] Resuming from BACKEND state: index=${targetIndex}`);
                     } else if (historyEntry && historyEntry.lastImageIndex > 0 && historyEntry.lastImageIndex < imgs.length) {
@@ -336,6 +407,7 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
                     // Set local state FIRST before store update
                     console.log(`[ViewerPage] Setting resumeIndex=${targetIndex}, resumeScrollPos=${targetScroll}`);
                     setResumeIndex(targetIndex);
+                    lastSyncedIndexRef.current = targetIndex; // Update last synced index
                     setResumeScrollPos(targetScroll);
 
                     // Update store with new images and index via the new setViewerState action
@@ -379,6 +451,12 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
         const targetPath = currentParams?.targetPath;
         const explicitStartIndex = currentParams?.startIndex ? parseInt(currentParams.startIndex, 10) : -1;
 
+        // Check if these params have already been processed
+        const currentParamsKey = `${targetPath || ''}_${currentParams?.startIndex || ''}`;
+        const lastParamsKey = lastProcessedParamsRef.current ? 
+            `${lastProcessedParamsRef.current.targetPath || ''}_${lastProcessedParamsRef.current.startIndex || ''}` : 
+            null;
+
         let targetIndex = -1;
         if (targetPath) {
             targetIndex = images.findIndex(img => img.path === targetPath);
@@ -386,16 +464,54 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
             targetIndex = explicitStartIndex;
         }
 
+        // Only process if params are new or different
+        if (currentParamsKey === lastParamsKey && lastParamsKey !== '') {
+            console.log(`[ViewerPage] Navigation seek: Skipping - already processed params (${currentParamsKey})`);
+            return;
+        }
+
         if (targetIndex >= 0) {
-            console.log(`[ViewerPage] Navigation seek detected: ${targetIndex}`);
-            setResumeIndex(targetIndex);
-            // Updating resetKey here is safe because the main effect NO LONGER depends on it
-            setResetKey(prev => prev + 1);
-            if (targetIndex !== currentIndex) {
+            // Calculate diff based on currentIndex, not resumeIndex (which may not be updated yet)
+            const indexDiffFromCurrent = Math.abs(targetIndex - currentIndex);
+            
+            // If targetIndex matches currentIndex, these are old params that should be ignored
+            if (targetIndex === currentIndex) {
+                console.log(`[ViewerPage] Navigation seek: Ignoring old params - targetIndex ${targetIndex} matches currentIndex ${currentIndex}`);
+                lastProcessedParamsRef.current = { targetPath, startIndex: currentParams?.startIndex };
+                return;
+            }
+            
+            // Only apply if it's significantly different from currentIndex (user navigation)
+            // BUT if currentIndex is already set and targetIndex is very different, it's likely old params
+            // We should only apply if:
+            // 1. targetIndex is close to currentIndex (within 5), OR
+            // 2. currentIndex is not set (0 or initial state)
+            // If currentIndex is already set and targetIndex is very different (>5), ignore as old params
+            const isCurrentIndexSet = currentIndex > 0 && currentIndex < images.length;
+            const isCloseToCurrent = indexDiffFromCurrent <= 5;
+            const shouldApply = targetIndex !== currentIndex && 
+                (isCloseToCurrent || !isCurrentIndexSet);
+            
+            if (shouldApply) {
+                console.log(`[ViewerPage] Navigation seek detected: ${targetIndex} (currentIndex: ${currentIndex}, resumeIndex: ${resumeIndex}, diffFromCurrent: ${indexDiffFromCurrent}, isCurrentIndexSet: ${isCurrentIndexSet})`);
+                setResumeIndex(targetIndex);
+                lastSyncedIndexRef.current = targetIndex;
+                lastProcessedParamsRef.current = { targetPath, startIndex: currentParams?.startIndex };
+                // Updating resetKey here is safe because the main effect NO LONGER depends on it
+                setResetKey(prev => prev + 1);
                 updateTabState({ currentIndex: targetIndex });
+            } else {
+                console.log(`[ViewerPage] Navigation seek: Ignoring ${targetIndex} (currentIndex: ${currentIndex}, resumeIndex: ${resumeIndex}, diffFromCurrent: ${indexDiffFromCurrent}, isCurrentIndexSet: ${isCurrentIndexSet}, likely old params)`);
+                // Mark as processed even if we skip to avoid reprocessing
+                lastProcessedParamsRef.current = { targetPath, startIndex: currentParams?.startIndex };
+            }
+        } else {
+            // No valid target index, but mark params as processed if they exist
+            if (targetPath || currentParams?.startIndex) {
+                lastProcessedParamsRef.current = { targetPath, startIndex: currentParams?.startIndex };
             }
         }
-    }, [currentParams?.targetPath, currentParams?.startIndex, isActive, folderPath, images.length]);
+    }, [currentParams?.targetPath, currentParams?.startIndex, isActive, folderPath, images.length, currentIndex, resumeIndex, updateTabState]);
 
 
     // Initial history save when folder is loaded
@@ -428,7 +544,9 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
         if (typeof percentage === 'number' && percentage >= 0 && percentage <= 1) {
             historyScrollPos = percentage;
         } else {
-            const storePos = useViewerStore.getState().scrollPosition;
+            // Get scroll position from tabState (single source of truth)
+            const tab = useTabStore.getState().tabs.find(t => t.id === tabId);
+            const storePos = tab?.viewerState?.scrollPosition ?? 0;
             if (storePos >= 0 && storePos <= 1) {
                 historyScrollPos = storePos;
             }
@@ -446,6 +564,7 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
                 totalImages: images.length,
                 lastRead: new Date().toISOString(),
             });
+            console.log(`[ViewerPage] Saved progress to history: index=${currentIndex}, scrollPos=${historyScrollPos} for ${currentFolder.path}`);
         } catch (error) {
             console.error('Failed to save progress:', error);
         }
@@ -503,6 +622,7 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
 
     const handleGoToStart = useCallback(async () => {
         setResumeIndex(0);
+        lastSyncedIndexRef.current = 0; // Update last synced index
         setResumeScrollPos(0);
         setResetKey(prev => prev + 1);
 
@@ -605,6 +725,7 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
                             onIndexChange={handleIndexChange}
                             verticalWidth={currentVerticalWidth}
                             onWidthChange={handleWidthChange}
+                            isActive={isActive}
                         />
                     </div>
                 ) : (

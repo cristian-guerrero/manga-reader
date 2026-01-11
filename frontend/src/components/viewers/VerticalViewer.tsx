@@ -23,6 +23,7 @@ interface VerticalViewerProps {
     onIndexChange?: (index: number) => void;
     verticalWidth: number;
     onWidthChange?: (width: number) => void;
+    isActive?: boolean;
 }
 
 // Memoized Single Image Component to prevent unnecessary re-renders of the entire list
@@ -101,6 +102,7 @@ export const VerticalViewer = React.memo(({
     onIndexChange,
     verticalWidth,
     onWidthChange,
+    isActive = true,
 }: VerticalViewerProps) => {
     const parentRef = useRef<HTMLDivElement>(null);
     const itemRefs = useRef<Record<number, HTMLDivElement | null>>({});
@@ -177,31 +179,50 @@ export const VerticalViewer = React.memo(({
         }
     }, [displayIndex, images.length, onIndexChange]);
 
-    // Handle initial scroll/resume
+    // Reset appliedInitialIndexRef when tab becomes active or folder changes
+    // This ensures we can scroll again when switching tabs
+    useEffect(() => {
+        if (isActive) {
+            // Reset ref when tab becomes active to allow scrolling to the correct position
+            appliedInitialIndexRef.current = -1;
+        }
+    }, [isActive, images.length]); // Reset when tab becomes active or images change
+
+    // Handle initial scroll/resume - only when tab is active to prevent unwanted scrolling
     useEffect(() => {
         if (!parentRef.current || images.length === 0) return;
-        if (appliedInitialIndexRef.current === initialIndex) return;
+        if (appliedInitialIndexRef.current === initialIndex) {
+            console.log(`[VerticalViewer] Skipping scroll - already at index ${initialIndex} (applied: ${appliedInitialIndexRef.current})`);
+            return;
+        }
+        if (!isActive) {
+            console.log(`[VerticalViewer] Skipping scroll - tab not active (isActive: ${isActive}, initialIndex: ${initialIndex})`);
+            return; // Don't scroll if tab is not active
+        }
+
+        console.log(`[VerticalViewer] Preparing to scroll to index: ${initialIndex} (isActive: ${isActive}, applied: ${appliedInitialIndexRef.current})`);
 
         // Small delay to ensure DOM is ready
         const timeoutId = setTimeout(() => {
             if (initialIndex >= 0 && initialIndex < images.length) {
                 const target = itemRefs.current[initialIndex];
                 if (target && parentRef.current) {
-                    console.log(`[VerticalViewer] Scrolling to index: ${initialIndex}`);
+                    console.log(`[VerticalViewer] Scrolling to index: ${initialIndex} (isActive: ${isActive}, images.length: ${images.length})`);
                     target.scrollIntoView({ block: 'start', behavior: 'instant' });
                     appliedInitialIndexRef.current = initialIndex;
                     onRestorationComplete?.();
                 } else {
-                    console.warn(`[VerticalViewer] Target for index ${initialIndex} not found in refs`);
+                    console.warn(`[VerticalViewer] Target for index ${initialIndex} not found in refs (images.length: ${images.length})`);
                     onRestorationComplete?.();
                 }
             } else {
+                console.warn(`[VerticalViewer] Invalid initialIndex: ${initialIndex} (images.length: ${images.length})`);
                 onRestorationComplete?.();
             }
         }, 150); // Slightly longer delay for initial load stability
 
         return () => clearTimeout(timeoutId);
-    }, [initialIndex, images.length, onRestorationComplete]);
+    }, [initialIndex, images.length, onRestorationComplete, isActive]);
 
     // Auto-scroll pixels per second calculation
     const getPixelsPerSecond = useCallback((speed: number): number => {

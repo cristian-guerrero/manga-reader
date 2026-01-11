@@ -20,6 +20,7 @@ import { useTabStore } from './stores/tabStore';
 import { usePanicMode } from './hooks/usePanicMode';
 import { ToastProvider } from './components/common/Toast';
 import { EventsOn } from '../wailsjs/runtime';
+import { saveTabsToLocalStorage, loadTabsFromLocalStorage } from './utils/storage';
 import './i18n';
 
 declare global {
@@ -194,15 +195,20 @@ function App() {
             try {
                 await loadSettings();
 
-                // Restore tabs if enabled (using new tabs.json via backend)
+                // Restore tabs if enabled (using localStorage)
                 const { restoreTabs } = useSettingsStore.getState();
                 if (restoreTabs) {
                     try {
-                        // @ts-ignore
-                        const tabsData = await window.go?.main?.App?.GetTabs();
+                        const tabsData = loadTabsFromLocalStorage();
                         if (tabsData && tabsData.tabs && tabsData.tabs.length > 0) {
-                            // Convert backend format to tabStore format
-                            useTabStore.getState().restoreTabsFromBackend(tabsData);
+                            // Convert localStorage format to tabStore format
+                            useTabStore.getState().restoreTabsFromBackend({
+                                activeTabId: tabsData.activeTabId || tabsData.tabs[0]?.id || '',
+                                tabs: tabsData.tabs.map(tab => ({
+                                    ...tab,
+                                    fromPage: tab.fromPage as any // Cast to PageType | null | undefined
+                                }))
+                            });
                         }
                     } catch (error) {
                         console.error('[App] Failed to restore tabs:', error);
@@ -252,14 +258,13 @@ function App() {
             if (saveTabsDebounce) {
                 clearTimeout(saveTabsDebounce);
             }
-            saveTabsDebounce = setTimeout(async () => {
+            saveTabsDebounce = setTimeout(() => {
                 const tabsData = state.saveTabsForBackend();
                 const tabsJson = JSON.stringify(tabsData);
                 if (tabsJson !== lastSavedTabsJson) {
                     lastSavedTabsJson = tabsJson;
                     try {
-                        // @ts-ignore
-                        await window.go?.main?.App?.SaveTabs(tabsData);
+                        saveTabsToLocalStorage(tabsData);
                     } catch (error) {
                         console.error('[App] Failed to save tabs:', error);
                     }
@@ -268,13 +273,12 @@ function App() {
         });
 
         // Also save on beforeunload
-        const handleBeforeUnload = async () => {
+        const handleBeforeUnload = () => {
             const { restoreTabs } = useSettingsStore.getState();
             if (restoreTabs) {
                 const tabsData = useTabStore.getState().saveTabsForBackend();
                 try {
-                    // @ts-ignore
-                    await window.go?.main?.App?.SaveTabs(tabsData);
+                    saveTabsToLocalStorage(tabsData);
                 } catch (error) {
                     console.error('[App] Failed to save tabs on unload:', error);
                 }

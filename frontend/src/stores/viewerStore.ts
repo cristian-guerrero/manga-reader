@@ -169,8 +169,7 @@ export const useViewerStore = create<ViewerStoreState>((set, get) => ({
     _updateTabState: (updates: any) => {
         const activeTabId = useTabStore.getState().activeTabId;
         if (activeTabId) {
-            // Update local state immediately for responsiveness
-            set(updates);
+            // Only update tabStore, not local state (local state is deprecated)
             get()._updateTabStateById(activeTabId, updates);
         }
     },
@@ -187,21 +186,5 @@ export const useViewerStore = create<ViewerStoreState>((set, get) => ({
     }
 }));
 
-// Subscribe to tabStore changes to trigger re-renders in viewerStore consumers
-useTabStore.subscribe((tabState) => {
-    const activeTab = tabState.tabs.find(t => t.id === tabState.activeTabId) || tabState.tabs[0];
-    const viewerState = activeTab?.viewerState || defaultViewerState;
-
-    if (activeTab) {
-        useViewerStore.setState({
-            currentFolder: viewerState.currentFolder,
-            images: viewerState.images,
-            currentIndex: viewerState.currentIndex,
-            mode: viewerState.mode,
-            isLoading: viewerState.isLoading,
-            zoomLevel: viewerState.zoomLevel,
-            scrollPosition: viewerState.scrollPosition,
-            verticalWidth: viewerState.verticalWidth,
-        });
-    }
-});
+// REMOVED: Subscription to tabStore that caused circular updates and unnecessary re-renders
+// Components should read directly from tabStore instead of using viewerStore state
