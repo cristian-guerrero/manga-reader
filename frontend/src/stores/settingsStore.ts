@@ -7,6 +7,10 @@ import { Settings, DEFAULT_SETTINGS } from '../types';
 import { applyTheme, getThemeById, darkTheme } from '../themes';
 import { AppAPI } from '../services/api/appAPI';
 import { errorService } from '../services/errorService';
+import { DEBOUNCE_DELAYS } from '../constants';
+
+// Debounce timer for accent color updates
+let accentColorDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
 export interface SettingsState extends Settings {
     // Actions
@@ -82,9 +86,19 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
 
         const effectiveAccent = isDefault ? undefined : accentColor;
 
+        // Apply theme immediately for responsive UI
         applyTheme(theme, effectiveAccent);
         set({ themeAccents: newAccents });
-        get().updateBackend('themeAccents', newAccents);
+        
+        // Debounce backend update to avoid excessive API calls
+        if (accentColorDebounceTimer) {
+            clearTimeout(accentColorDebounceTimer);
+        }
+        
+        accentColorDebounceTimer = setTimeout(() => {
+            get().updateBackend('themeAccents', newAccents);
+            accentColorDebounceTimer = null;
+        }, DEBOUNCE_DELAYS.SETTINGS_UPDATE);
     },
 
     setViewerMode: (viewerMode) => {

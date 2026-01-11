@@ -22,6 +22,7 @@ export const DEBOUNCE_DELAYS = {
     VIEWER_STATE_SAVE: 500,
     SCROLL_POSITION: 100,
     WINDOW_RESIZE: 200,
+    SETTINGS_UPDATE: 500,
 } as const;
 
 /**
