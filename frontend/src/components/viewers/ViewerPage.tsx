@@ -153,6 +153,8 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
     const lastSyncedIndexRef = useRef<number>(-1);
     // Track last processed navigation params to avoid reprocessing old params when switching tabs
     const lastProcessedParamsRef = useRef<{ targetPath?: string; startIndex?: string } | null>(null);
+    // Store exact scrollTop in pixels for precise restoration when switching tabs
+    const currentScrollTopRef = useRef<number>(0);
     // Auto-scroll state
     const [isAutoScrolling, setIsAutoScrolling] = useState(false);
     const [showSpeedSlider, setShowSpeedSlider] = useState(false);
@@ -231,6 +233,39 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
         handleViewerStateChange({ width });
     }, [handleViewerStateChange]);
 
+    // Handle scroll position change - debounced to avoid excessive updates
+    const scrollPositionDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const handleScrollPositionChange = useCallback((scrollTop: number) => {
+        // Always store the exact scrollTop in a ref for precise restoration when switching tabs
+        currentScrollTopRef.current = scrollTop;
+        
+        // Debounce scroll position updates to avoid excessive state updates
+        if (scrollPositionDebounceRef.current) {
+            clearTimeout(scrollPositionDebounceRef.current);
+        }
+        scrollPositionDebounceRef.current = setTimeout(() => {
+            // Calculate scroll position as percentage (0-1) for history storage
+            const container = document.querySelector('.overflow-y-scroll') as HTMLElement;
+            let scrollPercentage = 0;
+            if (container) {
+                const { scrollHeight, clientHeight } = container;
+                const maxScroll = scrollHeight - clientHeight;
+                if (maxScroll > 0) {
+                    scrollPercentage = scrollTop / maxScroll;
+                }
+            }
+
+            // Store percentage in scrollPosition for history
+            updateTabState({ 
+                scrollPosition: scrollPercentage // Store as percentage (0-1) for history
+            });
+
+            // DON'T update resumeScrollPos during normal scrolling - this causes the initialScrollPosition
+            // prop to change continuously, triggering restoration and causing "tirones"
+            // resumeScrollPos should only be set when explicitly restoring (on tab activation or folder load)
+        }, 100); // Debounce 100ms
+    }, [updateTabState]);
+
 
     // Cleanup debounce timer on unmount
     useEffect(() => {
@@ -253,6 +288,12 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
     // This is critical for tabs, explorer, oneshot, and restore on startup
     useEffect(() => {
         if (!isActive) {
+            // When tab becomes inactive, save the current scrollTop for precise restoration later
+            // This ensures we restore the exact scroll position when returning to this tab
+            if (currentScrollTopRef.current > 0) {
+                setResumeScrollPos(currentScrollTopRef.current);
+                console.log(`[ViewerPage] Tab inactive: Saved scrollTop ${currentScrollTopRef.current}px for tab ${tabId}`);
+            }
             // Reset lastSyncedIndexRef when tab becomes inactive so we sync again when it becomes active
             lastSyncedIndexRef.current = -1;
             // Also reset last processed params
@@ -266,21 +307,41 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
         const tab = useTabStore.getState().tabs.find(t => t.id === tabId);
         const tabCurrentIndex = tab?.viewerState?.currentIndex ?? 0;
         
-        // When tab becomes active, sync resumeIndex with currentIndex from tabState
+        // When tab becomes active, sync resumeIndex and resumeScrollPos with tabState
         // This ensures we resume at the correct position when switching tabs
         // Always sync if currentIndex is valid and different from resumeIndex, regardless of lastSynced
         // because lastSynced might be updated by navigation seek which runs later
         // Also reset lastProcessedParamsRef to allow processing new navigation params when switching tabs
+        const tabScrollPosition = tab?.viewerState?.scrollPosition;
+        
         if (tabCurrentIndex >= 0 && tabCurrentIndex < images.length && tabCurrentIndex !== resumeIndex) {
             console.log(`[ViewerPage] Tab activated: Syncing resumeIndex from ${resumeIndex} to ${tabCurrentIndex} for tab ${tabId} (currentIndex from store: ${currentIndex}, lastSynced: ${lastSyncedIndexRef.current})`);
             setResumeIndex(tabCurrentIndex);
             lastSyncedIndexRef.current = tabCurrentIndex;
+            
+            // Restore scroll position: use resumeScrollPos if available (exact pixels), otherwise convert percentage
+            if (resumeScrollPos > 0) {
+                // We have exact scrollTop in pixels from when tab was inactive - use it directly
+                console.log(`[ViewerPage] Tab activated: Restoring exact scrollTop ${resumeScrollPos}px`);
+            } else if (tabScrollPosition && tabScrollPosition > 0 && tabScrollPosition <= 1) {
+                // Only have percentage, will be converted by VerticalViewer
+                console.log(`[ViewerPage] Tab activated: Will restore scroll position percentage: ${tabScrollPosition}`);
+                setResumeScrollPos(tabScrollPosition); // Set percentage, VerticalViewer will convert
+            }
+            
             // Reset lastProcessedParamsRef when switching tabs to allow processing navigation params
             lastProcessedParamsRef.current = null;
         } else if (tabCurrentIndex === resumeIndex) {
             console.log(`[ViewerPage] Tab activated: Already synced (resumeIndex=${resumeIndex}, tabCurrentIndex=${tabCurrentIndex})`);
             // Update lastSynced even if already synced to prevent duplicate work
             lastSyncedIndexRef.current = tabCurrentIndex;
+            
+            // Still check for scroll position updates if resumeScrollPos is 0
+            if (resumeScrollPos === 0 && tabScrollPosition && tabScrollPosition > 0 && tabScrollPosition <= 1) {
+                console.log(`[ViewerPage] Tab activated: Will restore scroll position percentage: ${tabScrollPosition}`);
+                setResumeScrollPos(tabScrollPosition); // Set percentage, VerticalViewer will convert
+            }
+            
             // Reset lastProcessedParamsRef when switching tabs to allow processing navigation params
             lastProcessedParamsRef.current = null;
         }
@@ -376,6 +437,15 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
                     // 3. explicitStartIndex in navigation params (Explicit user click) - Only if NOT restoring
                     // 4. history entry (Legacy fallback)
 
+                    // First, try to get scroll position from current tabState if available
+                    const currentTabScroll = activeTab?.viewerState?.scrollPosition;
+                    if (currentTabScroll && currentTabScroll > 0 && currentTabScroll <= 1) {
+                        // Convert percentage to approximate pixels (will be refined after DOM loads)
+                        // We'll use the stored scrollTop directly if available in resumeScrollPos
+                        // For now, we'll calculate it after DOM is ready
+                        targetScroll = currentTabScroll; // Store percentage for now
+                    }
+
                     if (isRestored && savedViewerState && savedViewerState.currentIndex > 0 && savedViewerState.currentIndex < imgs.length) {
                         // When restoring, prioritize backend state over params
                         targetIndex = savedViewerState.currentIndex;
@@ -399,15 +469,19 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
                         // Fallback to history if no saved state
                         targetIndex = historyEntry.lastImageIndex;
                         console.log(`[ViewerPage] Resuming from history index: ${targetIndex}`);
-                        if (historyEntry.scrollPosition > 0) {
+                        if (historyEntry.scrollPosition > 0 && !targetScroll) {
                             targetScroll = historyEntry.scrollPosition;
                         }
                     }
 
                     // Set local state FIRST before store update
-                    console.log(`[ViewerPage] Setting resumeIndex=${targetIndex}, resumeScrollPos=${targetScroll}`);
+                    // targetScroll is a percentage (0-1) from history or tabState
+                    // We need to convert it to pixels, but that requires DOM to be ready
+                    // For now, pass the percentage and let VerticalViewer convert it after DOM loads
+                    console.log(`[ViewerPage] Setting resumeIndex=${targetIndex}, resumeScrollPos=${targetScroll} (percentage)`);
                     setResumeIndex(targetIndex);
                     lastSyncedIndexRef.current = targetIndex; // Update last synced index
+                    // Store percentage - VerticalViewer will convert to pixels when DOM is ready
                     setResumeScrollPos(targetScroll);
 
                     // Update store with new images and index via the new setViewerState action
@@ -716,6 +790,7 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
                             key={`${currentFolder.path}-${resetKey}`}
                             images={images}
                             initialIndex={resumeIndex}
+                            initialScrollPosition={resumeScrollPos > 0 ? resumeScrollPos : undefined}
                             showControls={showControls}
                             hasChapterButtons={hasChapterButtons}
                             isAutoScrolling={isAutoScrolling}
@@ -723,6 +798,7 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
                             onAutoScrollStateChange={setIsAutoScrolling}
                             onRestorationComplete={handleRestorationComplete}
                             onIndexChange={handleIndexChange}
+                            onScrollPositionChange={handleScrollPositionChange}
                             verticalWidth={currentVerticalWidth}
                             onWidthChange={handleWidthChange}
                             isActive={isActive}
