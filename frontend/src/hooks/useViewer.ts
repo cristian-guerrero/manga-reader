@@ -3,7 +3,7 @@
  * Replaces viewerStore proxy, uses tabStore directly
  */
 
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useTabStore } from '../stores/tabStore';
 import { ImageInfo, FolderInfo, ViewerMode, ViewerState } from '../types';
 
@@ -25,10 +25,11 @@ export function useViewer(tabId?: string) {
     const activeTabId = useTabStore(state => state.activeTabId);
     const targetTabId = tabId || activeTabId;
     
-    const tab = useTabStore(state => state.tabs.find(t => t.id === targetTabId));
-    const updateTab = useTabStore(state => state.updateTab);
-    
-    const viewerState = tab?.viewerState || null;
+    // Use selector to get viewerState directly, avoiding object reference issues
+    const viewerState = useTabStore(state => {
+        const tab = state.tabs.find(t => t.id === targetTabId);
+        return tab?.viewerState || null;
+    });
 
     // Get current state values
     const currentFolder = viewerState?.currentFolder || null;
@@ -41,14 +42,21 @@ export function useViewer(tabId?: string) {
     const verticalWidth = viewerState?.verticalWidth || 0;
 
     // Helper to update viewer state
+    // Use tabId instead of tab object to avoid dependency issues
+    // Access updateTab directly from store to ensure stability
     const updateViewerState = useCallback((updates: Partial<ViewerState>) => {
-        if (!tab) return;
+        if (!targetTabId) return;
 
-        const currentState = tab.viewerState || defaultViewerState;
-        updateTab(tab.id, {
+        // Get current state and updateTab from store at call time
+        const store = useTabStore.getState();
+        const currentTab = store.tabs.find(t => t.id === targetTabId);
+        if (!currentTab) return;
+
+        const currentState = currentTab.viewerState || defaultViewerState;
+        store.updateTab(targetTabId, {
             viewerState: { ...currentState, ...updates } as ViewerState
         });
-    }, [tab, updateTab]);
+    }, [targetTabId]); // Only depend on targetTabId, which is stable
 
     // Image navigation
     const setCurrentIndex = useCallback((index: number) => {
@@ -134,8 +142,9 @@ export function useViewer(tabId?: string) {
         return currentIndex > 0;
     }, [currentIndex]);
 
+    // Return object - operations are stable (useCallback), state values may change
     return {
-        // State
+        // State (these change frequently)
         currentFolder,
         images,
         currentIndex,
@@ -144,7 +153,7 @@ export function useViewer(tabId?: string) {
         zoomLevel,
         scrollPosition,
         verticalWidth,
-        // Operations
+        // Operations (these are stable due to useCallback)
         setCurrentIndex,
         nextImage,
         prevImage,
@@ -159,7 +168,7 @@ export function useViewer(tabId?: string) {
         zoomOut,
         resetZoom,
         setScrollPosition,
-        setViewerState: updateViewerState,
+        setViewerState: updateViewerState, // This is now stable (only depends on targetTabId)
         // Computed
         getCurrentImage,
         hasNext,

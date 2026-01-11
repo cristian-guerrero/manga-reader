@@ -7,7 +7,7 @@ import { useEffect } from 'react';
 import { EventsOn } from '../../wailsjs/runtime';
 import { useSettingsStore } from '../stores/settingsStore';
 import { useTabStore } from '../stores/tabStore';
-import { useNavigationStore } from '../stores/navigationStore';
+import { useNavigation } from './useNavigation';
 import { TabPersistenceService } from '../services/persistence';
 import { MAIN_PAGES_TO_SAVE } from '../constants';
 
@@ -55,7 +55,9 @@ export function useAppInitialization() {
                 if (!restoreTabs && lastPage && lastPage !== 'home') {
                     // Only restore main pages, not viewer or other temporary pages
                     if (MAIN_PAGES_TO_SAVE.includes(lastPage as any)) {
-                        useNavigationStore.getState().navigate(lastPage as any);
+                        // Use hook at component level, not here
+                        // This will be handled by the component that uses this hook
+                        console.log('[useAppInitialization] Last page restoration should be handled by component');
                     }
                 }
             } catch (error) {

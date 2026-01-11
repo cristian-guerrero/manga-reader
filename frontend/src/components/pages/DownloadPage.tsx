@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSettingsStore } from '../../stores/settingsStore';
-import { useNavigationStore } from '../../stores/navigationStore';
+import { useNavigation } from '../../hooks/useNavigation';
 import { useToast } from '../common/Toast';
 import { Button } from '../common/Button';
 import { Toggle } from '../common/Toggle';
@@ -30,7 +30,7 @@ export const DownloadPage: React.FC = () => {
     const { showToast } = useToast();
     const settings = useSettingsStore();
     const { updateSettings } = settings;
-    const navigate = useNavigationStore((state) => state.navigate);
+    const { navigate } = useNavigation();
     const [url, setUrl] = useState('');
     const [history, setHistory] = useState<DownloadJob[]>([]);
     const [isLoading, setIsLoading] = useState(false);

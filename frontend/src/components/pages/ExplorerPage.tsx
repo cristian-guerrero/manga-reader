@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigationStore } from '../../stores/navigationStore';
+import { useNavigation } from '../../hooks/useNavigation';
 import { useToast } from '../common/Toast';
 import { Tooltip } from '../common/Tooltip';
 import { SortControls } from '../common/SortControls';
@@ -80,7 +80,7 @@ interface ExplorerPageProps {
 
 export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
     const { t } = useTranslation();
-    const { navigate, explorerState, setExplorerState, previousPage, fromPage, params, setParams } = useNavigationStore();
+    const { navigate, explorerState, setExplorerState, previousPage, fromPage, params, setParams } = useNavigation();
     const { addTab, getActiveTab } = useTabStore();
     const { showToast } = useToast();
 

@@ -4,7 +4,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigationStore } from '../../stores/navigationStore';
+import { useNavigation } from '../../hooks/useNavigation';
 import { ChapterInfo, SeriesEntry } from '../../types';
 import { Tooltip } from '../common/Tooltip';
 import { SortControls } from '../common/SortControls';
@@ -64,7 +64,7 @@ const saveSeriesSortPreferences = (seriesPath: string, sortBy: 'name' | 'pages',
 
 export function SeriesDetailsPage({ seriesPath, tabId }: SeriesDetailsPageProps) {
     const { t } = useTranslation();
-    const { navigate, goBack } = useNavigationStore();
+    const { navigate, goBack } = useNavigation();
     const { addTab, updateTab, updateActiveTab } = useTabStore();
     const [series, setSeries] = useState<SeriesEntry | null>(null);
     const [isLoading, setIsLoading] = useState(true);

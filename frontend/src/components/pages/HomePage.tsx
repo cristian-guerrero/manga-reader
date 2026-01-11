@@ -4,7 +4,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigationStore } from '../../stores/navigationStore';
+import { useNavigation } from '../../hooks/useNavigation';
 import { EventsOn, EventsOff } from '../../../wailsjs/runtime';
 import { Button } from '../common/Button';
 import { Tooltip } from '../common/Tooltip';
@@ -185,7 +185,7 @@ function ThumbnailComponent({ entryId, folderPath }: { entryId: string; folderPa
 
 export function HomePage() {
     const { t } = useTranslation();
-    const { navigate } = useNavigationStore();
+    const { navigate } = useNavigation();
     const { addTab } = useTabStore();
     const { showToast } = useToast();
     const [historyEntries, setHistoryEntries] = useState<any[]>([]);

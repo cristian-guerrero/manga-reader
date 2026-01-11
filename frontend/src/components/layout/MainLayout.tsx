@@ -3,7 +3,7 @@
  */
 
 import { useTranslation } from 'react-i18next';
-import { useNavigationStore } from '../../stores/navigationStore';
+import { useNavigation } from '../../hooks/useNavigation';
 import { Sidebar } from './Sidebar';
 import { TitleBar } from './TitleBar';
 import { useDragAndDrop } from '../../hooks/useDragAndDrop';
@@ -15,7 +15,7 @@ interface MainLayoutProps {
 
 export function MainLayout({ children }: MainLayoutProps) {
     const { t } = useTranslation();
-    const { isPanicMode, isProcessing } = useNavigationStore();
+    const { isPanicMode, isProcessing } = useNavigation();
 
     // Use hooks for drag & drop and clipboard monitoring
     useDragAndDrop();

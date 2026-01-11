@@ -4,7 +4,7 @@
 
 import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigationStore } from '../../stores/navigationStore';
+import { useNavigation } from '../../hooks/useNavigation';
 import { EventsOn, EventsOff } from '../../../wailsjs/runtime';
 import { SeriesEntry } from '../../types';
 import { SortControls } from '../common/SortControls';
@@ -56,7 +56,7 @@ const PlayIcon = () => (
 
 export function SeriesPage() {
     const { t } = useTranslation();
-    const { navigate } = useNavigationStore();
+    const { navigate } = useNavigation();
     const { addTab } = useTabStore();
     const [series, setSeries] = useState<SeriesEntry[]>([]);
     const [isLoading, setIsLoading] = useState(true);

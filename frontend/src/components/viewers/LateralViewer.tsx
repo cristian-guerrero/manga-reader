@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
 import { useTranslation } from 'react-i18next';
-import { useViewerStore } from '../../stores/viewerStore';
+import { useViewer } from '../../hooks/useViewer';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useKeyboardNav } from '../../hooks/useKeyboardNav';
 import { Tooltip } from '../common/Tooltip';
@@ -19,6 +19,7 @@ interface LateralViewerProps {
     showControls?: boolean;
     hasChapterButtons?: boolean;
     onRestorationComplete?: () => void;
+    tabId?: string;
 }
 
 export function LateralViewer({
@@ -28,14 +29,15 @@ export function LateralViewer({
     showControls = false,
     hasChapterButtons = false,
     onRestorationComplete,
+    tabId,
 }: LateralViewerProps) {
     const [loadedImages, setLoadedImages] = useState<Record<number, string>>({});
     const [direction, setDirection] = useState(0); // -1 for prev, 1 for next
     const { lateralMode, readingDirection } = useSettingsStore();
-    const { currentIndex, setCurrentIndex } = useViewerStore();
+    const { currentIndex, setCurrentIndex } = useViewer(tabId);
 
     // Enable keyboard navigation
-    useKeyboardNav({ enabled: true });
+    useKeyboardNav({ enabled: true, tabId });
 
     // Initialize current index
     useEffect(() => {

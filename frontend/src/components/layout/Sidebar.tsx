@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { useSettingsStore } from '../../stores/settingsStore';
-import { useNavigationStore } from '../../stores/navigationStore';
+import { useNavigation } from '../../hooks/useNavigation';
 import { Tooltip } from '../common/Tooltip';
 
 // Icons
@@ -81,7 +81,7 @@ const navItems: NavItem[] = [
 export function Sidebar() {
     const { t } = useTranslation();
     const { sidebarCollapsed, toggleSidebar, enabledMenuItems } = useSettingsStore();
-    const { activeMenuPage, navigate } = useNavigationStore();
+    const { activeMenuPage, navigate } = useNavigation();
 
     const visibleItems = navItems.filter(item => enabledMenuItems?.[item.id] !== false);
 

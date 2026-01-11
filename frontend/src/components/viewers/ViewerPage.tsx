@@ -10,9 +10,9 @@ import { LateralViewer } from './LateralViewer';
 import { ViewerControls } from './ViewerControls';
 import { AutoScrollControls } from './AutoScrollControls';
 import { ChapterNavigation } from './ChapterNavigation';
-import { useViewerStore } from '../../stores/viewerStore';
+import { useViewer } from '../../hooks/useViewer';
+import { useNavigation } from '../../hooks/useNavigation';
 import { useSettingsStore } from '../../stores/settingsStore';
-import { useNavigationStore } from '../../stores/navigationStore';
 import { useTabStore } from '../../stores/tabStore';
 import { ImageInfo, FolderInfo, ViewerMode } from '../../types';
 import { ViewerPersistenceService } from '../../services/persistence';
@@ -30,21 +30,9 @@ interface ViewerPageProps {
 
 export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPageProps) {
     const { t } = useTranslation();
-    const { goBack, navigate } = useNavigationStore();
+    const { goBack, navigate, params } = useNavigation();
     const { viewerMode, setViewerMode, verticalWidth, setVerticalWidth, scrollSpeed, setScrollSpeed } = useSettingsStore();
-    const {
-        _updateTabStateById,
-        setViewerState: globalSetViewerState
-    } = useViewerStore();
-
-    // Helper to update the correct tab
-    const updateTabState = useCallback((updates: any) => {
-        if (tabId) {
-            _updateTabStateById(tabId, updates);
-        } else {
-            globalSetViewerState(updates);
-        }
-    }, [tabId, _updateTabStateById, globalSetViewerState]);
+    const { setViewerState: updateTabState } = useViewer(tabId);
 
     // Get current state for this specific tab - single source of truth
     const tabState = useTabStore(state => state.tabs.find(t => t.id === tabId)?.viewerState);
@@ -108,7 +96,7 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
     const [isAutoScrolling, setIsAutoScrolling] = useState(false);
     const [showSpeedSlider, setShowSpeedSlider] = useState(false);
     // Session flag state that can be updated during component reuse
-    const [isNoHistorySession, setIsNoHistorySession] = useState(useNavigationStore.getState().params.noHistory === 'true');
+    const [isNoHistorySession, setIsNoHistorySession] = useState(params.noHistory === 'true');
     
     // Use custom hook for chapter navigation
     const chapterNav = useChapterNavigation(folderPath, isActive || false);
@@ -223,10 +211,10 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
 
     // Update session flag when navigation params change (handles component reuse)
     useEffect(() => {
-        const noHistory = useNavigationStore.getState().params.noHistory === 'true';
+        const noHistory = params.noHistory === 'true';
         console.log(`[ViewerPage] Updating isNoHistorySession for ${folderPath} to: ${noHistory}`);
         setIsNoHistorySession(noHistory);
-    }, [folderPath]);
+    }, [folderPath, params.noHistory]);
 
     // Sync resumeIndex with currentIndex when tab becomes active
     // This ensures the viewer scrolls to the correct position when switching tabs
@@ -358,8 +346,7 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
             updateTabState({ isLoading: true });
             try {
                 // Check if we should use shallow loading (non-recursive)
-                const navParams = useNavigationStore.getState().params;
-                const useShallow = navParams && navParams.shallow === 'true';
+                const useShallow = params && params.shallow === 'true';
 
                 // Use AppAPI service instead of direct window.go calls
                 const folderInfo = useShallow
@@ -770,6 +757,7 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
                             showControls={showControls}
                             hasChapterButtons={hasChapterButtons}
                             onRestorationComplete={handleRestorationComplete}
+                            tabId={tabId}
                         />
 
                     </div>

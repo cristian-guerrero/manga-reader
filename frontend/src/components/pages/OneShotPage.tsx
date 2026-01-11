@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigationStore } from '../../stores/navigationStore';
+import { useNavigation } from '../../hooks/useNavigation';
 import { useToast } from '../common/Toast';
 import { EventsOn, EventsOff } from '../../../wailsjs/runtime';
 import { SortControls } from '../common/SortControls';
@@ -49,7 +49,7 @@ const ImageIcon = () => (
 
 
 export function OneShotPage() {
-    const { folders, setFolders, setIsProcessing, navigate } = useNavigationStore();
+    const { folders, setFolders, setIsProcessing, navigate } = useNavigation();
     const { addTab } = useTabStore();
     const { t } = useTranslation();
     const { showToast } = useToast();

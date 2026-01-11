@@ -5,7 +5,6 @@
 
 import { useEffect, useState } from 'react';
 import { useTabStore } from '../../stores/tabStore';
-import { useNavigationStore } from '../../stores/navigationStore';
 import { AppAPI } from '../../services/api/appAPI';
 import { ViewerPersistenceService } from '../../services/persistence';
 import { ImageInfo, FolderInfo } from '../../types';
@@ -18,6 +17,7 @@ interface UseViewerDataLoadingOptions {
     images: ImageInfo[];
     currentIndex: number;
     isNoHistorySession: boolean;
+    params: Record<string, string>;
     onDataLoaded: (folder: FolderInfo | null, images: ImageInfo[], targetIndex: number, targetScroll: number) => void;
     onSaveProgress: () => Promise<void>;
 }
@@ -33,6 +33,7 @@ export function useViewerDataLoading({
     images,
     currentIndex,
     isNoHistorySession,
+    params,
     onDataLoaded,
     onSaveProgress,
 }: UseViewerDataLoadingOptions) {
@@ -68,8 +69,7 @@ export function useViewerDataLoading({
             setIsLoading(true);
             try {
                 // Check if we should use shallow loading (non-recursive)
-                const navParams = useNavigationStore.getState().params;
-                const useShallow = navParams && navParams.shallow === 'true';
+                const useShallow = params && params.shallow === 'true';
 
                 // Load folder info and images
                 const folderInfo = useShallow
@@ -134,7 +134,7 @@ export function useViewerDataLoading({
         };
 
         loadFolder();
-    }, [folderPath, isActive, tabId, currentFolder, images.length, currentIndex, isNoHistorySession, onDataLoaded, onSaveProgress]);
+    }, [folderPath, isActive, tabId, currentFolder, images.length, currentIndex, isNoHistorySession, params, onDataLoaded, onSaveProgress]);
 
     return { isLoading };
 }

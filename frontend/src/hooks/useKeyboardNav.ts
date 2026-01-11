@@ -5,16 +5,17 @@
 
 import { useCallback, useRef, useEffect } from 'react';
 import { useHotkeys } from 'react-hotkeys-hook';
-import { useViewerStore } from '../stores/viewerStore';
-import { useNavigationStore } from '../stores/navigationStore';
+import { useViewer } from './useViewer';
+import { useNavigation } from './useNavigation';
 import { useSettingsStore } from '../stores/settingsStore';
 
 interface UseKeyboardNavOptions {
     enabled?: boolean;
+    tabId?: string;
 }
 
 export function useKeyboardNav(options: UseKeyboardNavOptions = {}) {
-    const { enabled = true } = options;
+    const { enabled = true, tabId } = options;
     const {
         nextImage,
         prevImage,
@@ -23,8 +24,8 @@ export function useKeyboardNav(options: UseKeyboardNavOptions = {}) {
         zoomIn,
         zoomOut,
         resetZoom,
-    } = useViewerStore();
-    const { goBack } = useNavigationStore();
+    } = useViewer(tabId);
+    const { goBack } = useNavigation();
     const { toggleSidebar } = useSettingsStore();
 
     // Use refs to maintain stable references and avoid re-registering hotkeys

@@ -19,7 +19,7 @@ import {
     useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { useNavigationStore } from '../../stores/navigationStore';
+import { useNavigation } from '../../hooks/useNavigation';
 import { GridContainer } from '../common/GridContainer';
 import { GridItem } from '../common/GridItem';
 import { useThumbnail } from '../../hooks/useThumbnail';
@@ -72,7 +72,7 @@ interface ThumbnailsPageProps {
 
 export function ThumbnailsPage({ folderPath, isActive = true, tabId }: ThumbnailsPageProps) {
     const { t } = useTranslation();
-    const { goBack, navigate } = useNavigationStore();
+    const { goBack, navigate, thumbnailScrollPositions, setThumbnailScrollPosition } = useNavigation();
     const [images, setImages] = useState<ImageData[]>([]);
     const [thumbnails, setThumbnails] = useState<Record<string, string>>({});
     const [isLoading, setIsLoading] = useState(true);
@@ -95,7 +95,6 @@ export function ThumbnailsPage({ folderPath, isActive = true, tabId }: Thumbnail
 
     // Scroll preservation
     const scrollContainerRef = useRef<HTMLDivElement>(null);
-    const { thumbnailScrollPositions, setThumbnailScrollPosition } = useNavigationStore();
     const hasRestoredScroll = useRef<string | null>(null);
 
     // Restore scroll position

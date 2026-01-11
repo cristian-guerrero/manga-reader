@@ -7,7 +7,7 @@ import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { OnFileDrop, OnFileDropOff } from '../../wailsjs/runtime';
 import { useSettingsStore } from '../stores/settingsStore';
-import { useNavigationStore } from '../stores/navigationStore';
+import { useNavigation } from './useNavigation';
 import { useToast } from '../components/common/Toast';
 import { AppAPI } from '../services/api/appAPI';
 
@@ -18,7 +18,7 @@ export function useDragAndDrop() {
     const { t } = useTranslation();
     const { showToast } = useToast();
     const { processDroppedFolders } = useSettingsStore();
-    const { navigate, setIsProcessing } = useNavigationStore();
+    const { navigate, setIsProcessing } = useNavigation();
 
     useEffect(() => {
         // Register drop listener
@@ -66,7 +66,7 @@ export function useDragAndDrop() {
                         isSeries = await AppAPI.isSeries(path);
                     }
 
-                    const navigateFn = useNavigationStore.getState().navigate;
+                    const navigateFn = navigate;
 
                     if (isSeries && processDropped) {
                         // If it's a series, set activeMenuPage to 'series'

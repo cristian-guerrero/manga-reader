@@ -4,7 +4,7 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigationStore } from '../../stores/navigationStore';
+import { useNavigation } from '../../hooks/useNavigation';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useToast } from '../common/Toast';
 import { ConfirmDialog } from '../common/ConfirmDialog';
@@ -249,7 +249,7 @@ function SimpleThumbnail({ entry }: { entry: HistoryEntry }) {
 
 export function HistoryPage() {
     const { t } = useTranslation();
-    const { navigate } = useNavigationStore();
+    const { navigate } = useNavigation();
     const { addTab } = useTabStore();
     const { showToast } = useToast();
     const [history, setHistory] = useState<HistoryEntry[]>([]);
