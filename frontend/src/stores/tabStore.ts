@@ -32,7 +32,7 @@ export interface Tab {
     restored?: boolean;
 }
 
-interface TabStoreState {
+export interface TabStoreState {
     tabs: Tab[];
     activeTabId: string;
     isReady: boolean; // Flag to prevent saving during restoration

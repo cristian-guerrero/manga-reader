@@ -3,7 +3,7 @@
  */
 
 import { FolderInfo, ViewerMode } from '../../types';
-import { Tooltip } from '../../components/ui/Tooltip';
+import { Tooltip } from '../../shared/components';
 
 // Icons
 const BackIcon = () => (

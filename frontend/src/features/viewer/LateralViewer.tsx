@@ -1,10 +1,9 @@
 import { useEffect, useState, useCallback } from 'react';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
 import { useTranslation } from 'react-i18next';
-import { useViewer } from '../../hooks/useViewer';
-import { useSettingsStore } from '../../stores/settingsStore';
-import { useKeyboardNav } from '../../hooks/useKeyboardNav';
-import { Tooltip } from '../../components/ui/Tooltip';
+import { useViewer, useKeyboardNav } from '../../hooks';
+import { useSettingsStore } from '../../stores';
+import { Tooltip } from '../../shared/components';
 
 interface LateralViewerProps {
     images: Array<{

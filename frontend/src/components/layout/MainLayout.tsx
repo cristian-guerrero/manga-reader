@@ -3,11 +3,9 @@
  */
 
 import { useTranslation } from 'react-i18next';
-import { useNavigation } from '../../hooks/useNavigation';
+import { useNavigation, useDragAndDrop, useClipboardMonitor } from '../../hooks';
 import { Sidebar } from './Sidebar';
 import { TitleBar } from './TitleBar';
-import { useDragAndDrop } from '../../hooks/useDragAndDrop';
-import { useClipboardMonitor } from '../../hooks/useClipboardMonitor';
 
 interface MainLayoutProps {
     children: React.ReactNode;
