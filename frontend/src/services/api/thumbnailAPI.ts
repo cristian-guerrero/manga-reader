@@ -3,45 +3,40 @@
  */
 
 import * as AppBackend from '../../../wailsjs/go/main/App';
+import { BaseAPI } from './baseAPI';
 import { errorService } from '../errorService';
 
-export class ThumbnailAPI {
+export class ThumbnailAPI extends BaseAPI {
     /**
      * Get thumbnail for an image
      */
     static async getThumbnail(imagePath: string): Promise<string | null> {
-        try {
-            const result = await AppBackend.GetThumbnail(imagePath);
-            return result || null;
-        } catch (error) {
-            errorService.handle(error, {
+        return this.callOrNull(
+            async () => {
+                const result = await AppBackend.GetThumbnail(imagePath);
+                return result || null;
+            },
+            {
                 component: 'ThumbnailAPI',
                 action: 'getThumbnail',
                 details: { imagePath }
-            }, { showToast: false });
-            return null;
-        }
+            }
+        );
     }
 
     /**
      * Pause/resume thumbnail generation
+     * Note: Fire-and-forget operation, doesn't throw on error
      */
     static setThumbnailsPaused(paused: boolean): void {
-        try {
-            // SetThumbnailsPaused returns Promise<void> but we don't need to await it
-            AppBackend.SetThumbnailsPaused(paused).catch((error) => {
-                errorService.handle(error, {
-                    component: 'ThumbnailAPI',
-                    action: 'setThumbnailsPaused',
-                    details: { paused }
-                }, { showToast: false });
-            });
-        } catch (error) {
+        // SetThumbnailsPaused returns Promise<void> but we don't need to await it
+        AppBackend.SetThumbnailsPaused(paused).catch((error) => {
+            // Use errorService directly since this is a fire-and-forget operation
             errorService.handle(error, {
                 component: 'ThumbnailAPI',
                 action: 'setThumbnailsPaused',
                 details: { paused }
             }, { showToast: false });
-        }
+        });
     }
 }

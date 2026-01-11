@@ -9,8 +9,8 @@
 
 import { FolderInfo, ImageInfo, HistoryEntry, Settings } from '../../types';
 import * as AppBackend from '../../../wailsjs/go/main/App';
-import { errorService } from '../errorService';
 import { FolderAPI } from './folderAPI';
+import { BaseAPI } from './baseAPI';
 import { ImageAPI } from './imageAPI';
 import { ThumbnailAPI } from './thumbnailAPI';
 import { HistoryAPI } from './historyAPI';
@@ -47,7 +47,7 @@ export interface ExplorerEntry {
     lastModified: number;
 }
 
-export class AppAPI {
+export class AppAPI extends BaseAPI {
     // Folder operations - delegate to FolderAPI
     static getFolderInfo = FolderAPI.getFolderInfo;
     static getFolderInfoShallow = FolderAPI.getFolderInfoShallow;
@@ -112,29 +112,33 @@ export class AppAPI {
      * Clear all data (history, library, series, etc.)
      */
     static async clearAllData(): Promise<void> {
-        try {
-            await AppBackend.ClearAllData();
-        } catch (error) {
-            errorService.handle(error, {
+        return this.callVoid(
+            async () => {
+                await AppBackend.ClearAllData();
+            },
+            {
                 component: 'AppAPI',
                 action: 'clearAllData'
-            }, { showToast: false });
-            throw error;
-        }
+            }
+        );
     }
 
     /**
      * Update taskbar icon
+     * Note: Doesn't throw on error - taskbar icon update failure shouldn't break the app
      */
     static async updateTaskbarIcon(iconData: string): Promise<void> {
-        try {
-            await AppBackend.UpdateTaskbarIcon(iconData);
-        } catch (error) {
-            errorService.handle(error, {
+        return this.call(
+            async () => {
+                await AppBackend.UpdateTaskbarIcon(iconData);
+            },
+            {
                 component: 'AppAPI',
-                action: 'updateTaskbarIcon'
-            }, { showToast: false });
-            // Don't throw - taskbar icon update failure shouldn't break the app
-        }
+                action: 'updateTaskbarIcon',
+                defaultValue: undefined // Don't throw, but return void
+            } as any
+        ).catch(() => {
+            // Silently fail - taskbar icon update failure shouldn't break the app
+        });
     }
 }

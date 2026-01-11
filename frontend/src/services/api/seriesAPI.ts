@@ -3,54 +3,54 @@
  */
 
 import * as AppBackend from '../../../wailsjs/go/main/App';
-import { errorService } from '../errorService';
+import { BaseAPI } from './baseAPI';
 
-export class SeriesAPI {
+export class SeriesAPI extends BaseAPI {
     /**
      * Get all series
      */
     static async getSeries(): Promise<any[]> {
-        try {
-            const result = await AppBackend.GetSeries();
-            return (result as any[]) || [];
-        } catch (error) {
-            errorService.handle(error, {
+        return this.callOrEmpty(
+            async () => {
+                const result = await AppBackend.GetSeries();
+                return (result as any[]) || [];
+            },
+            {
                 component: 'SeriesAPI',
                 action: 'getSeries'
-            }, { showToast: false });
-            return [];
-        }
+            }
+        );
     }
 
     /**
      * Remove a series
      */
     static async removeSeries(path: string): Promise<void> {
-        try {
-            await AppBackend.RemoveSeries(path);
-        } catch (error) {
-            errorService.handle(error, {
+        return this.callVoid(
+            async () => {
+                await AppBackend.RemoveSeries(path);
+            },
+            {
                 component: 'SeriesAPI',
                 action: 'removeSeries',
                 details: { path }
-            }, { showToast: false });
-            throw error;
-        }
+            }
+        );
     }
 
     /**
      * Clear all series
      */
     static async clearSeries(): Promise<void> {
-        try {
-            await AppBackend.ClearSeries();
-        } catch (error) {
-            errorService.handle(error, {
+        return this.callVoid(
+            async () => {
+                await AppBackend.ClearSeries();
+            },
+            {
                 component: 'SeriesAPI',
                 action: 'clearSeries'
-            }, { showToast: false });
-            throw error;
-        }
+            }
+        );
     }
 
     /**
@@ -63,32 +63,32 @@ export class SeriesAPI {
         chapterIndex?: number;
         totalChapters?: number;
     } | null> {
-        try {
-            const result = await AppBackend.GetChapterNavigation(path);
-            if (!result) return null;
-            
-            // Convert series.ChapterNavigation to our format
-            // result.prevChapter and result.nextChapter are persistence.ChapterInfo objects
-            return {
-                prevChapter: result.prevChapter ? {
-                    path: result.prevChapter.path,
-                    name: result.prevChapter.name
-                } : undefined,
-                nextChapter: result.nextChapter ? {
-                    path: result.nextChapter.path,
-                    name: result.nextChapter.name
-                } : undefined,
-                seriesName: result.seriesName,
-                chapterIndex: result.chapterIndex,
-                totalChapters: result.totalChapters
-            };
-        } catch (error) {
-            errorService.handle(error, {
+        return this.callOrNull(
+            async () => {
+                const result = await AppBackend.GetChapterNavigation(path);
+                if (!result) return null;
+                
+                // Convert series.ChapterNavigation to our format
+                // result.prevChapter and result.nextChapter are persistence.ChapterInfo objects
+                return {
+                    prevChapter: result.prevChapter ? {
+                        path: result.prevChapter.path,
+                        name: result.prevChapter.name
+                    } : undefined,
+                    nextChapter: result.nextChapter ? {
+                        path: result.nextChapter.path,
+                        name: result.nextChapter.name
+                    } : undefined,
+                    seriesName: result.seriesName,
+                    chapterIndex: result.chapterIndex,
+                    totalChapters: result.totalChapters
+                };
+            },
+            {
                 component: 'SeriesAPI',
                 action: 'getChapterNavigation',
                 details: { path }
-            }, { showToast: false });
-            return null;
-        }
+            }
+        );
     }
 }
