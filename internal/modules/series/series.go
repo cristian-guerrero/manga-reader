@@ -2,7 +2,6 @@ package series
 
 import (
 	"context"
-	"manga-visor/internal/fileloader"
 	"manga-visor/internal/persistence"
 	"manga-visor/internal/services"
 	"os"
@@ -38,13 +37,13 @@ type ChapterWithURLs struct {
 type Module struct {
 	ctx        context.Context
 	series     *persistence.SeriesManager
-	fileLoader *fileloader.FileLoader
-	urlBuilder *services.URLBuilder
+	fileLoader services.FileLoaderInterface
+	urlBuilder services.URLBuilderInterface
 	logger     services.LoggerInterface
 }
 
 // NewModule creates a new Series module
-func NewModule(series *persistence.SeriesManager, fileLoader *fileloader.FileLoader, urlBuilder *services.URLBuilder, logger services.LoggerInterface) *Module {
+func NewModule(series *persistence.SeriesManager, fileLoader services.FileLoaderInterface, urlBuilder services.URLBuilderInterface, logger services.LoggerInterface) *Module {
 	return &Module{
 		series:     series,
 		fileLoader: fileLoader,

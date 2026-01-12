@@ -2,7 +2,6 @@ package explorer
 
 import (
 	"context"
-	"manga-visor/internal/fileloader"
 	"manga-visor/internal/persistence"
 	"manga-visor/internal/services"
 	"os"
@@ -20,8 +19,8 @@ import (
 type Module struct {
 	ctx             context.Context
 	explorerManager *persistence.ExplorerManager
-	fileLoader      *fileloader.FileLoader
-	urlBuilder      *services.URLBuilder
+	fileLoader      services.FileLoaderInterface
+	urlBuilder      services.URLBuilderInterface
 	logger          services.LoggerInterface
 
 	// File watching
@@ -31,7 +30,7 @@ type Module struct {
 }
 
 // NewModule creates a new Explorer module
-func NewModule(fileLoader *fileloader.FileLoader, urlBuilder *services.URLBuilder, logger services.LoggerInterface) *Module {
+func NewModule(fileLoader services.FileLoaderInterface, urlBuilder services.URLBuilderInterface, logger services.LoggerInterface) *Module {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		// If file watching fails, continue without it

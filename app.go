@@ -69,7 +69,7 @@ func NewApp() *App {
 
 	// Create modules with their dependencies
 	// Note: URLBuilder will be updated after ImageServer starts in startup()
-	lMod := library.NewModule(container.Library, container.FileLoader, container.URLBuilder)
+	lMod := library.NewModule(container.Library, container.FileLoader, container.URLBuilder, container.Logger)
 	sMod := series.NewModule(container.Series, container.FileLoader, container.URLBuilder, container.Logger)
 	hMod := history.NewModule(container.History, container.Settings)
 	eMod := explorer.NewModule(container.FileLoader, container.URLBuilder, container.Logger)

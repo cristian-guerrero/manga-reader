@@ -10,21 +10,21 @@ import (
 // Container holds all application services and provides dependency injection
 type Container struct {
 	// Core Services
-	FileLoader   *fileloader.FileLoader
-	ThumbGen     *thumbnails.Generator
-	ImageServer  *fileloader.ImageServer
-	URLBuilder   *URLBuilder
-	Logger       *Logger
+	FileLoader  *fileloader.FileLoader
+	ThumbGen    *thumbnails.Generator
+	ImageServer *fileloader.ImageServer
+	URLBuilder  *URLBuilder
+	Logger      *Logger
 
 	// Persistence Managers
-	Settings         *persistence.SettingsManager
-	History          *persistence.HistoryManager
-	Library          *persistence.LibraryManager
-	Series           *persistence.SeriesManager
-	Orders           *persistence.OrdersManager
-	Downloader       *persistence.DownloaderManager
-	Tabs             *persistence.TabsManager
-	ViewerStates     *persistence.ViewerStatesManager
+	Settings     *persistence.SettingsManager
+	History      *persistence.HistoryManager
+	Library      *persistence.LibraryManager
+	Series       *persistence.SeriesManager
+	Orders       *persistence.OrdersManager
+	Downloader   *persistence.DownloaderManager
+	Tabs         *persistence.TabsManager
+	ViewerStates *persistence.ViewerStatesManager
 
 	// Context (set after startup)
 	ctx context.Context
@@ -36,7 +36,9 @@ func NewContainer() *Container {
 	logger := NewLogger(LogLevelInfo)
 
 	// Core services
-	fileLoader := fileloader.NewFileLoader(logger)
+	// Create logger adapter for fileloader (to avoid import cycle)
+	loggerAdapter := &loggerAdapter{logger: logger}
+	fileLoader := fileloader.NewFileLoader(loggerAdapter)
 	thumbGen := thumbnails.NewGenerator()
 	urlBuilder := NewURLBuilder("") // Base URL will be set after ImageServer starts
 
@@ -51,7 +53,7 @@ func NewContainer() *Container {
 	viewerStates := persistence.NewViewerStatesManager()
 
 	// Image server (not started yet, will be started in Initialize)
-	imageServer := fileloader.NewImageServer(fileLoader, thumbGen, logger)
+	imageServer := fileloader.NewImageServer(fileLoader, thumbGen, loggerAdapter)
 
 	return &Container{
 		FileLoader:   fileLoader,
@@ -93,4 +95,25 @@ func (c *Container) Initialize(ctx context.Context) error {
 // Context returns the application context
 func (c *Container) Context() context.Context {
 	return c.ctx
+}
+
+// loggerAdapter adapts services.Logger to fileloader.LoggerInterface
+type loggerAdapter struct {
+	logger *Logger
+}
+
+func (a *loggerAdapter) Debugf(format string, args ...interface{}) {
+	a.logger.Debugf(format, args...)
+}
+
+func (a *loggerAdapter) Infof(format string, args ...interface{}) {
+	a.logger.Infof(format, args...)
+}
+
+func (a *loggerAdapter) Warnf(format string, args ...interface{}) {
+	a.logger.Warnf(format, args...)
+}
+
+func (a *loggerAdapter) Errorf(format string, args ...interface{}) {
+	a.logger.Errorf(format, args...)
 }

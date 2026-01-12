@@ -17,28 +17,13 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
-// FileLoaderInterface defines the interface for file loading operations
-// This allows for easier testing by using mocks
-type FileLoaderInterface interface {
-	RegisterDirectory(dirPath string) string
-	GetDirectory(hash string) (string, bool)
-	GetImages(folderPath string) ([]fileloader.ImageInfo, error)
-	GetImagesShallow(folderPath string) ([]fileloader.ImageInfo, error)
-	IsSupportedImage(filename string) bool
-	GetMimeType(filename string) string
-	FindFirstImage(folderPath string) (string, bool)
-	FindFirstImageShallow(folderPath string) (string, bool)
-	GetShallowImageCount(folderPath string) int
-	HasSubdirectories(folderPath string) bool
-}
+// FileLoaderInterface and URLBuilderInterface are defined in services package
+// Using type aliases for convenience
+type FileLoaderInterface = services.FileLoaderInterface
+type URLBuilderInterface = services.URLBuilderInterface
 
-// URLBuilderInterface defines the interface for URL construction
-type URLBuilderInterface interface {
-	BuildImageURL(dirHash, filename string) string
-	BuildThumbnailURL(dirHash, filename string) string
-	BuildThumbnailURLFromPath(dirHash, fullPath string) string
-	BuildImageURLFromPath(dirHash, dirPath, fullPath string) string
-}
+// ImageInfo is a type alias for fileloader.ImageInfo to reduce direct dependency
+type ImageInfo = fileloader.ImageInfo
 
 // Module handles Library logic
 type Module struct {
@@ -46,6 +31,7 @@ type Module struct {
 	library      *persistence.LibraryManager
 	fileLoader   FileLoaderInterface
 	urlBuilder   URLBuilderInterface
+	logger       services.LoggerInterface
 	seriesModule interface {
 		AddSeries(path string, subfolders []persistence.FolderInfo, isTemp bool) (*persistence.AddFolderResult, error)
 	}
@@ -53,11 +39,12 @@ type Module struct {
 
 // NewModule creates a new Library module
 // Accepts interfaces for better testability
-func NewModule(library *persistence.LibraryManager, fileLoader FileLoaderInterface, urlBuilder URLBuilderInterface) *Module {
+func NewModule(library *persistence.LibraryManager, fileLoader FileLoaderInterface, urlBuilder URLBuilderInterface, logger services.LoggerInterface) *Module {
 	return &Module{
 		library:    library,
 		fileLoader: fileLoader,
 		urlBuilder: urlBuilder,
+		logger:     logger,
 	}
 }
 
@@ -364,7 +351,7 @@ func (m *Module) GetImages(path string, settings *persistence.Settings, orders *
 	}
 
 	if settings.MinImageSize > 0 {
-		var filtered []fileloader.ImageInfo
+		var filtered []ImageInfo
 		minBytes := settings.MinImageSize * 1024
 		for _, img := range images {
 			if img.Size >= minBytes {
@@ -433,7 +420,7 @@ func (m *Module) GetImagesShallow(path string, settings *persistence.Settings, o
 	}
 
 	if settings.MinImageSize > 0 {
-		var filtered []fileloader.ImageInfo
+		var filtered []ImageInfo
 		minBytes := settings.MinImageSize * 1024
 		for _, img := range images {
 			if img.Size >= minBytes {
