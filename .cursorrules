@@ -1,0 +1,17 @@
+# Cursor Rules for Manga Visor 2
+
+## Commit Messages
+- All commit messages MUST be written in English
+- Use conventional commit format: `type: description`
+- Examples:
+  - `feat: add new feature`
+  - `fix: resolve bug in downloader`
+  - `refactor: improve code structure`
+  - `docs: update README`
+- Do NOT use Spanish characters (á, é, í, ó, ú, ñ, etc.) in commit messages
+- Keep commit messages concise and descriptive
+
+## Code Style
+- Follow existing code patterns and conventions
+- Use TypeScript for type safety
+- Prefer functional components in React
