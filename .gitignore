@@ -1,4 +1,6 @@
 build/bin
 node_modules
 frontend/dist
-*.exe
+*.exe.
+.vscode/
+info.txt

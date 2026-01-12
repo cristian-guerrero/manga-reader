@@ -2,10 +2,8 @@ package series
 
 import (
 	"context"
-	"fmt"
-	"manga-visor/internal/fileloader"
 	"manga-visor/internal/persistence"
-	"net/url"
+	"manga-visor/internal/services"
 	"os"
 	"path/filepath"
 	"sort"
@@ -39,35 +37,24 @@ type ChapterWithURLs struct {
 type Module struct {
 	ctx        context.Context
 	series     *persistence.SeriesManager
-	fileLoader *fileloader.FileLoader
-	imgServer  *fileloader.ImageServer
+	fileLoader services.FileLoaderInterface
+	urlBuilder services.URLBuilderInterface
+	logger     services.LoggerInterface
 }
 
 // NewModule creates a new Series module
-func NewModule(series *persistence.SeriesManager, fileLoader *fileloader.FileLoader, imgServer *fileloader.ImageServer) *Module {
+func NewModule(series *persistence.SeriesManager, fileLoader services.FileLoaderInterface, urlBuilder services.URLBuilderInterface, logger services.LoggerInterface) *Module {
 	return &Module{
 		series:     series,
 		fileLoader: fileLoader,
-		imgServer:  imgServer,
+		urlBuilder: urlBuilder,
+		logger:     logger,
 	}
 }
 
 // SetContext sets the Wails context
 func (m *Module) SetContext(ctx context.Context) {
 	m.ctx = ctx
-}
-
-// SetImageServer sets the image server dependency
-func (m *Module) SetImageServer(imgServer *fileloader.ImageServer) {
-	m.imgServer = imgServer
-}
-
-// getBaseURL returns the base URL for images
-func (m *Module) getBaseURL() string {
-	if m.imgServer != nil && m.imgServer.Addr != "" {
-		return m.imgServer.Addr
-	}
-	return ""
 }
 
 // AddSeries adds a series with its chapters
@@ -131,12 +118,16 @@ func (m *Module) AddSeries(path string, subfolders []persistence.FolderInfo, isT
 	}
 
 	if err := m.series.Add(entry); err != nil {
-		fmt.Printf("Error adding series: %v\n", err)
+		if m.logger != nil {
+			m.logger.Errorf("Error adding series: %v", err)
+		}
 		return nil, err
 	}
 
 	runtime.EventsEmit(m.ctx, "series_updated")
-	fmt.Printf("Series added: %s with %d chapters (temp: %v)\n", path, len(subfolders), isTemp)
+	if m.logger != nil {
+		m.logger.Infof("Series added: %s with %d chapters (temp: %v)", path, len(subfolders), isTemp)
+	}
 	return &persistence.AddFolderResult{Path: path, IsSeries: true}, nil
 }
 
@@ -145,7 +136,6 @@ func (m *Module) GetSeries() []SeriesEntryWithURLs {
 	entries := m.series.GetAll()
 	result := make([]SeriesEntryWithURLs, len(entries))
 
-	baseURL := m.getBaseURL()
 	for i, entry := range entries {
 		chapters := make([]ChapterWithURLs, len(entry.Chapters))
 		changed := false
@@ -174,12 +164,18 @@ func (m *Module) GetSeries() []SeriesEntryWithURLs {
 				}
 			}
 
+			// Build thumbnail URL using URLBuilder
+			var thumbnailURL string
+			if fid != "" {
+				thumbnailURL = m.urlBuilder.BuildThumbnailURL(dirHash, fid)
+			}
+
 			chapters[j] = ChapterWithURLs{
 				Path:         entry.Chapters[j].Path,
 				Name:         entry.Chapters[j].Name,
 				CoverImage:   entry.Chapters[j].CoverImage,
 				ImageCount:   entry.Chapters[j].ImageCount,
-				ThumbnailURL: fmt.Sprintf("%s/thumbnails?did=%s&fid=%s", baseURL, dirHash, url.QueryEscape(fid)),
+				ThumbnailURL: thumbnailURL,
 			}
 		}
 
@@ -189,6 +185,10 @@ func (m *Module) GetSeries() []SeriesEntryWithURLs {
 		}
 
 		dirHash := m.fileLoader.RegisterDirectory(filepath.Dir(entry.CoverImage))
+		seriesThumbnailURL := ""
+		if entry.CoverImage != "" {
+			seriesThumbnailURL = m.urlBuilder.BuildThumbnailURL(dirHash, filepath.Base(entry.CoverImage))
+		}
 		result[i] = SeriesEntryWithURLs{
 			ID:           entry.ID,
 			Path:         entry.Path,
@@ -196,7 +196,7 @@ func (m *Module) GetSeries() []SeriesEntryWithURLs {
 			CoverImage:   entry.CoverImage,
 			AddedAt:      entry.AddedAt,
 			IsTemporary:  entry.IsTemporary,
-			ThumbnailURL: fmt.Sprintf("%s/thumbnails?did=%s&fid=%s", baseURL, dirHash, url.QueryEscape(filepath.Base(entry.CoverImage))),
+			ThumbnailURL: seriesThumbnailURL,
 			Chapters:     chapters,
 		}
 	}

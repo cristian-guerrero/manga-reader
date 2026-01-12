@@ -3,8 +3,6 @@ package main
 import (
 	"context"
 	"embed"
-	"fmt"
-
 	_ "image/gif"
 	_ "image/jpeg"
 	_ "image/png"
@@ -18,8 +16,6 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 	"github.com/wailsapp/wails/v2/pkg/options/linux"
 	"github.com/wailsapp/wails/v2/pkg/options/windows"
-
-	"manga-visor/internal/fileloader"
 )
 
 //go:embed all:frontend/dist
@@ -45,12 +41,9 @@ func main() {
 		windowState = options.Maximised
 	}
 
-	// Create ImageServer and start it if needed
-	imageServer := fileloader.NewImageServer(app.fileLoader, app.thumbGen)
-	if err := imageServer.Start(); err != nil {
-		fmt.Printf("Warning: Could not start standalone image server: %v\n", err)
-	}
-	app.imgServer = imageServer
+	// Get ImageServer from container (will be started in startup, but we need it for AssetServer)
+	// For now, we'll use the one from the container. It will be started properly in startup()
+	imageServer := app.services.ImageServer
 
 	// Create application with options
 	opts := &options.App{

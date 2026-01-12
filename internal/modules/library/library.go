@@ -7,7 +7,7 @@ import (
 	"manga-visor/internal/archiver"
 	"manga-visor/internal/fileloader"
 	"manga-visor/internal/persistence"
-	"net/url"
+	"manga-visor/internal/services"
 	"os"
 	"path/filepath"
 	"sort"
@@ -17,34 +17,40 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
+// FileLoaderInterface and URLBuilderInterface are defined in services package
+// Using type aliases for convenience
+type FileLoaderInterface = services.FileLoaderInterface
+type URLBuilderInterface = services.URLBuilderInterface
+
+// ImageInfo is a type alias for fileloader.ImageInfo to reduce direct dependency
+type ImageInfo = fileloader.ImageInfo
+
 // Module handles Library logic
 type Module struct {
 	ctx          context.Context
 	library      *persistence.LibraryManager
-	fileLoader   *fileloader.FileLoader
-	imgServer    *fileloader.ImageServer
+	fileLoader   FileLoaderInterface
+	urlBuilder   URLBuilderInterface
+	logger       services.LoggerInterface
 	seriesModule interface {
 		AddSeries(path string, subfolders []persistence.FolderInfo, isTemp bool) (*persistence.AddFolderResult, error)
 	}
 }
 
 // NewModule creates a new Library module
-func NewModule(library *persistence.LibraryManager, fileLoader *fileloader.FileLoader, imgServer *fileloader.ImageServer) *Module {
+// Accepts interfaces for better testability
+func NewModule(library *persistence.LibraryManager, fileLoader FileLoaderInterface, urlBuilder URLBuilderInterface, logger services.LoggerInterface) *Module {
 	return &Module{
 		library:    library,
 		fileLoader: fileLoader,
-		imgServer:  imgServer,
+		urlBuilder: urlBuilder,
+		logger:     logger,
 	}
 }
 
 // SetContext sets the Wails context
 func (m *Module) SetContext(ctx context.Context) {
 	m.ctx = ctx
-}
-
-// SetImageServer sets the image server dependency
-func (m *Module) SetImageServer(imgServer *fileloader.ImageServer) {
-	m.imgServer = imgServer
 }
 
 // SetSeriesModule sets the series module dependency to avoid circular imports in constructor if needed
@@ -56,14 +62,6 @@ func (m *Module) SetSeriesModule(sm interface {
 	AddSeries(path string, subfolders []persistence.FolderInfo, isTemp bool) (*persistence.AddFolderResult, error)
 }) {
 	m.seriesModule = sm
-}
-
-// getBaseURL returns the base URL for images
-func (m *Module) getBaseURL() string {
-	if m.imgServer != nil && m.imgServer.Addr != "" {
-		return m.imgServer.Addr
-	}
-	return ""
 }
 
 // resolveToFolder resolves a path to a folder
@@ -123,7 +121,7 @@ func (m *Module) AddFolder(path string) (*persistence.AddFolderResult, error) {
 	}
 
 	if folderInfo.ImageCount == 0 {
-		return nil, fmt.Errorf("no images found in folder")
+		return nil, services.NewNotFoundError("no images found in folder", nil)
 	}
 
 	entry := persistence.LibraryEntry{
@@ -165,12 +163,7 @@ func (m *Module) GetLibrary() []persistence.FolderInfo {
 			// Path exists, generate thumbnail URL if we have a cover image
 			if entry.CoverImage != "" {
 				dirHash := m.fileLoader.RegisterDirectory(entry.FolderPath)
-				baseURL := m.getBaseURL()
-				if baseURL != "" {
-					// Use the filename from the cover image path
-					coverFileName := filepath.Base(entry.CoverImage)
-					info.ThumbnailURL = fmt.Sprintf("%s/thumbnails?did=%s&fid=%s", baseURL, dirHash, strings.ReplaceAll(coverFileName, " ", "%20"))
-				}
+				info.ThumbnailURL = m.urlBuilder.BuildThumbnailURLFromPath(dirHash, entry.CoverImage)
 			}
 		}
 		// If path doesn't exist, we still return it so UI can show error or handle removal
@@ -225,8 +218,7 @@ func (m *Module) GetFolderInfo(folderPath string) (*persistence.FolderInfo, erro
 	if len(images) > 0 {
 		coverImage = images[0].Path
 		dirHash := m.fileLoader.RegisterDirectory(folderPath)
-		baseURL := m.getBaseURL()
-		thumbnailURL = fmt.Sprintf("%s/thumbnails?did=%s&fid=%s", baseURL, dirHash, strings.ReplaceAll(images[0].Name, " ", "%20")) // Simple escape
+		thumbnailURL = m.urlBuilder.BuildThumbnailURLFromPath(dirHash, coverImage)
 	}
 
 	return &persistence.FolderInfo{
@@ -250,8 +242,7 @@ func (m *Module) GetFolderInfoShallow(folderPath string) (*persistence.FolderInf
 	if len(images) > 0 {
 		coverImage = images[0].Path
 		dirHash := m.fileLoader.RegisterDirectory(folderPath)
-		baseURL := m.getBaseURL()
-		thumbnailURL = fmt.Sprintf("%s/thumbnails?did=%s&fid=%s", baseURL, dirHash, strings.ReplaceAll(images[0].Name, " ", "%20")) // Simple escape
+		thumbnailURL = m.urlBuilder.BuildThumbnailURLFromPath(dirHash, coverImage)
 	}
 
 	return &persistence.FolderInfo{
@@ -303,13 +294,7 @@ func (m *Module) GetSubfolders(folderPath string) ([]persistence.FolderInfo, err
 		var thumbnailURL string
 		if hasImages && coverImage != "" {
 			dirHash := m.fileLoader.RegisterDirectory(fullPath)
-			baseURL := m.getBaseURL()
-			if baseURL != "" {
-				relPath, _ := filepath.Rel(fullPath, coverImage)
-				// Ensure relPath uses forward slashes for URLs
-				relPath = filepath.ToSlash(relPath)
-				thumbnailURL = fmt.Sprintf("%s/thumbnails?did=%s&fid=%s", baseURL, dirHash, url.QueryEscape(relPath))
-			}
+			thumbnailURL = m.urlBuilder.BuildThumbnailURLFromPath(dirHash, coverImage)
 		}
 
 		// For count, we'll use shallow count for immediate directory only
@@ -366,7 +351,7 @@ func (m *Module) GetImages(path string, settings *persistence.Settings, orders *
 	}
 
 	if settings.MinImageSize > 0 {
-		var filtered []fileloader.ImageInfo
+		var filtered []ImageInfo
 		minBytes := settings.MinImageSize * 1024
 		for _, img := range images {
 			if img.Size >= minBytes {
@@ -379,18 +364,14 @@ func (m *Module) GetImages(path string, settings *persistence.Settings, orders *
 	}
 
 	dirHash := m.fileLoader.RegisterDirectory(folderPath)
-	baseURL := m.getBaseURL()
 
 	result := make([]persistence.ImageInfo, len(images))
 
 	for i, img := range images {
-		relPath, _ := filepath.Rel(folderPath, img.Path)
-		// Ensure relPath uses forward slashes for URLs
-		relPath = filepath.ToSlash(relPath)
 		result[i] = persistence.ImageInfo{
 			Path:         img.Path,
-			ThumbnailURL: fmt.Sprintf("%s/thumbnails?did=%s&fid=%s", baseURL, dirHash, url.QueryEscape(relPath)),
-			ImageURL:     fmt.Sprintf("%s/images?did=%s&fid=%s", baseURL, dirHash, url.QueryEscape(relPath)),
+			ThumbnailURL: m.urlBuilder.BuildThumbnailURLFromPath(dirHash, img.Path),
+			ImageURL:     m.urlBuilder.BuildImageURLFromPath(dirHash, folderPath, img.Path),
 			Name:         img.Name,
 			Extension:    img.Extension,
 			Size:         img.Size,
@@ -439,7 +420,7 @@ func (m *Module) GetImagesShallow(path string, settings *persistence.Settings, o
 	}
 
 	if settings.MinImageSize > 0 {
-		var filtered []fileloader.ImageInfo
+		var filtered []ImageInfo
 		minBytes := settings.MinImageSize * 1024
 		for _, img := range images {
 			if img.Size >= minBytes {
@@ -452,18 +433,14 @@ func (m *Module) GetImagesShallow(path string, settings *persistence.Settings, o
 	}
 
 	dirHash := m.fileLoader.RegisterDirectory(folderPath)
-	baseURL := m.getBaseURL()
 
 	result := make([]persistence.ImageInfo, len(images))
 
 	for i, img := range images {
-		relPath, _ := filepath.Rel(folderPath, img.Path)
-		// Ensure relPath uses forward slashes for URLs
-		relPath = filepath.ToSlash(relPath)
 		result[i] = persistence.ImageInfo{
 			Path:         img.Path,
-			ThumbnailURL: fmt.Sprintf("%s/thumbnails?did=%s&fid=%s", baseURL, dirHash, url.QueryEscape(relPath)),
-			ImageURL:     fmt.Sprintf("%s/images?did=%s&fid=%s", baseURL, dirHash, url.QueryEscape(relPath)),
+			ThumbnailURL: m.urlBuilder.BuildThumbnailURLFromPath(dirHash, img.Path),
+			ImageURL:     m.urlBuilder.BuildImageURLFromPath(dirHash, folderPath, img.Path),
 			Name:         img.Name,
 			Extension:    img.Extension,
 			Size:         img.Size,

@@ -10,8 +10,8 @@ import (
 	"manga-visor/internal/modules/library"
 	"manga-visor/internal/modules/series"
 	"manga-visor/internal/persistence"
+	"manga-visor/internal/services"
 	"manga-visor/internal/thumbnails"
-	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -23,17 +23,7 @@ import (
 // App struct - Main application structure
 type App struct {
 	ctx      context.Context
-	settings *persistence.SettingsManager
-	orders   *persistence.OrdersManager
-
-	// Core Services
-	fileLoader *fileloader.FileLoader
-	thumbGen   *thumbnails.Generator
-	imgServer  *fileloader.ImageServer
-
-	// Tab and Viewer State Persistence
-	tabsManager         *persistence.TabsManager
-	viewerStatesManager *persistence.ViewerStatesManager
+	services *services.Container
 
 	// Modules
 	libraryMod    *library.Module
@@ -43,57 +33,58 @@ type App struct {
 	downloaderMod *downloader.Module
 }
 
+// Convenience getters for backward compatibility
+func (a *App) settings() *persistence.SettingsManager {
+	return a.services.Settings
+}
+
+func (a *App) orders() *persistence.OrdersManager {
+	return a.services.Orders
+}
+
+func (a *App) fileLoader() *fileloader.FileLoader {
+	return a.services.FileLoader
+}
+
+func (a *App) thumbGen() *thumbnails.Generator {
+	return a.services.ThumbGen
+}
+
+func (a *App) imgServer() *fileloader.ImageServer {
+	return a.services.ImageServer
+}
+
+func (a *App) tabsManager() *persistence.TabsManager {
+	return a.services.Tabs
+}
+
+func (a *App) viewerStatesManager() *persistence.ViewerStatesManager {
+	return a.services.ViewerStates
+}
+
 // NewApp creates a new App application struct
 func NewApp() *App {
-	// Core services
-	fileLoader := fileloader.NewFileLoader()
-	thumbGen := thumbnails.NewGenerator() // Note: Generator might need App context or callback, let's keep it as is
+	// Create service container (manages all dependencies)
+	container := services.NewContainer()
 
-	// Persistence
-	settings := persistence.NewSettingsManager()
-	historyManager := persistence.NewHistoryManager()
-	libraryManager := persistence.NewLibraryManager()
-	seriesManager := persistence.NewSeriesManager()
-	ordersManager := persistence.NewOrdersManager()
-	downloaderPersist := persistence.NewDownloaderManager()
-	tabsManager := persistence.NewTabsManager()
-	viewerStatesManager := persistence.NewViewerStatesManager()
-
-	// Image Server (if needed by modules for URL generation)
-	// We might need to initialize it here or pass nil and set it up later if it depends on port finding?
-	// Existing code didn't show explicit initialization of imgServer in NewApp, it might be done in Startup or it's a field I missed.
-	// Looking at original app.go, `imgServer` was a field but not initialized in `NewApp`. It was likely initialized in `startup`.
-	// For now we pass nil to modules and set it later.
-
-	// fileLoader.SetImageServer(nil) // Removed: FileLoader does not need ImageServer reference directly
-
-	// Modules
-	lMod := library.NewModule(libraryManager, fileLoader, nil)
-	sMod := series.NewModule(seriesManager, fileLoader, nil)
-	hMod := history.NewModule(historyManager, settings)
-	// Passing nil for imgServer initially, it will be set or replaced via SetContext/SetImageServer if we add it?
-	// Or we just rely on struct field assignment since we're in same package?
-	// The modules are in DIFFERENT packages. We can't access fields directly.
-	// We MUST reconstruct or add setter.
-	// Since I added `imgServer` to `NewModule` args, I pass nil here.
-	eMod := explorer.NewModule(fileLoader, nil)
-	dMod := downloader.NewModule(downloaderPersist, settings)
+	// Create modules with their dependencies
+	// Note: URLBuilder will be updated after ImageServer starts in startup()
+	lMod := library.NewModule(container.Library, container.FileLoader, container.URLBuilder, container.Logger)
+	sMod := series.NewModule(container.Series, container.FileLoader, container.URLBuilder, container.Logger)
+	hMod := history.NewModule(container.History, container.Settings)
+	eMod := explorer.NewModule(container.FileLoader, container.URLBuilder, container.Logger)
+	dMod := downloader.NewModule(container.Downloader, container.Settings, container.Logger)
 
 	// Dependency injection (Circular dependency resolution)
 	lMod.SetSeriesModule(sMod)
 
 	return &App{
-		settings:            settings,
-		orders:              ordersManager,
-		fileLoader:          fileLoader,
-		thumbGen:            thumbGen,
-		tabsManager:         tabsManager,
-		viewerStatesManager: viewerStatesManager,
-		libraryMod:          lMod,
-		seriesMod:           sMod,
-		historyMod:          hMod,
-		explorerMod:         eMod,
-		downloaderMod:       dMod,
+		services:      container,
+		libraryMod:    lMod,
+		seriesMod:     sMod,
+		historyMod:    hMod,
+		explorerMod:   eMod,
+		downloaderMod: dMod,
 	}
 }
 
@@ -101,76 +92,30 @@ func NewApp() *App {
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 
-	// Initialize Image Server with context if needed, or just start it
-	// Initialize ImageServer with context if needed, or just start it
-	a.imgServer = fileloader.NewImageServer(a.fileLoader, a.thumbGen)
-	if err := a.imgServer.Start(); err != nil {
-		fmt.Printf("Failed to start image server: %v\n", err)
+	// Initialize services (starts ImageServer and updates URLBuilder)
+	if err := a.services.Initialize(ctx); err != nil {
+		a.services.Logger.Errorf("Failed to initialize services: %v", err)
+		return
 	}
 
-	// Update modules with context and image server
+	// Update modules with context
+	// Note: Modules already have URLBuilder injected, which is now updated with the base URL
 	a.libraryMod.SetContext(ctx)
-	a.libraryMod.SetImageServer(a.imgServer)
-
 	a.seriesMod.SetContext(ctx)
-	a.seriesMod.SetImageServer(a.imgServer)
-
 	a.historyMod.SetContext(ctx)
-
 	a.explorerMod.SetContext(ctx)
-	a.explorerMod.SetImageServer(a.imgServer)
-
 	a.downloaderMod.SetContext(ctx)
 
-	// We need to inject the server address into modules so they can generate URLs
-	// This requires updating the modules to accept the server/address or reconstructing them (which is checking).
-	// But `get-base-url` method in modules uses `imgServer`. So we just updated the `imgServer` reference inside modules?
-	// The modules copy the struct? No, they store checking pointer?
-	// In my module implementation: `type Module struct { ... imgServer *fileloader.ImageServer }`
-	// So I need to inject it. I didn't add a SetImageServer method to modules.
-	// I should probably access the struct fields directly if they are in same package? No, distinct packages.
-	// I will rely on re-creating them or adding a setter?
-	// Wait, I can just initialize ImageServer in NewApp! It doesn't strictly need context to be created, often only to log or bind.
-	// Check `fileloader.NewImageServer` signature. It usually takes context for lifecycle or logging.
-	// Let's assume I can't change `NewApp` signature easily without changing `main.go`.
-	// But I CAN add setters to modules. Or I can modify `app.go` to reconstruct modules in `startup`? No that's messy.
-	// I'll add a quick hack: Initialize ImageServer in NewApp if possible.
-	// If `NewImageServer` requires context, I'll pass it in `startup`.
-
-	// Re-injecting dependencies into modules (I need to update module code to allow this or use reflection/public fields).
-	// Since I wrote the modules, I know I didn't verify `SetImageServer` exists. I should probably add checking it or just use a shared singleton if possible?
-	// Better approach: Create a `Services` struct that is shared?
-	// For now, I will modify `NewApp` to create the ImageServer *without* starting it, if possible.
-	// If `NewImageServer` takes context, I'm stuck.
-	// Let's look at `app.go` original code again. `imgServer *fileloader.ImageServer` was a field.
-	// I will assume `fileloader.NewImageServer` is available.
-
-	// FIX: I will instantiate the modules in `NewApp` but pass the `imgServer` pointer which will be populated/started later?
-	// No, pointers need to point to the valid object.
-	// I will just update the modules to have `SetImageServer` or similar if I can't pass it early.
-	// Actually, I can just create the ImageServer in `NewApp` passing `context.Background()` or `nil` if allowed, and then `Start(ctx)` in startup.
-	// For now, I'll leave `imgServer` as nil in `NewApp` calls, and assume I need to update modules to handle it or I'll add `SetImageServer` method to them via `write_to_file` if needed.
-	// Actually, I can just update the `Module` structs in `app.go` by re-assigning them? No.
-
-	// Let's modify the modules to have `SetImageServer` in the next steps if needed.
-	// Or even simpler: Use the `App` instance as a facade that injects the BaseURL into methods or context?
-	// The modules use `getBaseURL` helper.
-
-	// Strategy:
-	// I will construct `App` with `imgServer` instance (not started).
-	// Pass this instance to modules.
-	// Start it in `startup`.
-
 	// Restore window position
-	settings := a.settings.Get()
+	settings := a.settings().Get()
 	// Validation: Windows often sets coordinates to -32000 when minimized.
 	// We ensure coordinates are within a reasonable visible range.
 	if settings.WindowX != -1 && settings.WindowY != -1 {
 		if settings.WindowX > -10000 && settings.WindowY > -10000 {
-			fmt.Printf("[App] Restoring window position: (%v, %v)\n", settings.WindowX, settings.WindowY)
+			a.services.Logger.Infof("Restoring window position: (%v, %v)", settings.WindowX, settings.WindowY)
 			runtime.WindowSetPosition(ctx, settings.WindowX, settings.WindowY)
 		} else {
-			fmt.Printf("[App] Invalid window position detected (%v, %v), ignoring restoration.\n", settings.WindowX, settings.WindowY)
+			a.services.Logger.Warnf("Invalid window position detected (%v, %v), ignoring restoration", settings.WindowX, settings.WindowY)
 			// Optional: Reset in settings? Not strictly necessary as next save will overwrite
 		}
 	}
@@ -178,8 +123,8 @@ func (a *App) startup(ctx context.Context) {
 
 // getBaseURL returns the base URL for images and thumbnails
 func (a *App) getBaseURL() string {
-	if a.imgServer != nil && a.imgServer.Addr != "" {
-		return a.imgServer.Addr
+	if a.services != nil && a.services.ImageServer != nil && a.services.ImageServer.Addr != "" {
+		return a.services.ImageServer.Addr
 	}
 	return ""
 }
@@ -192,8 +137,8 @@ func (a *App) domReady(ctx context.Context) {
 
 // shutdown is called when the app is closing
 func (a *App) shutdown(ctx context.Context) {
-	fmt.Println("[App] Flushing settings to disk...")
-	a.settings.Flush()
+	a.services.Logger.Info("Flushing settings to disk...")
+	a.settings().Flush()
 }
 
 // SaveWindowState captures and saves the current window dimensions and position
@@ -218,7 +163,7 @@ func (a *App) SaveWindowState() {
 		"windowMaximized": isMaximized,
 	}
 
-	a.settings.Update(updates)
+	a.settings().Update(updates)
 }
 
 // =============================================================================
@@ -250,11 +195,11 @@ func (a *App) WindowToggleMaximise() {
 // =============================================================================
 
 func (a *App) GetSettings() *persistence.Settings {
-	return a.settings.Get()
+	return a.settings().Get()
 }
 
 func (a *App) SaveSettings(settings *persistence.Settings) error {
-	return a.settings.Save(settings)
+	return a.settings().Save(settings)
 }
 
 // =============================================================================
@@ -262,11 +207,11 @@ func (a *App) SaveSettings(settings *persistence.Settings) error {
 // =============================================================================
 
 func (a *App) GetTabs() *persistence.TabsData {
-	return a.tabsManager.GetTabs()
+	return a.tabsManager().GetTabs()
 }
 
 func (a *App) SaveTabs(data *persistence.TabsData) error {
-	return a.tabsManager.SaveTabs(data)
+	return a.tabsManager().SaveTabs(data)
 }
 
 // =============================================================================
@@ -274,15 +219,15 @@ func (a *App) SaveTabs(data *persistence.TabsData) error {
 // =============================================================================
 
 func (a *App) GetViewerState(folderPath string) *persistence.ViewerState {
-	return a.viewerStatesManager.GetState(folderPath)
+	return a.viewerStatesManager().GetState(folderPath)
 }
 
 func (a *App) SaveViewerState(folderPath string, currentIndex int, verticalWidth int) error {
-	return a.viewerStatesManager.UpdateState(folderPath, currentIndex, verticalWidth)
+	return a.viewerStatesManager().UpdateState(folderPath, currentIndex, verticalWidth)
 }
 
 func (a *App) UpdateSettings(updates map[string]interface{}) error {
-	return a.settings.Update(updates)
+	return a.settings().Update(updates)
 }
 
 // =============================================================================
@@ -320,23 +265,23 @@ func (a *App) ClearHistory() error {
 // =============================================================================
 
 func (a *App) GetImageOrder(folderPath string) []string {
-	return a.orders.GetOrder(folderPath)
+	return a.orders().GetOrder(folderPath)
 }
 
 func (a *App) SaveImageOrder(folderPath string, customOrder []string, originalOrder []string) error {
-	return a.orders.Save(folderPath, customOrder, originalOrder)
+	return a.orders().Save(folderPath, customOrder, originalOrder)
 }
 
 func (a *App) ResetImageOrder(folderPath string) error {
-	return a.orders.Reset(folderPath)
+	return a.orders().Reset(folderPath)
 }
 
 func (a *App) HasCustomOrder(folderPath string) bool {
-	return a.orders.HasCustomOrder(folderPath)
+	return a.orders().HasCustomOrder(folderPath)
 }
 
 func (a *App) GetOriginalOrder(folderPath string) []string {
-	orderData := a.orders.Get(folderPath)
+	orderData := a.orders().Get(folderPath)
 	if orderData != nil && len(orderData.OriginalOrder) > 0 {
 		return orderData.OriginalOrder
 	}
@@ -385,12 +330,12 @@ func (a *App) SelectFolder() (string, error) {
 // This logic was in `app.go` before.
 
 func (a *App) GetImages(path string) ([]persistence.ImageInfo, error) {
-	return a.libraryMod.GetImages(path, a.settings.Get(), a.orders)
+	return a.libraryMod.GetImages(path, a.settings().Get(), a.orders())
 }
 
 // GetImagesShallow returns a list of images in the specified folder (non-recursive, only immediate directory)
 func (a *App) GetImagesShallow(path string) ([]persistence.ImageInfo, error) {
-	return a.libraryMod.GetImagesShallow(path, a.settings.Get(), a.orders)
+	return a.libraryMod.GetImagesShallow(path, a.settings().Get(), a.orders())
 }
 
 // GetFolderInfo delegates to Library module
@@ -483,22 +428,21 @@ func (a *App) ExploreFolder(path string) ([]explorer.ExplorerEntry, error) {
 
 func (a *App) GetThumbnail(imagePath string) (string, error) {
 	// Use fileLoader to register and return URL
-	dirHash := a.fileLoader.RegisterDirectory(filepath.Dir(imagePath))
-	baseURL := a.getBaseURL()
-	return fmt.Sprintf("%s/thumbnails?did=%s&fid=%s", baseURL, dirHash, url.QueryEscape(filepath.Base(imagePath))), nil
+	dirHash := a.fileLoader().RegisterDirectory(filepath.Dir(imagePath))
+	return a.services.URLBuilder.BuildThumbnailURLFromPath(dirHash, imagePath), nil
 }
 
 func (a *App) PreloadThumbnails(imagePaths []string) {
-	go a.thumbGen.PreloadThumbnails(imagePaths)
+	go a.thumbGen().PreloadThumbnails(imagePaths)
 }
 
 func (a *App) ClearThumbnailCache() error {
-	return a.thumbGen.ClearCache()
+	return a.thumbGen().ClearCache()
 }
 
 func (a *App) SetThumbnailsPaused(paused bool) {
-	if a.thumbGen != nil {
-		a.thumbGen.SetPaused(paused)
+	if a.services != nil && a.services.ThumbGen != nil {
+		a.services.ThumbGen.SetPaused(paused)
 	}
 }
 
@@ -603,36 +547,36 @@ func (a *App) AddDownloadedSeries(chapterPath string) (string, error) {
 
 // ClearAllData wipes all application data (cache, history, library, etc.)
 func (a *App) ClearAllData() error {
-	fmt.Println("[App] Clearing all application data...")
+	a.services.Logger.Info("Clearing all application data...")
 
 	// 1. Clear History
 	if err := a.historyMod.ClearHistory(); err != nil {
-		fmt.Printf("[App] Failed to clear history: %v\n", err)
+		a.services.Logger.Errorf("Failed to clear history: %v", err)
 	}
 
 	// 2. Clear Library
 	if err := a.libraryMod.ClearLibrary(); err != nil {
-		fmt.Printf("[App] Failed to clear library: %v\n", err)
+		a.services.Logger.Errorf("Failed to clear library: %v", err)
 	}
 
 	// 3. Clear Series
 	if err := a.seriesMod.ClearSeries(); err != nil {
-		fmt.Printf("[App] Failed to clear series: %v\n", err)
+		a.services.Logger.Errorf("Failed to clear series: %v", err)
 	}
 
 	// 4. Clear Thumbnails
-	if err := a.thumbGen.ClearCache(); err != nil {
-		fmt.Printf("[App] Failed to clear thumbnails: %v\n", err)
+	if err := a.thumbGen().ClearCache(); err != nil {
+		a.services.Logger.Errorf("Failed to clear thumbnails: %v", err)
 	}
 
 	// 5. Clear Downloads (History + Files)
 	if err := a.downloaderMod.ClearDownloadsData(); err != nil {
-		fmt.Printf("[App] Failed to clear downloads: %v\n", err)
+		a.services.Logger.Errorf("Failed to clear downloads: %v", err)
 	}
 
 	// 6. Clear Explorer Folders
 	if err := a.explorerMod.ClearBaseFolders(); err != nil {
-		fmt.Printf("[App] Failed to clear explorer folders: %v\n", err)
+		a.services.Logger.Errorf("Failed to clear explorer folders: %v", err)
 	}
 
 	// 7. Reset specific settings (LastPage, LastFolder)
@@ -640,9 +584,9 @@ func (a *App) ClearAllData() error {
 		"lastPage":   "home",
 		"lastFolder": "",
 	}
-	a.settings.Update(updates)
+	a.settings().Update(updates)
 
-	fmt.Println("[App] All data cleared successfully.")
+	a.services.Logger.Info("All data cleared successfully")
 	return nil
 }
 
