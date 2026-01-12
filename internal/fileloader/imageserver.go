@@ -22,17 +22,55 @@ import (
 	"manga-visor/internal/thumbnails"
 )
 
+// LoggerInterface defines a simple logging interface to avoid import cycles
+type LoggerInterface interface {
+	Debugf(format string, args ...interface{})
+	Infof(format string, args ...interface{})
+	Warnf(format string, args ...interface{})
+	Errorf(format string, args ...interface{})
+}
+
 type ImageServer struct {
 	fileLoader *FileLoader
 	thumbGen   *thumbnails.Generator
-	Addr       string // Standalone server address
+	logger     LoggerInterface // Optional logger, can be nil
+	Addr       string          // Standalone server address
 }
 
 // NewImageServer creates a new image server
-func NewImageServer(fl *FileLoader, tg *thumbnails.Generator) *ImageServer {
+func NewImageServer(fl *FileLoader, tg *thumbnails.Generator, logger LoggerInterface) *ImageServer {
 	return &ImageServer{
 		fileLoader: fl,
 		thumbGen:   tg,
+		logger:     logger,
+	}
+}
+
+// logDebug logs a debug message if logger is available
+func (is *ImageServer) logDebug(format string, args ...interface{}) {
+	if is.logger != nil {
+		is.logger.Debugf(format, args...)
+	}
+}
+
+// logInfo logs an info message if logger is available
+func (is *ImageServer) logInfo(format string, args ...interface{}) {
+	if is.logger != nil {
+		is.logger.Infof(format, args...)
+	}
+}
+
+// logWarn logs a warning message if logger is available
+func (is *ImageServer) logWarn(format string, args ...interface{}) {
+	if is.logger != nil {
+		is.logger.Warnf(format, args...)
+	}
+}
+
+// logError logs an error message if logger is available
+func (is *ImageServer) logError(format string, args ...interface{}) {
+	if is.logger != nil {
+		is.logger.Errorf(format, args...)
 	}
 }
 
@@ -45,7 +83,7 @@ func (is *ImageServer) Start() error {
 
 	port := listener.Addr().(*net.TCPAddr).Port
 	is.Addr = fmt.Sprintf("http://127.0.0.1:%d", port)
-	fmt.Printf("[ImageServer] Standalone server started on %s\n", is.Addr)
+	is.logInfo("[ImageServer] Standalone server started on %s", is.Addr)
 
 	go http.Serve(listener, is)
 	return nil
@@ -78,7 +116,7 @@ func (is *ImageServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Printf("[ImageServer] Incoming request: %s?%s\n", r.URL.Path, r.URL.RawQuery)
+	is.logDebug("[ImageServer] Incoming request: %s?%s", r.URL.Path, r.URL.RawQuery)
 
 	var originalImagePath string
 
@@ -89,7 +127,7 @@ func (is *ImageServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		dirPath, exists := is.fileLoader.GetDirectory(dirHash)
 
 		if !exists {
-			fmt.Printf("[ImageServer] Error: Directory hash not found in registry: %s\n", dirHash)
+			is.logError("[ImageServer] Error: Directory hash not found in registry: %s", dirHash)
 			http.Error(w, "Directory not found", http.StatusBadRequest)
 			return
 		}
@@ -111,7 +149,7 @@ func (is *ImageServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// Security: validate it's a supported image type
 	if !is.fileLoader.IsSupportedImage(originalImagePath) {
-		fmt.Printf("[ImageServer] Error: Unsupported file type requested: %s\n", originalImagePath)
+		is.logWarn("[ImageServer] Error: Unsupported file type requested: %s", originalImagePath)
 		http.Error(w, "Unsupported file type", http.StatusBadRequest)
 		return
 	}
@@ -121,7 +159,7 @@ func (is *ImageServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		// Ensure thumbnail exists and get its cache path
 		_, err := is.thumbGen.GetThumbnailBytes(originalImagePath)
 		if err != nil {
-			fmt.Printf("[ImageServer] Thumbnail generation failed for %s: %v\n", originalImagePath, err)
+			is.logError("[ImageServer] Thumbnail generation failed for %s: %v", originalImagePath, err)
 			http.Error(w, "Failed to generate thumbnail", http.StatusInternalServerError)
 			return
 		}
@@ -134,10 +172,11 @@ func (is *ImageServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	fileInfo, err := os.Stat(finalPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			fmt.Printf("[ImageServer] Error: File not found: %s\n", finalPath)
+			is.logWarn("[ImageServer] Error: File not found: %s", finalPath)
 			http.Error(w, "Image not found", http.StatusNotFound)
 			return
 		}
+		is.logError("[ImageServer] Error accessing file %s: %v", finalPath, err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -161,9 +200,9 @@ func (is *ImageServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Disposition", fmt.Sprintf("inline; filename=\"%s\"", filename))
 
 	// Stream the file directly to the response
-	fmt.Printf("[ImageServer] Serving %s (%d bytes)...\n", filename, fileInfo.Size())
+	is.logDebug("[ImageServer] Serving %s (%d bytes)", filename, fileInfo.Size())
 	_, err = io.Copy(w, file)
 	if err != nil {
-		fmt.Printf("[ImageServer] Copy error for %s: %v\n", filename, err)
+		is.logError("[ImageServer] Copy error for %s: %v", filename, err)
 	}
 }

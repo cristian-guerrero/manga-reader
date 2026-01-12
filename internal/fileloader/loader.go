@@ -42,12 +42,14 @@ type ImageInfo struct {
 type FileLoader struct {
 	dirPool map[string]string // Hash -> DirPath
 	mu      sync.RWMutex
+	logger  LoggerInterface // Optional logger, can be nil
 }
 
 // NewFileLoader creates a new file loader
-func NewFileLoader() *FileLoader {
+func NewFileLoader(logger LoggerInterface) *FileLoader {
 	return &FileLoader{
 		dirPool: make(map[string]string),
+		logger:  logger,
 	}
 }
 
@@ -126,7 +128,9 @@ func (fl *FileLoader) GetImages(folderPath string) ([]ImageInfo, error) {
 		return nil, fmt.Errorf("failed to walk directory: %w", err)
 	}
 
-	fmt.Printf("[FileLoader] GetImages: Found %d total image files in %s\n", len(imageFiles), folderPath)
+	if fl.logger != nil {
+		fl.logger.Infof("[FileLoader] GetImages: Found %d total image files in %s", len(imageFiles), folderPath)
+	}
 
 	// Sort by natural order of full paths to keep sequence across folders
 	sort.Slice(imageFiles, func(i, j int) bool {
@@ -245,7 +249,9 @@ func (fl *FileLoader) GetImagesShallow(folderPath string) ([]ImageInfo, error) {
 		}
 	}
 
-	fmt.Printf("[FileLoader] GetImagesShallow: Found %d image files in %s\n", len(imageFiles), folderPath)
+	if fl.logger != nil {
+		fl.logger.Infof("[FileLoader] GetImagesShallow: Found %d image files in %s", len(imageFiles), folderPath)
+	}
 
 	// Sort by natural order
 	sort.Slice(imageFiles, func(i, j int) bool {

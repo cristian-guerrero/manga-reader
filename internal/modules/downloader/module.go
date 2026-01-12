@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"manga-visor/internal/persistence"
+	"manga-visor/internal/services"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -21,6 +22,7 @@ type Module struct {
 	ctx        context.Context
 	pm         *persistence.DownloaderManager
 	sm         *persistence.SettingsManager
+	logger     services.LoggerInterface
 	algorithms []DownloaderInterface
 	activeJobs sync.Map // map[string]*activeJob
 
@@ -40,10 +42,11 @@ type queuedJob struct {
 	info *SiteInfo
 }
 
-func NewModule(pm *persistence.DownloaderManager, sm *persistence.SettingsManager) *Module {
+func NewModule(pm *persistence.DownloaderManager, sm *persistence.SettingsManager, logger services.LoggerInterface) *Module {
 	return &Module{
 		pm:           pm,
 		sm:           sm,
+		logger:       logger,
 		queues:       make(map[string][]*queuedJob),
 		activeCounts: make(map[string]int),
 		maxConcurrency: map[string]int{
@@ -89,7 +92,7 @@ func (m *Module) ClearDownloadsData() error {
 
 	// Safety check: ensure basePath is not empty or root
 	if basePath == "" || basePath == "/" || basePath == "\\" {
-		return fmt.Errorf("invalid download path: %s", basePath)
+		return services.NewValidationError(fmt.Sprintf("invalid download path: %s", basePath), nil)
 	}
 
 	// Remove all contents
@@ -107,7 +110,9 @@ func (m *Module) RemoveJob(id string) {
 		if aj, ok := activeJobData.(*activeJob); ok && aj.cancel != nil {
 			aj.cancel() // Cancel the download context
 			m.activeJobs.Delete(id)
-			fmt.Printf("[Downloader] Cancelled active download: %s\n", id)
+			if m.logger != nil {
+				m.logger.Infof("[Downloader] Cancelled active download: %s", id)
+			}
 		}
 	}
 
@@ -119,7 +124,9 @@ func (m *Module) RemoveJob(id string) {
 			if qj.job.ID != id {
 				newQueue = append(newQueue, qj)
 			} else {
-				fmt.Printf("[Downloader] Removed job from queue: %s (site: %s)\n", id, siteID)
+				if m.logger != nil {
+					m.logger.Infof("[Downloader] Removed job from queue: %s (site: %s)", id, siteID)
+				}
 			}
 		}
 		m.queues[siteID] = newQueue
@@ -152,7 +159,7 @@ func (m *Module) FetchMangaInfo(url string) (*SiteInfo, error) {
 	}
 
 	if algo == nil {
-		return nil, fmt.Errorf("no algorithm found for this URL")
+		return nil, services.NewBusinessError("no algorithm found for this URL", nil)
 	}
 
 	return algo.GetImages(url)
@@ -168,7 +175,7 @@ func (m *Module) StartDownload(url string, overrideSeries string, overrideChapte
 	}
 
 	if algo == nil {
-		return "", fmt.Errorf("no algorithm found for this URL")
+		return "", services.NewBusinessError("no algorithm found for this URL", nil)
 	}
 
 	// Check for existing jobs
@@ -184,7 +191,9 @@ func (m *Module) StartDownload(url string, overrideSeries string, overrideChapte
 
 	if existingJob != nil {
 		if existingJob.Status == persistence.StatusCompleted {
-			fmt.Printf("[Downloader] URL already completed: %s\n", url)
+			if m.logger != nil {
+				m.logger.Infof("[Downloader] URL already completed: %s", url)
+			}
 			// Notify frontend that this download already exists
 			m.notifyUpdate()
 			return existingJob.ID, nil
@@ -208,11 +217,15 @@ func (m *Module) StartDownload(url string, overrideSeries string, overrideChapte
 			m.queueLock.Unlock()
 
 			if isActive || inQueue {
-				fmt.Printf("[Downloader] URL actually active/queued: %s\n", url)
+				if m.logger != nil {
+					m.logger.Infof("[Downloader] URL actually active/queued: %s", url)
+				}
 				return existingJob.ID, nil
 			}
 			// If not active and not in queue, it's a zombie from previous run. Verify it.
-			fmt.Printf("[Downloader] Found zombie job (Status: %s), resuming: %s\n", existingJob.Status, existingJob.ID)
+			if m.logger != nil {
+				m.logger.Infof("[Downloader] Found zombie job (Status: %s), resuming: %s", existingJob.Status, existingJob.ID)
+			}
 		}
 	}
 
@@ -222,7 +235,7 @@ func (m *Module) StartDownload(url string, overrideSeries string, overrideChapte
 	}
 
 	if info.Type == "series" {
-		return "", fmt.Errorf("this is a series URL, use FetchMangaInfo to select chapters")
+		return "", services.NewBusinessError("this is a series URL, use FetchMangaInfo to select chapters", nil)
 	}
 
 	// Apply overrides if provided
@@ -284,7 +297,9 @@ func (m *Module) StartDownload(url string, overrideSeries string, overrideChapte
 		// Queue the job
 		m.queues[siteID] = append(m.queues[siteID], &queuedJob{job: job, info: info})
 		// Job remains in Pending status in persistence
-		fmt.Printf("[Downloader] Queued job %s for site %s (Active: %d, Limit: %d)\n", jobID, siteID, active, limit)
+		if m.logger != nil {
+			m.logger.Infof("[Downloader] Queued job %s for site %s (Active: %d, Limit: %d)", jobID, siteID, active, limit)
+		}
 	}
 
 	return jobID, nil
@@ -335,7 +350,9 @@ func (m *Module) runDownload(job persistence.DownloadJob, info *SiteInfo) {
 			}
 			destPath := filepath.Join(downloadDir, destFilename)
 			if fInfo, err := os.Stat(destPath); err == nil && fInfo.Size() > 0 {
-				fmt.Printf("[Downloader] Skipping existing file: %s\n", img.Filename)
+				if m.logger != nil {
+					m.logger.Debugf("[Downloader] Skipping existing file: %s", img.Filename)
+				}
 				m.pm.UpdateJob(job.ID, map[string]interface{}{"progress": i + 1})
 				m.notifyUpdate()
 				continue
@@ -353,8 +370,14 @@ func (m *Module) runDownload(job persistence.DownloadJob, info *SiteInfo) {
 				}
 			}
 
-			err := downloadFile(img.URL, destPath, img.Headers)
+			err := downloadFileWithContext(ctx, img.URL, destPath, img.Headers)
 			if err != nil {
+				// Check if it's a context cancellation
+				if err == context.Canceled || err == context.DeadlineExceeded {
+					m.pm.UpdateJob(job.ID, map[string]interface{}{"status": persistence.StatusCancelled})
+					m.notifyUpdate()
+					return
+				}
 				// Retry is handled inside downloadFile, if it still fails, we fail the job
 				m.failJob(job.ID, fmt.Sprintf("Failed to download page %d: %v", i+1, err))
 				return
@@ -398,7 +421,9 @@ func (m *Module) finalizeJob(siteID string) {
 
 		// Start it
 		m.activeCounts[siteID]++
-		fmt.Printf("[Downloader] Starting queued job %s for site %s\n", next.job.ID, siteID)
+		if m.logger != nil {
+			m.logger.Infof("[Downloader] Starting queued job %s for site %s", next.job.ID, siteID)
+		}
 		go m.runDownload(next.job, next.info)
 	}
 }
@@ -496,10 +521,14 @@ func (m *Module) ResumeIncompleteDownloads(autoResume bool) error {
 
 			if !isActive && !inQueue {
 				// No está activa ni en cola, intentar reanudar
-				fmt.Printf("[Downloader] Auto-resuming incomplete download: %s (status: %s)\n", job.ID, job.Status)
+				if m.logger != nil {
+					m.logger.Infof("[Downloader] Auto-resuming incomplete download: %s (status: %s)", job.ID, job.Status)
+				}
 				_, err := m.StartDownload(job.URL, job.SeriesName, job.ChapterName)
 				if err != nil {
-					fmt.Printf("[Downloader] Failed to auto-resume job %s: %v\n", job.ID, err)
+					if m.logger != nil {
+						m.logger.Errorf("[Downloader] Failed to auto-resume job %s: %v", job.ID, err)
+					}
 				}
 			}
 		}
@@ -553,8 +582,12 @@ func sanitizeFilename(name string) string {
 	return res
 }
 
-func downloadFile(url string, path string, headers map[string]string) error {
-	client := &http.Client{}
+// downloadFileWithContext downloads a file with context support for cancellation and timeout
+func downloadFileWithContext(ctx context.Context, url string, path string, headers map[string]string) error {
+	// Create HTTP client with timeout
+	client := &http.Client{
+		Timeout: 60 * time.Second, // Default timeout per request
+	}
 	var lastErr error
 
 	// Retry configuration
@@ -562,13 +595,25 @@ func downloadFile(url string, path string, headers map[string]string) error {
 	baseDelay := 2 * time.Second
 
 	for attempt := 0; attempt <= maxRetries; attempt++ {
+		// Check context cancellation before each attempt
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+
 		if attempt > 0 {
 			// Exponential backoff: 2s, 4s, 8s
 			sleepDuration := baseDelay * time.Duration(1<<uint(attempt-1))
-			time.Sleep(sleepDuration)
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-time.After(sleepDuration):
+				// Delay completed, continue
+			}
 		}
 
-		req, err := http.NewRequest("GET", url, nil)
+		req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 		if err != nil {
 			return err // Fatal error building request
 		}
@@ -584,21 +629,38 @@ func downloadFile(url string, path string, headers map[string]string) error {
 
 		resp, err := client.Do(req)
 		if err != nil {
+			// Check if it's a context error
+			if err == context.Canceled || err == context.DeadlineExceeded {
+				return err
+			}
 			lastErr = err
 			continue // Network error, retry
 		}
 		defer resp.Body.Close()
 
 		if resp.StatusCode == http.StatusOK {
-			// Success
+			// Success - copy with context cancellation support
 			out, err := os.Create(path)
 			if err != nil {
 				return err // File system error
 			}
 			defer out.Close()
 
-			_, err = io.Copy(out, resp.Body)
-			return err
+			// Use io.Copy with context cancellation check
+			done := make(chan error, 1)
+			go func() {
+				_, err := io.Copy(out, resp.Body)
+				done <- err
+			}()
+
+			select {
+			case <-ctx.Done():
+				out.Close()
+				os.Remove(path) // Clean up partial file
+				return ctx.Err()
+			case err := <-done:
+				return err
+			}
 		}
 
 		// Handle non-200 status codes
@@ -606,11 +668,15 @@ func downloadFile(url string, path string, headers map[string]string) error {
 
 		// If it's a 503 or 429, we definitely want to retry.
 		// For others (like 404), maybe not, but simple retry mechanism for now covers transient issues.
-		// If 404, usually retrying won't help, but keeping it simple.
 		if resp.StatusCode != http.StatusServiceUnavailable && resp.StatusCode != http.StatusTooManyRequests {
 			// Optional: break here if we strictly don't want to retry 404s
 		}
 	}
 
-	return fmt.Errorf("failed after %d retries: %v", maxRetries, lastErr)
+	return services.NewNetworkError(fmt.Sprintf("failed after %d retries", maxRetries), lastErr)
+}
+
+// downloadFile is kept for backward compatibility but now uses background context
+func downloadFile(url string, path string, headers map[string]string) error {
+	return downloadFileWithContext(context.Background(), url, path, headers)
 }

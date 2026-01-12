@@ -2,19 +2,15 @@ package explorer
 
 import (
 	"context"
-	"fmt"
 	"manga-visor/internal/fileloader"
 	"manga-visor/internal/persistence"
-	"net/url"
+	"manga-visor/internal/services"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
 	"time"
-
-	// Added for URL escaping
-	// Added for URL escaping
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -25,7 +21,8 @@ type Module struct {
 	ctx             context.Context
 	explorerManager *persistence.ExplorerManager
 	fileLoader      *fileloader.FileLoader
-	imgServer       *fileloader.ImageServer
+	urlBuilder      *services.URLBuilder
+	logger          services.LoggerInterface
 
 	// File watching
 	watcher     *fsnotify.Watcher
@@ -34,26 +31,24 @@ type Module struct {
 }
 
 // NewModule creates a new Explorer module
-func NewModule(fileLoader *fileloader.FileLoader, imgServer *fileloader.ImageServer) *Module {
+func NewModule(fileLoader *fileloader.FileLoader, urlBuilder *services.URLBuilder, logger services.LoggerInterface) *Module {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		// If file watching fails, continue without it
-		fmt.Printf("[Explorer] Warning: Could not create file watcher: %v\n", err)
+		if logger != nil {
+			logger.Warnf("[Explorer] Warning: Could not create file watcher: %v", err)
+		}
 		watcher = nil
 	}
 
 	return &Module{
 		explorerManager: persistence.NewExplorerManager(),
 		fileLoader:      fileLoader,
-		imgServer:       imgServer,
+		urlBuilder:      urlBuilder,
+		logger:          logger,
 		watcher:         watcher,
 		watchedDirs:     make(map[string]bool),
 	}
-}
-
-// SetImageServer sets the image server dependency
-func (m *Module) SetImageServer(imgServer *fileloader.ImageServer) {
-	m.imgServer = imgServer
 }
 
 // SetContext sets the Wails context and starts file watching
@@ -106,7 +101,9 @@ func (m *Module) watchFileChanges() {
 							if m.ctx != nil {
 								runtime.EventsEmit(m.ctx, "explorer_updated")
 								lastEmitTime = now
-								fmt.Printf("[Explorer] File system change detected: %s (op: %v)\n", event.Name, event.Op)
+								if m.logger != nil {
+									m.logger.Debugf("[Explorer] File system change detected: %s (op: %v)", event.Name, event.Op)
+								}
 							}
 						}
 					}
@@ -117,7 +114,9 @@ func (m *Module) watchFileChanges() {
 			if !ok {
 				return
 			}
-			fmt.Printf("[Explorer] File watcher error: %v\n", err)
+			if m.logger != nil {
+				m.logger.Errorf("[Explorer] File watcher error: %v", err)
+			}
 		}
 	}
 }
@@ -165,9 +164,13 @@ func (m *Module) refreshWatcher() {
 			if !m.watchedDirs[folder.Path] {
 				err := m.watcher.Add(folder.Path)
 				if err != nil {
-					fmt.Printf("[Explorer] Warning: Could not watch directory %s: %v\n", folder.Path, err)
+					if m.logger != nil {
+						m.logger.Warnf("[Explorer] Warning: Could not watch directory %s: %v", folder.Path, err)
+					}
 				} else {
-					fmt.Printf("[Explorer] Now watching directory: %s\n", folder.Path)
+					if m.logger != nil {
+						m.logger.Debugf("[Explorer] Now watching directory: %s", folder.Path)
+					}
 				}
 			}
 		}
@@ -178,9 +181,13 @@ func (m *Module) refreshWatcher() {
 		if !newWatchedDirs[dir] {
 			err := m.watcher.Remove(dir)
 			if err != nil {
-				fmt.Printf("[Explorer] Warning: Could not unwatch directory %s: %v\n", dir, err)
+				if m.logger != nil {
+					m.logger.Warnf("[Explorer] Warning: Could not unwatch directory %s: %v", dir, err)
+				}
 			} else {
-				fmt.Printf("[Explorer] Stopped watching directory: %s\n", dir)
+				if m.logger != nil {
+					m.logger.Debugf("[Explorer] Stopped watching directory: %s", dir)
+				}
 			}
 		}
 	}
@@ -195,7 +202,7 @@ func (m *Module) AddBaseFolder(path string) error {
 		return err
 	}
 	if !info.IsDir() {
-		return fmt.Errorf("path is not a directory")
+		return services.NewValidationError("path is not a directory", nil)
 	}
 
 	folder := persistence.BaseFolder{
@@ -215,10 +222,14 @@ func (m *Module) AddBaseFolder(path string) error {
 		if !m.watchedDirs[path] {
 			err := m.watcher.Add(path)
 			if err != nil {
-				fmt.Printf("[Explorer] Warning: Could not watch directory %s: %v\n", path, err)
+				if m.logger != nil {
+					m.logger.Warnf("[Explorer] Warning: Could not watch directory %s: %v", path, err)
+				}
 			} else {
 				m.watchedDirs[path] = true
-				fmt.Printf("[Explorer] Now watching directory: %s\n", path)
+				if m.logger != nil {
+					m.logger.Debugf("[Explorer] Now watching directory: %s", path)
+				}
 			}
 		}
 		m.watchLock.Unlock()
@@ -240,10 +251,14 @@ func (m *Module) RemoveBaseFolder(path string) error {
 		if m.watchedDirs[path] {
 			err := m.watcher.Remove(path)
 			if err != nil {
-				fmt.Printf("[Explorer] Warning: Could not unwatch directory %s: %v\n", path, err)
+				if m.logger != nil {
+					m.logger.Warnf("[Explorer] Warning: Could not unwatch directory %s: %v", path, err)
+				}
 			} else {
 				delete(m.watchedDirs, path)
-				fmt.Printf("[Explorer] Stopped watching directory: %s\n", path)
+				if m.logger != nil {
+					m.logger.Debugf("[Explorer] Stopped watching directory: %s", path)
+				}
 			}
 		}
 		m.watchLock.Unlock()
@@ -319,13 +334,7 @@ func (m *Module) GetBaseFolders() []BaseFolderEntry {
 			// but for consistency with the explorer view, we register the base folder
 			// and use the relative path.
 			dirHash := m.fileLoader.RegisterDirectory(f.Path)
-			if m.imgServer != nil && m.imgServer.Addr != "" {
-				baseURL := m.imgServer.Addr
-				relPath, _ := filepath.Rel(f.Path, imagePath)
-				// Ensure relPath uses forward slashes for URLs
-				relPath = filepath.ToSlash(relPath)
-				entry.ThumbnailURL = fmt.Sprintf("%s/thumbnails?did=%s&fid=%s", baseURL, dirHash, url.QueryEscape(relPath))
-			}
+			entry.ThumbnailURL = m.urlBuilder.BuildThumbnailURLFromPath(dirHash, imagePath)
 		}
 
 		result = append(result, entry)
@@ -388,14 +397,8 @@ func (m *Module) ListDirectory(path string) ([]ExplorerEntry, error) {
 			if hasImages {
 				coverImage = imagePath
 				// Generate thumbnail URL using relative path for the file ID
-				relPath, _ := filepath.Rel(fullPath, imagePath)
-				// Ensure relPath uses forward slashes for URLs
-				relPath = filepath.ToSlash(relPath)
 				dirHash := m.fileLoader.RegisterDirectory(fullPath)
-				if m.imgServer != nil && m.imgServer.Addr != "" {
-					baseURL := m.imgServer.Addr
-					thumbnailURL = fmt.Sprintf("%s/thumbnails?did=%s&fid=%s", baseURL, dirHash, url.QueryEscape(relPath))
-				}
+				thumbnailURL = m.urlBuilder.BuildThumbnailURLFromPath(dirHash, imagePath)
 			}
 		} else {
 			// It's a file - check if it's an image
@@ -408,10 +411,7 @@ func (m *Module) ListDirectory(path string) ([]ExplorerEntry, error) {
 
 			// Generate thumbnail URL for the file itself
 			dirHash := m.fileLoader.RegisterDirectory(path)
-			if m.imgServer != nil && m.imgServer.Addr != "" {
-				baseURL := m.imgServer.Addr
-				thumbnailURL = fmt.Sprintf("%s/thumbnails?did=%s&fid=%s", baseURL, dirHash, url.QueryEscape(entry.Name()))
-			}
+			thumbnailURL = m.urlBuilder.BuildThumbnailURL(dirHash, entry.Name())
 		}
 
 		result = append(result, ExplorerEntry{
