@@ -1,11 +1,13 @@
 package downloader
 
 import (
+	"encoding/base64"
 	"fmt"
 	"net/http"
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"golang.org/x/net/html"
 	"golang.org/x/net/html/atom"
@@ -43,29 +45,73 @@ func (d *Manga18Downloader) GetSiteID() string {
 }
 
 func (d *Manga18Downloader) GetImages(url string) (*SiteInfo, error) {
-	// Normalizar URL (remover doble slash)
-	url = strings.ReplaceAll(url, "//manhwa/", "/manhwa/")
-	url = strings.ReplaceAll(url, "manga18.club//", "manga18.club/")
+	// Normalizar URL (remover doble slash y parámetros de consulta para detección)
+	normalizedURL := strings.ReplaceAll(url, "//manhwa/", "/manhwa/")
+	normalizedURL = strings.ReplaceAll(normalizedURL, "manga18.club//", "manga18.club/")
+	
+	// Remover parámetros de consulta y fragmentos para la detección
+	// pero mantener la URL original para la solicitud HTTP
+	urlForDetection := normalizedURL
+	if idx := strings.Index(urlForDetection, "?"); idx != -1 {
+		urlForDetection = urlForDetection[:idx]
+	}
+	if idx := strings.Index(urlForDetection, "#"); idx != -1 {
+		urlForDetection = urlForDetection[:idx]
+	}
 
 	// Determinar si es serie o capítulo
 	// Serie: https://manga18.club/manhwa/soeun
 	// Capítulo: https://manga18.club/manhwa/soeun/chap-79
-	if strings.Contains(url, "/chap-") {
-		return d.getChapter(url)
+	// Capítulo: https://manga18.club/manhwa/so-eun-raw/42
+	// Capítulo: https://manga18.club/manhwa/so-eun-raw/chapter-80
+	// Patrón: /manhwa/{series}/{chapter} donde chapter puede ser:
+	//   - chap-{number}
+	//   - chapter-{number}
+	//   - {number} (solo número, puede tener parámetros después)
+	// Verificar si hay un tercer segmento después de /manhwa/{series}/
+	reChapter := regexp.MustCompile(`manga18\.club/manhwa/[^/]+/(chap-|chapter-|\d+)`)
+	if reChapter.MatchString(urlForDetection) {
+		return d.getChapter(normalizedURL) // Usar URL normalizada pero con parámetros si los hay
 	}
-	return d.getSeries(url)
+	return d.getSeries(normalizedURL)
 }
 
 func (d *Manga18Downloader) getChapter(url string) (*SiteInfo, error) {
+	// Remover parámetros de consulta y fragmentos para extracción, pero mantenerlos para la solicitud HTTP
+	urlForExtraction := url
+	if idx := strings.Index(urlForExtraction, "?"); idx != -1 {
+		urlForExtraction = urlForExtraction[:idx]
+	}
+	if idx := strings.Index(urlForExtraction, "#"); idx != -1 {
+		urlForExtraction = urlForExtraction[:idx]
+	}
+	
 	// Extraer series y chapter de la URL
 	// URL: https://manga18.club/manhwa/soeun/chap-79
-	reURL := regexp.MustCompile(`manga18\.club/manhwa/([^/]+)/([^/]+)`)
-	match := reURL.FindStringSubmatch(url)
+	// URL: https://manga18.club/manhwa/so-eun-raw/42
+	// URL: https://manga18.club/manhwa/so-eun-raw/chapter-80
+	reURL := regexp.MustCompile(`manga18\.club/manhwa/([^/]+)/([^/?#]+)`)
+	match := reURL.FindStringSubmatch(urlForExtraction)
 	if len(match) < 3 {
-		return nil, fmt.Errorf("invalid manga18.club chapter URL format")
+		return nil, fmt.Errorf("invalid manga18.club chapter URL format: %s", url)
 	}
-	series := match[1]      // "soeun"
-	chapter := match[2]     // "chap-79"
+	series := match[1]      // "soeun" o "so-eun-raw"
+	chapterOriginal := match[2]     // "chap-79", "chapter-80", o "42"
+	chapter := chapterOriginal
+	
+	// Normalizar el formato del capítulo para consistencia
+	// Si es solo un número, agregar prefijo "chap-"
+	isNumericOnly := false
+	isChapterFormat := false
+	if matched, _ := regexp.MatchString(`^\d+$`, chapter); matched {
+		isNumericOnly = true
+		chapter = "chap-" + chapter
+	} else if strings.HasPrefix(chapter, "chapter-") {
+		// Guardar que era formato "chapter-" para probar ambos formatos
+		isChapterFormat = true
+		// Convertir "chapter-80" a "chap-80" para consistencia en el código
+		chapter = strings.Replace(chapter, "chapter-", "chap-", 1)
+	}
 
 	// Obtener HTML de la página
 	client := &http.Client{}
@@ -98,6 +144,23 @@ func (d *Manga18Downloader) getChapter(url string) (*SiteInfo, error) {
 	seriesName := series
 	chapterName := fmt.Sprintf("Chapter %s", strings.TrimPrefix(chapter, "chap-"))
 	totalPages := 0
+	var imageURLs []string // Almacenar URLs reales de imágenes encontradas
+	var detectedFormat struct {
+		baseURL    string
+		pageFormat string // "%02d", "%d", "%03d"
+		extension  string
+	}
+	// Inicializar baseURL antes de usarlo
+	// Si el formato original era solo numérico o "chapter-", probar con el formato original primero
+	// ya que es más probable que sea el correcto en el servidor
+	if isNumericOnly {
+		detectedFormat.baseURL = fmt.Sprintf("https://s1.manga18.club/manga/%s/chapters/%s", series, chapterOriginal)
+	} else if isChapterFormat {
+		// Para formato "chapter-", usar el formato original
+		detectedFormat.baseURL = fmt.Sprintf("https://s1.manga18.club/manga/%s/chapters/%s", series, chapterOriginal)
+	} else {
+		detectedFormat.baseURL = fmt.Sprintf("https://s1.manga18.club/manga/%s/chapters/%s", series, chapter)
+	}
 
 	var extractInfo func(*html.Node)
 	extractInfo = func(n *html.Node) {
@@ -117,6 +180,94 @@ func (d *Manga18Downloader) getChapter(url string) (*SiteInfo, error) {
 				}
 			}
 
+			// Buscar imágenes directamente en el HTML
+			if n.DataAtom == atom.Img {
+				for _, attr := range n.Attr {
+					if attr.Key == "src" || attr.Key == "data-src" || attr.Key == "data-lazy-src" {
+						imgSrc := attr.Val
+						// Convertir URL relativa a absoluta si es necesario
+						if strings.HasPrefix(imgSrc, "//") {
+							imgSrc = "https:" + imgSrc
+						} else if strings.HasPrefix(imgSrc, "/") {
+							imgSrc = "https://s1.manga18.club" + imgSrc
+						} else if !strings.HasPrefix(imgSrc, "http") {
+							// URL relativa, construir completa
+							imgSrc = detectedFormat.baseURL + "/" + imgSrc
+						}
+						
+						// Verificar si es una URL de imagen del capítulo
+						// Ser más flexible: buscar cualquier URL que contenga el patrón de imágenes del capítulo
+						isChapterImage := false
+						if strings.Contains(imgSrc, "/chapters/") {
+							// Verificar si contiene el capítulo (normalizado, original, o cualquier variante) o si está en el dominio correcto
+							// Aceptar tanto "chap-80" como "chapter-80" como variantes numéricas
+							chapterVariants := []string{chapter, chapterOriginal}
+							if isChapterFormat {
+								// También agregar la variante normalizada
+								chapterVariants = append(chapterVariants, chapter)
+							}
+							
+							matchesChapter := false
+							for _, variant := range chapterVariants {
+								if strings.Contains(imgSrc, variant) {
+									matchesChapter = true
+									break
+								}
+							}
+							
+							if matchesChapter || strings.Contains(imgSrc, "s1.manga18.club") || strings.Contains(imgSrc, "manga18.club") {
+								isChapterImage = true
+							}
+						} else if strings.Contains(imgSrc, "s1.manga18.club") || strings.Contains(imgSrc, "manga18.club") {
+							// También aceptar URLs del dominio aunque no tengan /chapters/ explícito
+							// si contienen números de página (probablemente son imágenes del capítulo)
+							reImgPage := regexp.MustCompile(`/(\d+)\.(jpg|jpeg|png|webp)`)
+							if reImgPage.MatchString(imgSrc) {
+								isChapterImage = true
+							}
+						}
+						
+						// Si encontramos una imagen del capítulo, actualizar baseURL con el formato real usado
+						if isChapterImage {
+							// Extraer la baseURL real de la URL encontrada
+							// Esto capturará el formato real usado (chap-80, chapter-80, o 80)
+							reBaseURL := regexp.MustCompile(`(https?://[^/]+/manga/[^/]+/chapters/[^/]+)`)
+							if baseMatch := reBaseURL.FindStringSubmatch(imgSrc); len(baseMatch) > 1 {
+								detectedFormat.baseURL = baseMatch[1]
+								// Si detectamos el formato real, también podemos inferir si usa "chapter-" o "chap-"
+								if strings.Contains(detectedFormat.baseURL, "chapter-") {
+									// El servidor usa formato "chapter-", mantenerlo
+								}
+							}
+						}
+						
+						if isChapterImage {
+							imageURLs = append(imageURLs, imgSrc)
+							
+							// Buscar patrones de URL de imagen que contengan números de página
+							// Ejemplo: .../chapters/chap-42/01.jpg o .../chapters/chap-42/1.jpg
+							reImgPage := regexp.MustCompile(`/(\d+)\.(jpg|jpeg|png|webp)`)
+							if match := reImgPage.FindStringSubmatch(imgSrc); len(match) > 1 {
+								if p, err := strconv.Atoi(match[1]); err == nil && p > totalPages {
+									totalPages = p
+								}
+								
+								// Detectar formato del número de página
+								pageNumStr := match[1]
+								if len(pageNumStr) == 2 && strings.HasPrefix(pageNumStr, "0") {
+									detectedFormat.pageFormat = "%02d"
+								} else if len(pageNumStr) == 3 && strings.HasPrefix(pageNumStr, "00") {
+									detectedFormat.pageFormat = "%03d"
+								} else {
+									detectedFormat.pageFormat = "%d"
+								}
+								detectedFormat.extension = match[2]
+							}
+						}
+					}
+				}
+			}
+
 			// Buscar scripts que puedan contener información de páginas
 			if n.DataAtom == atom.Script {
 				var scriptContent strings.Builder
@@ -127,11 +278,142 @@ func (d *Manga18Downloader) getChapter(url string) (*SiteInfo, error) {
 				}
 				scriptText := scriptContent.String()
 				
+				// Buscar arrays de URLs codificadas en Base64 (slides_p_path)
+				// Formato: var slides_p_path = ["aHR0cHM6Ly...", "aHR0cHM6Ly...", ...];
+				reBase64Array := regexp.MustCompile(`slides_p_path\s*=\s*\[(.*?)\];`)
+				if match := reBase64Array.FindStringSubmatch(scriptText); len(match) > 1 {
+					// Extraer todas las cadenas Base64 del array
+					reBase64Strings := regexp.MustCompile(`"([A-Za-z0-9+/=]+)"`)
+					base64Strings := reBase64Strings.FindAllStringSubmatch(match[1], -1)
+					
+					// Detectar si las páginas empiezan en 01 basándose en la primera URL
+					firstPageStartsAtOne := false
+					maxPageNum := 0
+					
+					for idx, base64Match := range base64Strings {
+						if len(base64Match) > 1 {
+							// Decodificar Base64
+							decoded, err := base64.StdEncoding.DecodeString(base64Match[1])
+							if err == nil {
+								decodedURL := string(decoded)
+								// Agregar a imageURLs si es una URL válida
+								if strings.Contains(decodedURL, "/chapters/") {
+									imageURLs = append(imageURLs, decodedURL)
+									
+									// Extraer información del formato
+									reImgPage := regexp.MustCompile(`/(\d+)\.(jpg|jpeg|png|webp)`)
+									if imgMatch := reImgPage.FindStringSubmatch(decodedURL); len(imgMatch) > 1 {
+										pageNumStr := imgMatch[1]
+										// Convertir número de página (00 -> 0, 000 -> 0, 01 -> 1, 001 -> 1, etc.)
+										if p, err := strconv.Atoi(pageNumStr); err == nil {
+											// En la primera URL, detectar si empieza en 01
+											if idx == 0 {
+												if strings.HasPrefix(pageNumStr, "01") || (len(pageNumStr) == 2 && pageNumStr == "01") {
+													firstPageStartsAtOne = true
+												}
+											}
+											
+											// Guardar el número de página más alto
+											if p > maxPageNum {
+												maxPageNum = p
+											}
+											
+											// Detectar formato del número de página basado en la longitud
+											// Si es 3 dígitos (000, 001, etc.), usar %03d
+											// Si es 2 dígitos (00, 01, etc.), usar %02d
+											// Si es 1 dígito (0, 1, etc.), usar %d
+											if len(pageNumStr) == 3 {
+												detectedFormat.pageFormat = "%03d"
+											} else if len(pageNumStr) == 2 {
+												detectedFormat.pageFormat = "%02d"
+											} else {
+												detectedFormat.pageFormat = "%d"
+											}
+											
+											detectedFormat.extension = imgMatch[2]
+											
+											// Extraer baseURL de la URL decodificada
+											// Ejemplo: https://s1.manga18.club/manga/so-eun-raw/chapters/42/01.jpg
+											// Debe extraer: https://s1.manga18.club/manga/so-eun-raw/chapters/42
+											reBaseURL := regexp.MustCompile(`(https?://[^/]+/manga/[^/]+/chapters/[^/]+)`)
+											if baseMatch := reBaseURL.FindStringSubmatch(decodedURL); len(baseMatch) > 1 {
+												detectedFormat.baseURL = baseMatch[1]
+											} else {
+												// Fallback: intentar extraer manualmente
+												// Buscar el patrón /chapters/ seguido del nombre del capítulo
+												reBaseURLFallback := regexp.MustCompile(`(https?://[^/]+/manga/[^/]+/chapters/[^/]+)`)
+												if baseMatch := reBaseURLFallback.FindStringSubmatch(decodedURL); len(baseMatch) > 1 {
+													detectedFormat.baseURL = baseMatch[1]
+												}
+											}
+										}
+									}
+								}
+							}
+						}
+					}
+					
+					// Calcular totalPages basado en el formato detectado
+					if maxPageNum > 0 {
+						if firstPageStartsAtOne {
+							// Si empieza en 01, totalPages es el número más alto encontrado
+							totalPages = maxPageNum
+							// Marcar que las páginas empiezan en 01
+							detectedFormat.pageFormat = detectedFormat.pageFormat + ":start1"
+						} else {
+							// Si empieza en 00 o 000, totalPages es maxPageNum + 1
+							totalPages = maxPageNum + 1
+						}
+					} else if len(base64Strings) > 0 {
+						// Fallback: usar el número de URLs como totalPages
+						totalPages = len(base64Strings)
+					}
+				}
+				
 				// Buscar patrones como "totalPages: 33" o "pages: 33" o "count: 33"
 				rePages := regexp.MustCompile(`(?i)(?:total|pages?|count)[\s:=]+(\d+)`)
 				if match := rePages.FindStringSubmatch(scriptText); len(match) > 1 {
 					if p, err := strconv.Atoi(match[1]); err == nil && p > 0 {
 						totalPages = p
+					}
+				}
+				
+				// Buscar arrays de imágenes o URLs en scripts
+				// Ejemplo: ["01.jpg", "02.jpg", ...] o ["/chapters/chap-42/01.jpg", ...]
+				// Buscar patrones más completos que puedan contener todas las URLs
+				reImgArray := regexp.MustCompile(`\[(.*?(\d+)\.(jpg|jpeg|png|webp).*?)\]`)
+				matches := reImgArray.FindAllStringSubmatch(scriptText, -1)
+				for _, match := range matches {
+					if len(match) > 1 {
+						// Contar cuántas imágenes hay en el array
+						imgMatches := regexp.MustCompile(`(\d+)\.(jpg|jpeg|png|webp)`).FindAllString(match[1], -1)
+						if len(imgMatches) > totalPages {
+							totalPages = len(imgMatches)
+						}
+						
+						// También buscar el número más alto
+						reNum := regexp.MustCompile(`(\d+)\.(jpg|jpeg|png|webp)`)
+						numMatches := reNum.FindAllStringSubmatch(match[1], -1)
+						for _, numMatch := range numMatches {
+							if len(numMatch) > 1 {
+								if p, err := strconv.Atoi(numMatch[1]); err == nil && p > totalPages {
+									totalPages = p
+								}
+							}
+						}
+					}
+				}
+				
+				// Buscar variables que contengan arrays de imágenes
+				// Ejemplo: var images = ["01.jpg", "02.jpg", ...]
+				reVarArray := regexp.MustCompile(`(?:var|let|const)\s+\w+\s*=\s*\[(.*?(\d+)\.(jpg|jpeg|png|webp).*?)\]`)
+				varMatches := reVarArray.FindAllStringSubmatch(scriptText, -1)
+				for _, match := range varMatches {
+					if len(match) > 1 {
+						imgMatches := regexp.MustCompile(`(\d+)\.(jpg|jpeg|png|webp)`).FindAllString(match[1], -1)
+						if len(imgMatches) > totalPages {
+							totalPages = len(imgMatches)
+						}
 					}
 				}
 			}
@@ -171,26 +453,100 @@ func (d *Manga18Downloader) getChapter(url string) (*SiteInfo, error) {
 		}
 	}
 
-	// Si no se encontró el número de páginas, probar números secuencialmente
+	// Primero intentar obtener totalPages mediante probing (más confiable)
+	// Probar con el formato original si era numérico o "chapter-", sino con el normalizado
+	// findTotalPagesByProbing también actualizará detectedFormat con el formato que funcionó
 	if totalPages == 0 {
-		totalPages = d.findTotalPagesByProbing(series, chapter)
+		if isNumericOnly || isChapterFormat {
+			// Probar primero con formato original
+			totalPages = d.findTotalPagesByProbing(series, chapterOriginal, &detectedFormat)
+			// Si no funciona, probar con formato normalizado
+			if totalPages == 0 {
+				totalPages = d.findTotalPagesByProbing(series, chapter, &detectedFormat)
+			}
+		} else {
+			totalPages = d.findTotalPagesByProbing(series, chapter, &detectedFormat)
+		}
+	}
+
+	// Si aún no tenemos totalPages y encontramos URLs, usar el número más alto encontrado
+	// Pero solo como último recurso, ya que el HTML puede tener solo la primera imagen cargada
+	if totalPages == 0 {
+		if len(imageURLs) > 0 {
+			// Si encontramos URLs, usar el número más alto encontrado
+			reNum := regexp.MustCompile(`/(\d+)\.(jpg|jpeg|png|webp)`)
+			maxPage := 0
+			for _, imgURL := range imageURLs {
+				if match := reNum.FindStringSubmatch(imgURL); len(match) > 1 {
+					if p, err := strconv.Atoi(match[1]); err == nil && p > maxPage {
+						maxPage = p
+					}
+				}
+			}
+			if maxPage > 0 {
+				totalPages = maxPage
+			} else {
+				totalPages = len(imageURLs)
+			}
+		}
 	}
 
 	if totalPages == 0 {
-		return nil, fmt.Errorf("could not determine total pages")
+		return nil, fmt.Errorf("could not determine total pages for chapter %s/%s. The chapter might not exist or the page structure has changed", series, chapter)
 	}
 
 	// Generar URLs de imágenes
 	var images []ImageDownload
-	baseURL := fmt.Sprintf("https://s1.manga18.club/manga/%s/chapters/%s", series, chapter)
+	baseURL := detectedFormat.baseURL
+	if baseURL == "" {
+		// Si no detectamos baseURL, usar el formato original si era numérico o "chapter-", sino el normalizado
+		if isNumericOnly || isChapterFormat {
+			baseURL = fmt.Sprintf("https://s1.manga18.club/manga/%s/chapters/%s", series, chapterOriginal)
+		} else {
+			baseURL = fmt.Sprintf("https://s1.manga18.club/manga/%s/chapters/%s", series, chapter)
+		}
+	}
+	
+	// Usar formato detectado o valores por defecto
+	pageFormat := detectedFormat.pageFormat
+	if pageFormat == "" {
+		pageFormat = "%02d" // Formato por defecto
+	}
+	extension := detectedFormat.extension
+	if extension == "" {
+		extension = "jpg" // Extensión por defecto
+	}
 
+	// Siempre generar todas las URLs usando el formato detectado
+	// El HTML puede tener solo la primera imagen cargada (lazy loading), así que no confiar solo en las URLs encontradas
+	// Si encontramos URLs, usarlas para detectar el formato, pero generar todas las URLs necesarias
 	for i := 1; i <= totalPages; i++ {
-		pageNum := fmt.Sprintf("%02d", i) // Padding de 2 dígitos: 01, 02, ...
-		imgURL := fmt.Sprintf("%s/%s.jpg", baseURL, pageNum)
+		var pageNum string
+		// Detectar si el formato tiene marcador ":start1" (empieza en 01, no 00)
+		startFromOne := strings.HasSuffix(pageFormat, ":start1")
+		actualFormat := pageFormat
+		if startFromOne {
+			actualFormat = strings.TrimSuffix(pageFormat, ":start1")
+		}
+		
+		// Para formatos con padding (%02d, %03d):
+		// - Si empieza en 01 (startFromOne), usar i directamente
+		// - Si empieza en 00 o 000, usar i-1
+		// Para formato sin padding (%d), usar i
+		if actualFormat == "%03d" || actualFormat == "%02d" {
+			if startFromOne {
+				pageNum = fmt.Sprintf(actualFormat, i)
+			} else {
+				pageNum = fmt.Sprintf(actualFormat, i-1)
+			}
+		} else {
+			pageNum = fmt.Sprintf(actualFormat, i)
+		}
+		imgURL := fmt.Sprintf("%s/%s.%s", baseURL, pageNum, extension)
 
 		images = append(images, ImageDownload{
 			URL:      imgURL,
-			Filename: fmt.Sprintf("%03d.jpg", i),
+			Filename: fmt.Sprintf("%03d.%s", i, extension),
 			Index:    i - 1,
 			Headers: map[string]string{
 				"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0",
@@ -204,6 +560,7 @@ func (d *Manga18Downloader) getChapter(url string) (*SiteInfo, error) {
 		ChapterName: chapterName,
 		Images:      images,
 		SiteID:      d.GetSiteID(),
+		Type:        "single", // Explicitly mark as single chapter
 	}, nil
 }
 
@@ -323,9 +680,23 @@ func (d *Manga18Downloader) getSeries(url string) (*SiteInfo, error) {
 				}
 
 				// Verificar si es un enlace a un capítulo
-				reChapterLink := regexp.MustCompile(`/manhwa/[^/]+/chap-([^/]+)`)
-				if match := reChapterLink.FindStringSubmatch(href); len(match) > 1 {
-					chapterID := match[1] // "79" o "chap-79"
+				// Patrones: /manhwa/{series}/chap-{number}, /manhwa/{series}/chapter-{number}, /manhwa/{series}/{number}
+				reChapterLink := regexp.MustCompile(`/manhwa/[^/]+/(chap-|chapter-)?([^/]+)`)
+				if match := reChapterLink.FindStringSubmatch(href); len(match) > 2 {
+					prefix := match[1] // "chap-", "chapter-", o ""
+					chapterID := match[2] // "79" o número
+					
+					// Normalizar el formato del ID del capítulo
+					if prefix == "" {
+						// Es solo un número, agregar prefijo "chap-"
+						chapterID = "chap-" + chapterID
+					} else if prefix == "chapter-" {
+						// Convertir "chapter-" a "chap-" para consistencia
+						chapterID = "chap-" + chapterID
+					} else {
+						// Ya tiene "chap-", mantenerlo
+						chapterID = prefix + chapterID
+					}
 					
 					// Extraer texto del enlace (nombre del capítulo)
 					var linkText strings.Builder
@@ -428,32 +799,86 @@ func (d *Manga18Downloader) extractChapterNumber(id string) int {
 }
 
 // findTotalPagesByProbing prueba números secuencialmente hasta obtener 404
-func (d *Manga18Downloader) findTotalPagesByProbing(series, chapter string) int {
-	client := &http.Client{}
+// También actualiza detectedFormat con el formato que funcionó
+func (d *Manga18Downloader) findTotalPagesByProbing(series, chapter string, detectedFormat *struct {
+	baseURL    string
+	pageFormat string
+	extension  string
+}) int {
+	client := &http.Client{
+		Timeout: 5 * time.Second, // Timeout para evitar esperas largas
+	}
 	baseURL := fmt.Sprintf("https://s1.manga18.club/manga/%s/chapters/%s", series, chapter)
 
-	// Probar hasta 500 páginas (límite razonable)
-	maxPages := 500
-	for i := 1; i <= maxPages; i++ {
-		pageNum := fmt.Sprintf("%02d", i)
-		imgURL := fmt.Sprintf("%s/%s.jpg", baseURL, pageNum)
+	// Probar diferentes formatos de número y extensiones
+	formats := []struct {
+		format   string
+		ext      string
+		maxPages int
+	}{
+		{"%02d", "jpg", 500},   // 01.jpg, 02.jpg, ...
+		{"%d", "jpg", 500},     // 1.jpg, 2.jpg, ...
+		{"%03d", "jpg", 500},   // 001.jpg, 002.jpg, ...
+		{"%02d", "png", 200},   // 01.png, 02.png, ...
+		{"%d", "png", 200},     // 1.png, 2.png, ...
+		{"%02d", "webp", 200},  // 01.webp, 02.webp, ...
+	}
 
-		req, _ := http.NewRequest("HEAD", imgURL, nil)
-		req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0")
-		req.Header.Set("Referer", "https://manga18.club/")
+	for _, fmtConfig := range formats {
+		lastFound := 0
+		for i := 1; i <= fmtConfig.maxPages; i++ {
+			pageNum := fmt.Sprintf(fmtConfig.format, i)
+			imgURL := fmt.Sprintf("%s/%s.%s", baseURL, pageNum, fmtConfig.ext)
 
-		resp, err := client.Do(req)
-		if err != nil {
-			continue
+			req, err := http.NewRequest("HEAD", imgURL, nil)
+			if err != nil {
+				continue
+			}
+			req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0")
+			req.Header.Set("Referer", "https://manga18.club/")
+
+			resp, err := client.Do(req)
+			if err != nil {
+				// Si hay un error de red, continuar con el siguiente formato
+				if lastFound > 0 {
+					// Si ya encontramos algunas páginas, actualizar formato y devolver
+					detectedFormat.baseURL = baseURL
+					detectedFormat.pageFormat = fmtConfig.format
+					detectedFormat.extension = fmtConfig.ext
+					return lastFound
+				}
+				break // Cambiar a siguiente formato
+			}
+
+			statusCode := resp.StatusCode
+			resp.Body.Close()
+
+			if statusCode == 200 || statusCode == 304 {
+				// Imagen existe
+				lastFound = i
+			} else if statusCode == 404 {
+				// La página anterior era la última
+				if lastFound > 0 {
+					// Actualizar formato con el que funcionó
+					detectedFormat.baseURL = baseURL
+					detectedFormat.pageFormat = fmtConfig.format
+					detectedFormat.extension = fmtConfig.ext
+					return lastFound
+				}
+				// Si la primera página da 404, probar siguiente formato
+				break
+			}
 		}
-		resp.Body.Close()
 
-		if resp.StatusCode == 404 {
-			// La página anterior era la última
-			return i - 1
+		// Si encontramos páginas con este formato, actualizar y devolver el resultado
+		if lastFound > 0 {
+			detectedFormat.baseURL = baseURL
+			detectedFormat.pageFormat = fmtConfig.format
+			detectedFormat.extension = fmtConfig.ext
+			return lastFound
 		}
 	}
 
-	return 0 // No se encontró
+	return 0 // No se encontró ningún formato válido
 }
 

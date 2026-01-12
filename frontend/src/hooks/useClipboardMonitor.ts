@@ -44,7 +44,9 @@ export function useClipboardMonitor() {
 
             // Manga18.club Series Detection: Don't auto-start series, just show toast
             const isManga18 = text.includes('manga18.club');
-            const isManga18Series = isManga18 && text.includes('/manhwa/') && !text.includes('/chap-');
+            // A chapter URL has a segment after /manhwa/{series}/ like /chap-, /chapter-, or just a number
+            const isManga18Chapter = isManga18 && /manga18\.club\/manhwa\/[^/]+\/(chap-|chapter-|\d+)/.test(text);
+            const isManga18Series = isManga18 && text.includes('/manhwa/') && !isManga18Chapter;
 
             // For series URLs, don't auto-start - user must go to download page
             if (isHitomiSeries || isManga18Series) {
@@ -56,6 +58,20 @@ export function useClipboardMonitor() {
             try {
                 // Check if it's a series or single chapter
                 const info = await AppAPI.fetchMangaInfo(text);
+
+                // Check if info is null (fetchMangaInfo can return null on error)
+                if (!info) {
+                    // If fetchMangaInfo failed, try to start download anyway
+                    // This handles cases where the URL might still be valid
+                    await AppAPI.startDownload(text, "", "");
+
+                    // Play alert sound
+                    const audio = new Audio(alertSound);
+                    audio.play().catch(e => console.error('Failed to play alert sound:', e));
+
+                    showToast(t('download.startedFromClipboard') || 'Download started from clipboard', 'success');
+                    return;
+                }
 
                 if (info.Type === 'series') {
                     // It's a series - don't auto-start, just show toast
@@ -81,10 +97,13 @@ export function useClipboardMonitor() {
 
                     showToast(t('download.startedFromClipboard') || 'Download started from clipboard', 'success');
                 } catch (downloadErr: any) {
-                    // If both fail, show error
-                    const errorMessage = downloadErr instanceof Error 
-                        ? downloadErr.message 
-                        : (downloadErr?.toString() || t('download.failedClipboard') || 'Failed to process clipboard URL');
+                    // If both fail, show error with more details
+                    let errorMessage = t('download.failedClipboard') || 'Failed to process clipboard URL';
+                    if (downloadErr instanceof Error) {
+                        errorMessage = downloadErr.message;
+                    } else if (downloadErr?.toString) {
+                        errorMessage = downloadErr.toString();
+                    }
                     showToast(errorMessage, 'error');
                 }
             }

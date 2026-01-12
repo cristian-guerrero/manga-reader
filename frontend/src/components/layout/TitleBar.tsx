@@ -100,8 +100,9 @@ export function TitleBar({ title }: TitleBarProps) {
 
     return (
         <header
-            className="flex items-center justify-between h-12 select-none theme-transition wails-drag"
+            className="flex items-center justify-between select-none theme-transition wails-drag"
             style={{
+                height: 'var(--titlebar-height)',
                 backgroundColor: 'var(--color-surface-secondary)',
                 color: 'var(--color-titlebar-text)',
                 borderBottom: '1px solid var(--color-border-primary)'

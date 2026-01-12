@@ -28,6 +28,27 @@ export function useDownloadActions(onHistoryReload: () => void) {
             // First check if it is a series or single chapter
             const info = await DownloadAPI.fetchMangaInfo(url);
 
+            // Check if info is null (fetchMangaInfo can return null on error)
+            if (!info) {
+                // If fetchMangaInfo failed, try to start download anyway
+                // This handles cases where the URL might still be valid
+                const jobId = await DownloadAPI.startDownload(url, "", "");
+                
+                // Reload history to get the latest state
+                await onHistoryReload();
+                
+                // Check if the job already existed and was completed
+                const jobs = await DownloadAPI.getDownloadHistory();
+                const existingJob = jobs.find((j: any) => j.id === jobId);
+                
+                if (existingJob && existingJob.status === 'completed') {
+                    showToast(t('download.alreadyDownloaded') || 'Already downloaded', 'info');
+                } else {
+                    showToast(t('common.success'), 'success');
+                }
+                return;
+            }
+
             if (info.Type === 'series') {
                 setSeriesInfo(info);
                 // Start with empty selection so user must choose

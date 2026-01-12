@@ -217,10 +217,16 @@ export function useExplorerNavigation({
 
     const handleItemClick = useCallback((entry: ExplorerEntry | BaseFolder) => {
         if ('addedAt' in entry) {
+            // When clicking a base folder, reset history
+            setPathHistory([]);
             loadDirectory(entry.path);
         } else {
             const e = entry as ExplorerEntry;
             if (e.isDirectory) {
+                // When navigating into a subfolder, add current path to history
+                if (currentPath) {
+                    setPathHistory(prev => [...prev, currentPath]);
+                }
                 loadDirectory(e.path);
             } else {
                 if (currentPath) {
@@ -243,7 +249,7 @@ export function useExplorerNavigation({
                 }
             }
         }
-    }, [currentPath, pathHistory, entries, sortedEntries, loadDirectory, setExplorerState, navigate]);
+    }, [currentPath, pathHistory, entries, sortedEntries, loadDirectory, setPathHistory, setExplorerState, navigate]);
 
     const handleItemAuxClick = useCallback((e: React.MouseEvent, entry: ExplorerEntry | BaseFolder) => {
         if (e.button === 1) { // Middle click

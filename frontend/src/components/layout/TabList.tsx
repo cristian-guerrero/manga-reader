@@ -34,6 +34,7 @@ interface SortableTabProps {
     setActiveTab: (id: string) => void;
     closeTab: (id: string) => void;
     tabsCount: number;
+    isDark: boolean;
 }
 
 function SortableTab({
@@ -46,6 +47,7 @@ function SortableTab({
     setActiveTab,
     closeTab,
     tabsCount,
+    isDark,
 }: SortableTabProps) {
     const {
         attributes,
@@ -94,8 +96,12 @@ function SortableTab({
             {/* Tab Background */}
             <div
                 className={`absolute inset-0 transition-all duration-200 rounded-[6px] ${activeTabId === tab.id
-                    ? 'bg-white/10 opacity-100 shadow-sm'
-                    : 'bg-transparent group-hover:bg-white/5'
+                    ? isDark 
+                        ? 'bg-white/10 opacity-100 shadow-sm'
+                        : 'bg-black/10 opacity-100 shadow-sm'
+                    : isDark
+                        ? 'bg-transparent group-hover:bg-white/5'
+                        : 'bg-transparent group-hover:bg-black/5'
                     }`}
             />
 
@@ -132,9 +138,9 @@ function SortableTab({
             </div>
 
             {/* Separator */}
-            {activeTabId !== tab.id && !isDragging && (
+            {/* {activeTabId !== tab.id && !isDragging && (
                 <div className="absolute -right-[1.5px] top-[10px] bottom-[10px] w-[1px] bg-white/10 transition-opacity" />
-            )}
+            )} */}
         </div>
     );
 }
@@ -257,6 +263,7 @@ export function TabList() {
                                 setActiveTab={setActiveTab}
                                 closeTab={closeTab}
                                 tabsCount={tabs.length}
+                                isDark={isDark}
                             />
                         ))}
                     </SortableContext>
