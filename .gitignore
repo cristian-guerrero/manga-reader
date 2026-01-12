@@ -4,3 +4,4 @@ frontend/dist
 *.exe.
 .vscode/
 info.txt
+.cursor/plans
