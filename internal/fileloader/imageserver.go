@@ -2,19 +2,23 @@
 package fileloader
 
 import (
+	"bytes"
 	"fmt"
+	"image"
+	"image/jpeg"
 	"io"
 	"net"
 	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	_ "image/gif"
-	_ "image/jpeg"
 	_ "image/png"
 
+	_ "github.com/gen2brain/avif" // AVIF decoding support
 	_ "golang.org/x/image/bmp"
 	_ "golang.org/x/image/tiff"
 	_ "golang.org/x/image/webp"
@@ -91,6 +95,8 @@ func (is *ImageServer) Start() error {
 
 // ServeHTTP handles image requests
 func (is *ImageServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	is.logInfo("[ImageServer] Handler invoked: %s %s?%s", r.Method, r.URL.Path, r.URL.RawQuery)
+
 	// Add CORS headers for standalone operation
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
@@ -116,7 +122,7 @@ func (is *ImageServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	is.logDebug("[ImageServer] Incoming request: %s?%s", r.URL.Path, r.URL.RawQuery)
+	is.logInfo("[ImageServer] Processing request: isThumbnail=%v, isImage=%v", isThumbnail, isImage)
 
 	var originalImagePath string
 
@@ -132,6 +138,7 @@ func (is *ImageServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		originalImagePath = is.fileLoader.ResolvePath(dirPath, fileName)
+		is.logInfo("[ImageServer] Resolved path: %s", originalImagePath)
 	} else {
 		// Old direct path format (fallback)
 		imagePath := r.URL.Query().Get("path")
@@ -188,7 +195,47 @@ func (is *ImageServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 
-	// Set content type and other headers
+	// Check if we need to convert AVIF to JPEG for Linux (WebKitGTK doesn't support AVIF)
+	ext := strings.ToLower(filepath.Ext(finalPath))
+	if ext == ".avif" && runtime.GOOS == "linux" {
+		is.logInfo("[ImageServer] Converting AVIF to JPEG for WebKitGTK compatibility: %s", finalPath)
+
+		// Decode AVIF
+		img, _, err := image.Decode(file)
+		if err != nil {
+			is.logError("[ImageServer] Failed to decode AVIF: %v", err)
+			http.Error(w, "Failed to decode AVIF image", http.StatusInternalServerError)
+			return
+		}
+
+		// Encode as JPEG
+		var buf bytes.Buffer
+		if err := jpeg.Encode(&buf, img, &jpeg.Options{Quality: 95}); err != nil {
+			is.logError("[ImageServer] Failed to encode JPEG: %v", err)
+			http.Error(w, "Failed to convert image", http.StatusInternalServerError)
+			return
+		}
+
+		// Set headers for converted image
+		w.Header().Set("Content-Type", "image/jpeg")
+		w.Header().Set("Content-Length", fmt.Sprintf("%d", buf.Len()))
+		w.Header().Set("Cache-Control", "private, max-age=31536000")
+
+		filename := filepath.Base(finalPath)
+		filenameJpeg := strings.TrimSuffix(filename, ext) + ".jpg"
+		w.Header().Set("Content-Disposition", fmt.Sprintf("inline; filename=\"%s\"", filenameJpeg))
+
+		is.logInfo("[ImageServer] Serving converted AVIF->JPEG %s (%d bytes)", filename, buf.Len())
+		bytesWritten, err := w.Write(buf.Bytes())
+		if err != nil {
+			is.logError("[ImageServer] Write error for %s: %v", filename, err)
+		} else {
+			is.logInfo("[ImageServer] Successfully served converted %s (%d bytes written)", filename, bytesWritten)
+		}
+		return
+	}
+
+	// Regular file serving for non-AVIF or non-Linux
 	mimeType := is.fileLoader.GetMimeType(finalPath)
 	w.Header().Set("Content-Type", mimeType)
 	w.Header().Set("Content-Length", fmt.Sprintf("%d", fileInfo.Size()))
@@ -200,9 +247,11 @@ func (is *ImageServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Disposition", fmt.Sprintf("inline; filename=\"%s\"", filename))
 
 	// Stream the file directly to the response
-	is.logDebug("[ImageServer] Serving %s (%d bytes)", filename, fileInfo.Size())
-	_, err = io.Copy(w, file)
+	is.logInfo("[ImageServer] Serving %s (%d bytes, mime: %s)", filename, fileInfo.Size(), mimeType)
+	bytesWritten, err := io.Copy(w, file)
 	if err != nil {
 		is.logError("[ImageServer] Copy error for %s: %v", filename, err)
+	} else {
+		is.logInfo("[ImageServer] Successfully served %s (%d bytes written)", filename, bytesWritten)
 	}
 }

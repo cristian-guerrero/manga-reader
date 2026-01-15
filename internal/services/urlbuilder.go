@@ -24,23 +24,21 @@ func (ub *URLBuilder) SetBaseURL(baseURL string) {
 }
 
 // BuildImageURL constructs an image URL using directory hash and filename
+// Uses relative URLs so they go through Wails AssetHandler (works on all platforms)
 func (ub *URLBuilder) BuildImageURL(dirHash, filename string) string {
-	if ub.baseURL == "" {
-		return ""
-	}
 	// Ensure filename uses forward slashes for URLs
 	filename = filepath.ToSlash(filename)
-	return fmt.Sprintf("%s/images?did=%s&fid=%s", ub.baseURL, dirHash, url.QueryEscape(filename))
+	// Use relative URL - Wails AssetHandler will handle it via ImageServer
+	return fmt.Sprintf("/images?did=%s&fid=%s", dirHash, url.QueryEscape(filename))
 }
 
 // BuildThumbnailURL constructs a thumbnail URL using directory hash and filename
+// Uses relative URLs so they go through Wails AssetHandler (works on all platforms)
 func (ub *URLBuilder) BuildThumbnailURL(dirHash, filename string) string {
-	if ub.baseURL == "" {
-		return ""
-	}
 	// Ensure filename uses forward slashes for URLs
 	filename = filepath.ToSlash(filename)
-	return fmt.Sprintf("%s/thumbnails?did=%s&fid=%s", ub.baseURL, dirHash, url.QueryEscape(filename))
+	// Use relative URL - Wails AssetHandler will handle it via ImageServer
+	return fmt.Sprintf("/thumbnails?did=%s&fid=%s", dirHash, url.QueryEscape(filename))
 }
 
 // BuildThumbnailURLFromPath constructs a thumbnail URL from a full path
