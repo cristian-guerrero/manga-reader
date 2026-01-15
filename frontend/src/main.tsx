@@ -34,6 +34,15 @@ if (typeof window !== 'undefined') {
             e.preventDefault();
         }
     });
+
+    // Prevent default drag and drop behavior (to avoid navigation on Linux/macOS)
+    document.addEventListener('dragover', function (e) {
+        e.preventDefault();
+    }, false);
+
+    document.addEventListener('drop', function (e) {
+        e.preventDefault();
+    }, false);
 }
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
