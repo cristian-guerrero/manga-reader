@@ -8,12 +8,40 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
-#include <dirent.h>
 #include <strings.h>
 
 #ifdef _WIN32
+    #define WIN32_LEAN_AND_MEAN
+    #define NOGDI
+    #define NOUSER
+    #include <windows.h>
+    #undef near
+    #undef far
     #define PATH_SEPARATOR '\\'
+    
+    // Convert UTF-8 to UTF-16 (wide string)
+    wchar_t* Utf8ToUtf16(const char* utf8) {
+        if (!utf8) return NULL;
+        int size = MultiByteToWideChar(CP_UTF8, 0, utf8, -1, NULL, 0);
+        wchar_t* wide = (wchar_t*)malloc(size * sizeof(wchar_t));
+        if (wide) {
+            MultiByteToWideChar(CP_UTF8, 0, utf8, -1, wide, size);
+        }
+        return wide;
+    }
+    
+    // Convert UTF-16 to UTF-8
+    char* Utf16ToUtf8(const wchar_t* wide) {
+        if (!wide) return NULL;
+        int size = WideCharToMultiByte(CP_UTF8, 0, wide, -1, NULL, 0, NULL, NULL);
+        char* utf8 = (char*)malloc(size);
+        if (utf8) {
+            WideCharToMultiByte(CP_UTF8, 0, wide, -1, utf8, size, NULL, NULL);
+        }
+        return utf8;
+    }
 #else
+    #include <dirent.h>
     #define PATH_SEPARATOR '/'
 #endif
 
@@ -37,6 +65,13 @@ typedef struct {
     int displayHeight; // Scaled height for display
 } ImageEntry;
 
+// Folder entry for navigation
+#define MAX_FOLDERS 100
+typedef struct {
+    char path[512];
+    char name[256];  // Display name (folder basename)
+} FolderEntry;
+
 // Application state
 typedef struct {
     ImageEntry images[MAX_IMAGES];
@@ -52,6 +87,10 @@ typedef struct {
     // Auto-scroll
     bool isAutoScrolling;
     float autoScrollSpeed;
+    // Folder navigation
+    FolderEntry folders[MAX_FOLDERS];
+    int folderCount;
+    int currentFolderIndex;
 } AppState;
 
 // Supported image extensions
@@ -60,6 +99,9 @@ const char* supportedExtensions[] = {
     ".qoi", ".psd", ".hdr", ".avif", ".webp", ".heic",
     ".heif", ".jxl", ".tiff", ".tif", NULL
 };
+
+// Forward declarations
+void NavigateFolder(AppState* state, int direction);
 
 // Check if file has supported extension
 bool IsSupportedImage(const char* filename) {
@@ -122,8 +164,146 @@ void ClearImages(AppState* state) {
     }
     state->imageCount = 0;
     state->scrollY = 0;
+    state->targetScrollY = 0;
     state->maxScrollY = 0;
     state->currentFolder[0] = '\0';
+    state->isAutoScrolling = false;
+}
+
+// Check if a folder contains any supported images
+bool FolderHasImages(const char* folderPath) {
+#ifdef _WIN32
+    char searchPath[600];
+    snprintf(searchPath, sizeof(searchPath), "%s\\*", folderPath);
+    
+    wchar_t* wSearchPath = Utf8ToUtf16(searchPath);
+    if (!wSearchPath) return false;
+    
+    WIN32_FIND_DATAW findData;
+    HANDLE hFind = FindFirstFileW(wSearchPath, &findData);
+    free(wSearchPath);
+    
+    if (hFind == INVALID_HANDLE_VALUE) return false;
+    
+    bool hasImages = false;
+    do {
+        if (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) continue;
+        
+        char* utf8Name = Utf16ToUtf8(findData.cFileName);
+        if (utf8Name) {
+            if (IsSupportedImage(utf8Name)) {
+                hasImages = true;
+            }
+            free(utf8Name);
+            if (hasImages) break;
+        }
+    } while (FindNextFileW(hFind, &findData));
+    
+    FindClose(hFind);
+    return hasImages;
+#else
+    DIR* dir = opendir(folderPath);
+    if (!dir) return false;
+    
+    struct dirent* entry;
+    while ((entry = readdir(dir)) != NULL) {
+        if (entry->d_name[0] == '.') continue;
+        if (IsSupportedImage(entry->d_name)) {
+            closedir(dir);
+            return true;
+        }
+    }
+    closedir(dir);
+    return false;
+#endif
+}
+
+// Get folder basename
+void GetFolderName(const char* path, char* name, int maxLen) {
+    const char* lastSep = strrchr(path, PATH_SEPARATOR);
+    if (lastSep) {
+        strncpy(name, lastSep + 1, maxLen - 1);
+    } else {
+        strncpy(name, path, maxLen - 1);
+    }
+    name[maxLen - 1] = '\0';
+}
+
+// Scan root folder and subfolders for folders with images
+void ScanFoldersWithImages(AppState* state, const char* rootPath) {
+    state->folderCount = 0;
+    state->currentFolderIndex = 0;
+    
+    // Check if root folder has images
+    if (FolderHasImages(rootPath)) {
+        strncpy(state->folders[state->folderCount].path, rootPath, sizeof(state->folders[0].path) - 1);
+        GetFolderName(rootPath, state->folders[state->folderCount].name, sizeof(state->folders[0].name));
+        state->folderCount++;
+    }
+    
+#ifdef _WIN32
+    // Scan subfolders (first level only) using Windows Unicode API
+    char searchPath[600];
+    snprintf(searchPath, sizeof(searchPath), "%s\\*", rootPath);
+    
+    wchar_t* wSearchPath = Utf8ToUtf16(searchPath);
+    if (!wSearchPath) return;
+    
+    WIN32_FIND_DATAW findData;
+    HANDLE hFind = FindFirstFileW(wSearchPath, &findData);
+    free(wSearchPath);
+    
+    if (hFind == INVALID_HANDLE_VALUE) return;
+    
+    do {
+        if (!(findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) continue;
+        if (findData.cFileName[0] == L'.') continue;
+        
+        char* utf8Name = Utf16ToUtf8(findData.cFileName);
+        if (utf8Name && state->folderCount < MAX_FOLDERS) {
+            char subPath[600];
+            snprintf(subPath, sizeof(subPath), "%s\\%s", rootPath, utf8Name);
+            
+            // Check if subfolder has images
+            if (FolderHasImages(subPath)) {
+                strncpy(state->folders[state->folderCount].path, subPath, sizeof(state->folders[0].path) - 1);
+                strncpy(state->folders[state->folderCount].name, utf8Name, sizeof(state->folders[0].name) - 1);
+                state->folderCount++;
+            }
+            free(utf8Name);
+        }
+    } while (FindNextFileW(hFind, &findData));
+    
+    FindClose(hFind);
+#else
+    // Scan subfolders (first level only)
+    DIR* dir = opendir(rootPath);
+    if (!dir) return;
+    
+    struct dirent* entry;
+    while ((entry = readdir(dir)) != NULL && state->folderCount < MAX_FOLDERS) {
+        if (entry->d_name[0] == '.') continue;
+        
+        char subPath[512];
+        snprintf(subPath, sizeof(subPath), "%s%c%s", rootPath, PATH_SEPARATOR, entry->d_name);
+        
+        // Check if it's a directory
+        DIR* subDir = opendir(subPath);
+        if (subDir) {
+            closedir(subDir);
+            
+            // Check if subfolder has images
+            if (FolderHasImages(subPath)) {
+                strncpy(state->folders[state->folderCount].path, subPath, sizeof(state->folders[0].path) - 1);
+                strncpy(state->folders[state->folderCount].name, entry->d_name, sizeof(state->folders[0].name) - 1);
+                state->folderCount++;
+            }
+        }
+    }
+    closedir(dir);
+#endif
+    
+    printf("Found %d folders with images\n", state->folderCount);
 }
 
 // Load images from a folder
@@ -133,6 +313,43 @@ void LoadFolderImages(AppState* state, const char* folderPath) {
     
     printf("Loading images from: %s\n", folderPath);
     
+#ifdef _WIN32
+    char searchPath[600];
+    snprintf(searchPath, sizeof(searchPath), "%s\\*", folderPath);
+    
+    wchar_t* wSearchPath = Utf8ToUtf16(searchPath);
+    if (!wSearchPath) {
+        printf("Error: Could not convert path to UTF-16\n");
+        return;
+    }
+    
+    WIN32_FIND_DATAW findData;
+    HANDLE hFind = FindFirstFileW(wSearchPath, &findData);
+    free(wSearchPath);
+    
+    if (hFind == INVALID_HANDLE_VALUE) {
+        printf("Error: Could not open directory: %s\n", folderPath);
+        return;
+    }
+    
+    do {
+        if (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) continue;
+        
+        char* utf8Name = Utf16ToUtf8(findData.cFileName);
+        if (utf8Name && state->imageCount < MAX_IMAGES) {
+            if (IsSupportedImage(utf8Name)) {
+                snprintf(state->images[state->imageCount].path, 
+                         sizeof(state->images[state->imageCount].path),
+                         "%s\\%s", folderPath, utf8Name);
+                state->images[state->imageCount].loaded = false;
+                state->imageCount++;
+            }
+            free(utf8Name);
+        }
+    } while (FindNextFileW(hFind, &findData));
+    
+    FindClose(hFind);
+#else
     DIR* dir = opendir(folderPath);
     if (!dir) {
         printf("Error: Could not open directory: %s\n", folderPath);
@@ -152,6 +369,7 @@ void LoadFolderImages(AppState* state, const char* folderPath) {
         }
     }
     closedir(dir);
+#endif
     
     // Sort images by filename
     qsort(state->images, state->imageCount, sizeof(ImageEntry), CompareFilenames);
@@ -171,9 +389,18 @@ void LoadFolderImages(AppState* state, const char* folderPath) {
         const char* loadingText = "Cargando imágenes...";
         DrawText(loadingText, 
                  WINDOW_WIDTH/2 - MeasureText(loadingText, 24)/2, 
-                 WINDOW_HEIGHT/2 - 60, 
+                 WINDOW_HEIGHT/2 - 80, 
                  24, 
                  (Color){ 150, 150, 160, 255 });
+        
+        // Folder name
+        char folderName[100];
+        GetFolderName(folderPath, folderName, sizeof(folderName));
+        DrawText(folderName, 
+                 WINDOW_WIDTH/2 - MeasureText(folderName, 18)/2, 
+                 WINDOW_HEIGHT/2 - 50, 
+                 18, 
+                 (Color){ 100, 180, 220, 255 });
         
         // Progress bar background
         int barWidth = 400;
@@ -309,6 +536,51 @@ void DrawViewer(AppState* state) {
         snprintf(info, sizeof(info), "Página %d / %d", currentPage, state->imageCount);
         DrawText(info, 10, WINDOW_HEIGHT - 25, 16, (Color){ 140, 140, 150, 255 });
         
+        // Folder navigation panel (top left)
+        if (state->folderCount > 1) {
+            // Panel background (two rows)
+            DrawRectangle(5, 5, 350, 55, (Color){ 30, 30, 35, 220 });
+            
+            // Folder name (top row - can be longer)
+            char folderName[100];
+            strncpy(folderName, state->folders[state->currentFolderIndex].name, sizeof(folderName) - 1);
+            folderName[sizeof(folderName) - 1] = '\0';
+            // Truncate if too long
+            int maxChars = 40;
+            if (strlen(folderName) > maxChars) {
+                folderName[maxChars - 3] = '.';
+                folderName[maxChars - 2] = '.';
+                folderName[maxChars - 1] = '.';
+                folderName[maxChars] = '\0';
+            }
+            DrawText(folderName, 15, 10, 16, (Color){ 180, 180, 200, 255 });
+            
+            // Navigation row (bottom)
+            int navY = 35;
+            
+            // Previous button
+            Rectangle prevBtn = { 10, navY, 30, 20 };
+            Color prevColor = (state->currentFolderIndex > 0) 
+                ? (Color){ 80, 80, 100, 255 } 
+                : (Color){ 50, 50, 55, 255 };
+            DrawRectangleRec(prevBtn, prevColor);
+            DrawText("<", 20, navY + 2, 16, WHITE);
+            
+            // Folder counter (center)
+            char counterText[50];
+            snprintf(counterText, sizeof(counterText), "Carpeta %d / %d", 
+                     state->currentFolderIndex + 1, state->folderCount);
+            DrawText(counterText, 50, navY + 3, 14, (Color){ 140, 140, 150, 255 });
+            
+            // Next button
+            Rectangle nextBtn = { 200, navY, 30, 20 };
+            Color nextColor = (state->currentFolderIndex < state->folderCount - 1) 
+                ? (Color){ 80, 80, 100, 255 } 
+                : (Color){ 50, 50, 55, 255 };
+            DrawRectangleRec(nextBtn, nextColor);
+            DrawText(">", 210, navY + 2, 16, WHITE);
+        }
+        
         // Auto-scroll control panel (bottom right)
         int panelX = WINDOW_WIDTH - 250;
         int panelY = WINDOW_HEIGHT - 45;
@@ -392,18 +664,37 @@ void HandleInput(AppState* state) {
     Rectangle btnRect = { panelX, panelY, 30, 30 };
     Rectangle sliderTrack = { panelX + 95, panelY + 5, 100, 20 };
     
+    // Folder navigation button bounds
+    int navY = 35;
+    Rectangle prevBtn = { 10, navY, 30, 20 };
+    Rectangle nextBtn = { 200, navY, 30, 20 };
+    
     // Check if mouse is over control panel
     bool isOverButton = CheckCollisionPointRec(mousePos, btnRect);
     bool isOverSlider = CheckCollisionPointRec(mousePos, sliderTrack);
+    bool isOverPrevBtn = (state->folderCount > 1) && CheckCollisionPointRec(mousePos, prevBtn);
+    bool isOverNextBtn = (state->folderCount > 1) && CheckCollisionPointRec(mousePos, nextBtn);
     
     // Space key toggles auto-scroll
     if (IsKeyPressed(KEY_SPACE) && state->imageCount > 0) {
         state->isAutoScrolling = !state->isAutoScrolling;
     }
     
+    // Left/Right arrow keys for folder navigation
+    if (IsKeyPressed(KEY_LEFT) && state->folderCount > 1) {
+        NavigateFolder(state, -1);
+    }
+    if (IsKeyPressed(KEY_RIGHT) && state->folderCount > 1) {
+        NavigateFolder(state, 1);
+    }
+    
     // Mouse button pressed
     if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-        if (isOverButton && state->imageCount > 0) {
+        if (isOverPrevBtn) {
+            NavigateFolder(state, -1);
+        } else if (isOverNextBtn) {
+            NavigateFolder(state, 1);
+        } else if (isOverButton && state->imageCount > 0) {
             state->isAutoScrolling = !state->isAutoScrolling;
         } else if (isOverSlider) {
             state->isDraggingSlider = true;
@@ -497,11 +788,30 @@ void HandleDragDrop(AppState* state) {
             // Check if first dropped item is a directory
             const char* path = droppedFiles.paths[0];
             
+#ifdef _WIN32
+            // Check if path is a directory using Windows API
+            wchar_t* wPath = Utf8ToUtf16(path);
+            bool isDirectory = false;
+            if (wPath) {
+                DWORD attrs = GetFileAttributesW(wPath);
+                isDirectory = (attrs != INVALID_FILE_ATTRIBUTES) && (attrs & FILE_ATTRIBUTE_DIRECTORY);
+                free(wPath);
+            }
+            
+            if (isDirectory) {
+#else
             // Try to open as directory
             DIR* dir = opendir(path);
             if (dir) {
                 closedir(dir);
-                LoadFolderImages(state, path);
+#endif
+                // Scan for folders with images
+                ScanFoldersWithImages(state, path);
+                // Load first folder if any found
+                if (state->folderCount > 0) {
+                    LoadFolderImages(state, state->folders[0].path);
+                    state->currentFolderIndex = 0;
+                }
             } else {
                 printf("Not a directory: %s\n", path);
                 // If it's a file, try opening its parent directory
@@ -510,12 +820,30 @@ void HandleDragDrop(AppState* state) {
                 char* lastSep = strrchr(parentPath, PATH_SEPARATOR);
                 if (lastSep) {
                     *lastSep = '\0';
-                    LoadFolderImages(state, parentPath);
+                    ScanFoldersWithImages(state, parentPath);
+                    if (state->folderCount > 0) {
+                        LoadFolderImages(state, state->folders[0].path);
+                        state->currentFolderIndex = 0;
+                    }
                 }
             }
         }
         
         UnloadDroppedFiles(droppedFiles);
+    }
+}
+
+// Navigate to next/previous folder
+void NavigateFolder(AppState* state, int direction) {
+    if (state->folderCount <= 1) return;
+    
+    int newIndex = state->currentFolderIndex + direction;
+    if (newIndex < 0) newIndex = 0;
+    if (newIndex >= state->folderCount) newIndex = state->folderCount - 1;
+    
+    if (newIndex != state->currentFolderIndex) {
+        state->currentFolderIndex = newIndex;
+        LoadFolderImages(state, state->folders[newIndex].path);
     }
 }
 
