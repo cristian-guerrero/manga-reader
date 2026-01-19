@@ -1,10 +1,30 @@
-import { defineConfig } from 'vite'
+import { defineConfig, Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
 
+// Plugin to return 404 for image/thumbnail API routes
+// This allows Wails to forward these requests to the Go AssetHandler
+function wailsImageHandlerPlugin(): Plugin {
+  return {
+    name: 'wails-image-handler',
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        // Return 404 for /images and /thumbnails routes
+        // Wails will then forward these to the Go AssetHandler
+        if (req.url?.startsWith('/images') || req.url?.startsWith('/thumbnails')) {
+          res.statusCode = 404;
+          res.end();
+          return;
+        }
+        next();
+      });
+    }
+  };
+}
+
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
-  plugins: [react()],
+  plugins: [react(), wailsImageHandlerPlugin()],
   esbuild: mode === 'production' ? {
     drop: ['console', 'debugger'],
   } : {},

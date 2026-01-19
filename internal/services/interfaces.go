@@ -10,6 +10,7 @@ import (
 type ImageServerInterface interface {
 	Start() error
 	Addr() string
+	PreloadConverted(imagePaths []string)
 }
 
 // FileLoaderInterface defines the interface for file loading operations
