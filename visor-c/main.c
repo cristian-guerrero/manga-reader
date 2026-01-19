@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 #include <dirent.h>
 #include <strings.h>
 
@@ -18,9 +19,14 @@
 
 // Configuration
 #define MAX_IMAGES 1000
-#define SCROLL_SPEED 150.0f
+#define SCROLL_SPEED 300.0f
+// #define SCROLL_SMOOTHING 12.0f  // Higher = faster interpolation
+#define SCROLL_SMOOTHING 5.0f  // Higher = faster interpolation
 #define WINDOW_WIDTH 1200
 #define WINDOW_HEIGHT 800
+#define AUTO_SCROLL_MIN 10.0f
+#define AUTO_SCROLL_MAX 500.0f
+#define AUTO_SCROLL_DEFAULT 100.0f
 
 // Image entry structure
 typedef struct {
@@ -36,11 +42,16 @@ typedef struct {
     ImageEntry images[MAX_IMAGES];
     int imageCount;
     float scrollY;
+    float targetScrollY;  // Target for smooth scrolling
     float maxScrollY;
     bool isDragging;
     bool isDraggingScrollbar;
+    bool isDraggingSlider;
     Vector2 lastMousePos;
     char currentFolder[512];
+    // Auto-scroll
+    bool isAutoScrolling;
+    float autoScrollSpeed;
 } AppState;
 
 // Supported image extensions
@@ -295,9 +306,49 @@ void DrawViewer(AppState* state) {
         }
         
         char info[150];
-        snprintf(info, sizeof(info), "Página %d / %d  |  %d imágenes", 
-                 currentPage, state->imageCount, state->imageCount);
+        snprintf(info, sizeof(info), "Página %d / %d", currentPage, state->imageCount);
         DrawText(info, 10, WINDOW_HEIGHT - 25, 16, (Color){ 140, 140, 150, 255 });
+        
+        // Auto-scroll control panel (bottom right)
+        int panelX = WINDOW_WIDTH - 250;
+        int panelY = WINDOW_HEIGHT - 45;
+        
+        // Panel background
+        DrawRectangle(panelX - 10, panelY - 5, 240, 40, (Color){ 40, 40, 45, 200 });
+        
+        // Play/Pause button
+        Rectangle btnRect = { panelX, panelY, 30, 30 };
+        Color btnColor = state->isAutoScrolling ? (Color){ 80, 160, 80, 255 } : (Color){ 80, 80, 90, 255 };
+        DrawRectangleRec(btnRect, btnColor);
+        
+        if (state->isAutoScrolling) {
+            // Draw pause icon (two bars)
+            DrawRectangle(panelX + 8, panelY + 6, 4, 18, WHITE);
+            DrawRectangle(panelX + 18, panelY + 6, 4, 18, WHITE);
+        } else {
+            // Draw play icon (triangle)
+            Vector2 v1 = { panelX + 10, panelY + 6 };
+            Vector2 v2 = { panelX + 10, panelY + 24 };
+            Vector2 v3 = { panelX + 24, panelY + 15 };
+            DrawTriangle(v1, v2, v3, WHITE);
+        }
+        
+        // Speed label
+        DrawText("Speed:", panelX + 40, panelY + 8, 14, (Color){ 120, 120, 130, 255 });
+        
+        // Speed slider
+        Rectangle sliderTrack = { panelX + 95, panelY + 10, 100, 10 };
+        DrawRectangleRec(sliderTrack, (Color){ 60, 60, 65, 255 });
+        
+        float sliderProgress = (state->autoScrollSpeed - AUTO_SCROLL_MIN) / (AUTO_SCROLL_MAX - AUTO_SCROLL_MIN);
+        int sliderThumbX = sliderTrack.x + (int)(sliderProgress * sliderTrack.width) - 5;
+        Rectangle sliderThumb = { sliderThumbX, panelY + 5, 10, 20 };
+        DrawRectangleRec(sliderThumb, (Color){ 140, 140, 160, 255 });
+        
+        // Speed value
+        char speedText[20];
+        snprintf(speedText, sizeof(speedText), "%.0f", state->autoScrollSpeed);
+        DrawText(speedText, panelX + 200, panelY + 8, 14, (Color){ 140, 140, 150, 255 });
     }
     
     EndDrawing();
@@ -305,23 +356,61 @@ void DrawViewer(AppState* state) {
 
 // Handle input
 void HandleInput(AppState* state) {
-    // Mouse wheel scrolling
+    float deltaTime = GetFrameTime();
+    
+    // Auto-scroll
+    if (state->isAutoScrolling && state->maxScrollY > 0) {
+        state->targetScrollY += state->autoScrollSpeed * deltaTime;
+        if (state->targetScrollY > state->maxScrollY) {
+            state->targetScrollY = state->maxScrollY;
+            state->isAutoScrolling = false;  // Stop at end
+        }
+    }
+    
+    // Smooth scroll interpolation (lerp toward target)
+    float diff = state->targetScrollY - state->scrollY;
+    if (fabs(diff) > 0.5f) {
+        state->scrollY += diff * SCROLL_SMOOTHING * deltaTime;
+    } else {
+        state->scrollY = state->targetScrollY;
+    }
+    
+    // Mouse wheel scrolling (modifies target)
     float wheel = GetMouseWheelMove();
     if (wheel != 0) {
-        state->scrollY -= wheel * SCROLL_SPEED;
-        if (state->scrollY < 0) state->scrollY = 0;
-        if (state->scrollY > state->maxScrollY) state->scrollY = state->maxScrollY;
+        state->targetScrollY -= wheel * SCROLL_SPEED;
+        if (state->targetScrollY < 0) state->targetScrollY = 0;
+        if (state->targetScrollY > state->maxScrollY) state->targetScrollY = state->maxScrollY;
     }
     
     Vector2 mousePos = GetMousePosition();
     bool isOverScrollbar = (mousePos.x >= WINDOW_WIDTH - 14) && (state->maxScrollY > 0);
     
+    // Auto-scroll control panel bounds
+    int panelX = WINDOW_WIDTH - 250;
+    int panelY = WINDOW_HEIGHT - 45;
+    Rectangle btnRect = { panelX, panelY, 30, 30 };
+    Rectangle sliderTrack = { panelX + 95, panelY + 5, 100, 20 };
+    
+    // Check if mouse is over control panel
+    bool isOverButton = CheckCollisionPointRec(mousePos, btnRect);
+    bool isOverSlider = CheckCollisionPointRec(mousePos, sliderTrack);
+    
+    // Space key toggles auto-scroll
+    if (IsKeyPressed(KEY_SPACE) && state->imageCount > 0) {
+        state->isAutoScrolling = !state->isAutoScrolling;
+    }
+    
     // Mouse button pressed
     if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-        if (isOverScrollbar) {
+        if (isOverButton && state->imageCount > 0) {
+            state->isAutoScrolling = !state->isAutoScrolling;
+        } else if (isOverSlider) {
+            state->isDraggingSlider = true;
+        } else if (isOverScrollbar) {
             state->isDraggingScrollbar = true;
             state->isDragging = false;
-        } else {
+        } else if (!isOverButton && !isOverSlider) {
             state->isDragging = true;
             state->isDraggingScrollbar = false;
         }
@@ -332,9 +421,19 @@ void HandleInput(AppState* state) {
     if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
         state->isDragging = false;
         state->isDraggingScrollbar = false;
+        state->isDraggingSlider = false;
     }
     
-    // Scrollbar dragging
+    // Slider dragging
+    if (state->isDraggingSlider) {
+        float sliderX = mousePos.x - sliderTrack.x;
+        float progress = sliderX / sliderTrack.width;
+        if (progress < 0) progress = 0;
+        if (progress > 1) progress = 1;
+        state->autoScrollSpeed = AUTO_SCROLL_MIN + progress * (AUTO_SCROLL_MAX - AUTO_SCROLL_MIN);
+    }
+    
+    // Scrollbar dragging (direct, no smoothing)
     if (state->isDraggingScrollbar && state->maxScrollY > 0) {
         float scrollBarHeight = (float)WINDOW_HEIGHT / (state->maxScrollY + WINDOW_HEIGHT) * WINDOW_HEIGHT;
         if (scrollBarHeight < 40) scrollBarHeight = 40;
@@ -344,46 +443,48 @@ void HandleInput(AppState* state) {
         
         float deltaY = mousePos.y - state->lastMousePos.y;
         state->scrollY += deltaY * ratio;
+        state->targetScrollY = state->scrollY;
         
-        if (state->scrollY < 0) state->scrollY = 0;
-        if (state->scrollY > state->maxScrollY) state->scrollY = state->maxScrollY;
+        if (state->scrollY < 0) { state->scrollY = 0; state->targetScrollY = 0; }
+        if (state->scrollY > state->maxScrollY) { state->scrollY = state->maxScrollY; state->targetScrollY = state->maxScrollY; }
         
         state->lastMousePos = mousePos;
     }
     
-    // Image drag scrolling (inverted direction for natural feel)
+    // Image drag scrolling (direct, no smoothing for responsiveness)
     if (state->isDragging && state->imageCount > 0 && !state->isDraggingScrollbar) {
         float deltaY = state->lastMousePos.y - mousePos.y;
         state->scrollY += deltaY;
+        state->targetScrollY = state->scrollY;
         
-        if (state->scrollY < 0) state->scrollY = 0;
-        if (state->scrollY > state->maxScrollY) state->scrollY = state->maxScrollY;
+        if (state->scrollY < 0) { state->scrollY = 0; state->targetScrollY = 0; }
+        if (state->scrollY > state->maxScrollY) { state->scrollY = state->maxScrollY; state->targetScrollY = state->maxScrollY; }
         
         state->lastMousePos = mousePos;
     }
     
-    // Keyboard navigation
+    // Keyboard navigation (modifies target for smooth scroll)
     if (IsKeyDown(KEY_DOWN) || IsKeyDown(KEY_J)) {
-        state->scrollY += SCROLL_SPEED * 0.5f;
-        if (state->scrollY > state->maxScrollY) state->scrollY = state->maxScrollY;
+        state->targetScrollY += SCROLL_SPEED * deltaTime * 3;
+        if (state->targetScrollY > state->maxScrollY) state->targetScrollY = state->maxScrollY;
     }
     if (IsKeyDown(KEY_UP) || IsKeyDown(KEY_K)) {
-        state->scrollY -= SCROLL_SPEED * 0.5f;
-        if (state->scrollY < 0) state->scrollY = 0;
+        state->targetScrollY -= SCROLL_SPEED * deltaTime * 3;
+        if (state->targetScrollY < 0) state->targetScrollY = 0;
     }
     if (IsKeyPressed(KEY_HOME)) {
-        state->scrollY = 0;
+        state->targetScrollY = 0;
     }
     if (IsKeyPressed(KEY_END)) {
-        state->scrollY = state->maxScrollY;
+        state->targetScrollY = state->maxScrollY;
     }
     if (IsKeyPressed(KEY_PAGE_DOWN)) {
-        state->scrollY += WINDOW_HEIGHT * 0.8f;
-        if (state->scrollY > state->maxScrollY) state->scrollY = state->maxScrollY;
+        state->targetScrollY += WINDOW_HEIGHT * 0.8f;
+        if (state->targetScrollY > state->maxScrollY) state->targetScrollY = state->maxScrollY;
     }
     if (IsKeyPressed(KEY_PAGE_UP)) {
-        state->scrollY -= WINDOW_HEIGHT * 0.8f;
-        if (state->scrollY < 0) state->scrollY = 0;
+        state->targetScrollY -= WINDOW_HEIGHT * 0.8f;
+        if (state->targetScrollY < 0) state->targetScrollY = 0;
     }
 }
 
@@ -430,6 +531,7 @@ int main(int argc, char *argv[]) {
     SetTargetFPS(60);
     
     AppState state = {0};
+    state.autoScrollSpeed = AUTO_SCROLL_DEFAULT;
     
     printf("=== Manga Viewer PoC ===\n");
     printf("Image loading via libvips\n");
@@ -440,6 +542,7 @@ int main(int argc, char *argv[]) {
     printf("  - Arrow keys / J/K to scroll\n");
     printf("  - Page Up/Down for fast scroll\n");
     printf("  - Home/End to go to start/end\n");
+    printf("  - Space to toggle auto-scroll\n");
     printf("========================\n");
     
     // Main loop
