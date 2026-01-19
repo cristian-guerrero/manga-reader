@@ -7,6 +7,24 @@
 #include <stdlib.h>
 #include <string.h>
 
+// Draw text with custom font if available
+static void DrawTextCustom(AppState* state, const char* text, int x, int y, int fontSize, Color color) {
+    if (state->fontLoaded) {
+        DrawTextEx(state->customFont, text, (Vector2){x, y}, fontSize, 1, color);
+    } else {
+        DrawText(text, x, y, fontSize, color);
+    }
+}
+
+// Measure text width with custom font
+static int MeasureTextCustom(AppState* state, const char* text, int fontSize) {
+    if (state->fontLoaded) {
+        Vector2 size = MeasureTextEx(state->customFont, text, fontSize, 1);
+        return (int)size.x;
+    }
+    return MeasureText(text, fontSize);
+}
+
 // Compare function for sorting filenames
 static int CompareFilenames(const void* a, const void* b) {
     return strcmp(((ImageEntry*)a)->path, ((ImageEntry*)b)->path);
@@ -104,8 +122,8 @@ void LoadFolderImages(AppState* state, const char* folderPath) {
         
         // Loading text
         const char* loadingText = "Cargando imágenes...";
-        DrawText(loadingText, 
-                 WINDOW_WIDTH/2 - MeasureText(loadingText, 24)/2, 
+        DrawTextCustom(state, loadingText, 
+                 WINDOW_WIDTH/2 - MeasureTextCustom(state, loadingText, 24)/2, 
                  WINDOW_HEIGHT/2 - 80, 
                  24, 
                  (Color){ 150, 150, 160, 255 });
@@ -113,8 +131,8 @@ void LoadFolderImages(AppState* state, const char* folderPath) {
         // Folder name
         char folderName[100];
         GetFolderName(folderPath, folderName, sizeof(folderName));
-        DrawText(folderName, 
-                 WINDOW_WIDTH/2 - MeasureText(folderName, 18)/2, 
+        DrawTextCustom(state, folderName, 
+                 WINDOW_WIDTH/2 - MeasureTextCustom(state, folderName, 18)/2, 
                  WINDOW_HEIGHT/2 - 50, 
                  18, 
                  (Color){ 100, 180, 220, 255 });
@@ -132,8 +150,8 @@ void LoadFolderImages(AppState* state, const char* folderPath) {
         // Progress text
         char progressText[64];
         snprintf(progressText, sizeof(progressText), "%d / %d", i + 1, state->imageCount);
-        DrawText(progressText, 
-                 WINDOW_WIDTH/2 - MeasureText(progressText, 20)/2, 
+        DrawTextCustom(state, progressText, 
+                 WINDOW_WIDTH/2 - MeasureTextCustom(state, progressText, 20)/2, 
                  WINDOW_HEIGHT/2 + 30, 
                  20, 
                  (Color){ 120, 120, 130, 255 });
@@ -144,8 +162,8 @@ void LoadFolderImages(AppState* state, const char* folderPath) {
         char truncName[50];
         strncpy(truncName, fileName, sizeof(truncName) - 1);
         truncName[sizeof(truncName) - 1] = '\0';
-        DrawText(truncName, 
-                 WINDOW_WIDTH/2 - MeasureText(truncName, 14)/2, 
+        DrawTextCustom(state, truncName, 
+                 WINDOW_WIDTH/2 - MeasureTextCustom(state, truncName, 14)/2, 
                  WINDOW_HEIGHT/2 + 60, 
                  14, 
                  (Color){ 80, 80, 90, 255 });
@@ -196,9 +214,9 @@ void DrawViewer(AppState* state) {
         const char* hint3 = "Supports: PNG, JPG, AVIF, WebP, HEIC, JXL...";
         int fontSize = 30;
         
-        DrawText(hint1, WINDOW_WIDTH/2 - MeasureText(hint1, fontSize)/2, WINDOW_HEIGHT/2 - 60, fontSize, (Color){ 150, 150, 160, 255 });
-        DrawText(hint2, WINDOW_WIDTH/2 - MeasureText(hint2, fontSize)/2, WINDOW_HEIGHT/2 - 10, fontSize, (Color){ 100, 100, 110, 255 });
-        DrawText(hint3, WINDOW_WIDTH/2 - MeasureText(hint3, 16)/2, WINDOW_HEIGHT/2 + 40, 16, (Color){ 80, 80, 90, 255 });
+        DrawTextCustom(state, hint1, WINDOW_WIDTH/2 - MeasureTextCustom(state, hint1, fontSize)/2, WINDOW_HEIGHT/2 - 60, fontSize, (Color){ 150, 150, 160, 255 });
+        DrawTextCustom(state, hint2, WINDOW_WIDTH/2 - MeasureTextCustom(state, hint2, fontSize)/2, WINDOW_HEIGHT/2 - 10, fontSize, (Color){ 100, 100, 110, 255 });
+        DrawTextCustom(state, hint3, WINDOW_WIDTH/2 - MeasureTextCustom(state, hint3, 16)/2, WINDOW_HEIGHT/2 + 40, 16, (Color){ 80, 80, 90, 255 });
     } else {
         // Draw images with scroll offset
         for (int i = 0; i < state->imageCount; i++) {
@@ -232,7 +250,7 @@ void DrawViewer(AppState* state) {
         
         char info[150];
         snprintf(info, sizeof(info), "Página %d / %d", currentPage, state->imageCount);
-        DrawText(info, 10, WINDOW_HEIGHT - 25, 16, (Color){ 140, 140, 150, 255 });
+        DrawTextCustom(state, info, 10, WINDOW_HEIGHT - 25, 16, (Color){ 140, 140, 150, 255 });
         
         // Folder navigation panel
         if (state->folderCount > 1) {
@@ -248,58 +266,76 @@ void DrawViewer(AppState* state) {
                 folderName[maxChars - 1] = '.';
                 folderName[maxChars] = '\0';
             }
-            DrawText(folderName, 15, 10, 16, (Color){ 180, 180, 200, 255 });
+            DrawTextCustom(state, folderName, 15, 10, 16, (Color){ 180, 180, 200, 255 });
             
             int navY = 35;
             
             Rectangle prevBtn = { 10, navY, 30, 20 };
             Color prevColor = (state->currentFolderIndex > 0) ? (Color){ 80, 80, 100, 255 } : (Color){ 50, 50, 55, 255 };
             DrawRectangleRec(prevBtn, prevColor);
-            DrawText("<", 20, navY + 2, 16, WHITE);
+            DrawTextCustom(state, "<", 20, navY + 2, 16, WHITE);
             
             char counterText[50];
             snprintf(counterText, sizeof(counterText), "Carpeta %d / %d", state->currentFolderIndex + 1, state->folderCount);
-            DrawText(counterText, 50, navY + 3, 14, (Color){ 140, 140, 150, 255 });
+            DrawTextCustom(state, counterText, 50, navY + 3, 14, (Color){ 140, 140, 150, 255 });
             
             Rectangle nextBtn = { 200, navY, 30, 20 };
             Color nextColor = (state->currentFolderIndex < state->folderCount - 1) ? (Color){ 80, 80, 100, 255 } : (Color){ 50, 50, 55, 255 };
             DrawRectangleRec(nextBtn, nextColor);
-            DrawText(">", 210, navY + 2, 16, WHITE);
+            DrawTextCustom(state, ">", 210, navY + 2, 16, WHITE);
         }
         
-        // Auto-scroll panel
+        // Control panel
         int panelX = WINDOW_WIDTH - 250;
-        int panelY = WINDOW_HEIGHT - 45;
+        int panelY = WINDOW_HEIGHT - 80;
         
-        DrawRectangle(panelX - 10, panelY - 5, 240, 40, (Color){ 40, 40, 45, 200 });
+        // Background
+        DrawRectangle(panelX - 10, panelY - 5, 240, 75, (Color){ 40, 40, 45, 200 });
         
-        Rectangle btnRect = { panelX, panelY, 30, 30 };
+        // --- Row 1: Smoothing ---
+        DrawTextCustom(state, "Smooth:", panelX, panelY + 8, 14, (Color){ 120, 120, 130, 255 });
+        
+        Rectangle smoothTrack = { panelX + 95, panelY + 10, 100, 10 };
+        DrawRectangleRec(smoothTrack, (Color){ 60, 60, 65, 255 });
+        
+        float smoothProgress = (state->scrollSmoothing - SCROLL_SMOOTHING_MIN) / (SCROLL_SMOOTHING_MAX - SCROLL_SMOOTHING_MIN);
+        int smoothThumbX = smoothTrack.x + (int)(smoothProgress * smoothTrack.width) - 5;
+        Rectangle smoothThumb = { smoothThumbX, panelY + 5, 10, 20 };
+        DrawRectangleRec(smoothThumb, (Color){ 160, 140, 140, 255 });
+        
+        char smoothText[20];
+        snprintf(smoothText, sizeof(smoothText), "%.1f", state->scrollSmoothing);
+        DrawTextCustom(state, smoothText, panelX + 200, panelY + 8, 14, (Color){ 140, 140, 150, 255 });
+        
+        // --- Row 2: Auto-scroll ---
+        int row2Y = panelY + 35;
+        Rectangle btnRect = { panelX, row2Y, 30, 30 };
         Color btnColor = state->isAutoScrolling ? (Color){ 80, 160, 80, 255 } : (Color){ 80, 80, 90, 255 };
         DrawRectangleRec(btnRect, btnColor);
         
         if (state->isAutoScrolling) {
-            DrawRectangle(panelX + 8, panelY + 6, 4, 18, WHITE);
-            DrawRectangle(panelX + 18, panelY + 6, 4, 18, WHITE);
+            DrawRectangle(panelX + 8, row2Y + 6, 4, 18, WHITE);
+            DrawRectangle(panelX + 18, row2Y + 6, 4, 18, WHITE);
         } else {
-            Vector2 v1 = { panelX + 10, panelY + 6 };
-            Vector2 v2 = { panelX + 10, panelY + 24 };
-            Vector2 v3 = { panelX + 24, panelY + 15 };
+            Vector2 v1 = { panelX + 10, row2Y + 6 };
+            Vector2 v2 = { panelX + 10, row2Y + 24 };
+            Vector2 v3 = { panelX + 24, row2Y + 15 };
             DrawTriangle(v1, v2, v3, WHITE);
         }
         
-        DrawText("Speed:", panelX + 40, panelY + 8, 14, (Color){ 120, 120, 130, 255 });
+        DrawTextCustom(state, "Speed:", panelX + 40, row2Y + 8, 14, (Color){ 120, 120, 130, 255 });
         
-        Rectangle sliderTrack = { panelX + 95, panelY + 10, 100, 10 };
-        DrawRectangleRec(sliderTrack, (Color){ 60, 60, 65, 255 });
+        Rectangle speedTrack = { panelX + 95, row2Y + 10, 100, 10 };
+        DrawRectangleRec(speedTrack, (Color){ 60, 60, 65, 255 });
         
-        float sliderProgress = (state->autoScrollSpeed - AUTO_SCROLL_MIN) / (AUTO_SCROLL_MAX - AUTO_SCROLL_MIN);
-        int sliderThumbX = sliderTrack.x + (int)(sliderProgress * sliderTrack.width) - 5;
-        Rectangle sliderThumb = { sliderThumbX, panelY + 5, 10, 20 };
-        DrawRectangleRec(sliderThumb, (Color){ 140, 140, 160, 255 });
+        float speedProgress = (state->autoScrollSpeed - AUTO_SCROLL_MIN) / (AUTO_SCROLL_MAX - AUTO_SCROLL_MIN);
+        int speedThumbX = speedTrack.x + (int)(speedProgress * speedTrack.width) - 5;
+        Rectangle speedThumb = { speedThumbX, row2Y + 5, 10, 20 };
+        DrawRectangleRec(speedThumb, (Color){ 140, 140, 160, 255 });
         
         char speedText[20];
         snprintf(speedText, sizeof(speedText), "%.0f", state->autoScrollSpeed);
-        DrawText(speedText, panelX + 200, panelY + 8, 14, (Color){ 140, 140, 150, 255 });
+        DrawTextCustom(state, speedText, panelX + 200, row2Y + 8, 14, (Color){ 140, 140, 150, 255 });
     }
     
     EndDrawing();

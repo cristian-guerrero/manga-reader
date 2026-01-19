@@ -23,7 +23,7 @@ void HandleInput(AppState* state) {
     // Smooth scroll interpolation
     float diff = state->targetScrollY - state->scrollY;
     if (fabs(diff) > 0.5f) {
-        state->scrollY += diff * SCROLL_SMOOTHING * deltaTime;
+        state->scrollY += diff * state->scrollSmoothing * deltaTime;
     } else {
         state->scrollY = state->targetScrollY;
     }
@@ -41,9 +41,10 @@ void HandleInput(AppState* state) {
     
     // Control panel bounds
     int panelX = WINDOW_WIDTH - 250;
-    int panelY = WINDOW_HEIGHT - 45;
-    Rectangle btnRect = { panelX, panelY, 30, 30 };
-    Rectangle sliderTrack = { panelX + 95, panelY + 5, 100, 20 };
+    int panelY = WINDOW_HEIGHT - 80;
+    Rectangle btnRect = { panelX, panelY + 35, 30, 30 };
+    Rectangle sliderTrack = { panelX + 95, panelY + 40, 100, 20 };
+    Rectangle smoothSliderTrack = { panelX + 95, panelY + 5, 100, 20 };
     
     // Folder navigation button bounds
     int navY = 35;
@@ -52,6 +53,7 @@ void HandleInput(AppState* state) {
     
     bool isOverButton = CheckCollisionPointRec(mousePos, btnRect);
     bool isOverSlider = CheckCollisionPointRec(mousePos, sliderTrack);
+    bool isOverSmoothSlider = CheckCollisionPointRec(mousePos, smoothSliderTrack);
     bool isOverPrevBtn = (state->folderCount > 1) && CheckCollisionPointRec(mousePos, prevBtn);
     bool isOverNextBtn = (state->folderCount > 1) && CheckCollisionPointRec(mousePos, nextBtn);
     
@@ -78,10 +80,12 @@ void HandleInput(AppState* state) {
             state->isAutoScrolling = !state->isAutoScrolling;
         } else if (isOverSlider) {
             state->isDraggingSlider = true;
+        } else if (isOverSmoothSlider) {
+            state->isDraggingSmoothSlider = true;
         } else if (isOverScrollbar) {
             state->isDraggingScrollbar = true;
             state->isDragging = false;
-        } else if (!isOverButton && !isOverSlider) {
+        } else if (!isOverButton && !isOverSlider && !isOverSmoothSlider) {
             state->isDragging = true;
             state->isDraggingScrollbar = false;
         }
@@ -93,15 +97,25 @@ void HandleInput(AppState* state) {
         state->isDragging = false;
         state->isDraggingScrollbar = false;
         state->isDraggingSlider = false;
+        state->isDraggingSmoothSlider = false;
     }
     
-    // Slider dragging
+    // Slider dragging (Auto-scroll speed)
     if (state->isDraggingSlider) {
         float sliderX = mousePos.x - sliderTrack.x;
         float progress = sliderX / sliderTrack.width;
         if (progress < 0) progress = 0;
         if (progress > 1) progress = 1;
         state->autoScrollSpeed = AUTO_SCROLL_MIN + progress * (AUTO_SCROLL_MAX - AUTO_SCROLL_MIN);
+    }
+    
+    // Smooth slider dragging
+    if (state->isDraggingSmoothSlider) {
+        float sliderX = mousePos.x - smoothSliderTrack.x;
+        float progress = sliderX / smoothSliderTrack.width;
+        if (progress < 0) progress = 0;
+        if (progress > 1) progress = 1;
+        state->scrollSmoothing = SCROLL_SMOOTHING_MIN + progress * (SCROLL_SMOOTHING_MAX - SCROLL_SMOOTHING_MIN);
     }
     
     // Scrollbar dragging

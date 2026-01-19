@@ -15,6 +15,9 @@
 #define AUTO_SCROLL_MIN 10.0f
 #define AUTO_SCROLL_MAX 500.0f
 #define AUTO_SCROLL_DEFAULT 100.0f
+#define SCROLL_SMOOTHING_MIN 1.0f
+#define SCROLL_SMOOTHING_MAX 20.0f
+#define SCROLL_SMOOTHING_DEFAULT 5.0f
 
 #ifdef _WIN32
     #define PATH_SEPARATOR '\\'
@@ -52,10 +55,16 @@ typedef struct {
     // Auto-scroll
     bool isAutoScrolling;
     float autoScrollSpeed;
+    // Scroll smoothing
+    float scrollSmoothing;
+    bool isDraggingSmoothSlider;
     // Folder navigation
     FolderEntry folders[MAX_FOLDERS];
     int folderCount;
     int currentFolderIndex;
+    // Custom font
+    Font customFont;
+    bool fontLoaded;
 } AppState;
 
 // Supported image extensions
