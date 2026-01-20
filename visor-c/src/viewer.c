@@ -33,19 +33,25 @@ static unsigned int __stdcall LoaderThread(void* arg) {
     printf("Loader thread started\n");
     
     while (!state->shouldExit) {
+        // If paused, just wait
+        if (state->loaderPaused) {
+            Sleep(10);
+            continue;
+        }
+        
         bool foundSomething = false;
         
-        // Get current window dimensions for dynamic buffer calculation
-        int screenHeight = GetScreenHeight();
-        int loadMargin = screenHeight * LOAD_BUFFER_PAGES;
+        // Use fixed buffer size (don't call GetScreenHeight from thread - not thread-safe)
+        // Buffer of ~5 screens worth based on default window height
+        int loadMargin = WINDOW_HEIGHT * LOAD_BUFFER_PAGES;
         
-        // Scan for images to load
-        for (int i = 0; i < state->imageCount && !state->shouldExit; i++) {
+        // Scan for images to load (check pause frequently)
+        for (int i = 0; i < state->imageCount && !state->shouldExit && !state->loaderPaused; i++) {
             ImageEntry* entry = &state->images[i];
             
             // Check if it's within range and not loaded
             int viewportTop = (int)state->scrollY;
-            int viewportBottom = viewportTop + screenHeight;
+            int viewportBottom = viewportTop + WINDOW_HEIGHT;  // Approximate
             int imgTop = entry->displayY;
             int imgBottom = imgTop + entry->displayHeight;
             
@@ -54,13 +60,26 @@ static unsigned int __stdcall LoaderThread(void* arg) {
             if (inRange && entry->status == STATE_EMPTY) {
                 entry->status = STATE_LOADING;
                 
+                // Check pause again before heavy operation
+                if (state->loaderPaused) {
+                    entry->status = STATE_EMPTY;
+                    break;
+                }
+                
                 // Load optimized thumbnail
                 ImageData idata = LoadThumbnailVips(entry->path, WINDOW_WIDTH - IMAGE_MARGIN);
+                
+                // Check if we should discard result (folder changed)
+                if (state->loaderPaused) {
+                    if (idata.data) free(idata.data);
+                    entry->status = STATE_EMPTY;
+                    break;
+                }
+                
                 if (idata.data) {
                     entry->pixelData = idata.data;
                     entry->pixelFormat = idata.format;
                     entry->status = STATE_READY;
-                    // printf("Thread: Ready %s\n", entry->path);
                 } else {
                     entry->status = STATE_EMPTY; // Retry later
                 }
@@ -132,6 +151,10 @@ static Image LoadImageUniversal(const char* fileName) {
 
 // Clear all loaded images
 void ClearImages(AppState* state) {
+    // Pause loader thread and wait for it to stop loading
+    state->loaderPaused = true;
+    Sleep(50);  // Give thread time to finish current operation
+    
     for (int i = 0; i < state->imageCount; i++) {
         if (state->images[i].status == STATE_LOADED) {
             UnloadTexture(state->images[i].texture);
@@ -228,9 +251,13 @@ void LoadFolderImages(AppState* state, const char* folderPath) {
         if (i % 50 == 0 || i == state->imageCount - 1) {
             int screenWidth = GetScreenWidth();
             int screenHeight = GetScreenHeight();
+            
+            // Show progress with image count (simpler and UTF-8 safe)
+            char scanningText[100];
+            snprintf(scanningText, sizeof(scanningText), "Escaneando... %d imagenes", state->imageCount);
+            
             BeginDrawing();
             ClearBackground((Color){ 30, 30, 35, 255 });
-            const char* scanningText = "Escaneando carpeta...";
             DrawTextCustom(state, scanningText, screenWidth/2 - MeasureTextCustom(state, scanningText, 24)/2, screenHeight/2 - 20, 24, (Color){ 150, 150, 160, 255 });
             EndDrawing();
         }
@@ -238,6 +265,9 @@ void LoadFolderImages(AppState* state, const char* folderPath) {
     
     state->maxScrollY = currentY - GetScreenHeight() + 100;
     if (state->maxScrollY < 0) state->maxScrollY = 0;
+    
+    // Resume loader thread
+    state->loaderPaused = false;
     
     printf("Scan complete. Total scroll height: %.0f\n", state->maxScrollY);
 }
@@ -390,37 +420,53 @@ void DrawViewer(AppState* state) {
         snprintf(info, sizeof(info), "Página %d / %d", currentPage, state->imageCount);
         DrawTextCustom(state, info, 10, screenHeight - 25, 16, (Color){ 140, 140, 150, 255 });
         
-        // Folder navigation panel
+        // Folder navigation panel (no background, text with shadow)
         if (state->folderCount > 1) {
-            DrawRectangle(5, 5, 350, 55, (Color){ 30, 30, 35, 220 });
-            
             char folderName[100];
             strncpy(folderName, state->folders[state->currentFolderIndex].name, sizeof(folderName) - 1);
             folderName[sizeof(folderName) - 1] = '\0';
-            int maxChars = 40;
+            
+            // Filter non-ASCII characters (font only supports Latin-1)
+            for (int c = 0; folderName[c]; c++) {
+                unsigned char ch = (unsigned char)folderName[c];
+                if (ch > 127 && ch < 192) {
+                    folderName[c] = ' ';
+                }
+            }
+            
+            int maxChars = 80;
             if (strlen(folderName) > maxChars) {
                 folderName[maxChars - 3] = '.';
                 folderName[maxChars - 2] = '.';
                 folderName[maxChars - 1] = '.';
                 folderName[maxChars] = '\0';
             }
-            DrawTextCustom(state, folderName, 15, 10, 16, (Color){ 180, 180, 200, 255 });
             
-            int navY = 35;
+            // Draw folder name with tight shadow
+            DrawTextCustom(state, folderName, 11, 11, 16, (Color){ 0, 0, 0, 200 });  // Shadow (1px offset)
+            DrawTextCustom(state, folderName, 10, 10, 16, (Color){ 200, 200, 220, 255 });  // Text
             
-            Rectangle prevBtn = { 10, navY, 30, 20 };
-            Color prevColor = (state->currentFolderIndex > 0) ? (Color){ 80, 80, 100, 255 } : (Color){ 50, 50, 55, 255 };
-            DrawRectangleRec(prevBtn, prevColor);
-            DrawTextCustom(state, "<", 20, navY + 2, 16, WHITE);
-            
+            // Draw folder counter with tight shadow
             char counterText[50];
             snprintf(counterText, sizeof(counterText), "Carpeta %d / %d", state->currentFolderIndex + 1, state->folderCount);
-            DrawTextCustom(state, counterText, 50, navY + 3, 14, (Color){ 140, 140, 150, 255 });
+            DrawTextCustom(state, counterText, 11, 31, 14, (Color){ 0, 0, 0, 180 });  // Shadow
+            DrawTextCustom(state, counterText, 10, 30, 14, (Color){ 160, 160, 170, 255 });  // Text
             
-            Rectangle nextBtn = { 200, navY, 30, 20 };
-            Color nextColor = (state->currentFolderIndex < state->folderCount - 1) ? (Color){ 80, 80, 100, 255 } : (Color){ 50, 50, 55, 255 };
-            DrawRectangleRec(nextBtn, nextColor);
-            DrawTextCustom(state, ">", 210, navY + 2, 16, WHITE);
+            // Navigation buttons (Rectangle + Arrow)
+            Rectangle prevRect = { 10, 50, 30, 22 };
+            Rectangle nextRect = { 45, 50, 30, 22 };
+            
+            // Draw Prev Button
+            Color prevBtnColor = (state->currentFolderIndex > 0) ? (Color){ 60, 60, 70, 200 } : (Color){ 40, 40, 45, 120 };
+            DrawRectangleRec(prevRect, prevBtnColor);
+            DrawRectangleLinesEx(prevRect, 1, (Color){ 100, 100, 110, 150 });
+            DrawTextCustom(state, "<", 20, 52, 16, (state->currentFolderIndex > 0) ? WHITE : (Color){ 100, 100, 100, 255 });
+            
+            // Draw Next Button
+            Color nextBtnColor = (state->currentFolderIndex < state->folderCount - 1) ? (Color){ 60, 60, 70, 200 } : (Color){ 40, 40, 45, 120 };
+            DrawRectangleRec(nextRect, nextBtnColor);
+            DrawRectangleLinesEx(nextRect, 1, (Color){ 100, 100, 110, 150 });
+            DrawTextCustom(state, ">", 55, 52, 16, (state->currentFolderIndex < state->folderCount - 1) ? WHITE : (Color){ 100, 100, 100, 255 });
         }
         
         // Control panel

@@ -84,6 +84,7 @@ typedef struct {
     
     // Threading
     bool shouldExit;
+    bool loaderPaused;  // Pause loader during folder changes
     void* loaderThread;
 } AppState;
 

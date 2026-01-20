@@ -67,10 +67,9 @@ void HandleInput(AppState* state) {
     Rectangle sliderTrack = { panelX + 95, panelY + 40, 100, 20 };
     Rectangle smoothSliderTrack = { panelX + 95, panelY + 5, 100, 20 };
     
-    // Folder navigation button bounds
-    int navY = 35;
-    Rectangle prevBtn = { 10, navY, 30, 20 };
-    Rectangle nextBtn = { 200, navY, 30, 20 };
+    // Folder navigation button bounds (Rectangle buttons)
+    Rectangle prevBtn = { 10, 50, 30, 22 };
+    Rectangle nextBtn = { 45, 50, 30, 22 };
     
     bool isOverButton = CheckCollisionPointRec(mousePos, btnRect);
     bool isOverSlider = CheckCollisionPointRec(mousePos, sliderTrack);
