@@ -25,13 +25,29 @@ void PlatformInit(void) {
 }
 
 #ifdef _WIN32
-// Convert UTF-8 to UTF-16 (wide string)
+// Convert UTF-8 to UTF-16 (wide string) with long path support for Windows
 static wchar_t* Utf8ToUtf16(const char* utf8) {
     if (!utf8) return NULL;
+    
+    // Check if we need the long path prefix (\\?\)
+    // Long path prefix requires backslashes and works only with absolute paths.
+    // We apply it if the path is absolute (starts with drive letter like C:\)
+    bool usePrefix = false;
+    if (strlen(utf8) >= 240 && utf8[1] == ':' && utf8[2] == '\\') {
+        usePrefix = true;
+    }
+
     int size = MultiByteToWideChar(CP_UTF8, 0, utf8, -1, NULL, 0);
-    wchar_t* wide = (wchar_t*)malloc(size * sizeof(wchar_t));
+    int prefixLen = usePrefix ? 4 : 0;
+    
+    wchar_t* wide = (wchar_t*)malloc((size + prefixLen) * sizeof(wchar_t));
     if (wide) {
-        MultiByteToWideChar(CP_UTF8, 0, utf8, -1, wide, size);
+        if (usePrefix) {
+            wcscpy(wide, L"\\\\?\\");
+            MultiByteToWideChar(CP_UTF8, 0, utf8, -1, wide + prefixLen, size);
+        } else {
+            MultiByteToWideChar(CP_UTF8, 0, utf8, -1, wide, size);
+        }
     }
     return wide;
 }

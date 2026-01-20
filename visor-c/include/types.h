@@ -31,7 +31,8 @@ typedef enum {
     STATE_EMPTY = 0,    // No data
     STATE_LOADING,      // Currently being loaded by background thread
     STATE_READY,        // Píxels loaded in RAM, ready for GPU upload
-    STATE_LOADED        // Texture available in GPU
+    STATE_LOADED,        // Texture available in GPU
+    STATE_ERROR    // Failed to load, don't retry
 } LoadingStatus;
 
 // Image entry structure

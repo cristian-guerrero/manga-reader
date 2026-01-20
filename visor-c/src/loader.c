@@ -40,10 +40,22 @@ bool NeedsVipsLoader(const char* filename) {
 ImageData LoadImageVips(const char* fileName) {
     ImageData image = { 0 };
     
-    VipsImage *vimg = vips_image_new_from_file(fileName, NULL);
+    char fullPath[1024];
+    const char* pathToUse = fileName;
+    
+    // Add long path prefix if needed on Windows
+#ifdef _WIN32
+    if (strlen(fileName) >= 240 && fileName[1] == ':' && fileName[2] == '\\' && strncmp(fileName, "\\\\?\\", 4) != 0) {
+        snprintf(fullPath, sizeof(fullPath), "\\\\?\\%s", fileName);
+        pathToUse = fullPath;
+    }
+#endif
+    
+    VipsImage *vimg = vips_image_new_from_file(pathToUse, NULL);
     
     if (!vimg) {
-        printf("VIPS: Could not load: %s\n", fileName);
+        printf("VIPS Error: %s\n", vips_error_buffer());
+        vips_error_clear();
         return image;
     }
     
@@ -121,9 +133,21 @@ ImageData LoadThumbnailVips(const char* fileName, int width) {
     ImageData image = { 0 };
     VipsImage *vimg = NULL;
     
+    char fullPath[1024];
+    const char* pathToUse = fileName;
+    
+    // Add long path prefix if needed on Windows
+#ifdef _WIN32
+    if (strlen(fileName) >= 240 && fileName[1] == ':' && fileName[2] == '\\' && strncmp(fileName, "\\\\?\\", 4) != 0) {
+        snprintf(fullPath, sizeof(fullPath), "\\\\?\\%s", fileName);
+        pathToUse = fullPath;
+    }
+#endif
+    
     // vips_thumbnail is extremely fast because it performs shrink-on-load
-    if (vips_thumbnail(fileName, &vimg, width, "height", 10000000, NULL)) {
-        printf("VIPS: Thumbnail failed for: %s\n", fileName);
+    if (vips_thumbnail(pathToUse, &vimg, width, "height", 10000000, NULL)) {
+        printf("VIPS Error: %s\n", vips_error_buffer());
+        vips_error_clear();
         return image;
     }
     
@@ -164,7 +188,17 @@ ImageData LoadThumbnailVips(const char* fileName, int width) {
 }
 
 bool GetImageSizeVips(const char* fileName, int* width, int* height) {
-    VipsImage *vimg = vips_image_new_from_file(fileName, "access", VIPS_ACCESS_SEQUENTIAL, NULL);
+    char fullPath[1024];
+    const char* pathToUse = fileName;
+    
+#ifdef _WIN32
+    if (strlen(fileName) >= 240 && fileName[1] == ':' && fileName[2] == '\\' && strncmp(fileName, "\\\\?\\", 4) != 0) {
+        snprintf(fullPath, sizeof(fullPath), "\\\\?\\%s", fileName);
+        pathToUse = fullPath;
+    }
+#endif
+
+    VipsImage *vimg = vips_image_new_from_file(pathToUse, "access", VIPS_ACCESS_SEQUENTIAL, NULL);
     if (!vimg) return false;
     
     *width = vips_image_get_width(vimg);

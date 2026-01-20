@@ -81,7 +81,8 @@ static unsigned int __stdcall LoaderThread(void* arg) {
                     entry->pixelFormat = idata.format;
                     entry->status = STATE_READY;
                 } else {
-                    entry->status = STATE_EMPTY; // Retry later
+                    entry->status = STATE_ERROR; // Don't retry
+                    printf("Loader: Failed to load %s\n", entry->path);
                 }
                 foundSomething = true;
                 break; // Load one at a time to keep it simple
