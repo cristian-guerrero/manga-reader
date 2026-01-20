@@ -68,16 +68,23 @@ if %ERRORLEVEL% NEQ 0 (
     exit /b 1
 )
 
-echo Step 6: Compiling main.c...
+echo Step 6: Compiling config.c...
+gcc -c src/config.c -o build/config.o %INCLUDES% -O2
+if %ERRORLEVEL% NEQ 0 (
+    echo ERROR: Failed to compile config.c
+    exit /b 1
+)
+
+echo Step 7: Compiling main.c...
 gcc -c src/main.c -o build/main.o %INCLUDES% -O2
 if %ERRORLEVEL% NEQ 0 (
     echo ERROR: Failed to compile main.c
     exit /b 1
 )
 
-echo Step 7: Linking...
-set OBJECTS=build/main.o build/loader.o build/platform.o build/folder.o build/viewer.o build/input.o
-set LIBS=%VIPS_LIBS% -lraylib -lgdi32 -lwinmm -lopengl32 -lpthread
+echo Step 8: Linking...
+set OBJECTS=build/main.o build/loader.o build/platform.o build/folder.o build/viewer.o build/input.o build/config.o
+set LIBS=%VIPS_LIBS% -lraylib -lgdi32 -lwinmm -lopengl32 -lpthread -lshell32
 
 REM Debug build (with console)
 gcc %OBJECTS% -o build/viewer_debug.exe %LIBS%

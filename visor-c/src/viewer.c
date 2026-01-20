@@ -29,12 +29,15 @@
 // Thread function for loading images
 static unsigned int __stdcall LoaderThread(void* arg) {
     AppState* state = (AppState*)arg;
-    int loadMargin = WINDOW_HEIGHT * LOAD_BUFFER_PAGES;
     
     printf("Loader thread started\n");
     
     while (!state->shouldExit) {
         bool foundSomething = false;
+        
+        // Get current window dimensions for dynamic buffer calculation
+        int screenHeight = GetScreenHeight();
+        int loadMargin = screenHeight * LOAD_BUFFER_PAGES;
         
         // Scan for images to load
         for (int i = 0; i < state->imageCount && !state->shouldExit; i++) {
@@ -42,7 +45,7 @@ static unsigned int __stdcall LoaderThread(void* arg) {
             
             // Check if it's within range and not loaded
             int viewportTop = (int)state->scrollY;
-            int viewportBottom = viewportTop + WINDOW_HEIGHT;
+            int viewportBottom = viewportTop + screenHeight;
             int imgTop = entry->displayY;
             int imgBottom = imgTop + entry->displayHeight;
             
@@ -223,15 +226,17 @@ void LoadFolderImages(AppState* state, const char* folderPath) {
 
         // Periodic drawing update for the user (only every 50 images for speed)
         if (i % 50 == 0 || i == state->imageCount - 1) {
+            int screenWidth = GetScreenWidth();
+            int screenHeight = GetScreenHeight();
             BeginDrawing();
             ClearBackground((Color){ 30, 30, 35, 255 });
             const char* scanningText = "Escaneando carpeta...";
-            DrawTextCustom(state, scanningText, WINDOW_WIDTH/2 - MeasureTextCustom(state, scanningText, 24)/2, WINDOW_HEIGHT/2 - 20, 24, (Color){ 150, 150, 160, 255 });
+            DrawTextCustom(state, scanningText, screenWidth/2 - MeasureTextCustom(state, scanningText, 24)/2, screenHeight/2 - 20, 24, (Color){ 150, 150, 160, 255 });
             EndDrawing();
         }
     }
     
-    state->maxScrollY = currentY - WINDOW_HEIGHT + 100;
+    state->maxScrollY = currentY - GetScreenHeight() + 100;
     if (state->maxScrollY < 0) state->maxScrollY = 0;
     
     printf("Scan complete. Total scroll height: %.0f\n", state->maxScrollY);
@@ -242,9 +247,13 @@ void DrawViewer(AppState* state) {
     BeginDrawing();
     ClearBackground((Color){ 30, 30, 35, 255 });
     
+    // Get current window dimensions
+    int screenWidth = GetScreenWidth();
+    int screenHeight = GetScreenHeight();
+    
     if (state->imageCount == 0) {
-        // Draw drop zone hint
-        Rectangle dropZone = { 50, 50, WINDOW_WIDTH - 100, WINDOW_HEIGHT - 100 };
+        // Draw drop zone hint - centered in current window
+        Rectangle dropZone = { 50, 50, screenWidth - 100, screenHeight - 100 };
         DrawRectangleLinesEx(dropZone, 3, (Color){ 100, 100, 120, 255 });
         
         const char* hint1 = "Arrastra una carpeta aquí";
@@ -252,14 +261,14 @@ void DrawViewer(AppState* state) {
         const char* hint3 = "Supports: PNG, JPG, AVIF, WebP, HEIC, JXL...";
         int fontSize = 30;
         
-        DrawTextCustom(state, hint1, WINDOW_WIDTH/2 - MeasureTextCustom(state, hint1, fontSize)/2, WINDOW_HEIGHT/2 - 60, fontSize, (Color){ 150, 150, 160, 255 });
-        DrawTextCustom(state, hint2, WINDOW_WIDTH/2 - MeasureTextCustom(state, hint2, fontSize)/2, WINDOW_HEIGHT/2 - 10, fontSize, (Color){ 100, 100, 110, 255 });
-        DrawTextCustom(state, hint3, WINDOW_WIDTH/2 - MeasureTextCustom(state, hint3, 16)/2, WINDOW_HEIGHT/2 + 40, 16, (Color){ 80, 80, 90, 255 });
+        DrawTextCustom(state, hint1, screenWidth/2 - MeasureTextCustom(state, hint1, fontSize)/2, screenHeight/2 - 60, fontSize, (Color){ 150, 150, 160, 255 });
+        DrawTextCustom(state, hint2, screenWidth/2 - MeasureTextCustom(state, hint2, fontSize)/2, screenHeight/2 - 10, fontSize, (Color){ 100, 100, 110, 255 });
+        DrawTextCustom(state, hint3, screenWidth/2 - MeasureTextCustom(state, hint3, 16)/2, screenHeight/2 + 40, 16, (Color){ 80, 80, 90, 255 });
     } else {
         // 1. Dynamic loading/unloading (Lazy Loading + Threads)
         int viewportTop = (int)state->scrollY;
-        int viewportBottom = viewportTop + WINDOW_HEIGHT;
-        int loadMargin = WINDOW_HEIGHT * LOAD_BUFFER_PAGES;
+        int viewportBottom = viewportTop + screenHeight;
+        int loadMargin = screenHeight * LOAD_BUFFER_PAGES;
         
         for (int i = 0; i < state->imageCount; i++) {
             ImageEntry* entry = &state->images[i];
@@ -314,25 +323,59 @@ void DrawViewer(AppState* state) {
             }
         }
 
-        // 2. Draw visible images
+        // 2. Draw visible images with dynamic sizing/centering
+        int imageBaseWidth = WINDOW_WIDTH - IMAGE_MARGIN;  // Original loaded width
+        int availableWidth = screenWidth - SCROLLBAR_WIDTH;  // Available space (minus scrollbar)
+        float globalScale = (availableWidth < imageBaseWidth) 
+            ? (float)(availableWidth - 20) / (float)imageBaseWidth 
+            : 1.0f;
+        
+        // Calculate dynamic Y positions based on scale
+        int dynamicY = 0;
+        int padding = 10;
+        
         for (int i = 0; i < state->imageCount; i++) {
-            if (state->images[i].status != STATE_LOADED) continue;
+            ImageEntry* entry = &state->images[i];
             
-            int displayY = state->images[i].displayY - (int)state->scrollY;
-            if (displayY + state->images[i].displayHeight > 0 && displayY < WINDOW_HEIGHT) {
-                DrawTexture(state->images[i].texture, 20, displayY, WHITE);
+            // Calculate scaled height for this image
+            int scaledHeight = (int)(entry->displayHeight * globalScale);
+            
+            // Check if visible (based on dynamic position)
+            int displayY = dynamicY - (int)state->scrollY;
+            
+            if (displayY + scaledHeight > 0 && displayY < screenHeight) {
+                if (entry->status == STATE_LOADED) {
+                    Texture2D tex = entry->texture;
+                    
+                    if (globalScale >= 1.0f) {
+                        // Window is wider or same: center the image at original size
+                        int centerX = (availableWidth - tex.width) / 2;
+                        DrawTexture(tex, centerX, displayY, WHITE);
+                    } else {
+                        // Window is narrower: scale down to fit
+                        int scaledWidth = (int)(tex.width * globalScale);
+                        int centerX = (availableWidth - scaledWidth) / 2;
+                        
+                        Rectangle source = { 0, 0, (float)tex.width, (float)tex.height };
+                        Rectangle dest = { (float)centerX, (float)displayY, (float)scaledWidth, (float)scaledHeight };
+                        DrawTexturePro(tex, source, dest, (Vector2){0, 0}, 0.0f, WHITE);
+                    }
+                }
             }
+            
+            // Advance Y position
+            dynamicY += scaledHeight + (int)(padding * globalScale);
         }
         
         // Draw scrollbar
         if (state->maxScrollY > 0) {
-            float scrollBarHeight = (float)WINDOW_HEIGHT / (state->maxScrollY + WINDOW_HEIGHT) * WINDOW_HEIGHT;
+            float scrollBarHeight = (float)screenHeight / (state->maxScrollY + screenHeight) * screenHeight;
             if (scrollBarHeight < 40) scrollBarHeight = 40;
             
-            float scrollBarY = (state->scrollY / state->maxScrollY) * (WINDOW_HEIGHT - scrollBarHeight);
+            float scrollBarY = (state->scrollY / state->maxScrollY) * (screenHeight - scrollBarHeight);
             
-            DrawRectangle(WINDOW_WIDTH - 14, 0, 14, WINDOW_HEIGHT, (Color){ 40, 40, 45, 255 });
-            DrawRectangle(WINDOW_WIDTH - 12, (int)scrollBarY + 2, 10, (int)scrollBarHeight - 4, (Color){ 100, 100, 120, 255 });
+            DrawRectangle(screenWidth - 14, 0, 14, screenHeight, (Color){ 40, 40, 45, 255 });
+            DrawRectangle(screenWidth - 12, (int)scrollBarY + 2, 10, (int)scrollBarHeight - 4, (Color){ 100, 100, 120, 255 });
         }
         
         // Page indicator
@@ -345,7 +388,7 @@ void DrawViewer(AppState* state) {
         
         char info[150];
         snprintf(info, sizeof(info), "Página %d / %d", currentPage, state->imageCount);
-        DrawTextCustom(state, info, 10, WINDOW_HEIGHT - 25, 16, (Color){ 140, 140, 150, 255 });
+        DrawTextCustom(state, info, 10, screenHeight - 25, 16, (Color){ 140, 140, 150, 255 });
         
         // Folder navigation panel
         if (state->folderCount > 1) {
@@ -381,8 +424,8 @@ void DrawViewer(AppState* state) {
         }
         
         // Control panel
-        int panelX = WINDOW_WIDTH - 250;
-        int panelY = WINDOW_HEIGHT - 80;
+        int panelX = screenWidth - 250;
+        int panelY = screenHeight - 80;
         
         // Background
         DrawRectangle(panelX - 10, panelY - 5, 240, 75, (Color){ 40, 40, 45, 200 });

@@ -24,6 +24,7 @@
 #include "viewer.h"
 #include "input.h"
 #include "loader.h"
+#include "config.h"
 #include <stdio.h>
 
 int main(int argc, char *argv[]) {
@@ -35,10 +36,18 @@ int main(int argc, char *argv[]) {
         return 1;
     }
     
-    // Initialize Raylib
+    // Load saved window configuration
+    WindowConfig windowConfig = LoadWindowConfig();
+    
+    // Initialize Raylib with saved or default size
     SetConfigFlags(FLAG_WINDOW_RESIZABLE);
-    InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Manga Viewer - PoC (C + Raylib + VIPS)");
+    InitWindow(windowConfig.windowWidth, windowConfig.windowHeight, "Manga Viewer - PoC (C + Raylib + VIPS)");
     SetTargetFPS(60);
+    
+    // Restore window position if we have valid saved config
+    if (windowConfig.isValid) {
+        SetWindowPosition(windowConfig.windowX, windowConfig.windowY);
+    }
     
     // Initialize state
     AppState state = {0};
@@ -78,6 +87,12 @@ int main(int argc, char *argv[]) {
         HandleDragDrop(&state);
         DrawViewer(&state);
     }
+    
+    // Save window configuration before exit
+    Vector2 windowPos = GetWindowPosition();
+    int windowWidth = GetScreenWidth();
+    int windowHeight = GetScreenHeight();
+    SaveWindowConfig((int)windowPos.x, (int)windowPos.y, windowWidth, windowHeight);
     
     // Cleanup
     state.shouldExit = true;
