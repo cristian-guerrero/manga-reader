@@ -36,23 +36,78 @@ int main(int argc, char *argv[]) {
         return 1;
     }
     
-    // Load saved window configuration
-    WindowConfig windowConfig = LoadWindowConfig();
+    // Load saved configuration
+    AppConfig appConfig = LoadAppConfig();
     
-    // Initialize Raylib with saved or default size
-    SetConfigFlags(FLAG_WINDOW_RESIZABLE);
-    InitWindow(windowConfig.windowWidth, windowConfig.windowHeight, "Manga Viewer - PoC (C + Raylib + VIPS)");
+    // Initialize Raylib with window hidden initially (to avoid position flash)
+    SetConfigFlags(FLAG_WINDOW_RESIZABLE | FLAG_WINDOW_HIDDEN);
+    InitWindow(appConfig.windowWidth, appConfig.windowHeight, "Manga Viewer - PoC (C + Raylib + VIPS)");
     SetTargetFPS(60);
     
     // Restore window position if we have valid saved config
-    if (windowConfig.isValid) {
-        SetWindowPosition(windowConfig.windowX, windowConfig.windowY);
+    if (appConfig.isValid) {
+        // Find the best monitor to place the window on
+        int monitorCount = GetMonitorCount();
+        int adjustedX = appConfig.windowX;
+        int adjustedY = appConfig.windowY;
+        bool needsAdjustment = false;
+        
+        // Get primary monitor info as fallback
+        Vector2 primaryPos = GetMonitorPosition(0);
+        int primaryWidth = GetMonitorWidth(0);
+        int primaryHeight = GetMonitorHeight(0);
+        
+        // Check if position is on any monitor
+        bool foundMonitor = false;
+        for (int i = 0; i < monitorCount; i++) {
+            Vector2 monPos = GetMonitorPosition(i);
+            int monWidth = GetMonitorWidth(i);
+            int monHeight = GetMonitorHeight(i);
+            
+            // Check if the window's X is within this monitor's range
+            if (appConfig.windowX >= monPos.x - appConfig.windowWidth + 100 &&
+                appConfig.windowX < monPos.x + monWidth - 100) {
+                
+                foundMonitor = true;
+                
+                // Adjust Y to ensure title bar (top ~30px) is visible
+                if (adjustedY < monPos.y) {
+                    adjustedY = (int)monPos.y + 10;  // 10px from top
+                    needsAdjustment = true;
+                }
+                // Also ensure some part of window is not below screen
+                if (adjustedY > monPos.y + monHeight - 100) {
+                    adjustedY = (int)monPos.y + monHeight - 200;
+                    needsAdjustment = true;
+                }
+                break;
+            }
+        }
+        
+        // If no valid monitor found, reset to primary monitor
+        if (!foundMonitor) {
+            adjustedX = (int)primaryPos.x + (primaryWidth - appConfig.windowWidth) / 2;
+            adjustedY = (int)primaryPos.y + 50;
+            needsAdjustment = true;
+            printf("Window position off-screen, moving to primary monitor\n");
+        }
+        
+        SetWindowPosition(adjustedX, adjustedY);
+        if (needsAdjustment) {
+            printf("Adjusted window position: (%d, %d) -> (%d, %d)\n", 
+                   appConfig.windowX, appConfig.windowY, adjustedX, adjustedY);
+        } else {
+            printf("Restored window position: (%d, %d)\n", adjustedX, adjustedY);
+        }
     }
     
-    // Initialize state
+    // Now show the window (remove hidden flag)
+    ClearWindowState(FLAG_WINDOW_HIDDEN);
+    
+    // Initialize state with loaded config values
     AppState state = {0};
-    state.autoScrollSpeed = AUTO_SCROLL_DEFAULT;
-    state.scrollSmoothing = SCROLL_SMOOTHING_DEFAULT;
+    state.autoScrollSpeed = appConfig.autoScrollSpeed;
+    state.scrollSmoothing = appConfig.scrollSmoothing;
     
     // Load embedded font with extended character range (Latin-1)
     int codepoints[250];
@@ -88,11 +143,12 @@ int main(int argc, char *argv[]) {
         DrawViewer(&state);
     }
     
-    // Save window configuration before exit
+    // Save configuration before exit
     Vector2 windowPos = GetWindowPosition();
     int windowWidth = GetScreenWidth();
     int windowHeight = GetScreenHeight();
-    SaveWindowConfig((int)windowPos.x, (int)windowPos.y, windowWidth, windowHeight);
+    SaveAppConfig((int)windowPos.x, (int)windowPos.y, windowWidth, windowHeight,
+                  state.scrollSmoothing, state.autoScrollSpeed);
     
     // Cleanup
     state.shouldExit = true;

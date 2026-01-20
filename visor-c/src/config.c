@@ -114,13 +114,15 @@ static bool EnsureConfigDirExists(void) {
     return true;
 }
 
-// Load window configuration
-WindowConfig LoadWindowConfig(void) {
-    WindowConfig config = {
+// Load application configuration
+AppConfig LoadAppConfig(void) {
+    AppConfig config = {
         .windowX = -1,  // -1 means use system default
         .windowY = -1,
         .windowWidth = WINDOW_WIDTH,
         .windowHeight = WINDOW_HEIGHT,
+        .scrollSmoothing = SCROLL_SMOOTHING_DEFAULT,
+        .autoScrollSpeed = AUTO_SCROLL_DEFAULT,
         .isValid = false
     };
 
@@ -157,6 +159,12 @@ WindowConfig LoadWindowConfig(void) {
             } else if (strcmp(k, "window_height") == 0) {
                 int h = atoi(value);
                 if (h >= 300 && h <= 4320) config.windowHeight = h;
+            } else if (strcmp(k, "scroll_smoothing") == 0) {
+                float s = (float)atof(value);
+                if (s >= SCROLL_SMOOTHING_MIN && s <= SCROLL_SMOOTHING_MAX) config.scrollSmoothing = s;
+            } else if (strcmp(k, "auto_scroll_speed") == 0) {
+                float sp = (float)atof(value);
+                if (sp >= AUTO_SCROLL_MIN && sp <= AUTO_SCROLL_MAX) config.autoScrollSpeed = sp;
             }
         }
     }
@@ -166,15 +174,16 @@ WindowConfig LoadWindowConfig(void) {
     // Mark as valid if we found at least position
     if (config.windowX != -1 && config.windowY != -1) {
         config.isValid = true;
-        printf("Loaded window config: pos(%d, %d) size(%dx%d)\n",
-               config.windowX, config.windowY, config.windowWidth, config.windowHeight);
+        printf("Loaded config: pos(%d, %d) size(%dx%d) smooth=%.1f speed=%.0f\n",
+               config.windowX, config.windowY, config.windowWidth, config.windowHeight,
+               config.scrollSmoothing, config.autoScrollSpeed);
     }
 
     return config;
 }
 
-// Save window configuration
-bool SaveWindowConfig(int x, int y, int width, int height) {
+// Save application configuration
+bool SaveAppConfig(int x, int y, int width, int height, float scrollSmoothing, float autoScrollSpeed) {
     if (!EnsureConfigDirExists()) {
         return false;
     }
@@ -193,9 +202,13 @@ bool SaveWindowConfig(int x, int y, int width, int height) {
     fprintf(file, "window_y=%d\n", y);
     fprintf(file, "window_width=%d\n", width);
     fprintf(file, "window_height=%d\n", height);
+    fprintf(file, "\n[scroll]\n");
+    fprintf(file, "scroll_smoothing=%.1f\n", scrollSmoothing);
+    fprintf(file, "auto_scroll_speed=%.0f\n", autoScrollSpeed);
 
     fclose(file);
-    printf("Saved window config: pos(%d, %d) size(%dx%d)\n", x, y, width, height);
+    printf("Saved config: pos(%d, %d) size(%dx%d) smooth=%.1f speed=%.0f\n", 
+           x, y, width, height, scrollSmoothing, autoScrollSpeed);
 
     return true;
 }

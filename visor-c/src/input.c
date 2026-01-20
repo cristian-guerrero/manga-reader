@@ -55,11 +55,14 @@ void HandleInput(AppState* state) {
     }
     
     Vector2 mousePos = GetMousePosition();
-    bool isOverScrollbar = (mousePos.x >= WINDOW_WIDTH - 14) && (state->maxScrollY > 0);
+    int screenWidth = GetScreenWidth();
+    int screenHeight = GetScreenHeight();
     
-    // Control panel bounds
-    int panelX = WINDOW_WIDTH - 250;
-    int panelY = WINDOW_HEIGHT - 80;
+    bool isOverScrollbar = (mousePos.x >= screenWidth - 14) && (state->maxScrollY > 0);
+    
+    // Control panel bounds (relative to current window size)
+    int panelX = screenWidth - 250;
+    int panelY = screenHeight - 80;
     Rectangle btnRect = { panelX, panelY + 35, 30, 30 };
     Rectangle sliderTrack = { panelX + 95, panelY + 40, 100, 20 };
     Rectangle smoothSliderTrack = { panelX + 95, panelY + 5, 100, 20 };
@@ -138,10 +141,10 @@ void HandleInput(AppState* state) {
     
     // Scrollbar dragging
     if (state->isDraggingScrollbar && state->maxScrollY > 0) {
-        float scrollBarHeight = (float)WINDOW_HEIGHT / (state->maxScrollY + WINDOW_HEIGHT) * WINDOW_HEIGHT;
+        float scrollBarHeight = (float)screenHeight / (state->maxScrollY + screenHeight) * screenHeight;
         if (scrollBarHeight < 40) scrollBarHeight = 40;
         
-        float scrollableHeight = WINDOW_HEIGHT - scrollBarHeight;
+        float scrollableHeight = screenHeight - scrollBarHeight;
         float ratio = state->maxScrollY / scrollableHeight;
         
         float deltaY = mousePos.y - state->lastMousePos.y;
@@ -182,11 +185,11 @@ void HandleInput(AppState* state) {
         state->targetScrollY = state->maxScrollY;
     }
     if (IsKeyPressed(KEY_PAGE_DOWN)) {
-        state->targetScrollY += WINDOW_HEIGHT * 0.8f;
+        state->targetScrollY += screenHeight * 0.8f;
         if (state->targetScrollY > state->maxScrollY) state->targetScrollY = state->maxScrollY;
     }
     if (IsKeyPressed(KEY_PAGE_UP)) {
-        state->targetScrollY -= WINDOW_HEIGHT * 0.8f;
+        state->targetScrollY -= screenHeight * 0.8f;
         if (state->targetScrollY < 0) state->targetScrollY = 0;
     }
 }
