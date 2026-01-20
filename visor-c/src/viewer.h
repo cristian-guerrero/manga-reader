@@ -13,4 +13,7 @@ void ClearImages(AppState* state);
 // Draw the viewer UI
 void DrawViewer(AppState* state);
 
+// Start the background loader thread
+void StartLoaderThread(AppState* state);
+
 #endif // VIEWER_H

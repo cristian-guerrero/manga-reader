@@ -27,8 +27,14 @@ void ShutdownImageLoader(void);
 // Returns ImageData with data=NULL on failure
 ImageData LoadImageVips(const char* fileName);
 
+// Load an image file using libvips thumbnailing (optimized resize on load)
+ImageData LoadThumbnailVips(const char* fileName, int width);
+
 // Free image data loaded by LoadImageVips
 void FreeImageData(ImageData* img);
+
+// Get image size without loading full data
+bool GetImageSizeVips(const char* fileName, int* width, int* height);
 
 // Check if file extension needs vips loader
 bool NeedsVipsLoader(const char* filename);

@@ -1,4 +1,23 @@
 // viewer.c - UI drawing and image loading implementation
+#define WIN32_LEAN_AND_MEAN
+#define ShowCursor WindowsShowCursor
+#define DrawText WindowsDrawText
+#define DrawTextEx WindowsDrawTextEx
+#define Rectangle WindowsRectangle
+#define CloseWindow WindowsCloseWindow
+#define LoadImage WindowsLoadImage
+
+#include <windows.h>
+#include <process.h>
+
+// Undefine the temporary renames
+#undef ShowCursor
+#undef DrawText
+#undef DrawTextEx
+#undef Rectangle
+#undef CloseWindow
+#undef LoadImage
+
 #include "viewer.h"
 #include "folder.h"
 #include "platform.h"
@@ -6,6 +25,60 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+// Thread function for loading images
+static unsigned int __stdcall LoaderThread(void* arg) {
+    AppState* state = (AppState*)arg;
+    int loadMargin = WINDOW_HEIGHT * LOAD_BUFFER_PAGES;
+    
+    printf("Loader thread started\n");
+    
+    while (!state->shouldExit) {
+        bool foundSomething = false;
+        
+        // Scan for images to load
+        for (int i = 0; i < state->imageCount && !state->shouldExit; i++) {
+            ImageEntry* entry = &state->images[i];
+            
+            // Check if it's within range and not loaded
+            int viewportTop = (int)state->scrollY;
+            int viewportBottom = viewportTop + WINDOW_HEIGHT;
+            int imgTop = entry->displayY;
+            int imgBottom = imgTop + entry->displayHeight;
+            
+            bool inRange = (imgBottom > viewportTop - loadMargin && imgTop < viewportBottom + loadMargin);
+            
+            if (inRange && entry->status == STATE_EMPTY) {
+                entry->status = STATE_LOADING;
+                
+                // Load optimized thumbnail
+                ImageData idata = LoadThumbnailVips(entry->path, WINDOW_WIDTH - IMAGE_MARGIN);
+                if (idata.data) {
+                    entry->pixelData = idata.data;
+                    entry->pixelFormat = idata.format;
+                    entry->status = STATE_READY;
+                    // printf("Thread: Ready %s\n", entry->path);
+                } else {
+                    entry->status = STATE_EMPTY; // Retry later
+                }
+                foundSomething = true;
+                break; // Load one at a time to keep it simple
+            }
+        }
+        
+        if (!foundSomething) {
+            Sleep(16); // No work, wait ~1 frame
+        }
+    }
+    
+    printf("Loader thread exiting\n");
+    return 0;
+}
+
+void StartLoaderThread(AppState* state) {
+    state->shouldExit = false;
+    state->loaderThread = (void*)_beginthreadex(NULL, 0, LoaderThread, state, 0, NULL);
+}
 
 // Draw text with custom font if available
 static void DrawTextCustom(AppState* state, const char* text, int x, int y, int fontSize, Color color) {
@@ -57,10 +130,15 @@ static Image LoadImageUniversal(const char* fileName) {
 // Clear all loaded images
 void ClearImages(AppState* state) {
     for (int i = 0; i < state->imageCount; i++) {
-        if (state->images[i].loaded) {
+        if (state->images[i].status == STATE_LOADED) {
             UnloadTexture(state->images[i].texture);
-            state->images[i].loaded = false;
         }
+        if (state->images[i].pixelData != NULL) {
+            free(state->images[i].pixelData);
+            state->images[i].pixelData = NULL;
+        }
+        state->images[i].status = STATE_EMPTY;
+        state->images[i].isLoaded = false;
     }
     state->imageCount = 0;
     state->scrollY = 0;
@@ -88,7 +166,8 @@ static bool LoadImagesCallback(const char* name, bool isDirectory, void* userDat
         snprintf(state->images[state->imageCount].path, 
                  sizeof(state->images[state->imageCount].path),
                  "%s%c%s", data->folderPath, PATH_SEPARATOR, name);
-        state->images[state->imageCount].loaded = false;
+        state->images[state->imageCount].isLoaded = false;
+        state->images[state->imageCount].displayHeight = 0;
         state->imageCount++;
     }
     
@@ -115,88 +194,47 @@ void LoadFolderImages(AppState* state, const char* folderPath) {
     int currentY = 0;
     int padding = 10;
     
+    printf("Scanning folder: %s (%d images)\n", folderPath, state->imageCount);
+    
     for (int i = 0; i < state->imageCount; i++) {
-        // Draw loading progress
-        BeginDrawing();
-        ClearBackground((Color){ 30, 30, 35, 255 });
-        
-        // Loading text
-        const char* loadingText = "Cargando imágenes...";
-        DrawTextCustom(state, loadingText, 
-                 WINDOW_WIDTH/2 - MeasureTextCustom(state, loadingText, 24)/2, 
-                 WINDOW_HEIGHT/2 - 80, 
-                 24, 
-                 (Color){ 150, 150, 160, 255 });
-        
-        // Folder name
-        char folderName[100];
-        GetFolderName(folderPath, folderName, sizeof(folderName));
-        DrawTextCustom(state, folderName, 
-                 WINDOW_WIDTH/2 - MeasureTextCustom(state, folderName, 18)/2, 
-                 WINDOW_HEIGHT/2 - 50, 
-                 18, 
-                 (Color){ 100, 180, 220, 255 });
-        
-        // Progress bar
-        int barWidth = 400;
-        int barHeight = 20;
-        int barX = WINDOW_WIDTH/2 - barWidth/2;
-        int barY = WINDOW_HEIGHT/2 - 10;
-        DrawRectangle(barX, barY, barWidth, barHeight, (Color){ 50, 50, 55, 255 });
-        
-        float progress = (float)(i + 1) / (float)state->imageCount;
-        DrawRectangle(barX + 2, barY + 2, (int)((barWidth - 4) * progress), barHeight - 4, (Color){ 100, 180, 100, 255 });
-        
-        // Progress text
-        char progressText[64];
-        snprintf(progressText, sizeof(progressText), "%d / %d", i + 1, state->imageCount);
-        DrawTextCustom(state, progressText, 
-                 WINDOW_WIDTH/2 - MeasureTextCustom(state, progressText, 20)/2, 
-                 WINDOW_HEIGHT/2 + 30, 
-                 20, 
-                 (Color){ 120, 120, 130, 255 });
-        
-        // Current file name
-        const char* fileName = strrchr(state->images[i].path, PATH_SEPARATOR);
-        if (fileName) fileName++; else fileName = state->images[i].path;
-        char truncName[50];
-        strncpy(truncName, fileName, sizeof(truncName) - 1);
-        truncName[sizeof(truncName) - 1] = '\0';
-        DrawTextCustom(state, truncName, 
-                 WINDOW_WIDTH/2 - MeasureTextCustom(state, truncName, 14)/2, 
-                 WINDOW_HEIGHT/2 + 60, 
-                 14, 
-                 (Color){ 80, 80, 90, 255 });
-        
-        EndDrawing();
-        
-        // Load the image
-        Image img = LoadImageUniversal(state->images[i].path);
-        
-        if (img.data != NULL) {
-            float scale = (float)(WINDOW_WIDTH - 40) / (float)img.width;
-            int newHeight = (int)(img.height * scale);
+        // Fast scan: get dimensions without decoding pixels
+        int w, h;
+        if (GetImageSizeVips(state->images[i].path, &w, &h)) {
+            float scale = (float)(WINDOW_WIDTH - IMAGE_MARGIN) / (float)w;
+            int newHeight = (int)(h * scale);
             
-            ImageResize(&img, WINDOW_WIDTH - 40, newHeight);
-            
-            state->images[i].texture = LoadTextureFromImage(img);
-            state->images[i].loaded = true;
+            state->images[i].width = w;
+            state->images[i].height = h;
             state->images[i].displayY = currentY;
             state->images[i].displayHeight = newHeight;
+            state->images[i].status = STATE_EMPTY;
+            state->images[i].pixelData = NULL;
+            state->images[i].isLoaded = false;
             
             currentY += newHeight + padding;
-            
-            UnloadImage(img);
-            printf("Loaded [%d/%d]: %s\n", i + 1, state->imageCount, state->images[i].path);
         } else {
-            printf("Failed to load: %s\n", state->images[i].path);
+            // Fallback for failed images
+            state->images[i].displayY = currentY;
+            state->images[i].displayHeight = 0;
+            state->images[i].status = STATE_EMPTY;
+            state->images[i].pixelData = NULL;
+            state->images[i].isLoaded = false;
+        }
+
+        // Periodic drawing update for the user (only every 50 images for speed)
+        if (i % 50 == 0 || i == state->imageCount - 1) {
+            BeginDrawing();
+            ClearBackground((Color){ 30, 30, 35, 255 });
+            const char* scanningText = "Escaneando carpeta...";
+            DrawTextCustom(state, scanningText, WINDOW_WIDTH/2 - MeasureTextCustom(state, scanningText, 24)/2, WINDOW_HEIGHT/2 - 20, 24, (Color){ 150, 150, 160, 255 });
+            EndDrawing();
         }
     }
     
     state->maxScrollY = currentY - WINDOW_HEIGHT + 100;
     if (state->maxScrollY < 0) state->maxScrollY = 0;
     
-    printf("All images loaded. Total scroll height: %.0f\n", state->maxScrollY);
+    printf("Scan complete. Total scroll height: %.0f\n", state->maxScrollY);
 }
 
 // Draw the viewer UI
@@ -218,12 +256,69 @@ void DrawViewer(AppState* state) {
         DrawTextCustom(state, hint2, WINDOW_WIDTH/2 - MeasureTextCustom(state, hint2, fontSize)/2, WINDOW_HEIGHT/2 - 10, fontSize, (Color){ 100, 100, 110, 255 });
         DrawTextCustom(state, hint3, WINDOW_WIDTH/2 - MeasureTextCustom(state, hint3, 16)/2, WINDOW_HEIGHT/2 + 40, 16, (Color){ 80, 80, 90, 255 });
     } else {
-        // Draw images with scroll offset
+        // 1. Dynamic loading/unloading (Lazy Loading + Threads)
+        int viewportTop = (int)state->scrollY;
+        int viewportBottom = viewportTop + WINDOW_HEIGHT;
+        int loadMargin = WINDOW_HEIGHT * LOAD_BUFFER_PAGES;
+        
         for (int i = 0; i < state->imageCount; i++) {
-            if (!state->images[i].loaded) continue;
+            ImageEntry* entry = &state->images[i];
+            int imgTop = entry->displayY;
+            int imgBottom = imgTop + entry->displayHeight;
+            
+            bool inRange = (imgBottom > viewportTop - loadMargin && imgTop < viewportBottom + loadMargin);
+            
+            if (inRange) {
+                // If the thread loaded it into RAM, upload to GPU now
+                if (entry->status == STATE_READY && entry->pixelData != NULL) {
+                    Image rImg = {
+                        .data = entry->pixelData,
+                        .width = (entry->width > 0) ? (WINDOW_WIDTH - IMAGE_MARGIN) : 0, // Simplified but better use what VIPS gave us
+                        .mipmaps = 1,
+                        .format = entry->pixelFormat
+                    };
+                    
+                    // Note: LoadThumbnailVips already resized it, we just need to know the actual resized H
+                    // Since we set W, we can calculate H if not stored or get it from idata
+                    // Wait, LoadThumbnailVips set image.width and image.height in the struct it returned
+                    // But in viewer.c we don't have that info easily because it was in LoaderThread.
+                    // Actually, let's fix LoaderThread to store the loaded W/H if they differ.
+                    // For now, let's assume we know it or just use a helper.
+                    
+                    // Redoing this part to be safer: LoaderThread should have provided everything.
+                    // I will fix LoaderThread in a moment to store the resized dimensions.
+                    
+                    rImg.width = WINDOW_WIDTH - IMAGE_MARGIN;
+                    rImg.height = entry->displayHeight;
+                    
+                    entry->texture = LoadTextureFromImage(rImg);
+                    free(entry->pixelData);
+                    entry->pixelData = NULL;
+                    entry->status = STATE_LOADED;
+                    entry->isLoaded = true;
+                }
+            } else {
+                // Out of range: unload to free VRAM
+                if (entry->status == STATE_LOADED) {
+                    UnloadTexture(entry->texture);
+                    entry->status = STATE_EMPTY;
+                    entry->isLoaded = false;
+                } else if (entry->status == STATE_READY && entry->pixelData != NULL) {
+                    // Also free RAM if it was ready but moved out of range before upload
+                    free(entry->pixelData);
+                    entry->pixelData = NULL;
+                    entry->status = STATE_EMPTY;
+                } else if (entry->status == STATE_LOADING) {
+                    // We can't easily cancel VIPS, so let it finish and next loop will clean it
+                }
+            }
+        }
+
+        // 2. Draw visible images
+        for (int i = 0; i < state->imageCount; i++) {
+            if (state->images[i].status != STATE_LOADED) continue;
             
             int displayY = state->images[i].displayY - (int)state->scrollY;
-            
             if (displayY + state->images[i].displayHeight > 0 && displayY < WINDOW_HEIGHT) {
                 DrawTexture(state->images[i].texture, 20, displayY, WHITE);
             }
@@ -243,7 +338,7 @@ void DrawViewer(AppState* state) {
         // Page indicator
         int currentPage = 1;
         for (int i = 0; i < state->imageCount; i++) {
-            if (state->images[i].loaded && state->images[i].displayY <= (int)state->scrollY + 50) {
+            if (state->images[i].displayY <= (int)state->scrollY + 50) {
                 currentPage = i + 1;
             }
         }

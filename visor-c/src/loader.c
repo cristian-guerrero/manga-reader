@@ -117,6 +117,63 @@ ImageData LoadImageVips(const char* fileName) {
     return image;
 }
 
+ImageData LoadThumbnailVips(const char* fileName, int width) {
+    ImageData image = { 0 };
+    VipsImage *vimg = NULL;
+    
+    // vips_thumbnail is extremely fast because it performs shrink-on-load
+    if (vips_thumbnail(fileName, &vimg, width, "height", 10000000, NULL)) {
+        printf("VIPS: Thumbnail failed for: %s\n", fileName);
+        return image;
+    }
+    
+    // Convert to sRGB if needed
+    VipsImage *rgb = NULL;
+    if (vips_colourspace(vimg, &rgb, VIPS_INTERPRETATION_sRGB, NULL)) {
+        g_object_unref(vimg);
+        return image;
+    }
+    g_object_unref(vimg);
+    vimg = rgb;
+    
+    // Add alpha channel if not present
+    if (vips_image_get_bands(vimg) < 4) {
+        VipsImage *rgba = NULL;
+        vips_bandjoin_const1(vimg, &rgba, 255, NULL);
+        g_object_unref(vimg);
+        vimg = rgba;
+    }
+    
+    int t_width = vips_image_get_width(vimg);
+    int t_height = vips_image_get_height(vimg);
+    size_t dataSize;
+    void *data = vips_image_write_to_memory(vimg, &dataSize);
+    
+    if (data) {
+        image.width = t_width;
+        image.height = t_height;
+        image.mipmaps = 1;
+        image.format = PIXELFORMAT_R8G8B8A8;
+        image.data = malloc(t_width * t_height * 4);
+        memcpy(image.data, data, t_width * t_height * 4);
+        g_free(data);
+    }
+    
+    g_object_unref(vimg);
+    return image;
+}
+
+bool GetImageSizeVips(const char* fileName, int* width, int* height) {
+    VipsImage *vimg = vips_image_new_from_file(fileName, "access", VIPS_ACCESS_SEQUENTIAL, NULL);
+    if (!vimg) return false;
+    
+    *width = vips_image_get_width(vimg);
+    *height = vips_image_get_height(vimg);
+    
+    g_object_unref(vimg);
+    return true;
+}
+
 void FreeImageData(ImageData* img) {
     if (img && img->data) {
         free(img->data);

@@ -1,92 +1,69 @@
-# Manga Viewer - Proof of Concept
+# Manga Viewer - High Performance Image Viewer (C + Raylib + libvips)
 
-Visor de imágenes simple en C usando Raylib con scroll vertical y drag & drop de carpetas.
+Visor de imágenes de alto rendimiento escrito en C. Especializado en manejar carpetas con miles de imágenes de forma instantánea gracias a su arquitectura multi-hilo y carga dinámica.
 
-## Características
+## Características de Alto Rendimiento
 
-- 📁 **Drag & Drop de carpetas** - Arrastra una carpeta para cargar sus imágenes
-- 🖱️ **Scroll vertical** - Rueda del ratón o arrastrar para navegar
-- ⌨️ **Navegación por teclado** - Flechas, J/K, Page Up/Down, Home/End
-- 🖼️ **Formatos soportados** - PNG, JPG, BMP, TGA, GIF, QOI, PSD, HDR
+- ⚡ **Inicio Instantáneo**: Escanea metadatos de miles de imágenes en milisegundos para pre-calcular el layout sin cargar texturas.
+- 🧵 **Multithreading (Carga Asíncrona)**: Un hilo secundario dedicado procesa las imágenes en segundo plano. El scroll nunca se detiene (60 FPS constantes).
+- 🖼️ **Carga Dinámica (Lazy Loading)**: Solo se cargan las texturas visibles o cercanas al área de visión.
+- 🧠 **Gestión de VRAM**: Descarga automáticamente de la GPU las imágenes fuera de rango para mantener un consumo de memoria bajo y estable.
+- 🚀 **Integración con libvips**: Utiliza `vips_thumbnail` para redimensionar imágenes de forma ultra-rápida directamente desde el disco.
+- 📁 **Formatos Soportados**: PNG, JPG, **AVIF**, **WebP**, **HEIC**, **HEIF**, **JXL**, TIFF, BMP y más.
 
-> **Nota**: AVIF y WebP requieren bibliotecas adicionales (stb_image no las soporta nativamente)
+## Características UI/UX
 
-## Requisitos
+- 📁 **Navegación entre Carpetas**: Detecta automáticamente carpetas hermanas y permite navegar entre ellas con `<` `>` o flechas.
+- 🔡 **Fuente Integrada**: Incluye una fuente personalizada con soporte para caracteres latinos (ñ, tildes).
+- 🎢 **Scroll Suave**: Control de suavidad de scroll ajustable dinámicamente.
+- 🤖 **Auto-scroll**: Lectura manos libres con velocidad ajustable.
 
-### Windows
-1. **GCC** - Recomendado: [w64devkit](https://github.com/skeeto/w64devkit/releases)
-2. **Raylib** - [Descargar aquí](https://github.com/raysan5/raylib/releases)
+## Requisitos (Windows)
 
-### Linux
-```bash
-# Ubuntu/Debian
-sudo apt install libraylib-dev
+1. **MSYS2 / MinGW-w64**: Se requiere un compilador C (GCC).
+2. **libvips**: Esencial para el procesamiento de imágenes. 
+   - Instalar vía MSYS2: `pacman -S mingw-w64-x86_64-vips`
+3. **Raylib**: Bibliotecas de desarrollo instaladas en el sistema.
 
-# Arch
-sudo pacman -S raylib
+## Estructura del Proyecto
 
-# Fedora
-sudo dnf install raylib-devel
-```
-
-### macOS
-```bash
-brew install raylib
-```
-
-## Compilación
-
-### Windows
-```batch
-# Editar build.bat para ajustar RAYLIB_PATH
-build.bat
-```
-
-### Linux/macOS
-```bash
-make
-```
-
-## Uso
-
-```bash
-# Windows
-build\viewer.exe
-
-# Linux/macOS
-./viewer
-```
-
-1. Ejecutar el programa
-2. Arrastrar una carpeta con imágenes a la ventana
-3. Navegar con scroll o teclado
-
-## Controles
-
-| Acción | Tecla/Ratón |
-|--------|-------------|
-| Scroll | Rueda del ratón |
-| Arrastrar | Click izquierdo + mover |
-| Scroll lento | ↑/↓ o J/K |
-| Scroll rápido | Page Up/Down |
-| Inicio/Fin | Home/End |
-| Salir | ESC |
-
-## Estructura
+El proyecto está modularizado para mayor claridad:
 
 ```
 visor-c/
-├── main.c          # Código principal
-├── build.bat       # Script de compilación Windows
-├── Makefile        # Makefile para Linux/macOS
-└── README.md       # Este archivo
+├── include/
+│   ├── types.h         # Estructuras de datos (Thread-safe)
+│   ├── font_data.h     # Fuente embebida
+├── src/
+│   ├── main.c          # Punto de entrada y loop principal
+│   ├── viewer.c        # Lógica de dibujo, hilos y Lazy Loading
+│   ├── loader.c        # Interface con libvips
+│   ├── input.c         # Gestión de teclado y ratón
+│   ├── platform.c      # Abstracción de sistema (Windows/Linux)
+│   └── folder.c        # Escaneo y navegación de carpetas
+├── build.bat           # Script de compilación para Windows
+└── README.md
 ```
 
-## TODO
+## Controles
 
-- [ ] Soporte AVIF (requiere libavif)
-- [ ] Soporte WebP (requiere libwebp)
-- [ ] Zoom con Ctrl+Scroll
-- [ ] Modo de una imagen
-- [ ] Precarga de imágenes
-- [ ] Cache de texturas
+| Acción | Control |
+|--------|---------|
+| **Scroll** | Rueda del ratón o Drag del área central |
+| **Navegar Carpeta** | Botones UI o Flechas Izquierda/Derecha |
+| **Auto-scroll** | Espacio (Toggle) |
+| **Ajustes** | Sliders en el panel inferior derecho |
+| **Salto Rápido** | Page Up / Page Down |
+| **Inicio/Fin** | Home / End |
+| **Salir** | ESC |
+
+## Compilación
+
+```batch
+# En una terminal MSYS2 o con el PATH de MinGW configurado:
+./build.bat
+```
+
+## Créditos
+Desarrollado con Raylib y libvips. Focus en rendimiento extremo para lectura de Manga y colecciones masivas de imágenes.
+

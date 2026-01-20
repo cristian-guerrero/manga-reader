@@ -1,4 +1,22 @@
 // input.c - Input handling implementation
+#define WIN32_LEAN_AND_MEAN
+#define ShowCursor WindowsShowCursor
+#define DrawText WindowsDrawText
+#define DrawTextEx WindowsDrawTextEx
+#define Rectangle WindowsRectangle
+#define CloseWindow WindowsCloseWindow
+#define LoadImage WindowsLoadImage
+
+#include <windows.h>
+
+// Undefine the temporary renames
+#undef ShowCursor
+#undef DrawText
+#undef DrawTextEx
+#undef Rectangle
+#undef CloseWindow
+#undef LoadImage
+
 #include "input.h"
 #include "folder.h"
 #include "viewer.h"

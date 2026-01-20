@@ -1,5 +1,21 @@
 // main.c - Manga/Image Viewer entry point
-// Modular C project using Raylib for rendering, libvips for image loading
+#define WIN32_LEAN_AND_MEAN
+#define ShowCursor WindowsShowCursor
+#define DrawText WindowsDrawText
+#define DrawTextEx WindowsDrawTextEx
+#define Rectangle WindowsRectangle
+#define CloseWindow WindowsCloseWindow
+#define LoadImage WindowsLoadImage
+
+#include <windows.h>
+
+// Undefine the temporary renames
+#undef ShowCursor
+#undef DrawText
+#undef DrawTextEx
+#undef Rectangle
+#undef CloseWindow
+#undef LoadImage
 
 #include "raylib.h"
 #include "../include/types.h"
@@ -53,6 +69,9 @@ int main(int argc, char *argv[]) {
     printf("  - Space to toggle auto-scroll\n");
     printf("========================\n");
     
+    // Start background loading thread
+    StartLoaderThread(&state);
+    
     // Main loop
     while (!WindowShouldClose()) {
         HandleInput(&state);
@@ -61,6 +80,10 @@ int main(int argc, char *argv[]) {
     }
     
     // Cleanup
+    state.shouldExit = true;
+    // Wait a moment for thread to see the exit signal
+    Sleep(50);
+    
     if (state.fontLoaded) {
         UnloadFont(state.customFont);
     }
