@@ -1,22 +1,27 @@
 // viewer.c - UI drawing and image loading implementation
-#define WIN32_LEAN_AND_MEAN
-#define ShowCursor WindowsShowCursor
-#define DrawText WindowsDrawText
-#define DrawTextEx WindowsDrawTextEx
-#define Rectangle WindowsRectangle
-#define CloseWindow WindowsCloseWindow
-#define LoadImage WindowsLoadImage
+#ifdef _WIN32
+    #define WIN32_LEAN_AND_MEAN
+    #define ShowCursor WindowsShowCursor
+    #define DrawText WindowsDrawText
+    #define DrawTextEx WindowsDrawTextEx
+    #define Rectangle WindowsRectangle
+    #define CloseWindow WindowsCloseWindow
+    #define LoadImage WindowsLoadImage
 
-#include <windows.h>
-#include <process.h>
+    #include <windows.h>
+    #include <process.h>
 
-// Undefine the temporary renames
-#undef ShowCursor
-#undef DrawText
-#undef DrawTextEx
-#undef Rectangle
-#undef CloseWindow
-#undef LoadImage
+    // Undefine the temporary renames
+    #undef ShowCursor
+    #undef DrawText
+    #undef DrawTextEx
+    #undef Rectangle
+    #undef CloseWindow
+    #undef LoadImage
+#else
+    #include <pthread.h>
+    #include <unistd.h>
+#endif
 
 #include "viewer.h"
 #include "folder.h"
@@ -26,8 +31,21 @@
 #include <stdlib.h>
 #include <string.h>
 
+// Cross-platform sleep function
+static void SleepMs(int milliseconds) {
+#ifdef _WIN32
+    Sleep(milliseconds);
+#else
+    usleep(milliseconds * 1000);
+#endif
+}
+
 // Thread function for loading images
+#ifdef _WIN32
 static unsigned int __stdcall LoaderThread(void* arg) {
+#else
+static void* LoaderThread(void* arg) {
+#endif
     AppState* state = (AppState*)arg;
     
     printf("Loader thread started\n");
@@ -35,7 +53,7 @@ static unsigned int __stdcall LoaderThread(void* arg) {
     while (!state->shouldExit) {
         // If paused, just wait
         if (state->loaderPaused) {
-            Sleep(10);
+            SleepMs(10);
             continue;
         }
         
@@ -90,7 +108,7 @@ static unsigned int __stdcall LoaderThread(void* arg) {
         }
         
         if (!foundSomething) {
-            Sleep(16); // No work, wait ~1 frame
+            SleepMs(16); // No work, wait ~1 frame
         }
     }
     
@@ -100,7 +118,30 @@ static unsigned int __stdcall LoaderThread(void* arg) {
 
 void StartLoaderThread(AppState* state) {
     state->shouldExit = false;
+#ifdef _WIN32
     state->loaderThread = (void*)_beginthreadex(NULL, 0, LoaderThread, state, 0, NULL);
+#else
+    pthread_t* thread = (pthread_t*)malloc(sizeof(pthread_t));
+    pthread_create(thread, NULL, LoaderThread, state);
+    state->loaderThread = (void*)thread;
+#endif
+}
+
+void StopLoaderThread(AppState* state) {
+    if (!state->loaderThread) return;
+    
+    state->shouldExit = true;
+    
+#ifdef _WIN32
+    WaitForSingleObject((HANDLE)state->loaderThread, INFINITE);
+    CloseHandle((HANDLE)state->loaderThread);
+#else
+    pthread_t* thread = (pthread_t*)state->loaderThread;
+    pthread_join(*thread, NULL);
+    free(thread);
+#endif
+    
+    state->loaderThread = NULL;
 }
 
 // Draw text with custom font if available
@@ -154,7 +195,7 @@ static Image LoadImageUniversal(const char* fileName) {
 void ClearImages(AppState* state) {
     // Pause loader thread and wait for it to stop loading
     state->loaderPaused = true;
-    Sleep(50);  // Give thread time to finish current operation
+    SleepMs(50);  // Give thread time to finish current operation
     
     for (int i = 0; i < state->imageCount; i++) {
         if (state->images[i].status == STATE_LOADED) {

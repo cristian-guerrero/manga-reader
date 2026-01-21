@@ -16,4 +16,7 @@ void DrawViewer(AppState* state);
 // Start the background loader thread
 void StartLoaderThread(AppState* state);
 
+// Stop the background loader thread
+void StopLoaderThread(AppState* state);
+
 #endif // VIEWER_H

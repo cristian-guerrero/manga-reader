@@ -1,21 +1,23 @@
 // main.c - Manga/Image Viewer entry point
-#define WIN32_LEAN_AND_MEAN
-#define ShowCursor WindowsShowCursor
-#define DrawText WindowsDrawText
-#define DrawTextEx WindowsDrawTextEx
-#define Rectangle WindowsRectangle
-#define CloseWindow WindowsCloseWindow
-#define LoadImage WindowsLoadImage
+#ifdef _WIN32
+    #define WIN32_LEAN_AND_MEAN
+    #define ShowCursor WindowsShowCursor
+    #define DrawText WindowsDrawText
+    #define DrawTextEx WindowsDrawTextEx
+    #define Rectangle WindowsRectangle
+    #define CloseWindow WindowsCloseWindow
+    #define LoadImage WindowsLoadImage
 
-#include <windows.h>
+    #include <windows.h>
 
-// Undefine the temporary renames
-#undef ShowCursor
-#undef DrawText
-#undef DrawTextEx
-#undef Rectangle
-#undef CloseWindow
-#undef LoadImage
+    // Undefine the temporary renames
+    #undef ShowCursor
+    #undef DrawText
+    #undef DrawTextEx
+    #undef Rectangle
+    #undef CloseWindow
+    #undef LoadImage
+#endif
 
 #include "raylib.h"
 #include "../include/types.h"
@@ -151,9 +153,7 @@ int main(int argc, char *argv[]) {
                   state.scrollSmoothing, state.autoScrollSpeed);
     
     // Cleanup
-    state.shouldExit = true;
-    // Wait a moment for thread to see the exit signal
-    Sleep(50);
+    StopLoaderThread(&state);
     
     if (state.fontLoaded) {
         UnloadFont(state.customFont);
