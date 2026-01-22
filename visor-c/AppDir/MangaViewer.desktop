@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Manga Viewer
+Comment=Visor de manga con soporte para múltiples formatos
+Exec=viewer
+Icon=MangaViewer
+Categories=Graphics;Viewer;
+Terminal=false
+StartupNotify=true

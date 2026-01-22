@@ -1,0 +1,14 @@
+#!/bin/bash
+
+SELF=$(readlink -f "$0")
+HERE=${SELF%/*}
+
+# Configurar rutas de librerías
+export LD_LIBRARY_PATH="${HERE}/usr/lib:${LD_LIBRARY_PATH}"
+export PATH="${HERE}/usr/bin:${PATH}"
+
+# Configurar rutas de datos de la aplicación
+export XDG_DATA_DIRS="${HERE}/usr/share:${XDG_DATA_DIRS}"
+
+# Ejecutar la aplicación
+exec "${HERE}/usr/bin/viewer" "$@"
