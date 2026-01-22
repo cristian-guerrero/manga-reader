@@ -1,0 +1,22 @@
+# Directorios de compilación
+build/
+AppDir/
+
+# Herramientas de AppImage descargadas
+tools/
+
+# Binarios compilados
+*.o
+*.so
+*.a
+viewer
+viewer_debug
+
+# AppImages generados
+*.AppImage
+
+# Archivos temporales
+*~
+*.swp
+*.swo
+.DS_Store
