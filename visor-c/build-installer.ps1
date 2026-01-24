@@ -203,7 +203,7 @@ $nsisScript = @"
 
 ; General
 Name "`${APP_NAME_DISPLAY}"
-OutFile "$SCRIPT_DIR\$APP_NAME-$APP_VERSION-setup.exe"
+OutFile "$SCRIPT_DIR\build\$APP_NAME-$APP_VERSION-setup.exe"
 InstallDir "`${INSTALL_DIR}"
 RequestExecutionLevel admin
 
