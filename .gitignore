@@ -5,3 +5,4 @@ frontend/dist
 .vscode/
 info.txt
 .cursor/plans
+visor-c/portable
