@@ -460,9 +460,35 @@ void DrawViewer(AppState* state) {
         
         char info[150];
         snprintf(info, sizeof(info), "Página %d / %d", currentPage, state->imageCount);
-        DrawTextCustom(state, info, 10, screenHeight - 25, 16, (Color){ 140, 140, 150, 255 });
+
+        // First-page button near page indicator (left bottom). Place button *before* the page text.
+        int firstW = 28; int firstH = 28;
+        int firstX = 10;
+        int firstY = screenHeight - 28 - 10; // place slightly above bottom
+        state->firstBtnRect = (Rectangle){ (float)firstX, (float)firstY, (float)firstW, (float)firstH };
+
+        int infoX = firstX + firstW + 8;
+        DrawTextCustom(state, info, infoX, screenHeight - 25, 16, (Color){ 140, 140, 150, 255 });
+        // Draw first button (arrow up)
+        Color firstBtnColor;
+        if (state->imageCount <= 0) {
+            firstBtnColor = (Color){ 40, 40, 45, 120 };
+        } else if (state->isOverFirstBtn) {
+            firstBtnColor = (Color){ 90, 90, 110, 230 };
+        } else {
+            firstBtnColor = (Color){ 60, 60, 70, 200 };
+        }
+        DrawRectangleRec(state->firstBtnRect, firstBtnColor);
+        DrawRectangleLinesEx(state->firstBtnRect, 1, (Color){ 100, 100, 110, 150 });
+        // Up arrow triangle
+        Vector2 t1 = { state->firstBtnRect.x + state->firstBtnRect.width/2, state->firstBtnRect.y + 6 };
+        Vector2 t2 = { state->firstBtnRect.x + 6, state->firstBtnRect.y + state->firstBtnRect.height - 8 };
+        Vector2 t3 = { state->firstBtnRect.x + state->firstBtnRect.width - 6, state->firstBtnRect.y + state->firstBtnRect.height - 8 };
+        DrawTriangle(t1, t2, t3, (state->imageCount > 0) ? WHITE : (Color){ 100, 100, 100, 255 });
         
         // Folder navigation panel (no background, text with shadow)
+        // First button rectangle (defined here so it's available even when there's only one folder)
+        Rectangle firstRect = { 80, 50, 30, 22 };
         if (state->folderCount > 1) {
             char folderName[100];
             strncpy(folderName, state->folders[state->currentFolderIndex].name, sizeof(folderName) - 1);
@@ -510,7 +536,10 @@ void DrawViewer(AppState* state) {
             DrawRectangleLinesEx(nextRect, 1, (Color){ 100, 100, 110, 150 });
             DrawTextCustom(state, ">", 55, 52, 16, (state->currentFolderIndex < state->folderCount - 1) ? WHITE : (Color){ 100, 100, 100, 255 });
         }
-        
+
+// (First page button moved to control panel)
+            (void)0;
+
         // Control panel
         int panelX = screenWidth - 250;
         int panelY = screenHeight - 80;
@@ -562,6 +591,8 @@ void DrawViewer(AppState* state) {
         char speedText[20];
         snprintf(speedText, sizeof(speedText), "%.0f", state->autoScrollSpeed);
         DrawTextCustom(state, speedText, panelX + 200, row2Y + 8, 14, (Color){ 140, 140, 150, 255 });
+
+
     }
     
     EndDrawing();

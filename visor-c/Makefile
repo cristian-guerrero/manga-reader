@@ -9,7 +9,7 @@ LDFLAGS =
 UNAME_S := $(shell uname -s)
 
 ifeq ($(UNAME_S),Linux)
-    LDFLAGS += -lraylib -lGL -lm -lpthread -ldl -lrt -lX11
+    LDFLAGS += -lraylib -lGL -lm -lpthread -ldl -lrt -lX11 -Wl,-rpath,'$$ORIGIN/lib'
 endif
 ifeq ($(UNAME_S),Darwin)
     LDFLAGS += -lraylib -framework OpenGL -framework Cocoa -framework IOKit -framework CoreVideo
@@ -21,7 +21,7 @@ ifdef PKG_CONFIG
     RAYLIB_EXISTS := $(shell pkg-config --exists raylib && echo yes)
     ifeq ($(RAYLIB_EXISTS),yes)
         CFLAGS += $(shell pkg-config --cflags raylib)
-        LDFLAGS = $(shell pkg-config --libs raylib)
+        LDFLAGS += $(shell pkg-config --libs raylib)
     endif
 endif
 

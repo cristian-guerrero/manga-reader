@@ -127,8 +127,20 @@ EOF
         -o "$BUILD_DIR/viewer" $SOURCES \
         $(pkg-config --libs vips) $RAYLIB_LIBS \
         -lGL -lm -lpthread -ldl -lrt -lX11 \
-        -Wl,-rpath,'\$ORIGIN/../lib' -O2
+        -Wl,-rpath,'\$ORIGIN/lib' -O2
     echo "Linux build: $BUILD_DIR/viewer"
+
+    # Create a small launcher so the binary automatically loads libs from build/lib
+    if [ -f "$BUILD_DIR/viewer" ]; then
+        mv "$BUILD_DIR/viewer" "$BUILD_DIR/viewer.bin"
+        cat > "$BUILD_DIR/viewer" <<'EOF'
+#!/bin/sh
+DIR="$(cd "$(dirname "$0")" && pwd)"
+export LD_LIBRARY_PATH="$DIR/lib:${LD_LIBRARY_PATH:-}"
+exec "$DIR/viewer.bin" "$@"
+EOF
+        chmod +x "$BUILD_DIR/viewer"
+    fi
 
     # Create local build/lib and copy vendored libs there so the binary can run locally
     mkdir -p "$BUILD_DIR/lib"

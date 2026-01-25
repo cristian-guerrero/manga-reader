@@ -87,6 +87,10 @@ typedef struct {
     bool shouldExit;
     bool loaderPaused;  // Pause loader during folder changes
     void* loaderThread;
+
+    // UI helpers
+    bool isOverFirstBtn; // Hover state for "first page" button
+    Rectangle firstBtnRect; // Rect for first-page button (bottom-left)
 } AppState;
 
 // Supported image extensions

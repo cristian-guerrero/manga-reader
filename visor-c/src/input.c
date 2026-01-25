@@ -72,12 +72,14 @@ void HandleInput(AppState* state) {
     // Folder navigation button bounds (Rectangle buttons)
     Rectangle prevBtn = { 10, 50, 30, 22 };
     Rectangle nextBtn = { 45, 50, 30, 22 };
-    
+
     bool isOverButton = CheckCollisionPointRec(mousePos, btnRect);
     bool isOverSlider = CheckCollisionPointRec(mousePos, sliderTrack);
     bool isOverSmoothSlider = CheckCollisionPointRec(mousePos, smoothSliderTrack);
     bool isOverPrevBtn = (state->folderCount > 1) && CheckCollisionPointRec(mousePos, prevBtn);
     bool isOverNextBtn = (state->folderCount > 1) && CheckCollisionPointRec(mousePos, nextBtn);
+    bool isOverFirstBtn = (state->imageCount > 0) && CheckCollisionPointRec(mousePos, state->firstBtnRect);
+    state->isOverFirstBtn = isOverFirstBtn;
     
     // Space toggles auto-scroll
     if (IsKeyPressed(KEY_SPACE) && state->imageCount > 0) {
@@ -98,6 +100,11 @@ void HandleInput(AppState* state) {
             NavigateFolder(state, -1);
         } else if (isOverNextBtn) {
             NavigateFolder(state, 1);
+        } else if (isOverFirstBtn) {
+            // Go to first image (top)
+            state->targetScrollY = 0;
+            state->scrollY = 0;
+            state->isAutoScrolling = false;
         } else if (isOverButton && state->imageCount > 0) {
             state->isAutoScrolling = !state->isAutoScrolling;
         } else if (isOverSlider) {
