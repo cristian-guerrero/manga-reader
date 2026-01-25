@@ -111,15 +111,61 @@ int main(int argc, char *argv[]) {
     state.autoScrollSpeed = appConfig.autoScrollSpeed;
     state.scrollSmoothing = appConfig.scrollSmoothing;
     
-    // Load embedded font with extended character range (Latin-1)
-    int codepoints[250];
-    for (int i = 0; i < 250; i++) codepoints[i] = i + 32; 
-    state.customFont = LoadFontFromMemory(".ttf", FONT_DATA, FONT_DATA_SIZE, 64, codepoints, 250);
-    
-    state.fontLoaded = (state.customFont.texture.id > 0);
-    if (state.fontLoaded) {
-        SetTextureFilter(state.customFont.texture, TEXTURE_FILTER_BILINEAR);
-        printf("Custom font loaded successfully (Latin-1 range, 64px, Bilinear)\n");
+    // Try to load a font that supports Japanese (hiragana/katakana/CJK) from common locations.
+    const char* candidates[] = {
+        "./resources/fonts/NotoSansJP-Regular.otf",
+        "./resources/fonts/NotoSansJP-Regular.ttf",
+        "./external/fonts/NotoSansJP-Regular.otf",
+        "/usr/share/fonts/truetype/noto/NotoSansJP-Regular.otf",
+        "/usr/share/fonts/truetype/noto/NotoSansJP-Regular.ttf",
+        "/usr/share/fonts/truetype/fonts-japanese-gothic.ttf",
+        "/usr/share/fonts/truetype/fonts-japanese-mincho.ttf",
+        NULL
+    };
+
+    const char* jpFontPath = NULL;
+    for (int i = 0; candidates[i] != NULL; i++) {
+        if (FileExists(candidates[i])) {
+            jpFontPath = candidates[i];
+            break;
+        }
+    }
+
+    if (jpFontPath) {
+        printf("Found Japanese-capable font: %s\n", jpFontPath);
+        // Build codepoint list for ASCII + hiragana + katakana + common CJK range
+        // Ranges: 32..126, 0x3040..0x309F (Hiragana), 0x30A0..0x30FF (Katakana), 0x4E00..0x9FFF (CJK Unified Ideographs)
+        int ranges[][2] = { {32, 126}, {0x3040, 0x309F}, {0x30A0, 0x30FF}, {0x4E00, 0x9FFF} };
+        int total = 0;
+        for (int r = 0; r < 4; r++) total += (ranges[r][1] - ranges[r][0] + 1);
+        int *codepoints = malloc(sizeof(int) * total);
+        int idx = 0;
+        for (int r = 0; r < 4; r++) {
+            for (int c = ranges[r][0]; c <= ranges[r][1]; c++) {
+                codepoints[idx++] = c;
+            }
+        }
+        state.customFont = LoadFontEx(jpFontPath, 64, codepoints, total);
+        free(codepoints);
+        state.fontLoaded = (state.customFont.texture.id > 0);
+        if (state.fontLoaded) {
+            SetTextureFilter(state.customFont.texture, TEXTURE_FILTER_BILINEAR);
+            printf("Custom font loaded successfully (Japanese-capable, 64px)\n");
+        } else {
+            printf("Failed to load font at %s\n", jpFontPath);
+        }
+    }
+
+    // Fallback: use embedded Latin-1 font if no JP-capable font found or load failed
+    if (!state.fontLoaded) {
+        int codepoints[250];
+        for (int i = 0; i < 250; i++) codepoints[i] = i + 32;
+        state.customFont = LoadFontFromMemory(".ttf", FONT_DATA, FONT_DATA_SIZE, 64, codepoints, 250);
+        state.fontLoaded = (state.customFont.texture.id > 0);
+        if (state.fontLoaded) {
+            SetTextureFilter(state.customFont.texture, TEXTURE_FILTER_BILINEAR);
+            printf("Custom font loaded successfully (Latin-1 range, 64px, Bilinear)\n");
+        }
     }
     
     printf("=== Manga Viewer PoC ===\n");
