@@ -1,165 +1,257 @@
 # Compilar visor-c sin MSYS2
 
-## Análisis de viabilidad
+## Estado Actual ✅ **FUNCIONANDO**
 
-Depués de investigar, aquí está el resumen de los desafíos al compilar visor-c sin MSYS2:
-
-### Estado Actual
-✅ **Tienes TDM-GCC 10.3.0 instalado** - Compilador funcional en PATH
-❌ **No tienes pkg-config** - Necesario para configurar raylib y libvips
-❌ **No tienes MSYS2** - Fuente habitual de raylib y libvips precompilados
-
-### Dependencias del Proyecto
-
-El proyecto visor-c tiene dos dependencias principales:
-
-1. **raylib** - Biblioteca gráfica
-2. **libvips** - Procesamiento de imágenes de alto rendimiento (AVIF, WebP, HEIC, etc.)
-
-### El Problema
-
-**libvips tiene múltiples dependencias**, incluyendo:
-- glib
-- gobject
-- gio
-- zlib
-- expat
-- libffi
-
-Estas dependencias no están disponibles en Windows sin MSYS2 u otro sistema similar.
-
-## Opciones Disponibles
-
-### ✅ Opción 1 (RECOMENDADA): Descargar libvips con todas las dependencias
-
-Esta opción usa el paquete `vips-dev-w64-all-8.18.0.zip` que **incluye TODAS las dependencias**:
-- glib ✓
-- gobject ✓
-- gio ✓
-- zlib ✓
-- expat ✓
-- libffi ✓
-- Y todas las demás dependencias
-
-**Ventajas:**
-- ✅ Funcionará 100% sin MSYS2
-- ✅ Solo requiere descargar y descomprimir
-- ✅ Soporta TODOS los formatos (AVIF, WebP, HEIC, HEIF, JXL, TIFF, etc.)
-- ✅ Usa tu TDM-GCC existente
-
-**Pasos:**
-1. Ejecutar el script actualizado: `build-without-msys2.bat`
-2. El script descarga automáticamente raylib y libvips con todas las dependencias
-3. Compila visor-c
-
-**Tiempo estimado:** 10-15 minutos (dependiendo de tu conexión)
+✅ **Compilación completa sin MSYS2** - 100% funcional
+✅ **Build Portable automático** - Genera ZIP listo para distribuir
+✅ **Installer NSIS automático** - Genera instalador EXE
+✅ **Descarga automática de dependencias** - Sin intervención manual
 
 ---
 
-### Opción 2: Instalar MSYS2 (Alternativa oficial)
+## Quick Start
 
-Es la opción documentada oficialmente.
-
-1. Descargar MSYS2 desde https://www.msys2.org/
-2. Instalar en la ruta por defecto `C:\msys64\`
-3. Abrir MSYS2 MinGW 64-bit terminal
-4. Ejecutar:
+### Opción 1: Compilar solo (build-all-auto-without-msys2.bat)
 ```bash
-pacman -S mingw-w64-x86_64-gcc
-pacman -S mingw-w64-x86_64-pkg-config
-pacman -S mingw-w64-x86_64-vips
-pacman -S mingw-w64-x86_64-raylib
+cd visor-c
+.\build-all-auto-without-msys2.bat
 ```
 
-5. Compilar con el script existente:
+Resultado: `build\viewer.exe` (ejecutable compilado)
+
+---
+
+### Opción 2: Compilar + Portable ZIP (build-all-portable-auto.bat)
 ```bash
-cd C:/projects/my/manga-reader/visor-c
-./build.bat
+cd visor-c
+.\build-all-portable-auto.bat
 ```
 
-**Ventajas:**
-- Documentación oficial
-- Más control sobre el proceso
-- Puede compilar desde fuente
+Resultado: `build\MangaViewer-1.0.0-portable.zip` (listo para distribuir)
 
 ---
 
-### Opción 3: Usar Visor-C sin libvips (Parcial)
+### Opción 3: Compilar + Installer EXE (build-all-auto-installer.ps1)
+```powershell
+cd visor-c
+.\build-all-auto-installer.ps1
+```
 
-Podríamos compilar una versión reducida de visor-c que NO use libvips. Esto significaría:
-- ❌ Sin soporte para AVIF, WebP, HEIC, HEIF, JXL, TIFF
-- ✅ Solo PNG y JPG (formatos soportados nativamente por raylib)
-
-Esto requeriría modificar el código para desactivar las funcionalidades de libvips.
-
-**Desventaja:**
-- Pierdes la mayoría de la funcionalidad del visor
-- AVIF, WebP, HEIC son muy comunes hoy en día
+Resultado: `build\MangaViewer-1.0.0-setup.exe` (instalador NSIS)
 
 ---
 
-### Opción 4: Compilar libvips desde la fuente (Extremadamente complejo)
+## Cómo Funciona
 
-Es técnicamente posible compilar libvips desde la fuente sin MSYS2 usando:
-- Meson + Ninja (build system)
-- Visual Studio o tu TDM-GCC
-- Descargar individualmente todas las dependencias
+### 1. Descarga de Dependencias (`download-deps-curl.bat`)
+- Descarga Raylib 5.5.0
+- Descarga libvips 8.18.0 (con TODAS las dependencias incluidas)
+- Extrae automáticamente en carpeta `deps\`
+- Verifica si ya existe para evitar descargas duplicadas
 
-**No es recomendado** porque:
-- Requiere descargar ~20 dependencias
-- Compilación compleja (30-60 minutos)
-- Riesgo alto de errores en dependencias
+### 2. Compilación (`build-all-auto-without-msys2.bat`)
+- Usa gcc de tu instalación actual (TDM-GCC o MinGW)
+- Compila contra las dependencias descargadas
+- Genera `build\viewer.exe` optimizado
+
+### 3. Empaquetado Portable (`build-all-portable-auto.bat`)
+- Reutiliza la compilación anterior
+- Copia ejecutable + DLLs necesarios
+- Genera ZIP para distribución
+
+### 4. Installer NSIS (`build-all-auto-installer.ps1`)
+- Reutiliza la compilación anterior
+- Prepara archivos para NSIS
+- Genera instalador EXE con desinstalador
 
 ---
 
-### Opción 5: Usar WSL (Windows Subsystem for Linux)
+## Dependencias del Sistema
 
-Otra alternativa seria usar WSL y compilar para Linux, aunque el ejecutable resultante no funcionaría nativamente en Windows.
+### Requeridas
+- **gcc** - Compilador (TDM-GCC, MinGW, o similar)
+- **PowerShell** - Para algunos scripts
+- **curl** - Para descargar dependencias
 
-## Recomendación
+### Opcionales
+- **NSIS** - Solo si quieres crear installer EXE
+  - Descargar: https://nsis.sourceforge.io/Download
+  - Instalar en: `C:\Program Files (x86)\NSIS\` (por defecto)
 
-**La mejor opción es instalar MSYS2**. Es:
-- La forma oficial y documentada
-- Más rápida y sencilla
-- Garantiza compatibilidad
-- Incluye todas las dependencias resueltas
+---
 
-## Scripts de Build Creados
+## Estructura de Dependencias
 
-He creado un script `build-without-msys2.bat` que intenta descargar raylib y libvips precompilados, pero **no funcionará completamente** sin todas las dependencias de libvips (glib, etc.).
+```
+deps/
+├── raylib-4.5.0.zip          ← Descargado automáticamente
+├── raylib/                    ← Extraído automáticamente
+│   ├── include/
+│   ├── lib/
+│   └── bin/
+├── vips-8.18.0-all.zip        ← Descargado automáticamente (CON TODAS LAS DEPS)
+└── vips/                      ← Extraído automáticamente
+    ├── include/
+    ├── lib/
+    └── bin/
+```
 
-El script está disponible si quieres experimentar, pero necesitarás resolver las dependencias de glib manualmente.
+### ¿Por qué `vips-dev-w64-all-8.18.0.zip`?
+
+Este paquete incluye **TODAS las dependencias necesarias**:
+- ✅ glib
+- ✅ gobject
+- ✅ gio
+- ✅ zlib
+- ✅ expat
+- ✅ libffi
+- ✅ Y muchas más
+
+**Alternativa (NO recomendada):** `vips-dev-w64-web-8.18.0.zip` - solo formatos básicos, sin glib
+
+---
+
+## Scripts Disponibles
+
+| Script | Propósito | Salida |
+|--------|----------|--------|
+| `download-deps-curl.bat` | Descargar y extraer dependencias | `deps/` |
+| `build-all-auto-without-msys2.bat` | Compilar aplicación | `build/viewer.exe` |
+| `build-all-portable-auto.bat` | Compilar + ZIP portable | `build/MangaViewer-*.zip` |
+| `build-all-auto-installer.ps1` | Compilar + Installer NSIS | `build/MangaViewer-*-setup.exe` |
+| `build-installer.ps1` | Original (referencia) | - |
+
+---
+
+## Troubleshooting
+
+### Error: "No DLLs found"
+**Causa:** Los DLLs no están donde el script espera
+**Solución:**
+```powershell
+# Verificar estructura
+dir deps\vips\lib\
+dir deps\vips\bin\
+dir deps\raylib\lib\
+```
+
+### Error: "gcc not found"
+**Causa:** Compilador no en PATH
+**Solución:**
+```bash
+# Verificar si gcc existe
+gcc --version
+
+# O instalar TDM-GCC: https://jmeubank.github.io/tdm-gcc/
+```
+
+### Error: "makensis not found" (solo NSIS)
+**Causa:** NSIS no instalado
+**Solución:**
+```bash
+# Descargar e instalar NSIS
+# https://nsis.sourceforge.io/Download
+
+# O instalar en path personalizado editando build-all-auto-installer.ps1
+```
+
+### La aplicación no encuentra DLLs al ejecutar
+**Causa:** Los DLLs deben estar en el mismo directorio que el ejecutable
+**Solución:**
+- Portable: Extraer el ZIP
+- Installer: Ejecutar el instalador
+- Manual: Copiar DLLs al mismo directorio que viewer.exe
+
+---
+
+## Opciones Alternativas
+
+### ✅ Opción 1: RECOMENDADA (Este proceso)
+- Tiempo: 10-15 minutos
+- Complejidad: Baja
+- Requisitos: gcc + curl
+- Resultado: Ejecutable + Portable + Installer
+
+### Opción 2: Instalar MSYS2 (Oficial)
+- Tiempo: 20-30 minutos
+- Complejidad: Media
+- Requisitos: 3GB espacio
+- Descargar: https://www.msys2.org/
+
+### Opción 3: Compilar sin libvips (Reducido)
+- Tiempo: 5 minutos
+- Complejidad: Baja
+- Requisitos: gcc
+- Limitación: Solo PNG/JPG, sin AVIF/WebP/HEIC
+
+### Opción 4: WSL (Linux en Windows)
+- Resultado: Ejecutable Linux, no Windows
+
+---
+
+## Formatos Soportados
+
+Con esta configuración (`vips-dev-w64-all`), soportas:
+
+✅ PNG
+✅ JPEG
+✅ AVIF
+✅ WebP
+✅ HEIC/HEIF
+✅ TIFF
+✅ JXL
+✅ BMP
+✅ Y más...
+
+---
+
+## Ejemplos de Uso
+
+### Compilar y distribuir como ZIP
+```bash
+cd visor-c
+.\build-all-portable-auto.bat
+# Resultado: build\MangaViewer-1.0.0-portable.zip
+# Enviado a usuarios
+```
+
+### Compilar y crear installer
+```powershell
+cd visor-c
+.\build-all-auto-installer.ps1
+# Resultado: build\MangaViewer-1.0.0-setup.exe
+# Usuarios lo ejecutan para instalar
+```
+
+### Solo compilar (desarrollo)
+```bash
+cd visor-c
+.\build-all-auto-without-msys2.bat
+# Resultado: build\viewer.exe
+# Ejecutar directamente
+```
+
+---
+
+## Conclusión
+
+**¡Compilar sin MSYS2 es completamente viable y funcional!**
+
+Los scripts automatizados hacen el proceso trivial:
+1. Descargan dependencias precompiladas con TODAS las libs necesarias
+2. Compilan la aplicación
+3. Generan paquetes listos para distribuir (ZIP o EXE)
+
+**Todo esto sin instalar MSYS2 ni nada adicional más que gcc.**
+
+---
 
 ## Enlaces Útiles
 
 - **Raylib**: https://github.com/raysan5/raylib/releases
 - **libvips**: https://github.com/libvips/libvips/releases
-- **libvips Windows binaries (CON TODAS LAS DEPENDENCIAS)**: https://github.com/libvips/build-win64-mxe/releases
-  - Usar: `vips-dev-w64-all-8.18.0.zip` (incluye glib y todas las dependencias)
-  - NO usar: `vips-dev-w64-web-8.18.0.zip` (solo formatos seguros, sin glib)
+- **libvips Binaries (RECOMENDADO)**: https://github.com/libvips/build-win64-mxe/releases
+  - Usar: `vips-dev-w64-all-8.18.0.zip` ✅
+- **NSIS**: https://nsis.sourceforge.io/Download
+- **TDM-GCC**: https://jmeubank.github.io/tdm-gcc/
 - **MSYS2**: https://www.msys2.org/
-
-## Conclusión
-
-**¡SÍ es posible compilar sin MSYS2!** Tu instinto era correcto.
-
-La mejor opción es **descargar el paquete completo de libvips** (`vips-dev-w64-all-8.18.0.zip`) que ya incluye todas las dependencias (glib, gobject, gio, zlib, expat, libffi, etc.).
-
-### ¿Por qué el paquete "all" es la mejor opción?
-
-1. **Funcionará 100% con tu TDM-GCC**
-2. **Solo requiere descargar y descomprimir** (sin instalar MSYS2)
-3. **Incluye TODAS las dependencias necesarias**
-4. **Soporta TODOS los formatos de imagen** (AVIF, WebP, HEIC, HEIF, JXL, TIFF, etc.)
-5. **Usa tu entorno actual** (sin cambios)
-
-### Comparación de opciones:
-
-| Opción | Tiempo | Complejidad | Dependencias | Soporte de formatos |
-|---------|---------|-------------|--------------|---------------------|
-| **Descargar libvips-all** | ~10 min | Baja | ✅ Completas incluidas | ✅ TODO (AVIF, WebP, HEIC, etc.) |
-| Instalar MSYS2 | ~15 min | Media | Via pacman | ✅ TODO (AVIF, WebP, HEIC, etc.) |
-| Compilar desde fuente | ~60 min | ❌ Muy alta | Manuales | ✅ TODO (si se descargan todas) |
-| Sin libvips | ~5 min | Baja | Ninguna | ❌ Solo PNG/JPG |
-
-**Recomendación:** Ejecutar `build-without-msys2.bat` que ya usa el paquete correcto con todas las dependencias.
