@@ -28,6 +28,7 @@
 #include "loader.h"
 #include "config.h"
 #include <stdio.h>
+#include <stdlib.h>
 
 int main(int argc, char *argv[]) {
     // Initialize platform (UTF-8 console on Windows)
