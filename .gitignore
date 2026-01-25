@@ -5,3 +5,6 @@ frontend/dist
 .vscode/
 info.txt
 .cursor/plans
+visor-c/portable
+visor-c/deps
+visor-c/build
