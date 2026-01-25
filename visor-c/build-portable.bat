@@ -260,31 +260,90 @@ for %%f in (libgcc_s_seh-1.dll libstdc++-6.dll libwinpthread-1.dll zlib1.dll lib
 )
 
 echo   - Copying image format DLLs...
-for %%f in (libjpeg*.dll libpng*.dll libtiff*.dll libwebp*.dll libheif*.dll libheif.dll) do (
-    if exist "%MSYS2_PATH%\%%f" (
-        copy /Y "%MSYS2_PATH%\%%f" "%PORTABLE_DIR%\dll\" >nul 2>&1
+REM Try each pattern separately for better wildcard expansion
+for %%f in (%MSYS2_PATH%\libjpeg*.dll) do (
+    if exist "%%f" (
+        copy /Y "%%f" "%PORTABLE_DIR%\dll\" >nul 2>&1
         if !ERRORLEVEL! EQU 0 (
-            echo     Copied: %%f
+            echo     Copied: %%~nxf
+        )
+    )
+)
+for %%f in (%MSYS2_PATH%\libpng*.dll) do (
+    if exist "%%f" (
+        copy /Y "%%f" "%PORTABLE_DIR%\dll\" >nul 2>&1
+        if !ERRORLEVEL! EQU 0 (
+            echo     Copied: %%~nxf
+        )
+    )
+)
+for %%f in (%MSYS2_PATH%\libtiff*.dll) do (
+    if exist "%%f" (
+        copy /Y "%%f" "%PORTABLE_DIR%\dll\" >nul 2>&1
+        if !ERRORLEVEL! EQU 0 (
+            echo     Copied: %%~nxf
+        )
+    )
+)
+for %%f in (%MSYS2_PATH%\libwebp*.dll) do (
+    if exist "%%f" (
+        copy /Y "%%f" "%PORTABLE_DIR%\dll\" >nul 2>&1
+        if !ERRORLEVEL! EQU 0 (
+            echo     Copied: %%~nxf
+        )
+    )
+)
+for %%f in (%MSYS2_PATH%\libheif*.dll) do (
+    if exist "%%f" (
+        copy /Y "%%f" "%PORTABLE_DIR%\dll\" >nul 2>&1
+        if !ERRORLEVEL! EQU 0 (
+            echo     Copied: %%~nxf
         )
     )
 )
 
 echo   - Copying AVIF codec DLLs...
-for %%f in (libavif-16.dll libaom.dll libdav1d-7.dll) do (
-    if exist "%MSYS2_PATH%\%%f" (
-        copy /Y "%MSYS2_PATH%\%%f" "%PORTABLE_DIR%\dll\" >nul 2>&1
+REM Try each pattern separately for better wildcard expansion
+for %%f in (%MSYS2_PATH%\libavif*.dll) do (
+    if exist "%%f" (
+        copy /Y "%%f" "%PORTABLE_DIR%\dll\" >nul 2>&1
         if !ERRORLEVEL! EQU 0 (
-            echo     Copied: %%f
+            echo     Copied: %%~nxf
+        )
+    )
+)
+for %%f in (%MSYS2_PATH%\libaom*.dll) do (
+    if exist "%%f" (
+        copy /Y "%%f" "%PORTABLE_DIR%\dll\" >nul 2>&1
+        if !ERRORLEVEL! EQU 0 (
+            echo     Copied: %%~nxf
+        )
+    )
+)
+for %%f in (%MSYS2_PATH%\libdav1d*.dll) do (
+    if exist "%%f" (
+        copy /Y "%%f" "%PORTABLE_DIR%\dll\" >nul 2>&1
+        if !ERRORLEVEL! EQU 0 (
+            echo     Copied: %%~nxf
         )
     )
 )
 
 echo   - Copying HEIF/HEIC codec DLLs...
-for %%f in (libde265-0.dll libx265-215.dll) do (
-    if exist "%MSYS2_PATH%\%%f" (
-        copy /Y "%MSYS2_PATH%\%%f" "%PORTABLE_DIR%\dll\" >nul 2>&1
+REM Try each pattern separately for better wildcard expansion
+for %%f in (%MSYS2_PATH%\libde265*.dll) do (
+    if exist "%%f" (
+        copy /Y "%%f" "%PORTABLE_DIR%\dll\" >nul 2>&1
         if !ERRORLEVEL! EQU 0 (
-            echo     Copied: %%f
+            echo     Copied: %%~nxf
+        )
+    )
+)
+for %%f in (%MSYS2_PATH%\libx265*.dll) do (
+    if exist "%%f" (
+        copy /Y "%%f" "%PORTABLE_DIR%\dll\" >nul 2>&1
+        if !ERRORLEVEL! EQU 0 (
+            echo     Copied: %%~nxf
         )
     )
 )
