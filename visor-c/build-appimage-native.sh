@@ -15,7 +15,21 @@ NC='\033[0m' # No Color
 APP_NAME="MangaViewer"
 APP_VERSION="1.0.0"
 PROJECT_DIR="$(pwd)"
-TOOLS_DIR="$HOME/.local/share/appimage-tools"
+ROOT="$(cd "$(dirname "$0")" && pwd)"
+EXTERNAL="$ROOT/external"
+CACHE="$ROOT/.build-cache"
+BUILD_DIR="$ROOT/build"
+mkdir -p "$EXTERNAL" "$CACHE" "$BUILD_DIR"
+
+# Herramientas de AppImage cacheadas por defecto en .build-cache
+TOOLS_DIR="${APPIMAGE_TOOLS_DIR:-$PROJECT_DIR/.build-cache/appimage-tools}"
+
+# Default vendored dependency URLs (puedes sobrescribir con variables de entorno)
+RAYLIB_VERSION="${RAYLIB_VERSION:-5.5}"
+RAYLIB_URL="${RAYLIB_URL:-https://github.com/raysan5/raylib/releases/download/${RAYLIB_VERSION}/raylib-${RAYLIB_VERSION}_linux_amd64.tar.gz}"
+LIBVIPS_VERSION="${LIBVIPS_VERSION:-8.14.5}"
+LIBVIPS_URL="${LIBVIPS_URL:-https://github.com/lovell/sharp-libvips/releases/download/v${LIBVIPS_VERSION}/libvips-${LIBVIPS_VERSION}-linux-x64.tar.gz}"
+
 LINUXDEPLOY_URL="https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage"
 APPIMAGETOOL_URL="https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage"
 
@@ -42,23 +56,26 @@ if [ -n "$MISSING_DEPS" ]; then
     exit 1
 fi
 
-# Verificar librerías de desarrollo
+# Preferir dependencias vendorizadas en external/
+if [ -f "$EXTERNAL/libvips/lib/pkgconfig/vips.pc" ]; then
+    export PKG_CONFIG_PATH="$EXTERNAL/libvips/lib/pkgconfig:${PKG_CONFIG_PATH:-}"
+    echo -e "${BLUE}[INFO]${NC} Usando libvips vendorizado en $EXTERNAL/libvips"
+fi
+
 if ! pkg-config --exists vips; then
-    echo -e "${RED}[ERROR]${NC} No se encontró libvips-dev"
-    echo -e "${YELLOW}[INFO]${NC} Instálalo con:"
-    echo -e "  Debian/Ubuntu: sudo apt install libvips-dev"
-    echo -e "  Fedora/RHEL: sudo dnf install vips-devel"
-    echo -e "  Arch: sudo pacman -S vips"
+    echo -e "${RED}[ERROR]${NC} libvips no encontrado ni vendorizado. Instálalo (libvips-dev) o coloca un build en $EXTERNAL/libvips"
     exit 1
 fi
 
-if ! pkg-config --exists raylib; then
-    echo -e "${RED}[ERROR]${NC} No se encontró libraylib-dev"
-    echo -e "${YELLOW}[INFO]${NC} Instálalo con:"
-    echo -e "  Debian/Ubuntu: sudo apt install libraylib-dev"
-    echo -e "  Fedora/RHEL: sudo dnf install raylib-devel"
-    echo -e "  Arch: sudo pacman -S raylib"
-    exit 1
+# Raylib: aceptar vendorizado o sistema
+if pkg-config --exists raylib; then
+    echo -e "${GREEN}✓${NC} raylib encontrado via pkg-config"
+else
+    if [ -d "$EXTERNAL/raylib/include" ] && [ -d "$EXTERNAL/raylib/lib" ]; then
+        echo -e "${BLUE}[INFO]${NC} raylib vendorizado encontrado en $EXTERNAL/raylib"
+    else
+        echo -e "${YELLOW}[WARN]${NC} raylib no encontrado (ni vendorizado ni en el sistema). El build intentará linkear con -lraylib y esperar que esté presente"
+    fi
 fi
 
 echo -e "${GREEN}✓${NC} Todas las dependencias del sistema están presentes"
@@ -149,32 +166,61 @@ SOURCES='src/main.c src/config.c src/folder.c src/input.c src/loader.c src/platf
 INCLUDE='-Iinclude'
 
 # Compilar versión release con optimizaciones
-gcc $(pkg-config --cflags vips) \
+# Detectar flags para dependencias vendorizadas
+RAYLIB_CFLAGS=""
+RAYLIB_LIBS="-lraylib"
+if [ -d "$EXTERNAL/raylib/include" ]; then
+    RAYLIB_CFLAGS="-I$EXTERNAL/raylib/include"
+fi
+if [ -d "$EXTERNAL/raylib/lib" ]; then
+    RAYLIB_LIBS="-L$EXTERNAL/raylib/lib -lraylib"
+fi
+
+VIPS_CFLAGS_EXTRA=""
+if [ -d "$EXTERNAL/libvips/include/glib-2.0" ]; then
+    VIPS_CFLAGS_EXTRA="$VIPS_CFLAGS_EXTRA -I$EXTERNAL/libvips/include/glib-2.0"
+fi
+if [ -d "$EXTERNAL/libvips/lib/glib-2.0/include" ]; then
+    VIPS_CFLAGS_EXTRA="$VIPS_CFLAGS_EXTRA -I$EXTERNAL/libvips/lib/glib-2.0/include"
+fi
+
+# Añadir runpath para buscar librerías dentro del AppImage y también las vendorizadas localmente
+RPATH='\$ORIGIN/../lib'
+if [ -d "$EXTERNAL/libvips/lib" ]; then
+    RPATH="$RPATH:$EXTERNAL/libvips/lib"
+fi
+if [ -d "$EXTERNAL/raylib/lib" ]; then
+    RPATH="$RPATH:$EXTERNAL/raylib/lib"
+fi
+
+gcc $(pkg-config --cflags vips) $VIPS_CFLAGS_EXTRA $RAYLIB_CFLAGS \
     $INCLUDE \
     -o build/viewer $SOURCES \
-    $(pkg-config --libs vips) \
-    -lraylib -lGL -lm -lpthread -ldl -lrt -lX11 \
+    $(pkg-config --libs vips) $RAYLIB_LIBS \
+    -lGL -lm -lpthread -ldl -lrt -lX11 \
+    -Wl,-rpath,"$RPATH" \
     -O3 -DNDEBUG
 
 echo -e "${GREEN}✓${NC} Binario compilado exitosamente"
 
 # ============================================
-# PASO 3: Crear estructura AppDir
+# PASO 3: Crear estructura AppDir (dentro de build/)
 # ============================================
 echo -e "\n${BLUE}[3/7]${NC} Creando estructura AppDir..."
 
-rm -rf AppDir
-mkdir -p AppDir/usr/bin
-mkdir -p AppDir/usr/share/applications
-mkdir -p AppDir/usr/share/icons/hicolor/256x256/apps
-mkdir -p AppDir/usr/share/icons/hicolor/512x512/apps
+APPDIR="$PROJECT_DIR/build/AppDir"
+rm -rf "$APPDIR"
+mkdir -p "$APPDIR/usr/bin"
+mkdir -p "$APPDIR/usr/share/applications"
+mkdir -p "$APPDIR/usr/share/icons/hicolor/256x256/apps"
+mkdir -p "$APPDIR/usr/share/icons/hicolor/512x512/apps"
 
 # Copiar binario
-cp build/viewer AppDir/usr/bin/viewer
-chmod +x AppDir/usr/bin/viewer
+cp build/viewer "$APPDIR/usr/bin/viewer"
+chmod +x "$APPDIR/usr/bin/viewer"
 
 # Crear archivo .desktop
-cat > AppDir/usr/share/applications/${APP_NAME}.desktop << 'EOF'
+cat > "$APPDIR/usr/share/applications/${APP_NAME}.desktop" << 'EOF'
 [Desktop Entry]
 Type=Application
 Name=Manga Viewer
@@ -187,14 +233,14 @@ StartupNotify=true
 EOF
 
 # Copiar archivo .desktop a la raíz de AppDir (requerido por appimagetool)
-cp AppDir/usr/share/applications/${APP_NAME}.desktop AppDir/${APP_NAME}.desktop
+cp "$APPDIR/usr/share/applications/${APP_NAME}.desktop" "$APPDIR/${APP_NAME}.desktop"
 
 # Copiar icono (usar uno existente o crear uno genérico)
 if [ -f '../build/appicon.png' ]; then
-    cp ../build/appicon.png AppDir/usr/share/icons/hicolor/256x256/apps/viewer.png
-    cp ../build/appicon.png AppDir/usr/share/icons/hicolor/512x512/apps/viewer.png
+    cp ../build/appicon.png "$APPDIR/usr/share/icons/hicolor/256x256/apps/viewer.png"
+    cp ../build/appicon.png "$APPDIR/usr/share/icons/hicolor/512x512/apps/viewer.png"
     # Copiar icono a la raíz de AppDir (requerido por appimagetool)
-    cp ../build/appicon.png AppDir/${APP_NAME}.png
+    cp ../build/appicon.png "$APPDIR/${APP_NAME}.png"
 else
     echo -e "${YELLOW}[WARN]${NC} No se encontró icono, usando uno genérico"
 fi
@@ -206,11 +252,34 @@ echo -e "${GREEN}✓${NC} Estructura AppDir creada"
 # ============================================
 echo -e "\n${BLUE}[4/7]${NC} Copiando dependencias..."
 
-mkdir -p AppDir/usr/lib
+mkdir -p "$APPDIR/usr/lib"
 
 # Librerías del sistema que NO deben copiarse (deben venir del host)
 SYSTEM_LIBS='libc.so.6 libm.so.6 libdl.so.2 libpthread.so.0 librt.so.1 ld-linux-x86-64.so.2 libstdc++.so.6 libgcc_s.so.1'
 
+# Copiar vendorizados (libvips, raylib) si existen
+if [ -d "$EXTERNAL/libvips/lib" ]; then
+    echo -e "${BLUE}[INFO]${NC} Copiando libvips vendorizado a $APPDIR/usr/lib..."
+    for f in "$EXTERNAL/libvips/lib/"*; do
+        [ -e "$f" ] || continue
+        dest="$APPDIR/usr/lib/$(basename "$f")"
+        if [ -e "$dest" ]; then
+            continue
+        fi
+        cp -a "$f" "$dest" 2>/dev/null || true
+    done
+fi
+if [ -d "$EXTERNAL/raylib/lib" ]; then
+    echo -e "${BLUE}[INFO]${NC} Copiando raylib vendorizado a $APPDIR/usr/lib..."
+    for f in "$EXTERNAL/raylib/lib/"*; do
+        [ -e "$f" ] || continue
+        dest="$APPDIR/usr/lib/$(basename "$f")"
+        if [ -e "$dest" ]; then
+            continue
+        fi
+        cp -a "$f" "$dest" 2>/dev/null || true
+    done
+fi
 # Función para copiar librerías y sus dependencias recursivamente
 copy_libs() {
     local binary="$1"
@@ -243,13 +312,13 @@ copy_libs() {
 
 # Copiar librerías del binario principal
 copied=''
-copy_libs AppDir/usr/bin/viewer AppDir/usr/lib "$copied"
+copy_libs "$APPDIR/usr/bin/viewer" "$APPDIR/usr/lib" "$copied"
 
 # Copiar librerías específicas de vips que pueden no aparecer en ldd
 VIPS_LIBS=$(pkg-config --libs-only-L vips | sed 's/-L//g')
 for lib_dir in $VIPS_LIBS; do
     if [ -d "$lib_dir" ]; then
-        find "$lib_dir" -maxdepth 1 -name 'libvips*.so*' -exec cp {} AppDir/usr/lib/ \; 2>/dev/null || true
+        find "$lib_dir" -maxdepth 1 -name 'libvips*.so*' -exec cp {} "$APPDIR/usr/lib/" \; 2>/dev/null || true
     fi
 done
 
@@ -260,7 +329,7 @@ echo -e "${GREEN}✓${NC} Dependencias copiadas"
 # ============================================
 echo -e "\n${BLUE}[5/7]${NC} Creando AppRun..."
 
-cat > AppDir/AppRun << 'EOF'
+cat > "$APPDIR/AppRun" << 'EOF'
 #!/bin/bash
 
 SELF=$(readlink -f "$0")
@@ -277,7 +346,7 @@ export XDG_DATA_DIRS="${HERE}/usr/share:${XDG_DATA_DIRS}"
 exec "${HERE}/usr/bin/viewer" "$@"
 EOF
 
-chmod +x AppDir/AppRun
+chmod +x "$APPDIR/AppRun"
 
 echo -e "${GREEN}✓${NC} AppRun creado"
 
@@ -291,8 +360,11 @@ APPIMAGE_FILE="build/${APP_NAME}-${APP_VERSION}-x86_64.AppImage"
 # Eliminar AppImage anterior si existe
 rm -f "${APPIMAGE_FILE}"
 
+# Asegurar que AppDir/usr/lib esté antes en LD_LIBRARY_PATH al ejecutar appimagetool
+export LD_LIBRARY_PATH="$APPDIR/usr/lib:${LD_LIBRARY_PATH:-}"
+
 # Generar AppImage
-"$APPIMAGETOOL" AppDir "${APPIMAGE_FILE}"
+"$APPIMAGETOOL" "$APPDIR" "${APPIMAGE_FILE}"
 
 # Dar permisos de ejecución
 chmod +x "${APPIMAGE_FILE}"

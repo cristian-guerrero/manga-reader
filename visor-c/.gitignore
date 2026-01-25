@@ -1,6 +1,7 @@
 # Directorios de compilación
 build/
 AppDir/
+external/
 
 # Herramientas de AppImage descargadas
 tools/
@@ -20,3 +21,4 @@ viewer_debug
 *.swp
 *.swo
 .DS_Store
+.build-cache/
