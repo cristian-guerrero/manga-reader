@@ -162,7 +162,9 @@ $imageDllPatterns = @(
     "libtiff*.dll",
     "libwebp*.dll",
     "libheif*.dll",
-    "libavif*.dll"
+    "libheif.dll",
+    "libavif*.dll",
+    "libavif.dll"
 )
 
 foreach ($pattern in $imageDllPatterns) {
@@ -172,12 +174,58 @@ foreach ($pattern in $imageDllPatterns) {
     }
 }
 
-# Copy vips plugins
-$vipsModulesPath = "$MSYS2_PATH\..\lib\vips-modules-8.16"
+# Copy AVIF codec DLLs
+$avifCodecPatterns = @(
+    "libaom*.dll",
+    "libdav1d*.dll"
+)
+
+foreach ($pattern in $avifCodecPatterns) {
+    $dlls = Get-ChildItem -Path "$MSYS2_PATH\$pattern" -ErrorAction SilentlyContinue
+    foreach ($dll in $dlls) {
+        Copy-Item -Path $dll.FullName -Destination "$INSTALL_DIR\dll\" -Force
+    }
+}
+
+# Copy HEIF/HEIC codec DLLs
+$heifCodecPatterns = @(
+    "libde265*.dll",
+    "libx265*.dll"
+)
+
+foreach ($pattern in $heifCodecPatterns) {
+    $dlls = Get-ChildItem -Path "$MSYS2_PATH\$pattern" -ErrorAction SilentlyContinue
+    foreach ($dll in $dlls) {
+        Copy-Item -Path $dll.FullName -Destination "$INSTALL_DIR\dll\" -Force
+    }
+}
+
+# Copy vips plugins (auto-detect version)
+$vipsModulesFound = $false
+
+# Try vips-modules-8.17
+$vipsModulesPath = "$MSYS2_PATH\..\lib\vips-modules-8.17"
 if (Test-Path $vipsModulesPath) {
     New-Item -ItemType Directory -Path "$INSTALL_DIR\lib" -Force | Out-Null
-    New-Item -ItemType Directory -Path "$INSTALL_DIR\lib\vips-modules-8.16" -Force | Out-Null
-    Copy-Item -Path "$vipsModulesPath\*.dll" -Destination "$INSTALL_DIR\lib\vips-modules-8.16\" -Force
+    New-Item -ItemType Directory -Path "$INSTALL_DIR\lib\vips-modules-8.17" -Force | Out-Null
+    Copy-Item -Path "$vipsModulesPath\*.dll" -Destination "$INSTALL_DIR\lib\vips-modules-8.17\" -Force
+    $vipsModulesFound = $true
+}
+
+# Try vips-modules-8.16 if not found
+if (-not $vipsModulesFound) {
+    $vipsModulesPath = "$MSYS2_PATH\..\lib\vips-modules-8.16"
+    if (Test-Path $vipsModulesPath) {
+        New-Item -ItemType Directory -Path "$INSTALL_DIR\lib" -Force | Out-Null
+        New-Item -ItemType Directory -Path "$INSTALL_DIR\lib\vips-modules-8.16" -Force | Out-Null
+        Copy-Item -Path "$vipsModulesPath\*.dll" -Destination "$INSTALL_DIR\lib\vips-modules-8.16\" -Force
+        $vipsModulesFound = $true
+    }
+}
+
+if (-not $vipsModulesFound) {
+    Write-Host "  [WARNING] No vips plugins found (optional)" -ForegroundColor Yellow
+    Write-Host "            Note: AVIF support requires vips-heif.dll plugin" -ForegroundColor Yellow
 }
 
 Write-Host "[OK] Installer files prepared." -ForegroundColor Green

@@ -56,7 +56,7 @@ REM Add MSYS2 to PATH
 set PATH=%MSYS2_PATH%;%PATH%
 
 REM Check for required tools
-echo [1/7] Checking dependencies...
+echo [1/8] Checking dependencies...
 
 REM Check for gcc
 if exist "%MSYS2_PATH%\gcc.exe" (
@@ -88,7 +88,7 @@ REM ============================================
 REM Step 1: Compile the application
 REM ============================================
 echo.
-echo [2/7] Compiling application...
+echo [2/8] Compiling application...
 
 REM Kill any running instances
 taskkill /IM viewer_debug.exe /F >nul 2>&1
@@ -171,7 +171,7 @@ REM ============================================
 REM Step 2: Clean portable directory
 REM ============================================
 echo.
-echo [3/7] Preparing portable directory...
+echo [3/8] Preparing portable directory...
 
 if exist "%PORTABLE_DIR%" (
     echo   - Removing old portable directory...
@@ -187,7 +187,7 @@ REM ============================================
 REM Step 3: Copy executable
 REM ============================================
 echo.
-echo [4/7] Copying executable...
+echo [4/8] Copying executable...
 
 copy /Y "build\viewer.exe" "%PORTABLE_DIR%\%APP_NAME%.exe" >nul
 if %ERRORLEVEL% NEQ 0 (
@@ -201,7 +201,7 @@ REM ============================================
 REM Step 4: Find and copy DLL dependencies
 REM ============================================
 echo.
-echo [5/7] Copying DLL dependencies...
+echo [5/8] Copying DLL dependencies...
 
 REM Create a temporary script to find dependencies using objdump
 echo Finding dependencies using objdump...
@@ -260,7 +260,27 @@ for %%f in (libgcc_s_seh-1.dll libstdc++-6.dll libwinpthread-1.dll zlib1.dll lib
 )
 
 echo   - Copying image format DLLs...
-for %%f in (libjpeg*.dll libpng*.dll libtiff*.dll libwebp*.dll libheif*.dll libavif*.dll) do (
+for %%f in (libjpeg*.dll libpng*.dll libtiff*.dll libwebp*.dll libheif*.dll libheif.dll) do (
+    if exist "%MSYS2_PATH%\%%f" (
+        copy /Y "%MSYS2_PATH%\%%f" "%PORTABLE_DIR%\dll\" >nul 2>&1
+        if !ERRORLEVEL! EQU 0 (
+            echo     Copied: %%f
+        )
+    )
+)
+
+echo   - Copying AVIF codec DLLs...
+for %%f in (libavif-16.dll libaom.dll libdav1d-7.dll) do (
+    if exist "%MSYS2_PATH%\%%f" (
+        copy /Y "%MSYS2_PATH%\%%f" "%PORTABLE_DIR%\dll\" >nul 2>&1
+        if !ERRORLEVEL! EQU 0 (
+            echo     Copied: %%f
+        )
+    )
+)
+
+echo   - Copying HEIF/HEIC codec DLLs...
+for %%f in (libde265-0.dll libx265-215.dll) do (
     if exist "%MSYS2_PATH%\%%f" (
         copy /Y "%MSYS2_PATH%\%%f" "%PORTABLE_DIR%\dll\" >nul 2>&1
         if !ERRORLEVEL! EQU 0 (
@@ -272,32 +292,61 @@ for %%f in (libjpeg*.dll libpng*.dll libtiff*.dll libwebp*.dll libheif*.dll liba
 echo [OK] DLL dependencies copied.
 
 REM ============================================
-REM Step 5: Copy vips plugins (if they exist)
+REM Step 6: Copy vips plugins (if they exist) - Auto-detect version
 REM ============================================
 echo.
-echo [6/7] Copying vips plugins...
+echo [6/8] Copying vips plugins (auto-detect version)...
 
-if exist "%MSYS2_PATH%\..\..\mingw64\lib\vips-modules-8.16" (
+REM Try to find vips-modules directory in multiple locations
+set VIPS_MODULES_FOUND=0
+
+REM Check mingw64
+if exist "%MSYS2_PATH%\..\..\mingw64\lib\vips-modules-8.17" (
     mkdir "%PORTABLE_DIR%\lib" 2>nul
-    mkdir "%PORTABLE_DIR%\lib\vips-modules-8.16" 2>nul
-    xcopy /Y /Q "%MSYS2_PATH%\..\..\mingw64\lib\vips-modules-8.16\*.dll" "%PORTABLE_DIR%\lib\vips-modules-8.16\" >nul 2>&1
-    echo   - Vips plugins copied
-) else if exist "%MSYS2_PATH%\..\..\ucrt64\lib\vips-modules-8.16" (
-    mkdir "%PORTABLE_DIR%\lib" 2>nul
-    mkdir "%PORTABLE_DIR%\lib\vips-modules-8.16" 2>nul
-    xcopy /Y /Q "%MSYS2_PATH%\..\..\ucrt64\lib\vips-modules-8.16\*.dll" "%PORTABLE_DIR%\lib\vips-modules-8.16\" >nul 2>&1
-    echo   - Vips plugins copied
-) else (
-    echo   - No vips plugins found (optional)
+    mkdir "%PORTABLE_DIR%\lib\vips-modules-8.17" 2>nul
+    xcopy /Y /Q "%MSYS2_PATH%\..\..\mingw64\lib\vips-modules-8.17\*.dll" "%PORTABLE_DIR%\lib\vips-modules-8.17\" >nul 2>&1
+    if %ERRORLEVEL% EQU 0 (
+        echo   - Vips plugins copied (vips-modules-8.17)
+        set VIPS_MODULES_FOUND=1
+    )
 )
 
-echo [OK] Vips plugins handled.
+REM Check ucrt64 if not found
+if %VIPS_MODULES_FOUND% EQU 0 (
+    if exist "%MSYS2_PATH%\..\..\ucrt64\lib\vips-modules-8.17" (
+        mkdir "%PORTABLE_DIR%\lib" 2>nul
+        mkdir "%PORTABLE_DIR%\lib\vips-modules-8.17" 2>nul
+        xcopy /Y /Q "%MSYS2_PATH%\..\..\ucrt64\lib\vips-modules-8.17\*.dll" "%PORTABLE_DIR%\lib\vips-modules-8.17\" >nul 2>&1
+        if %ERRORLEVEL% EQU 0 (
+            echo   - Vips plugins copied (vips-modules-8.17)
+            set VIPS_MODULES_FOUND=1
+        )
+    )
+)
+
+REM Try 8.16 version if 8.17 not found
+if %VIPS_MODULES_FOUND% EQU 0 (
+    if exist "%MSYS2_PATH%\..\..\mingw64\lib\vips-modules-8.16" (
+        mkdir "%PORTABLE_DIR%\lib" 2>nul
+        mkdir "%PORTABLE_DIR%\lib\vips-modules-8.16" 2>nul
+        xcopy /Y /Q "%MSYS2_PATH%\..\..\mingw64\lib\vips-modules-8.16\*.dll" "%PORTABLE_DIR%\lib\vips-modules-8.16\" >nul 2>&1
+        if %ERRORLEVEL% EQU 0 (
+            echo   - Vips plugins copied (vips-modules-8.16)
+            set VIPS_MODULES_FOUND=1
+        )
+    )
+)
+
+if %VIPS_MODULES_FOUND% EQU 0 (
+    echo   - No vips plugins found (optional)
+    echo     Note: AVIF support requires vips-heif.dll plugin
+)
 
 REM ============================================
-REM Step 6: Create README and launcher script
+REM Step 7: Create README and launcher script
 REM ============================================
 echo.
-echo [7/7] Creating documentation and launcher...
+echo [7/8] Creating documentation and launcher...
 
 REM Create README
 (
@@ -346,10 +395,10 @@ echo start "" "%%~dp0%APP_NAME%.exe" %%*
 echo [OK] Documentation and launcher created.
 
 REM ============================================
-REM Step 7: Create ZIP file
+REM Step 8: Create ZIP file
 REM ============================================
 echo.
-echo Creating ZIP package...
+echo [8/8] Creating ZIP package...
 
 if exist "%ZIP_FILE%" del "%ZIP_FILE%"
 

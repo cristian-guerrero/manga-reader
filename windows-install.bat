@@ -83,11 +83,21 @@ set PACKAGES=%PACKAGES% mingw-w64-x86_64-libjpeg-turbo
 set PACKAGES=%PACKAGES% mingw-w64-x86_64-libpng
 set PACKAGES=%PACKAGES% mingw-w64-x86_64-libtiff
 set PACKAGES=%PACKAGES% mingw-w64-x86_64-libwebp
+REM AVIF format support and dependencies
 set PACKAGES=%PACKAGES% mingw-w64-x86_64-libheif
 set PACKAGES=%PACKAGES% mingw-w64-x86_64-libavif
+set PACKAGES=%PACKAGES% mingw-w64-x86_64-aom
+set PACKAGES=%PACKAGES% mingw-w64-x86_64-dav1d
+REM HEIF/HEIC format support (HEVC codecs)
+set PACKAGES=%PACKAGES% mingw-w64-x86_64-libde265
+set PACKAGES=%PACKAGES% mingw-w64-x86_64-x265
+REM Additional vips dependencies
 set PACKAGES=%PACKAGES% mingw-w64-x86_64-glib2
 set PACKAGES=%PACKAGES% mingw-w64-x86_64-libffi
 set PACKAGES=%PACKAGES% mingw-w64-x86_64-zlib
+REM Additional dependencies for vips plugins
+set PACKAGES=%PACKAGES% mingw-w64-x86_64-fftw
+set PACKAGES=%PACKAGES% mingw-w64-x86_64-expat
 
 echo Installing packages:
 echo   - mingw-w64-x86_64-gcc (C compiler)
@@ -104,9 +114,15 @@ echo   - mingw-w64-x86_64-libtiff (TIFF image format support)
 echo   - mingw-w64-x86_64-libwebp (WebP image format support)
 echo   - mingw-w64-x86_64-libheif (HEIF/HEIC image format support)
 echo   - mingw-w64-x86_64-libavif (AVIF image format support)
+echo   - mingw-w64-x86_64-aom (AV1 codec for AVIF encoding/decoding)
+echo   - mingw-w64-x86_64-dav1d (AV1 decoder for AVIF)
+echo   - mingw-w64-x86_64-libde265 (HEVC decoder for HEIF/HEIC)
+echo   - mingw-w64-x86_64-x265 (HEVC encoder for HEIF/HEIC)
 echo   - mingw-w64-x86_64-glib2 (GLib library for vips)
 echo   - mingw-w64-x86_64-libffi (Foreign Function Interface)
 echo   - mingw-w64-x86_64-zlib (Compression library)
+echo   - mingw-w64-x86_64-fftw (Fast Fourier Transform library for vips)
+echo   - mingw-w64-x86_64-expat (XML parsing library for vips)
 echo.
 
 REM Install packages using pacman
@@ -269,6 +285,43 @@ if %ERRORLEVEL% EQU 0 (
     echo [OK] libheif: %LIBHEIF_VERSION%
 ) else (
     echo [WARNING] libheif not found
+)
+
+REM Verify AVIF codec libraries
+if exist "%MSYS2_PATH%\mingw64\bin\libaom.dll" (
+    echo [OK] libaom (AV1 codec)
+) else (
+    echo [WARNING] libaom not found
+)
+
+if exist "%MSYS2_PATH%\mingw64\bin\libdav1d-*.dll" (
+    echo [OK] libdav1d (AV1 decoder)
+) else (
+    echo [WARNING] libdav1d not found
+)
+
+REM Verify HEVC codec libraries
+if exist "%MSYS2_PATH%\mingw64\bin\libde265.dll" (
+    echo [OK] libde265 (HEVC decoder)
+) else (
+    echo [WARNING] libde265 not found
+)
+
+if exist "%MSYS2_PATH%\mingw64\bin\libx265.dll" (
+    echo [OK] libx265 (HEVC encoder)
+) else (
+    echo [WARNING] libx265 not found
+)
+
+REM Verify AVIF support is working
+echo.
+echo Checking AVIF support...
+"%MSYS2_PATH%\usr\bin\bash.exe" -lc "vips -l 2>/dev/null | grep -i avif" >nul 2>&1
+if %ERRORLEVEL% EQU 0 (
+    echo [OK] AVIF support is enabled
+) else (
+    echo [WARNING] AVIF support may not be fully enabled
+    echo         Run: pacman -S mingw-w64-x86_64-libheif --needed
 )
 
 echo.
