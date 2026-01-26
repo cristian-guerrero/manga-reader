@@ -124,7 +124,8 @@ int main(int argc, char *argv[])
 
     // Try to load a font that supports Japanese (hiragana/katakana/CJK) from common locations.
     const char *candidates[] = {
-        "./resources/KosugiMaru-Regular.ttf",
+        // "./resources/KosugiMaru-Regular.ttf",
+         "./resources/NotoSansJP-Bold.ttf",
         NULL};
 
     const char *jpFontPath = NULL;
@@ -141,15 +142,16 @@ int main(int argc, char *argv[])
     {
         setlocale(LC_ALL, "en_US.UTF-8");
         printf("Found Japanese-capable font: %s\n", jpFontPath);
-        // Build codepoint list for ASCII + CJK punctuation + hiragana + katakana + common CJK ideographs
-        // Ranges: 32..126, 0x3000..0x303F (CJK punctuation), 0x3040..0x309F (Hiragana), 0x30A0..0x30FF (Katakana), 0x4E00..0x9FFF (CJK Unified Ideographs)
-        int ranges[][2] = {{32, 126}, {0x3000, 0x303F}, {0x3040, 0x309F}, {0x30A0, 0x30FF}, {0x4E00, 0x9FFF}};
+        // Build codepoint list for ASCII + Latin-1 (acentos, ñ) + CJK punctuation + hiragana + katakana + common CJK ideographs
+        // Ranges: 32..126, 0x00A0..0x00FF (Latin-1 supplement), 0x3000..0x303F (CJK punctuation), 0x3040..0x309F (Hiragana), 0x30A0..0x30FF (Katakana), 0x4E00..0x9FFF (CJK Unified Ideographs)
+        int ranges[][2] = {{32, 126}, {0x00A0, 0x00FF}, {0x3000, 0x303F}, {0x3040, 0x309F}, {0x30A0, 0x30FF}, {0x4E00, 0x9FFF}};
+        int numRanges = sizeof(ranges) / sizeof(ranges[0]);
         int total = 0;
-        for (int r = 0; r < 5; r++)
+        for (int r = 0; r < numRanges; r++)
             total += (ranges[r][1] - ranges[r][0] + 1);
         int *codepoints = malloc(sizeof(int) * total);
         int idx = 0;
-        for (int r = 0; r < 5; r++)
+        for (int r = 0; r < numRanges; r++)
         {
             for (int c = ranges[r][0]; c <= ranges[r][1]; c++)
             {
