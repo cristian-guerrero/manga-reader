@@ -144,7 +144,7 @@ int main(int argc, char *argv[])
         printf("Found Japanese-capable font: %s\n", jpFontPath);
         // Build codepoint list for ASCII + Latin-1 (acentos, ñ) + CJK punctuation + hiragana + katakana + common CJK ideographs
         // Ranges: 32..126, 0x00A0..0x00FF (Latin-1 supplement), 0x3000..0x303F (CJK punctuation), 0x3040..0x309F (Hiragana), 0x30A0..0x30FF (Katakana), 0x4E00..0x9FFF (CJK Unified Ideographs)
-        int ranges[][2] = {{32, 126}, {0x00A0, 0x00FF}, {0x3000, 0x303F}, {0x3040, 0x309F}, {0x30A0, 0x30FF}, {0x4E00, 0x9FFF}};
+        int ranges[][2] = {{32, 126}, {0x00A0, 0x00FF}, {0x0100, 0x017F}, {0x0300, 0x036F}, {0x2460, 0x24FF}, {0x2600, 0x26FF}, {0x3000, 0x303F}, {0x3040, 0x309F}, {0x30A0, 0x30FF}, {0x4E00, 0x9FFF}, {0xFF00, 0xFFEF}};       
         int numRanges = sizeof(ranges) / sizeof(ranges[0]);
         int total = 0;
         for (int r = 0; r < numRanges; r++)
