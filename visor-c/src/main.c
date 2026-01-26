@@ -28,6 +28,7 @@
 #include "loader.h"
 #include "config.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include <locale.h> // Para setlocale
 int main(int argc, char *argv[])
 {
