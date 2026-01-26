@@ -21,7 +21,6 @@
 
 #include "raylib.h"
 #include "../include/types.h"
-#include "../include/font_data.h"
 #include "platform.h"
 #include "viewer.h"
 #include "input.h"
@@ -171,19 +170,13 @@ int main(int argc, char *argv[])
         }
     }
 
-    // Fallback: use embedded Latin-1 font if no JP-capable font found or load failed
+    // Fallback: use default font if no JP-capable font found or load failed
     if (!state.fontLoaded)
     {
-        int codepoints[250];
-        for (int i = 0; i < 250; i++)
-            codepoints[i] = i + 32;
-        state.customFont = LoadFontFromMemory(".ttf", FONT_DATA, FONT_DATA_SIZE, 64, codepoints, 250);
-        state.fontLoaded = (state.customFont.texture.id > 0);
-        if (state.fontLoaded)
-        {
-            SetTextureFilter(state.customFont.texture, TEXTURE_FILTER_BILINEAR);
-            printf("Custom font loaded successfully (Latin-1 range, 64px, Bilinear)\n");
-        }
+        // Use Raylib's default font to ensure text rendering still works
+        state.customFont = GetFontDefault();
+        state.fontLoaded = false; // Not owned by us, don't unload
+        printf("No custom font loaded, using default font fallback\n");
     }
 
     printf("=== Manga Viewer PoC ===\n");

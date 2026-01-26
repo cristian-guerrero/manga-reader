@@ -54,8 +54,7 @@ Se guardan:
 ```
 visor-c/
 ├── include/
-│   ├── types.h         # Estructuras de datos (Thread-safe)
-│   └── font_data.h     # Fuente embebida
+│   └── types.h         # Estructuras de datos (Thread-safe)
 ├── src/
 │   ├── main.c          # Punto de entrada y loop principal
 │   ├── viewer.c        # Lógica de dibujo, hilos y Lazy Loading
