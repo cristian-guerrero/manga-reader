@@ -328,7 +328,8 @@ void DrawViewer(AppState* state) {
         Rectangle dropZone = { 50, 50, screenWidth - 100, screenHeight - 100 };
         DrawRectangleLinesEx(dropZone, 3, (Color){ 100, 100, 120, 255 });
         
-        const char* hint1 = "こんにち世界";
+        const char* hint1 = "Arrastra una carpeta aquí";
+        //const char* hint1 = "こんにち世界";
         const char* hint2 = "Drop a folder here";
         const char* hint3 = "Supports: PNG, JPG, AVIF, WebP, HEIC, JXL...";
         int fontSize = 30;
