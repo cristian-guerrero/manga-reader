@@ -85,8 +85,8 @@ func (c *Container) Initialize(ctx context.Context) error {
 	}
 
 	// Update URL builder with the server address
-	c.URLBuilder.SetBaseURL(c.ImageServer.Addr)
-	c.Logger.Infof("Image server started on %s", c.ImageServer.Addr)
+	c.URLBuilder.SetBaseURL(c.ImageServer.Addr())
+	c.Logger.Infof("Image server started on %s", c.ImageServer.Addr())
 
 	c.Logger.Info("Services initialized successfully")
 	return nil

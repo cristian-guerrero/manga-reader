@@ -1,7 +1,10 @@
 build/bin
 node_modules
 frontend/dist
-*.exe.
+*.exe
 .vscode/
 info.txt
 .cursor/plans
+visor-c/portable
+visor-c/deps
+visor-c/build

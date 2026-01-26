@@ -123,8 +123,8 @@ func (a *App) startup(ctx context.Context) {
 
 // getBaseURL returns the base URL for images and thumbnails
 func (a *App) getBaseURL() string {
-	if a.services != nil && a.services.ImageServer != nil && a.services.ImageServer.Addr != "" {
-		return a.services.ImageServer.Addr
+	if a.services != nil && a.services.ImageServer != nil && a.services.ImageServer.Addr() != "" {
+		return a.services.ImageServer.Addr()
 	}
 	return ""
 }
@@ -330,12 +330,28 @@ func (a *App) SelectFolder() (string, error) {
 // This logic was in `app.go` before.
 
 func (a *App) GetImages(path string) ([]persistence.ImageInfo, error) {
-	return a.libraryMod.GetImages(path, a.settings().Get(), a.orders())
+	images, err := a.libraryMod.GetImages(path, a.settings().Get(), a.orders())
+	if err == nil && len(images) > 0 && stdruntime.GOOS == "linux" {
+		var paths []string
+		for _, img := range images {
+			paths = append(paths, img.Path)
+		}
+		a.imgServer().PreloadConverted(paths)
+	}
+	return images, err
 }
 
 // GetImagesShallow returns a list of images in the specified folder (non-recursive, only immediate directory)
 func (a *App) GetImagesShallow(path string) ([]persistence.ImageInfo, error) {
-	return a.libraryMod.GetImagesShallow(path, a.settings().Get(), a.orders())
+	images, err := a.libraryMod.GetImagesShallow(path, a.settings().Get(), a.orders())
+	if err == nil && len(images) > 0 && stdruntime.GOOS == "linux" {
+		var paths []string
+		for _, img := range images {
+			paths = append(paths, img.Path)
+		}
+		a.imgServer().PreloadConverted(paths)
+	}
+	return images, err
 }
 
 // GetFolderInfo delegates to Library module
@@ -579,7 +595,21 @@ func (a *App) ClearAllData() error {
 		a.services.Logger.Errorf("Failed to clear explorer folders: %v", err)
 	}
 
-	// 7. Reset specific settings (LastPage, LastFolder)
+	// 7. Clear Converted Images Cache
+	if a.services != nil && a.services.ImageServer != nil {
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			homeDir = "."
+		}
+		convertedCacheDir := filepath.Join(homeDir, ".manga-visor", "cache", "converted")
+		if err := os.RemoveAll(convertedCacheDir); err != nil {
+			a.services.Logger.Errorf("Failed to clear converted images cache: %v", err)
+		} else {
+			os.MkdirAll(convertedCacheDir, 0755)
+		}
+	}
+
+	// 8. Reset specific settings (LastPage, LastFolder)
 	updates := map[string]interface{}{
 		"lastPage":   "home",
 		"lastFolder": "",
