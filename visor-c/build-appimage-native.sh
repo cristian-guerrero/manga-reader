@@ -245,6 +245,16 @@ else
     echo -e "${YELLOW}[WARN]${NC} No se encontró icono, usando uno genérico"
 fi
 
+# Copiar recursos de la aplicación (fuentes, assets, etc.) al AppDir
+if [ -d "$PROJECT_DIR/resources" ]; then
+    echo -e "${BLUE}[INFO]${NC} Copiando recursos a AppDir..."
+    # Mantener estructura /resources en la raíz de AppDir para que rutas relativas a ./resources funcionen
+    cp -a "$PROJECT_DIR/resources" "$APPDIR/"
+    echo -e "${GREEN}✓${NC} Recursos copiados: $APPDIR/resources"
+else
+    echo -e "${YELLOW}[WARN]${NC} No se encontró carpeta resources en el proyecto"
+fi
+
 echo -e "${GREEN}✓${NC} Estructura AppDir creada"
 
 # ============================================
@@ -335,6 +345,9 @@ cat > "$APPDIR/AppRun" << 'EOF'
 SELF=$(readlink -f "$0")
 HERE=${SELF%/*}
 
+# Cambiar al directorio de AppDir para que rutas relativas como ./resources resuelvan correctamente
+cd "$HERE"
+
 # Configurar rutas de librerías
 export LD_LIBRARY_PATH="${HERE}/usr/lib:${LD_LIBRARY_PATH}"
 export PATH="${HERE}/usr/bin:${PATH}"
@@ -342,7 +355,7 @@ export PATH="${HERE}/usr/bin:${PATH}"
 # Configurar rutas de datos de la aplicación
 export XDG_DATA_DIRS="${HERE}/usr/share:${XDG_DATA_DIRS}"
 
-# Ejecutar la aplicación
+# Ejecutar la aplicación desde AppDir
 exec "${HERE}/usr/bin/viewer" "$@"
 EOF
 

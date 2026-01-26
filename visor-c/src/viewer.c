@@ -328,7 +328,7 @@ void DrawViewer(AppState* state) {
         Rectangle dropZone = { 50, 50, screenWidth - 100, screenHeight - 100 };
         DrawRectangleLinesEx(dropZone, 3, (Color){ 100, 100, 120, 255 });
         
-        const char* hint1 = "Arrastra una carpeta aquí";
+        const char* hint1 = "こんにち世界";
         const char* hint2 = "Drop a folder here";
         const char* hint3 = "Supports: PNG, JPG, AVIF, WebP, HEIC, JXL...";
         int fontSize = 30;
@@ -490,29 +490,55 @@ void DrawViewer(AppState* state) {
         // First button rectangle (defined here so it's available even when there's only one folder)
         Rectangle firstRect = { 80, 50, 30, 22 };
         if (state->folderCount > 1) {
-            char folderName[100];
-            strncpy(folderName, state->folders[state->currentFolderIndex].name, sizeof(folderName) - 1);
-            folderName[sizeof(folderName) - 1] = '\0';
-            
-            // Filter non-ASCII characters (font only supports Latin-1)
-            for (int c = 0; folderName[c]; c++) {
-                unsigned char ch = (unsigned char)folderName[c];
-                if (ch > 127 && ch < 192) {
-                    folderName[c] = ' ';
+            // Build a UTF-8 safe display name (truncate by codepoints, do not break multibyte chars)
+            const char* srcName = state->folders[state->currentFolderIndex].name;
+            int cpCount = 0;
+            int *cps = LoadCodepoints(srcName, &cpCount);
+            char displayBuf[128];
+            char *displayName = NULL;
+            int maxChars = 80; // number of codepoints to show
+
+            if (cps && cpCount > 0) {
+                if (cpCount > maxChars) {
+                    // Truncate and append ellipsis
+                    char *tmp = LoadUTF8(cps, maxChars - 3);
+                    if (tmp) {
+                        size_t len = strlen(tmp);
+                        if (len + 3 < sizeof(displayBuf)) {
+                            strcpy(displayBuf, tmp);
+                            strcat(displayBuf, "...");
+                            displayName = displayBuf;
+                        } else {
+                            strncpy(displayBuf, tmp, sizeof(displayBuf) - 4);
+                            displayBuf[sizeof(displayBuf) - 4] = '\0';
+                            strcat(displayBuf, "...");
+                            displayName = displayBuf;
+                        }
+                        UnloadUTF8(tmp);
+                    } else {
+                        strncpy(displayBuf, srcName, sizeof(displayBuf) - 1);
+                        displayBuf[sizeof(displayBuf) - 1] = '\0';
+                        displayName = displayBuf;
+                    }
+                } else {
+                    displayName = LoadUTF8(cps, cpCount);
                 }
+                UnloadCodepoints(cps);
+            } else {
+                // Fallback: plain copy (shouldn't happen for valid names)
+                strncpy(displayBuf, srcName, sizeof(displayBuf) - 1);
+                displayBuf[sizeof(displayBuf) - 1] = '\0';
+                displayName = displayBuf;
             }
-            
-            int maxChars = 80;
-            if (strlen(folderName) > maxChars) {
-                folderName[maxChars - 3] = '.';
-                folderName[maxChars - 2] = '.';
-                folderName[maxChars - 1] = '.';
-                folderName[maxChars] = '\0';
-            }
-            
+
             // Draw folder name with tight shadow
-            DrawTextCustom(state, folderName, 11, 11, 16, (Color){ 0, 0, 0, 200 });  // Shadow (1px offset)
-            DrawTextCustom(state, folderName, 10, 10, 16, (Color){ 200, 200, 220, 255 });  // Text
+            DrawTextCustom(state, displayName, 11, 11, 16, (Color){ 0, 0, 0, 200 });  // Shadow (1px offset)
+            DrawTextCustom(state, displayName, 10, 10, 16, (Color){ 200, 200, 220, 255 });  // Text
+
+            // Free if LoadUTF8 allocated it
+            if (displayName != displayBuf) {
+                UnloadUTF8(displayName);
+            }
             
             // Draw folder counter with tight shadow
             char counterText[50];
