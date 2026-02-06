@@ -58,6 +58,7 @@ func NewModule(pm *persistence.DownloaderManager, sm *persistence.SettingsManage
 			&ZonaTMODownloader{},
 			&MangaDexDownloader{},
 			&NHentaiDownloader{},
+			&HentaieraDownloader{},
 			&Manga18Downloader{},
 			&Comics18Downloader{},
 		},

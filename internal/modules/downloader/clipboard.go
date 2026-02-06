@@ -54,6 +54,7 @@ func (m *Module) isValidURL(text string) bool {
 		"manhwaweb.com",
 		"zonatmo.com",
 		"nhentai.net",
+		"hentaiera.com",
 		"mangadex.org",
 		"manga18.club",
 		"comics18.org",
