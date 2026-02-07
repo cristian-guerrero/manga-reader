@@ -9,13 +9,13 @@ import (
 // TestCanHandle verifica que cada downloader pueda identificar correctamente las URLs que puede manejar
 func TestCanHandle(t *testing.T) {
 	testCases := []struct {
-		name      string
-		downloader DownloaderInterface
-		validURLs  []string
+		name        string
+		downloader  DownloaderInterface
+		validURLs   []string
 		invalidURLs []string
 	}{
 		{
-			name:      "HitomiDownloader",
+			name:       "HitomiDownloader",
 			downloader: &HitomiDownloader{},
 			validURLs: []string{
 				"https://hitomi.la/galleries/12345.html",
@@ -28,7 +28,7 @@ func TestCanHandle(t *testing.T) {
 			},
 		},
 		{
-			name:      "MangaDexDownloader",
+			name:       "MangaDexDownloader",
 			downloader: &MangaDexDownloader{},
 			validURLs: []string{
 				"https://mangadex.org/chapter/d8176d81-0f14-4d5a-9d0b-fc56b3933cce",
@@ -40,7 +40,7 @@ func TestCanHandle(t *testing.T) {
 			},
 		},
 		{
-			name:      "NHentaiDownloader",
+			name:       "NHentaiDownloader",
 			downloader: &NHentaiDownloader{},
 			validURLs: []string{
 				"https://nhentai.net/g/12345/",
@@ -52,7 +52,19 @@ func TestCanHandle(t *testing.T) {
 			},
 		},
 		{
-			name:      "ManhwaWebDownloader",
+			name:       "HentaieraDownloader",
+			downloader: &HentaieraDownloader{},
+			validURLs: []string{
+				"https://hentaiera.com/gallery/664542/",
+				"https://hentaiera.com/view/664542/1/",
+			},
+			invalidURLs: []string{
+				"https://example.com/page",
+				"https://nhentai.net/g/123/",
+			},
+		},
+		{
+			name:       "ManhwaWebDownloader",
 			downloader: &ManhwaWebDownloader{},
 			validURLs: []string{
 				"https://manhwaweb.com/manhwa/slug",
@@ -65,7 +77,7 @@ func TestCanHandle(t *testing.T) {
 			},
 		},
 		{
-			name:      "ZonaTMODownloader",
+			name:       "ZonaTMODownloader",
 			downloader: &ZonaTMODownloader{},
 			validURLs: []string{
 				"https://zonatmo.com/view_uploads/12345",
@@ -77,7 +89,7 @@ func TestCanHandle(t *testing.T) {
 			},
 		},
 		{
-			name:      "Manga18Downloader",
+			name:       "Manga18Downloader",
 			downloader: &Manga18Downloader{},
 			validURLs: []string{
 				"https://manga18.club/manhwa/soeun",
@@ -90,7 +102,7 @@ func TestCanHandle(t *testing.T) {
 			},
 		},
 		{
-			name:      "Comics18Downloader",
+			name:       "Comics18Downloader",
 			downloader: &Comics18Downloader{},
 			validURLs: []string{
 				"https://comics18.org/the-breakfast/",
@@ -142,6 +154,11 @@ func TestGetSiteID(t *testing.T) {
 			name:       "NHentaiDownloader",
 			downloader: &NHentaiDownloader{},
 			expectedID: "nhentai.net",
+		},
+		{
+			name:       "HentaieraDownloader",
+			downloader: &HentaieraDownloader{},
+			expectedID: "hentaiera.com",
 		},
 		{
 			name:       "ManhwaWebDownloader",
@@ -198,6 +215,10 @@ func TestModule_AlgorithmSelection(t *testing.T) {
 		{
 			url:        "https://nhentai.net/g/123/",
 			expectedID: "nhentai.net",
+		},
+		{
+			url:        "https://hentaiera.com/gallery/664542/",
+			expectedID: "hentaiera.com",
 		},
 		{
 			url:        "https://manhwaweb.com/manhwa/test",

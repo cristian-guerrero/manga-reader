@@ -50,6 +50,11 @@ func TestModule_FetchMangaInfo_ValidURLs(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name:    "Hentaiera gallery URL",
+			url:     "https://hentaiera.com/gallery/664542/",
+			wantErr: false,
+		},
+		{
 			name:    "ManhwaWeb chapter URL",
 			url:     "https://manhwaweb.com/leer/slug",
 			wantErr: false,
