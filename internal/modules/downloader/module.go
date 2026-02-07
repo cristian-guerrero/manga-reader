@@ -61,6 +61,7 @@ func NewModule(pm *persistence.DownloaderManager, sm *persistence.SettingsManage
 			&HentaieraDownloader{},
 			&Manga18Downloader{},
 			&Comics18Downloader{},
+			&HentaifcDownloader{},
 		},
 	}
 }
