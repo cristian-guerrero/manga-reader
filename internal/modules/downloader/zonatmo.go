@@ -31,7 +31,11 @@ func normalizeZonaTMOSeriesName(raw string) string {
 }
 
 func (d *ZonaTMODownloader) CanHandle(url string) bool {
-	return strings.Contains(url, "zonatmo.com") || strings.Contains(url, "tmofans.com")
+	return strings.Contains(url, "zonatmo.com") ||
+		strings.Contains(url, "tmofans.com") ||
+		strings.Contains(url, "lectortmo.com") ||
+		strings.Contains(url, "turomance.com") ||
+		strings.Contains(url, "tumangaonline.com")
 }
 
 func (d *ZonaTMODownloader) GetSiteID() string {
@@ -40,17 +44,29 @@ func (d *ZonaTMODownloader) GetSiteID() string {
 
 func (d *ZonaTMODownloader) GetImages(viewerURL string) (*SiteInfo, error) {
 	// Check if it is a series URL
-	isSeries := strings.Contains(viewerURL, "/library/manga/")
+	isSeries := strings.Contains(viewerURL, "/library/")
 
 	if !isSeries {
 		// Force cascade mode for easier parsing
 		viewerURL = strings.Replace(viewerURL, "/paginated", "/cascade", 1)
 	}
 
+	// Extract domain for referer
+	referer := "https://zonatmo.com/"
+	if strings.Contains(viewerURL, "lectortmo.com") {
+		referer = "https://lectortmo.com/"
+	} else if strings.Contains(viewerURL, "tmofans.com") {
+		referer = "https://tmofans.com/"
+	} else if strings.Contains(viewerURL, "turomance.com") {
+		referer = "https://turomance.com/"
+	} else if strings.Contains(viewerURL, "tumangaonline.com") {
+		referer = "https://tumangaonline.com/"
+	}
+
 	client := &http.Client{}
 	req, _ := http.NewRequest("GET", viewerURL, nil)
 	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0")
-	req.Header.Set("Referer", "https://zonatmo.com/")
+	req.Header.Set("Referer", referer)
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -152,7 +168,7 @@ func (d *ZonaTMODownloader) GetImages(viewerURL string) (*SiteInfo, error) {
 					Filename: fmt.Sprintf("%03d.%s", len(images)+1, ext),
 					Index:    len(images),
 					Headers: map[string]string{
-						"Referer": "https://zonatmo.com/",
+						"Referer": referer,
 					},
 				})
 			}
@@ -221,7 +237,8 @@ func (d *ZonaTMODownloader) parseSeries(html string, url string) (*SiteInfo, err
 		collapsibleID := idMatch[1]
 
 		// Find view_uploads link inside the specific collapsible div
-		reLink := regexp.MustCompile(`href="(https://zonatmo\.com/view_uploads/\d+)"`)
+		// We use a more flexible regex to catch various TMO domains
+		reLink := regexp.MustCompile(`href="([^"]*/view_uploads/\d+)"`)
 		linkMatch := reLink.FindStringSubmatch(block)
 
 		// Verify presence of id="collapsibleID"
@@ -230,15 +247,26 @@ func (d *ZonaTMODownloader) parseSeries(html string, url string) (*SiteInfo, err
 		}
 
 		if len(linkMatch) > 1 {
-			url := linkMatch[1]
+			chapterURL := linkMatch[1]
+
+			// Handle relative URLs if necessary
+			if strings.HasPrefix(chapterURL, "/") {
+				// Naive way to get base URL: split by // and take up to the next /
+				parts := strings.Split(url, "/")
+				if len(parts) >= 3 {
+					baseURL := parts[0] + "//" + parts[2]
+					chapterURL = baseURL + chapterURL
+				}
+			}
+
 			// Use the ID from the URL as ID
-			parts := strings.Split(url, "/")
+			parts := strings.Split(chapterURL, "/")
 			id := parts[len(parts)-1]
 
 			chapters = append(chapters, ChapterInfo{
 				ID:   id,
 				Name: chapterName,
-				URL:  url,
+				URL:  chapterURL,
 			})
 		}
 	}
