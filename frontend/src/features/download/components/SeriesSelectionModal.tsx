@@ -51,13 +51,13 @@ export function SeriesSelectionModal({
     const [filterLanguage, setFilterLanguage] = useState<string>('all');
 
     const availableLanguages = useMemo(() => {
-        if (!seriesInfo) return [];
+        if (!seriesInfo || !seriesInfo.Chapters) return [];
         const langs = new Set(seriesInfo.Chapters.map((c: any) => c.Language).filter(Boolean));
         return Array.from(langs) as string[];
     }, [seriesInfo]);
 
     const displayedChapters = useMemo(() => {
-        if (!seriesInfo) return [];
+        if (!seriesInfo || !seriesInfo.Chapters) return [];
         if (filterLanguage === 'all') return seriesInfo.Chapters;
         return seriesInfo.Chapters.filter((c: any) => c.Language === filterLanguage);
     }, [seriesInfo, filterLanguage]);
@@ -73,7 +73,7 @@ export function SeriesSelectionModal({
     };
 
     const toggleAllChapters = () => {
-        if (!seriesInfo) return;
+        if (!seriesInfo || !seriesInfo.Chapters) return;
 
         const allDisplayedSelected = displayedChapters.length > 0 && displayedChapters.every((c: any) => selectedChapters.has(c.ID));
         const newSelected = new Set(selectedChapters);

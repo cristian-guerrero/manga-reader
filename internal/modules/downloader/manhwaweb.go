@@ -76,7 +76,7 @@ func (d *ManhwaWebDownloader) getSeries(url string) (*SiteInfo, error) {
 		seriesName = data.TheRealName
 	}
 
-	var chapters []ChapterInfo
+	chapters := []ChapterInfo{}
 	for _, ch := range data.Chapters {
 		chapters = append(chapters, ChapterInfo{
 			ID:   fmt.Sprintf("%v", ch.Chapter),
