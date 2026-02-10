@@ -177,7 +177,7 @@ func (d *HentaifcDownloader) getSeries(url string) (*SiteInfo, error) {
 	reChapter := regexp.MustCompile(`<a href="(https://hentaifc\.com/e/\d+/(c\d+))" class="label">`)
 	matches := reChapter.FindAllStringSubmatch(bodyStr, -1)
 
-	var chapters []ChapterInfo
+	chapters := []ChapterInfo{}
 	seen := make(map[string]bool)
 
 	for _, match := range matches {
