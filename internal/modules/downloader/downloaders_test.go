@@ -112,6 +112,18 @@ func TestCanHandle(t *testing.T) {
 				"https://hitomi.la/galleries/123.html",
 			},
 		},
+		{
+			name:       "ComicPornDownloader",
+			downloader: &ComicPornDownloader{},
+			validURLs: []string{
+				"https://comicporn.xxx/gallery/918336/",
+				"https://comicporn.xxx/view/918336/1/",
+			},
+			invalidURLs: []string{
+				"https://example.com/page",
+				"https://nhentai.net/g/123/",
+			},
+		},
 	}
 
 	for _, tc := range testCases {
