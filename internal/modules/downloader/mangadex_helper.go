@@ -8,7 +8,7 @@ import (
 )
 
 func (d *MangaDexDownloader) getMangaChapters(client *http.Client, mangaID string) ([]ChapterInfo, error) {
-	var chapters []ChapterInfo
+	chapters := []ChapterInfo{}
 	offset := 0
 	limit := 500
 

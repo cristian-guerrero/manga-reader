@@ -50,7 +50,10 @@ func NewModule(pm *persistence.DownloaderManager, sm *persistence.SettingsManage
 		queues:       make(map[string][]*queuedJob),
 		activeCounts: make(map[string]int),
 		maxConcurrency: map[string]int{
-			"hitomi.la": 2, // modificado a 2 para probar
+			"hitomi.la":    2,
+			"zonatmo":      3,
+			"mangadex.org": 3,
+			"nhentai.net":  2,
 		},
 		algorithms: []DownloaderInterface{
 			&HitomiDownloader{},
@@ -288,17 +291,19 @@ func (m *Module) StartDownload(url string, overrideSeries string, overrideChapte
 	defer m.queueLock.Unlock()
 
 	siteID := algo.GetSiteID()
-	limit := m.maxConcurrency[siteID]
+	limit, ok := m.maxConcurrency[siteID]
+	if !ok {
+		limit = 2 // Default concurrency limit for any site
+	}
 	active := m.activeCounts[siteID]
 
-	// If limit is 0 (unlimited) or active count is below limit, start immediately
+	// If limit is 0 (explicitly set to unlimited) or active count is below limit, start immediately
 	if limit == 0 || active < limit {
 		m.activeCounts[siteID]++
 		go m.runDownload(job, info)
 	} else {
 		// Queue the job
 		m.queues[siteID] = append(m.queues[siteID], &queuedJob{job: job, info: info})
-		// Job remains in Pending status in persistence
 		if m.logger != nil {
 			m.logger.Infof("[Downloader] Queued job %s for site %s (Active: %d, Limit: %d)", jobID, siteID, active, limit)
 		}

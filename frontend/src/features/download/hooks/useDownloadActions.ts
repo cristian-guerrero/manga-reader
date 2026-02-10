@@ -81,7 +81,8 @@ export function useDownloadActions(onHistoryReload: () => void) {
     const handleDownloadSeries = useCallback(async () => {
         if (!seriesInfo) return;
 
-        const chaptersToDownload = seriesInfo.Chapters.filter((c: any) => selectedChapters.has(c.ID));
+        const chapters = seriesInfo.Chapters || [];
+        const chaptersToDownload = chapters.filter((c: any) => selectedChapters.has(c.ID));
 
         if (chaptersToDownload.length === 0) {
             showToast("No chapters selected", "error");
