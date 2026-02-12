@@ -52,6 +52,18 @@ func TestCanHandle(t *testing.T) {
 			},
 		},
 		{
+			name:       "IMHentaiDownloader",
+			downloader: &IMHentaiDownloader{},
+			validURLs: []string{
+				"https://imhentai.xxx/gallery/1063156/",
+				"https://imhentai.xxx/view/1063156/1/",
+			},
+			invalidURLs: []string{
+				"https://example.com/page",
+				"https://hentaiera.com/gallery/123/",
+			},
+		},
+		{
 			name:       "HentaieraDownloader",
 			downloader: &HentaieraDownloader{},
 			validURLs: []string{
