@@ -6,20 +6,31 @@ import (
 	"io"
 	"net/http"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
-type HentaieraDownloader struct{}
+type ComicPornDownloader struct{}
 
-func (d *HentaieraDownloader) CanHandle(url string) bool {
-	return strings.Contains(url, "hentaiera.com")
+func (d *ComicPornDownloader) CanHandle(url string) bool {
+	return strings.Contains(url, "comicporn.xxx")
 }
 
-func (d *HentaieraDownloader) GetSiteID() string {
-	return "hentaiera.com"
+func (d *ComicPornDownloader) GetSiteID() string {
+	return "comicporn.xxx"
 }
 
-func (d *HentaieraDownloader) GetImages(url string) (*SiteInfo, error) {
+func (d *ComicPornDownloader) GetImages(url string) (*SiteInfo, error) {
+	// Ensure we are using the gallery URL
+	if strings.Contains(url, "/view/") {
+		// Convert view URL to gallery URL: /view/ID/PAGE -> /gallery/ID/
+		re := regexp.MustCompile(`/view/(\d+)/`)
+		match := re.FindStringSubmatch(url)
+		if len(match) > 1 {
+			url = fmt.Sprintf("https://comicporn.xxx/gallery/%s/", match[1])
+		}
+	}
+
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
@@ -48,11 +59,13 @@ func (d *HentaieraDownloader) GetImages(url string) (*SiteInfo, error) {
 	server := d.extractValue(bodyStr, "load_server")
 	dir := d.extractValue(bodyStr, "load_dir")
 	loadID := d.extractValue(bodyStr, "load_id")
-	// pagesStr := d.extractValue(bodyStr, "load_pages")
+	pagesStr := d.extractValue(bodyStr, "load_pages")
 
-	if server == "" || dir == "" || loadID == "" {
+	if server == "" || dir == "" || loadID == "" || pagesStr == "" {
 		return nil, fmt.Errorf("failed to extract metadata from page")
 	}
+
+	totalPages, _ := strconv.Atoi(pagesStr)
 
 	// Extract title
 	reTitle := regexp.MustCompile(`<h1>(.*?)</h1>`)
@@ -63,7 +76,7 @@ func (d *HentaieraDownloader) GetImages(url string) (*SiteInfo, error) {
 	}
 
 	// Extract image extensions from g_th JSON
-	reGth := regexp.MustCompile(`var g_th = \$.parseJSON\('(.*?)'\);`)
+	reGth := regexp.MustCompile(`var g_th = \$\.parseJSON\('(.*?)'\);`)
 	gthMatch := reGth.FindStringSubmatch(bodyStr)
 	if len(gthMatch) < 2 {
 		return nil, fmt.Errorf("could not find g_th metadata")
@@ -75,9 +88,7 @@ func (d *HentaieraDownloader) GetImages(url string) (*SiteInfo, error) {
 	}
 
 	var images []ImageDownload
-	// The keys are page numbers like "1", "2"...
-	// We should sort them or just iterate based on count
-	for i := 1; i <= len(gthData); i++ {
+	for i := 1; i <= totalPages; i++ {
 		pageKey := fmt.Sprintf("%d", i)
 		val, ok := gthData[pageKey]
 		if !ok {
@@ -86,7 +97,11 @@ func (d *HentaieraDownloader) GetImages(url string) (*SiteInfo, error) {
 
 		// Format is "extension,width,height" e.g., "j,1280,1816"
 		parts := strings.Split(val, ",")
-		extLetter := parts[0]
+		extLetter := ""
+		if len(parts) > 0 {
+			extLetter = parts[0]
+		}
+
 		extension := ".jpg"
 		if extLetter == "p" {
 			extension = ".png"
@@ -96,23 +111,20 @@ func (d *HentaieraDownloader) GetImages(url string) (*SiteInfo, error) {
 			extension = ".webp"
 		}
 
-		imageURL := fmt.Sprintf("https://m%s.hentaiera.com/%s/%s/%d%s", server, dir, loadID, i, extension)
+		imageURL := fmt.Sprintf("https://m%s.comicporn.xxx/%s/%s/%d%s", server, dir, loadID, i, extension)
 		images = append(images, ImageDownload{
 			URL:      imageURL,
 			Filename: fmt.Sprintf("%03d%s", i, extension),
-			Index:    i - 1,
 		})
 	}
 
 	return &SiteInfo{
 		SeriesName: title,
 		Images:     images,
-		SiteID:     "hentaiera.com",
-		Type:       "single",
 	}, nil
 }
 
-func (d *HentaieraDownloader) extractValue(html, id string) string {
+func (d *ComicPornDownloader) extractValue(html, id string) string {
 	re := regexp.MustCompile(fmt.Sprintf(`id="%s" value="(.*?)"`, id))
 	match := re.FindStringSubmatch(html)
 	if len(match) > 1 {

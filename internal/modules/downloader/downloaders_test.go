@@ -52,6 +52,18 @@ func TestCanHandle(t *testing.T) {
 			},
 		},
 		{
+			name:       "IMHentaiDownloader",
+			downloader: &IMHentaiDownloader{},
+			validURLs: []string{
+				"https://imhentai.xxx/gallery/1063156/",
+				"https://imhentai.xxx/view/1063156/1/",
+			},
+			invalidURLs: []string{
+				"https://example.com/page",
+				"https://hentaiera.com/gallery/123/",
+			},
+		},
+		{
 			name:       "HentaieraDownloader",
 			downloader: &HentaieraDownloader{},
 			validURLs: []string{
@@ -110,6 +122,18 @@ func TestCanHandle(t *testing.T) {
 			invalidURLs: []string{
 				"https://example.com/page",
 				"https://hitomi.la/galleries/123.html",
+			},
+		},
+		{
+			name:       "ComicPornDownloader",
+			downloader: &ComicPornDownloader{},
+			validURLs: []string{
+				"https://comicporn.xxx/gallery/918336/",
+				"https://comicporn.xxx/view/918336/1/",
+			},
+			invalidURLs: []string{
+				"https://example.com/page",
+				"https://nhentai.net/g/123/",
 			},
 		},
 	}

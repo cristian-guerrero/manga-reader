@@ -9,17 +9,47 @@ import (
 	"strings"
 )
 
-type HentaieraDownloader struct{}
+type IMHentaiDownloader struct{}
 
-func (d *HentaieraDownloader) CanHandle(url string) bool {
-	return strings.Contains(url, "hentaiera.com")
+func (d *IMHentaiDownloader) CanHandle(url string) bool {
+	return strings.Contains(url, "imhentai.xxx")
 }
 
-func (d *HentaieraDownloader) GetSiteID() string {
-	return "hentaiera.com"
+func (d *IMHentaiDownloader) NormalizeURL(url string) string {
+	// Remove query params
+	if idx := strings.Index(url, "?"); idx != -1 {
+		url = url[:idx]
+	}
+
+	// If it's a view page, convert to gallery page
+	// https://imhentai.xxx/view/1063156/1/ -> https://imhentai.xxx/gallery/1063156/
+	if strings.Contains(url, "/view/") {
+		re := regexp.MustCompile(`imhentai\.xxx/view/(\d+)/`)
+		match := re.FindStringSubmatch(url)
+		if len(match) > 1 {
+			return fmt.Sprintf("https://imhentai.xxx/gallery/%s/", match[1])
+		}
+	}
+
+	// Ensure trailing slash for gallery
+	if strings.Contains(url, "/gallery/") && !strings.HasSuffix(url, "/") {
+		url += "/"
+	}
+
+	return url
 }
 
-func (d *HentaieraDownloader) GetImages(url string) (*SiteInfo, error) {
+func (d *IMHentaiDownloader) GetSiteID() string {
+	return "imhentai.xxx"
+}
+
+func (d *IMHentaiDownloader) GetImages(url string) (*SiteInfo, error) {
+	url = d.NormalizeURL(url)
+
+	if !strings.Contains(url, "/gallery/") {
+		return nil, fmt.Errorf("URL is not an IMHentai gallery page")
+	}
+
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
@@ -48,18 +78,14 @@ func (d *HentaieraDownloader) GetImages(url string) (*SiteInfo, error) {
 	server := d.extractValue(bodyStr, "load_server")
 	dir := d.extractValue(bodyStr, "load_dir")
 	loadID := d.extractValue(bodyStr, "load_id")
-	// pagesStr := d.extractValue(bodyStr, "load_pages")
+	title := d.extractValue(bodyStr, "gallery_title")
 
 	if server == "" || dir == "" || loadID == "" {
 		return nil, fmt.Errorf("failed to extract metadata from page")
 	}
 
-	// Extract title
-	reTitle := regexp.MustCompile(`<h1>(.*?)</h1>`)
-	titleMatch := reTitle.FindStringSubmatch(bodyStr)
-	title := "Unknown"
-	if len(titleMatch) > 1 {
-		title = titleMatch[1]
+	if title == "" {
+		title = "IMHentai Gallery"
 	}
 
 	// Extract image extensions from g_th JSON
@@ -75,8 +101,6 @@ func (d *HentaieraDownloader) GetImages(url string) (*SiteInfo, error) {
 	}
 
 	var images []ImageDownload
-	// The keys are page numbers like "1", "2"...
-	// We should sort them or just iterate based on count
 	for i := 1; i <= len(gthData); i++ {
 		pageKey := fmt.Sprintf("%d", i)
 		val, ok := gthData[pageKey]
@@ -92,29 +116,34 @@ func (d *HentaieraDownloader) GetImages(url string) (*SiteInfo, error) {
 			extension = ".png"
 		} else if extLetter == "g" {
 			extension = ".gif"
+		} else if extLetter == "j" {
+			extension = ".jpg"
 		} else if extLetter == "w" {
 			extension = ".webp"
 		}
 
-		imageURL := fmt.Sprintf("https://m%s.hentaiera.com/%s/%s/%d%s", server, dir, loadID, i, extension)
+		imageURL := fmt.Sprintf("https://m%s.imhentai.xxx/%s/%s/%d%s", server, dir, loadID, i, extension)
 		images = append(images, ImageDownload{
 			URL:      imageURL,
 			Filename: fmt.Sprintf("%03d%s", i, extension),
 			Index:    i - 1,
+			Headers: map[string]string{
+				"Referer": "https://imhentai.xxx/",
+			},
 		})
 	}
 
 	return &SiteInfo{
 		SeriesName: title,
 		Images:     images,
-		SiteID:     "hentaiera.com",
+		SiteID:     "imhentai.xxx",
 		Type:       "single",
 	}, nil
 }
 
-func (d *HentaieraDownloader) extractValue(html, id string) string {
+func (d *IMHentaiDownloader) extractValue(body, id string) string {
 	re := regexp.MustCompile(fmt.Sprintf(`id="%s" value="(.*?)"`, id))
-	match := re.FindStringSubmatch(html)
+	match := re.FindStringSubmatch(body)
 	if len(match) > 1 {
 		return match[1]
 	}

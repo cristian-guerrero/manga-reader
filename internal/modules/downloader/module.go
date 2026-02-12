@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"manga-visor/internal/archiver"
 	"manga-visor/internal/persistence"
 	"manga-visor/internal/services"
 	"net/http"
@@ -54,6 +55,8 @@ func NewModule(pm *persistence.DownloaderManager, sm *persistence.SettingsManage
 			"zonatmo":      3,
 			"mangadex.org": 3,
 			"nhentai.net":  2,
+			"e-hentai.org": 1,
+			"imhentai.xxx": 2,
 		},
 		algorithms: []DownloaderInterface{
 			&HitomiDownloader{},
@@ -62,9 +65,12 @@ func NewModule(pm *persistence.DownloaderManager, sm *persistence.SettingsManage
 			&MangaDexDownloader{},
 			&NHentaiDownloader{},
 			&HentaieraDownloader{},
+			&IMHentaiDownloader{},
 			&Manga18Downloader{},
 			&Comics18Downloader{},
 			&HentaifcDownloader{},
+			&ComicPornDownloader{},
+			&EHentaiDownloader{},
 		},
 	}
 }
@@ -183,11 +189,17 @@ func (m *Module) StartDownload(url string, overrideSeries string, overrideChapte
 		return "", services.NewBusinessError("no algorithm found for this URL", nil)
 	}
 
-	// Check for existing jobs
+	// Normalize URL if supported by the algorithm
+	normalizedURL := url
+	if normalizer, ok := algo.(interface{ NormalizeURL(string) string }); ok {
+		normalizedURL = normalizer.NormalizeURL(url)
+	}
+
+	// Check for existing jobs using normalized URL
 	var existingJob *persistence.DownloadJob
 	existingJobs := m.pm.GetJobs()
 	for _, j := range existingJobs {
-		if j.URL == url {
+		if j.URL == normalizedURL || j.URL == url {
 			temp := j
 			existingJob = &temp
 			break
@@ -273,7 +285,7 @@ func (m *Module) StartDownload(url string, overrideSeries string, overrideChapte
 		jobID = fmt.Sprintf("%d", time.Now().UnixNano())
 		job = persistence.DownloadJob{
 			ID:          jobID,
-			URL:         url,
+			URL:         normalizedURL,
 			Site:        algo.GetSiteID(),
 			SeriesName:  info.SeriesName,
 			ChapterName: info.ChapterName,
@@ -391,6 +403,25 @@ func (m *Module) runDownload(job persistence.DownloadJob, info *SiteInfo) {
 			}
 			m.pm.UpdateJob(job.ID, map[string]interface{}{"progress": i + 1})
 			m.notifyUpdate()
+		}
+	}
+
+	// After download, check if we need to extract any archives
+	files, _ := os.ReadDir(downloadDir)
+	for _, f := range files {
+		if !f.IsDir() && archiver.IsArchive(f.Name()) {
+			archivePath := filepath.Join(downloadDir, f.Name())
+			if m.logger != nil {
+				m.logger.Infof("[Downloader] Extracting archive: %s", f.Name())
+			}
+			if err := archiver.Extract(archivePath, downloadDir); err != nil {
+				if m.logger != nil {
+					m.logger.Errorf("[Downloader] Extraction failed: %v", err)
+				}
+			} else {
+				// Optionally delete the archive after extraction
+				os.Remove(archivePath)
+			}
 		}
 	}
 

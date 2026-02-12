@@ -31,11 +31,19 @@ func (m *Module) StartClipboardMonitor() {
 					continue
 				}
 
+				text = strings.TrimSpace(text)
+				if text == "" {
+					continue
+				}
+
 				if text != lastText {
 					lastText = text
 
 					// Validate URL
 					if m.isValidURL(text) {
+						if m.logger != nil {
+							m.logger.Infof("[Clipboard] Detected valid URL: %s", text)
+						}
 						runtime.EventsEmit(m.ctx, "clipboard_url_detected", text)
 					}
 				}
@@ -63,6 +71,10 @@ func (m *Module) isValidURL(text string) bool {
 		"manga18.club",
 		"comics18.org",
 		"hentaifc.com",
+		"imhentai.xxx",
+		"e-hentai.org",
+		"exhentai.org",
+		"ehentai.org",
 	}
 
 	for _, domain := range supported {
