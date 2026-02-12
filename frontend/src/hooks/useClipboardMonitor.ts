@@ -48,10 +48,27 @@ export function useClipboardMonitor() {
             const isManga18Chapter = isManga18 && /manga18\.club\/manhwa\/[^/]+\/(chap-|chapter-|\d+)/.test(text);
             const isManga18Series = isManga18 && text.includes('/manhwa/') && !isManga18Chapter;
 
+            // E-Hentai Detection
+            const isEHentai = text.includes('e-hentai.org') || text.includes('exhentai.org') || text.includes('ehentai.org');
+            const isEHentaiGallery = isEHentai && (text.includes('/g/') || text.includes('/s/'));
+
             // For series URLs, don't auto-start - user must go to download page
             if (isHitomiSeries || isManga18Series) {
                 showToast(t('download.seriesDetectedClipboard') || 'Series detected. Go to Downloads page to select chapters', 'info');
                 return;
+            }
+
+            // For E-Hentai galleries, auto-start directly to avoid slow fetchMangaInfo
+            if (isEHentaiGallery) {
+                try {
+                    await AppAPI.startDownload(text, "", "");
+                    const audio = new Audio(alertSound);
+                    audio.play().catch(e => console.error('Failed to play alert sound:', e));
+                    showToast(t('download.startedFromClipboard') || 'Download started from clipboard', 'success');
+                    return;
+                } catch (err) {
+                    console.error('Failed to auto-start E-Hentai download:', err);
+                }
             }
 
             // For single chapters, auto-start download
