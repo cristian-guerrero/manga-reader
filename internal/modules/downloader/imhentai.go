@@ -118,6 +118,8 @@ func (d *IMHentaiDownloader) GetImages(url string) (*SiteInfo, error) {
 			extension = ".gif"
 		} else if extLetter == "j" {
 			extension = ".jpg"
+		} else if extLetter == "w" {
+			extension = ".webp"
 		}
 
 		imageURL := fmt.Sprintf("https://m%s.imhentai.xxx/%s/%s/%d%s", server, dir, loadID, i, extension)

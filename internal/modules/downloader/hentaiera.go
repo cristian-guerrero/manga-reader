@@ -92,6 +92,8 @@ func (d *HentaieraDownloader) GetImages(url string) (*SiteInfo, error) {
 			extension = ".png"
 		} else if extLetter == "g" {
 			extension = ".gif"
+		} else if extLetter == "w" {
+			extension = ".webp"
 		}
 
 		imageURL := fmt.Sprintf("https://m%s.hentaiera.com/%s/%s/%d%s", server, dir, loadID, i, extension)
