@@ -286,6 +286,12 @@ func (d *Manga18Downloader) getChapter(url string) (*SiteInfo, error) {
 					reBase64Strings := regexp.MustCompile(`"([A-Za-z0-9+/=]+)"`)
 					base64Strings := reBase64Strings.FindAllStringSubmatch(match[1], -1)
 
+					if len(base64Strings) > 0 {
+						// Si encontramos este array, es la fuente definitiva de imágenes
+						// Limpiar URLs previas encontradas en <img> para evitar duplicados
+						imageURLs = []string{}
+					}
+
 					// Detectar si las páginas empiezan en 01 basándose en la primera URL
 					firstPageStartsAtOne := false
 					maxPageNum := 0
@@ -355,13 +361,28 @@ func (d *Manga18Downloader) getChapter(url string) (*SiteInfo, error) {
 
 					// Calcular totalPages basado en el formato detectado
 					if maxPageNum > 0 {
+						startPageNum := 0
 						if firstPageStartsAtOne {
-							// Si empieza en 01, totalPages es el número más alto encontrado
-							totalPages = maxPageNum
-							// Marcar que las páginas empiezan en 01
-							detectedFormat.pageFormat = detectedFormat.pageFormat + ":start1"
+							startPageNum = 1
+						}
+
+						// Si tenemos URLs de imágenes, el primer elemento nos dice el inicio real
+						if len(imageURLs) > 0 {
+							reImgPage := regexp.MustCompile(`/(\d+)\.(jpg|jpeg|png|webp)`)
+							if match := reImgPage.FindStringSubmatch(imageURLs[0]); len(match) > 1 {
+								if p, err := strconv.Atoi(match[1]); err == nil {
+									startPageNum = p
+								}
+							}
+						}
+
+						if startPageNum > 0 {
+							// Calcular total de páginas basándonos en el número más alto y el inicial
+							totalPages = maxPageNum - startPageNum + 1
+							// Marcar que las páginas empiezan en N
+							detectedFormat.pageFormat = fmt.Sprintf("%s:start%d", detectedFormat.pageFormat, startPageNum)
 						} else {
-							// Si empieza en 00 o 000, totalPages es maxPageNum + 1
+							// Empieza en 00 o 000
 							totalPages = maxPageNum + 1
 						}
 					} else if len(base64Strings) > 0 {
@@ -497,62 +518,89 @@ func (d *Manga18Downloader) getChapter(url string) (*SiteInfo, error) {
 
 	// Generar URLs de imágenes
 	var images []ImageDownload
-	baseURL := detectedFormat.baseURL
-	if baseURL == "" {
-		// Si no detectamos baseURL, usar el formato original si era numérico o "chapter-", sino el normalizado
-		if isNumericOnly || isChapterFormat {
-			baseURL = fmt.Sprintf("https://s1.manga18.club/manga/%s/chapters/%s", series, chapterOriginal)
-		} else {
-			baseURL = fmt.Sprintf("https://s1.manga18.club/manga/%s/chapters/%s", series, chapter)
-		}
-	}
 
-	// Usar formato detectado o valores por defecto
-	pageFormat := detectedFormat.pageFormat
-	if pageFormat == "" {
-		pageFormat = "%02d" // Formato por defecto
-	}
-	extension := detectedFormat.extension
-	if extension == "" {
-		extension = "jpg" // Extensión por defecto
-	}
-
-	// Siempre generar todas las URLs usando el formato detectado
-	// El HTML puede tener solo la primera imagen cargada (lazy loading), así que no confiar solo en las URLs encontradas
-	// Si encontramos URLs, usarlas para detectar el formato, pero generar todas las URLs necesarias
-	for i := 1; i <= totalPages; i++ {
-		var pageNum string
-		// Detectar si el formato tiene marcador ":start1" (empieza en 01, no 00)
-		startFromOne := strings.HasSuffix(pageFormat, ":start1")
-		actualFormat := pageFormat
-		if startFromOne {
-			actualFormat = strings.TrimSuffix(pageFormat, ":start1")
-		}
-
-		// Para formatos con padding (%02d, %03d):
-		// - Si empieza en 01 (startFromOne), usar i directamente
-		// - Si empieza en 00 o 000, usar i-1
-		// Para formato sin padding (%d), usar i
-		if actualFormat == "%03d" || actualFormat == "%02d" {
-			if startFromOne {
-				pageNum = fmt.Sprintf(actualFormat, i)
-			} else {
-				pageNum = fmt.Sprintf(actualFormat, i-1)
+	// Si encontramos una lista completa de URLs directa (ej. en slides_p_path), usarlas directamente
+	// Consideramos que es completa si tiene al menos tantas URLs como totalPages detectado
+	if len(imageURLs) >= totalPages && totalPages > 0 {
+		for i, imgURL := range imageURLs {
+			// Limitar al número total de páginas si hay de más (ej. ads)
+			if i >= totalPages {
+				break
 			}
-		} else {
-			pageNum = fmt.Sprintf(actualFormat, i)
-		}
-		imgURL := fmt.Sprintf("%s/%s.%s", baseURL, pageNum, extension)
 
-		images = append(images, ImageDownload{
-			URL:      imgURL,
-			Filename: fmt.Sprintf("%03d.%s", i, extension),
-			Index:    i - 1,
-			Headers: map[string]string{
-				"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0",
-				"Referer":    "https://manga18.club/",
-			},
-		})
+			// Detectar extensión de la URL
+			ext := detectedFormat.extension
+			if strings.Contains(imgURL, ".png") {
+				ext = "png"
+			} else if strings.Contains(imgURL, ".webp") {
+				ext = "webp"
+			} else if strings.Contains(imgURL, ".jpeg") {
+				ext = "jpeg"
+			} else if ext == "" {
+				ext = "jpg"
+			}
+
+			images = append(images, ImageDownload{
+				URL:      imgURL,
+				Filename: fmt.Sprintf("%03d.%s", i+1, ext),
+				Index:    i,
+				Headers: map[string]string{
+					"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0",
+					"Referer":    "https://manga18.club/",
+				},
+			})
+		}
+	} else if totalPages > 0 {
+		baseURL := detectedFormat.baseURL
+		if baseURL == "" {
+			// Si no detectamos baseURL, usar el formato original si era numérico o "chapter-", sino el normalizado
+			if isNumericOnly || isChapterFormat {
+				baseURL = fmt.Sprintf("https://s1.manga18.club/manga/%s/chapters/%s", series, chapterOriginal)
+			} else {
+				baseURL = fmt.Sprintf("https://s1.manga18.club/manga/%s/chapters/%s", series, chapter)
+			}
+		}
+
+		// Usar formato detectado o valores por defecto
+		pageFormat := detectedFormat.pageFormat
+		if pageFormat == "" {
+			pageFormat = "%02d" // Formato por defecto
+		}
+		if detectedFormat.extension == "" {
+			detectedFormat.extension = "jpg" // Extensión por defecto
+		}
+
+		// Siempre generar todas las URLs usando el formato detectado
+		// El HTML puede tener solo la primera imagen cargada (lazy loading), así que no confiar solo en las URLs encontradas
+		// Si encontramos URLs, usarlas para detectar el formato, pero generar todas las URLs necesarias
+		for i := 1; i <= totalPages; i++ {
+			var pageNum string
+			// Detectar si el formato tiene marcador ":startN"
+			startPageNum := 0
+			actualFormat := pageFormat
+			if idx := strings.Index(pageFormat, ":start"); idx != -1 {
+				actualFormat = pageFormat[:idx]
+				if startNum, err := strconv.Atoi(pageFormat[idx+6:]); err == nil {
+					startPageNum = startNum
+				} else if strings.HasSuffix(pageFormat, ":start1") {
+					startPageNum = 1
+				}
+			}
+
+			// Generar el número de página sumando el inicio al índice (i-1)
+			pageNum = fmt.Sprintf(actualFormat, i+startPageNum-1)
+			imgURL := fmt.Sprintf("%s/%s.%s", baseURL, pageNum, detectedFormat.extension)
+
+			images = append(images, ImageDownload{
+				URL:      imgURL,
+				Filename: fmt.Sprintf("%03d.%s", i, detectedFormat.extension),
+				Index:    i - 1,
+				Headers: map[string]string{
+					"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0",
+					"Referer":    "https://manga18.club/",
+				},
+			})
+		}
 	}
 
 	return &SiteInfo{
