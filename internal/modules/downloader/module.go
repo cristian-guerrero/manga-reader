@@ -51,13 +51,14 @@ func NewModule(pm *persistence.DownloaderManager, sm *persistence.SettingsManage
 		queues:       make(map[string][]*queuedJob),
 		activeCounts: make(map[string]int),
 		maxConcurrency: map[string]int{
-			"hitomi.la":    2,
-			"zonatmo":      3,
-			"mangadex.org": 3,
-			"nhentai.net":  2,
-			"e-hentai.org": 1,
-			"imhentai.xxx": 2,
-			"manga18.club": 4,
+			"hitomi.la":     2,
+			"zonatmo":       3,
+			"mangadex.org":  3,
+			"nhentai.net":   2,
+			"e-hentai.org":  1,
+			"imhentai.xxx":  2,
+			"manga18.club":  4,
+			"submanhwa.com": 3,
 		},
 		algorithms: []DownloaderInterface{
 			&HitomiDownloader{},
@@ -72,6 +73,7 @@ func NewModule(pm *persistence.DownloaderManager, sm *persistence.SettingsManage
 			&HentaifcDownloader{},
 			&ComicPornDownloader{},
 			&EHentaiDownloader{},
+			&SubManhwaDownloader{},
 		},
 	}
 }
