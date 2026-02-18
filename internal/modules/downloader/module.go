@@ -608,7 +608,7 @@ func sanitizeFilename(name string) string {
 	}
 
 	// Truncate segment length to keep paths safe (helps avoid Windows MAX_PATH)
-	const maxRunes = 200
+	const maxRunes = 90
 	if utf8.RuneCountInString(res) > maxRunes {
 		// Truncate by runes, preserving extension if present
 		ext := filepath.Ext(res)
