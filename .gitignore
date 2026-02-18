@@ -1,10 +1,10 @@
 build/bin
+build/linux/AppDir
+build/linux/appimagetool
+build/linux/appimagetool-extract
 node_modules
 frontend/dist
 *.exe
 .vscode/
 info.txt
 .cursor/plans
-visor-c/portable
-visor-c/deps
-visor-c/build

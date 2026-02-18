@@ -2,8 +2,13 @@ name: Wails Build & Release
 
 on:
   push:
+    branches:
+      - main
     tags:
       - 'v*' # Se activa al subir una etiqueta que empiece con 'v' (ej: v1.0.0)
+#  pull_request:
+#    branches:
+#      - main
 
 jobs:
   build-and-release:
@@ -43,7 +48,7 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libfuse2 libappstream-glib-dev
 
       - name: Instalar Wails CLI
         run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
@@ -57,7 +62,16 @@ jobs:
         shell: bash
         run: |
           echo "Iniciando compilación para plataforma: ${{ matrix.platform }}"
-          wails build -platform ${{ matrix.platform }}
+          
+          if [ "${{ matrix.os }}" == "ubuntu-latest" ]; then
+            # Build Linux AppImage using the script
+            chmod +x build-appimage.sh
+            ./build-appimage.sh
+          else
+            # Standard build for Windows/macOS
+            wails build -platform ${{ matrix.platform }}
+          fi
+          
           echo "Compilación completada exitosamente"
           if [ "${{ matrix.os }}" == "macos-latest" ]; then
             echo "Procesando archivo .app para macOS..."
@@ -78,20 +92,32 @@ jobs:
           find build/bin -maxdepth 1 -name "*.app" -type d
 
       - name: Crear Release en GitHub
-        if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/main'
         shell: bash
         run: |
+          # Determinar el nombre del release
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            RELEASE_TAG="${{ github.ref_name }}"
+            RELEASE_TITLE="${{ github.ref_name }}"
+            PRERELEASE_FLAG=""
+          else
+            RELEASE_TAG="latest"
+            RELEASE_TITLE="Latest Development Build"
+            PRERELEASE_FLAG="--prerelease"
+          fi
+
+          echo "Creando/Actualizando release para: $RELEASE_TAG"
+          
           # Crear release si no existe (ignorar error si ya existe)
-          gh release create ${{ github.ref_name }} --title "${{ github.ref_name }}" --notes "Release ${{ github.ref_name }}" || true
+          gh release create "$RELEASE_TAG" --title "$RELEASE_TITLE" --notes "Build automático de la rama main" $PRERELEASE_FLAG || true
           
           # Subir archivos según la plataforma
           if [ "${{ matrix.os }}" == "macos-latest" ]; then
             # Para macOS, solo subir el .zip (el .app está dentro)
-            gh release upload ${{ github.ref_name }} build/bin/*.zip --clobber
-
+            gh release upload "$RELEASE_TAG" build/bin/*.zip --clobber
           else
             # Para otras plataformas, subir todos los archivos
-            gh release upload ${{ github.ref_name }} build/bin/* --clobber
+            gh release upload "$RELEASE_TAG" build/bin/* --clobber
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

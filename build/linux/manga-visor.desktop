@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Manga Visor
+Comment=A premium desktop manga viewer and downloader
+Exec=manga-visor2
+Icon=manga-visor
+Terminal=false
+Type=Application
+Categories=Graphics;Viewer;
