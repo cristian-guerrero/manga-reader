@@ -21,14 +21,122 @@ func (d *HentaifcDownloader) GetSiteID() string {
 }
 
 func (d *HentaifcDownloader) GetImages(url string) (*SiteInfo, error) {
-	// Detect if it's a chapter or a series
+	// Detect if it's a chapter, a series, or a list (artist, tag, parody)
 	// Chapter: https://hentaifc.com/e/80347/c0
 	// Series: https://hentaifc.com/e/80347
+	// Artist: https://hentaifc.com/artist/rakujin.886
 	reChapter := regexp.MustCompile(`hentaifc\.com/e/\d+/c\d+`)
 	if reChapter.MatchString(url) {
 		return d.getChapter(url)
 	}
+
+	reList := regexp.MustCompile(`hentaifc\.com/(artist|tag|parody)/`)
+	if reList.MatchString(url) {
+		return d.getList(url)
+	}
+
 	return d.getSeries(url)
+}
+
+func (d *HentaifcDownloader) getList(url string) (*SiteInfo, error) {
+	client := &http.Client{}
+
+	seriesName := "HentaiFC List"
+	var allChapters []ChapterInfo
+	seen := make(map[string]bool)
+
+	currentPageURL := url
+
+	// Loop to handle potential pagination
+	for page := 1; page <= 10; page++ { // Limit to 10 pages for now
+		req, err := http.NewRequest("GET", currentPageURL, nil)
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+
+		resp, err := client.Do(req)
+		if err != nil {
+			if page == 1 {
+				return nil, fmt.Errorf("failed to fetch list page: %v", err)
+			}
+			break
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			if page == 1 {
+				return nil, fmt.Errorf("failed to fetch list page, status code: %d", resp.StatusCode)
+			}
+			break
+		}
+
+		bodyBytes, err := io.ReadAll(resp.Body)
+		if err != nil {
+			break
+		}
+		bodyStr := string(bodyBytes)
+
+		// Extract artist/tag/parody name only once
+		if page == 1 {
+			// Try title first
+			reTitle := regexp.MustCompile(`<title>(.*?) - HentaiFC</title>`)
+			if match := reTitle.FindStringSubmatch(bodyStr); len(match) > 1 {
+				seriesName = html.UnescapeString(match[1])
+			} else {
+				// Try block-title as fallback
+				reBlockTitle := regexp.MustCompile(`<div class="block-title"><span><i class="uk-icon-[^"]+"></i> (.*?)</span></div>`)
+				if match := reBlockTitle.FindStringSubmatch(bodyStr); len(match) > 1 {
+					seriesName = html.UnescapeString(match[1])
+				}
+			}
+		}
+
+		// Extract series/works
+		// <h3 class="title"><a href="https://hentaifc.com/e/80665">...</a></h3>
+		reSeries := regexp.MustCompile(`<h3 class="title">\s*<a href="(https://hentaifc\.com/e/(\d+))">(.*?)</a>`)
+		matches := reSeries.FindAllStringSubmatch(bodyStr, -1)
+
+		for _, match := range matches {
+			sURL := match[1]
+			sID := match[2]
+			sTitle := html.UnescapeString(match[3])
+
+			if seen[sURL] {
+				continue
+			}
+			seen[sURL] = true
+
+			allChapters = append(allChapters, ChapterInfo{
+				ID:   sID,
+				Name: sTitle,
+				URL:  sURL,
+			})
+		}
+
+		// Check for next page
+		// <a class="next page-numbers" href="https://hentaifc.com/tag/big-breasts/page/2">&rsaquo;</a>
+		reNext := regexp.MustCompile(`<a class="next page-numbers" href="([^"]+)">`)
+		nextMatch := reNext.FindStringSubmatch(bodyStr)
+		if len(nextMatch) < 2 {
+			break
+		}
+		currentPageURL = nextMatch[1]
+		if !strings.HasPrefix(currentPageURL, "http") {
+			currentPageURL = "https://hentaifc.com" + currentPageURL
+		}
+	}
+
+	if len(allChapters) == 0 {
+		return nil, fmt.Errorf("no series found in this list")
+	}
+
+	return &SiteInfo{
+		SeriesName: seriesName,
+		SiteID:     "hentaifc.com",
+		Type:       "series",
+		Chapters:   allChapters,
+	}, nil
 }
 
 func (d *HentaifcDownloader) getChapter(url string) (*SiteInfo, error) {
