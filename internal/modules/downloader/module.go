@@ -51,13 +51,14 @@ func NewModule(pm *persistence.DownloaderManager, sm *persistence.SettingsManage
 		queues:       make(map[string][]*queuedJob),
 		activeCounts: make(map[string]int),
 		maxConcurrency: map[string]int{
-			"hitomi.la":    2,
-			"zonatmo":      3,
-			"mangadex.org": 3,
-			"nhentai.net":  2,
-			"e-hentai.org": 1,
-			"imhentai.xxx": 2,
-			"manga18.club": 4,
+			"hitomi.la":     2,
+			"zonatmo":       3,
+			"mangadex.org":  3,
+			"nhentai.net":   2,
+			"e-hentai.org":  1,
+			"imhentai.xxx":  2,
+			"manga18.club":  4,
+			"submanhwa.com": 3,
 		},
 		algorithms: []DownloaderInterface{
 			&HitomiDownloader{},
@@ -72,6 +73,7 @@ func NewModule(pm *persistence.DownloaderManager, sm *persistence.SettingsManage
 			&HentaifcDownloader{},
 			&ComicPornDownloader{},
 			&EHentaiDownloader{},
+			&SubManhwaDownloader{},
 		},
 	}
 }
@@ -606,7 +608,7 @@ func sanitizeFilename(name string) string {
 	}
 
 	// Truncate segment length to keep paths safe (helps avoid Windows MAX_PATH)
-	const maxRunes = 80
+	const maxRunes = 90
 	if utf8.RuneCountInString(res) > maxRunes {
 		// Truncate by runes, preserving extension if present
 		ext := filepath.Ext(res)

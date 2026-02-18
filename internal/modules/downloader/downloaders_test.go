@@ -136,6 +136,18 @@ func TestCanHandle(t *testing.T) {
 				"https://nhentai.net/g/123/",
 			},
 		},
+		{
+			name:       "SubManhwaDownloader",
+			downloader: &SubManhwaDownloader{},
+			validURLs: []string{
+				"https://submanhwa.com/serie/slug",
+				"https://submanhwa.com/serie/slug/123.00",
+			},
+			invalidURLs: []string{
+				"https://example.com/page",
+				"https://zonatmo.com/view_uploads/123",
+			},
+		},
 	}
 
 	for _, tc := range testCases {

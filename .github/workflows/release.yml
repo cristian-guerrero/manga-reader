@@ -2,8 +2,13 @@ name: Wails Build & Release
 
 on:
   push:
+    branches:
+      - main
     tags:
       - 'v*' # Se activa al subir una etiqueta que empiece con 'v' (ej: v1.0.0)
+#  pull_request:
+#    branches:
+#      - main
 
 jobs:
   build-and-release:
@@ -43,7 +48,7 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libfuse2 libappstream-glib-dev
 
       - name: Instalar Wails CLI
         run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
@@ -57,7 +62,16 @@ jobs:
         shell: bash
         run: |
           echo "Iniciando compilación para plataforma: ${{ matrix.platform }}"
-          wails build -platform ${{ matrix.platform }}
+          
+          if [ "${{ matrix.os }}" == "ubuntu-latest" ]; then
+            # Build Linux AppImage using the script
+            chmod +x build-appimage.sh
+            ./build-appimage.sh
+          else
+            # Standard build for Windows/macOS
+            wails build -platform ${{ matrix.platform }}
+          fi
+          
           echo "Compilación completada exitosamente"
           if [ "${{ matrix.os }}" == "macos-latest" ]; then
             echo "Procesando archivo .app para macOS..."
