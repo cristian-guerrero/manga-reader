@@ -2,6 +2,7 @@ package downloader
 
 import (
 	"fmt"
+	"html"
 	"io"
 	"net/http"
 	"regexp"
@@ -12,14 +13,14 @@ import (
 type ZonaTMODownloader struct{}
 
 func normalizeZonaTMOSeriesName(raw string) string {
-	raw = strings.TrimSpace(raw)
+	raw = html.UnescapeString(strings.TrimSpace(raw))
 	if raw == "" {
 		return raw
 	}
 
 	// Remove HTML tags but keep their text content
 	reTags := regexp.MustCompile(`<[^>]*>`)
-	raw = reTags.ReplaceAllString(raw, "")
+	raw = html.UnescapeString(reTags.ReplaceAllString(raw, ""))
 	raw = strings.TrimSpace(raw)
 
 	// ZonaTMO sometimes appends the year like "(2025)" and occasionally a trailing ":".

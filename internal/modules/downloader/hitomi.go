@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"html"
 	"io"
 	"net/http"
 	neturl "net/url"
@@ -510,11 +511,11 @@ func (d *HitomiDownloader) getArbitraryList(url string) (*SiteInfo, error) {
 				title := ""
 				titleMatch := reTitle.FindStringSubmatch(rawContent)
 				if len(titleMatch) > 1 {
-					title = titleMatch[1]
+					title = html.UnescapeString(titleMatch[1])
 				} else {
 					// Strip all tags
 					reTags := regexp.MustCompile(`<[^>]*>`)
-					title = reTags.ReplaceAllString(rawContent, "")
+					title = html.UnescapeString(reTags.ReplaceAllString(rawContent, ""))
 				}
 				title = strings.TrimSpace(title)
 				if title == "" {
