@@ -74,6 +74,11 @@ func TestModule_FetchMangaInfo_ValidURLs(t *testing.T) {
 			url:     "https://comics18.org/the-breakfast/",
 			wantErr: false,
 		},
+		{
+			name:    "Hentai2Read URL",
+			url:     "https://hentai2read.com/ntr_midnight_pool_season_2/1/",
+			wantErr: false,
+		},
 	}
 
 	for _, tc := range testCases {

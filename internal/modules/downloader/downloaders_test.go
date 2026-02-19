@@ -169,6 +169,18 @@ func TestCanHandle(t *testing.T) {
 			},
 		},
 		{
+			name:       "Hentai2ReadDownloader",
+			downloader: &Hentai2ReadDownloader{},
+			validURLs: []string{
+				"https://hentai2read.com/ntr_midnight_pool_season_2/1/",
+				"https://hentai2read.com/ntr_midnight_pool_season_2/",
+			},
+			invalidURLs: []string{
+				"https://example.com/page",
+				"https://nhentai.net/g/123/",
+			},
+		},
+		{
 			name:       "SubManhwaDownloader",
 			downloader: &SubManhwaDownloader{},
 			validURLs: []string{
@@ -253,6 +265,11 @@ func TestGetSiteID(t *testing.T) {
 			downloader: &HentaiforceDownloader{},
 			expectedID: "hentaiforce.net",
 		},
+		{
+			name:       "Hentai2ReadDownloader",
+			downloader: &Hentai2ReadDownloader{},
+			expectedID: "hentai2read.com",
+		},
 	}
 
 	for _, tc := range testCases {
@@ -281,8 +298,10 @@ func TestModule_AlgorithmSelection(t *testing.T) {
 			url:        "https://hitomi.la/galleries/12345.html",
 			expectedID: "hitomi.la",
 		},
-		{
-			url:        "https://mangadex.org/chapter/test",
+		{url: "https://hentai2read.com/ntr_midnight_pool_season_2/1/",
+			expectedID: "hentai2read.com",
+		},
+		{url: "https://mangadex.org/chapter/test",
 			expectedID: "mangadex.org",
 		},
 		{
@@ -312,6 +331,10 @@ func TestModule_AlgorithmSelection(t *testing.T) {
 		{
 			url:        "https://hentaiforce.net/view/75850",
 			expectedID: "hentaiforce.net",
+		},
+		{
+			url:        "https://hentai2read.com/ntr_midnight_pool_season_2/1/",
+			expectedID: "hentai2read.com",
 		},
 	}
 
