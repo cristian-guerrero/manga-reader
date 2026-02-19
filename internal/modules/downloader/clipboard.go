@@ -68,6 +68,9 @@ func (m *Module) isValidURL(text string) bool {
 	if strings.Contains(text, "nhentai.net") {
 		return strings.Contains(text, "/g/")
 	}
+	if strings.Contains(text, "nhentai.xxx") {
+		return strings.Contains(text, "/g/")
+	}
 	if strings.Contains(text, "imhentai.xxx") {
 		return strings.Contains(text, "/gallery/") || strings.Contains(text, "/view/")
 	}
