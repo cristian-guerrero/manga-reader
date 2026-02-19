@@ -2,6 +2,7 @@ package downloader
 
 import (
 	"fmt"
+	"html"
 	"io"
 	"net/http"
 	"regexp"
@@ -113,7 +114,7 @@ func (d *Hentai2ReadDownloader) getImagesFromReader(url string) (*SiteInfo, erro
 	reTitle := regexp.MustCompile(`<title>(.*?)</title>`)
 	titleMatch := reTitle.FindStringSubmatch(bodyStr)
 	if len(titleMatch) >= 2 {
-		fullTitle := titleMatch[1]
+		fullTitle := html.UnescapeString(titleMatch[1])
 		// Reading NTR Midnight Pool Season 2 (Original) Hentai by Clone Ningen - 1: NTR Midnight Pool Season 2 #1 - Page 1
 		// We can split by " - " or ":"
 		parts := strings.Split(fullTitle, " - ")
@@ -186,7 +187,7 @@ func (d *Hentai2ReadDownloader) getChaptersFromSeries(url string) (*SiteInfo, er
 	reTitle := regexp.MustCompile(`<title>(.*?)</title>`)
 	titleMatch := reTitle.FindStringSubmatch(bodyStr)
 	if len(titleMatch) >= 2 {
-		title := titleMatch[1]
+		title := html.UnescapeString(titleMatch[1])
 		// Clean up: NTR Midnight Pool Season 2 online for free - hentai2read
 		title = strings.Split(title, " - ")[0]
 		seriesName = strings.TrimSuffix(title, " online for free")
@@ -213,7 +214,7 @@ func (d *Hentai2ReadDownloader) getChaptersFromSeries(url string) (*SiteInfo, er
 		chapters = append(chapters, ChapterInfo{
 			ID:   chapterID,
 			URL:  chapterURL,
-			Name: strings.TrimSpace(m[2]),
+			Name: html.UnescapeString(strings.TrimSpace(m[2])),
 		})
 	}
 
