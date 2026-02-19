@@ -69,6 +69,10 @@ func TestCanHandle(t *testing.T) {
 			validURLs: []string{
 				"https://hentaiera.com/gallery/664542/",
 				"https://hentaiera.com/view/664542/1/",
+				"https://hentaiera.com/artist/2-g/",
+				"https://hentaiera.com/artist/tekuho",
+				"https://hentaiera.com/artist/tekuho/?page=8",
+				"https://hentaiera.com/search/?q=original",
 			},
 			invalidURLs: []string{
 				"https://example.com/page",
