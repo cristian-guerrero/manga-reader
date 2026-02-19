@@ -71,6 +71,9 @@ func (m *Module) isValidURL(text string) bool {
 	if strings.Contains(text, "imhentai.xxx") {
 		return strings.Contains(text, "/gallery/") || strings.Contains(text, "/view/")
 	}
+	if strings.Contains(text, "hentaivox.com") {
+		return strings.Contains(text, "/gallery/") || strings.Contains(text, "/view/") || strings.Contains(text, "/g/")
+	}
 
 	supported := []string{
 		"hitomi.la",

@@ -64,6 +64,20 @@ func TestCanHandle(t *testing.T) {
 			},
 		},
 		{
+			name:       "HentaivoxDownloader",
+			downloader: &HentaivoxDownloader{},
+			validURLs: []string{
+				"https://hentaivox.com/gallery/210527/",
+				"https://hentaivox.com/view/210527/1/",
+				"https://hentaivox.com/g/210527/",
+				"https://hentaivox.com/artist/tekuho",
+			},
+			invalidURLs: []string{
+				"https://example.com/page",
+				"https://hentaiera.com/gallery/123/",
+			},
+		},
+		{
 			name:       "HentaieraDownloader",
 			downloader: &HentaieraDownloader{},
 			validURLs: []string{
