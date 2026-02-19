@@ -64,11 +64,29 @@ func TestCanHandle(t *testing.T) {
 			},
 		},
 		{
+			name:       "HentaivoxDownloader",
+			downloader: &HentaivoxDownloader{},
+			validURLs: []string{
+				"https://hentaivox.com/gallery/210527/",
+				"https://hentaivox.com/view/210527/1/",
+				"https://hentaivox.com/g/210527/",
+				"https://hentaivox.com/artist/tekuho",
+			},
+			invalidURLs: []string{
+				"https://example.com/page",
+				"https://hentaiera.com/gallery/123/",
+			},
+		},
+		{
 			name:       "HentaieraDownloader",
 			downloader: &HentaieraDownloader{},
 			validURLs: []string{
 				"https://hentaiera.com/gallery/664542/",
 				"https://hentaiera.com/view/664542/1/",
+				"https://hentaiera.com/artist/2-g/",
+				"https://hentaiera.com/artist/tekuho",
+				"https://hentaiera.com/artist/tekuho/?page=8",
+				"https://hentaiera.com/search/?q=original",
 			},
 			invalidURLs: []string{
 				"https://example.com/page",
@@ -130,6 +148,32 @@ func TestCanHandle(t *testing.T) {
 			validURLs: []string{
 				"https://comicporn.xxx/gallery/918336/",
 				"https://comicporn.xxx/view/918336/1/",
+			},
+			invalidURLs: []string{
+				"https://example.com/page",
+				"https://nhentai.net/g/123/",
+			},
+		},
+		{
+			name:       "HentaiforceDownloader",
+			downloader: &HentaiforceDownloader{},
+			validURLs: []string{
+				"https://hentaiforce.net/view/75850",
+				"https://hentaiforce.net/view/75850/1",
+				"https://hentaiforce.net/artist/ebi-fry-teishoku",
+				"https://hentaiforce.net/search?q=naruto",
+			},
+			invalidURLs: []string{
+				"https://example.com/page",
+				"https://hitomi.la/galleries/123.html",
+			},
+		},
+		{
+			name:       "Hentai2ReadDownloader",
+			downloader: &Hentai2ReadDownloader{},
+			validURLs: []string{
+				"https://hentai2read.com/ntr_midnight_pool_season_2/1/",
+				"https://hentai2read.com/ntr_midnight_pool_season_2/",
 			},
 			invalidURLs: []string{
 				"https://example.com/page",
@@ -216,6 +260,16 @@ func TestGetSiteID(t *testing.T) {
 			downloader: &Comics18Downloader{},
 			expectedID: "comics18.org",
 		},
+		{
+			name:       "HentaiforceDownloader",
+			downloader: &HentaiforceDownloader{},
+			expectedID: "hentaiforce.net",
+		},
+		{
+			name:       "Hentai2ReadDownloader",
+			downloader: &Hentai2ReadDownloader{},
+			expectedID: "hentai2read.com",
+		},
 	}
 
 	for _, tc := range testCases {
@@ -244,8 +298,10 @@ func TestModule_AlgorithmSelection(t *testing.T) {
 			url:        "https://hitomi.la/galleries/12345.html",
 			expectedID: "hitomi.la",
 		},
-		{
-			url:        "https://mangadex.org/chapter/test",
+		{url: "https://hentai2read.com/ntr_midnight_pool_season_2/1/",
+			expectedID: "hentai2read.com",
+		},
+		{url: "https://mangadex.org/chapter/test",
 			expectedID: "mangadex.org",
 		},
 		{
@@ -271,6 +327,14 @@ func TestModule_AlgorithmSelection(t *testing.T) {
 		{
 			url:        "https://comics18.org/test/",
 			expectedID: "comics18.org",
+		},
+		{
+			url:        "https://hentaiforce.net/view/75850",
+			expectedID: "hentaiforce.net",
+		},
+		{
+			url:        "https://hentai2read.com/ntr_midnight_pool_season_2/1/",
+			expectedID: "hentai2read.com",
 		},
 	}
 

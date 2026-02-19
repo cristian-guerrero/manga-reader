@@ -20,29 +20,14 @@ func (d *HentaieraDownloader) GetSiteID() string {
 }
 
 func (d *HentaieraDownloader) GetImages(url string) (*SiteInfo, error) {
-	client := &http.Client{}
-	req, err := http.NewRequest("GET", url, nil)
+	if !strings.Contains(url, "/gallery/") && !strings.Contains(url, "/view/") {
+		return d.getSeriesInfo(url)
+	}
+
+	bodyStr, err := d.fetchPage(url)
 	if err != nil {
 		return nil, err
 	}
-
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0")
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch page: %v", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("failed to fetch page, status code: %d", resp.StatusCode)
-	}
-
-	bodyBytes, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-	bodyStr := string(bodyBytes)
 
 	// Extract metadata from hidden inputs
 	server := d.extractValue(bodyStr, "load_server")
@@ -101,15 +86,110 @@ func (d *HentaieraDownloader) GetImages(url string) (*SiteInfo, error) {
 			URL:      imageURL,
 			Filename: fmt.Sprintf("%03d%s", i, extension),
 			Index:    i - 1,
+			Headers: map[string]string{
+				"Referer":    url,
+				"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0",
+			},
 		})
 	}
 
 	return &SiteInfo{
-		SeriesName: title,
-		Images:     images,
-		SiteID:     "hentaiera.com",
-		Type:       "single",
+		SeriesName:  title,
+		ChapterName: "",
+		SiteID:      "hentaiera.com",
+		Images:      images,
+		Type:        "single",
 	}, nil
+}
+
+func (d *HentaieraDownloader) getSeriesInfo(url string) (*SiteInfo, error) {
+	bodyStr, err := d.fetchPage(url)
+	if err != nil {
+		return nil, err
+	}
+
+	// Extract title
+	title := "Hentaiera Series"
+	reTitle := regexp.MustCompile(`<title>(.*?)</title>`)
+	titleMatch := reTitle.FindStringSubmatch(bodyStr)
+	if len(titleMatch) > 1 {
+		title = strings.TrimSuffix(titleMatch[1], " - Hentai Manga, Doujinshi & Comic Porn")
+		title = strings.TrimSpace(title)
+	}
+
+	// Extract galleries
+	// Matches both <h2 class="gallery_title"> and <div class="gallery_title"> for robustness
+	reGallery := regexp.MustCompile(`(?s)<(?:h\d|div)\s+class="gallery_title">\s*<a\s+href="([^"]+)">\s*(.*?)\s*</a>\s*</(?:h\d|div)>`)
+	matches := reGallery.FindAllStringSubmatch(bodyStr, -1)
+
+	var chapters []ChapterInfo
+	for _, m := range matches {
+		galleryURL := m[1]
+		galleryTitle := strings.TrimSpace(m[2])
+
+		if !strings.HasPrefix(galleryURL, "http") {
+			galleryURL = "https://hentaiera.com" + galleryURL
+		}
+
+		// Extract ID from /gallery/12345/
+		reID := regexp.MustCompile(`/gallery/(\d+)/`)
+		idMatch := reID.FindStringSubmatch(galleryURL)
+		id := ""
+		if len(idMatch) > 1 {
+			id = idMatch[1]
+		}
+
+		chapters = append(chapters, ChapterInfo{
+			ID:   id,
+			Name: galleryTitle,
+			URL:  galleryURL,
+		})
+	}
+
+	if len(chapters) == 0 {
+		return nil, fmt.Errorf("could not find any galleries in this list")
+	}
+
+	return &SiteInfo{
+		SeriesName: title,
+		SiteID:     "hentaiera.com",
+		Type:       "series",
+		Chapters:   chapters,
+	}, nil
+}
+
+func (d *HentaieraDownloader) fetchPage(url string) (string, error) {
+	// Hentaiera is very strict with trailing slashes on artist/search pages.
+	// If the URL is an artist or search page and doesn't end with / (and has no query), append it.
+	if strings.Contains(url, "/artist/") || strings.Contains(url, "/search/") || strings.Contains(url, "/tag/") {
+		if !strings.HasSuffix(url, "/") && !strings.Contains(url, "?") {
+			url += "/"
+		}
+	}
+
+	client := &http.Client{}
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return "", err
+	}
+
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("failed to fetch page: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("failed to fetch page, status code: %d (at %s)", resp.StatusCode, url)
+	}
+
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+	return string(bodyBytes), nil
 }
 
 func (d *HentaieraDownloader) extractValue(html, id string) string {

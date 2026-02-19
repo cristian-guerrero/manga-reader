@@ -57,6 +57,27 @@ func (m *Module) isValidURL(text string) bool {
 		return false
 	}
 
+	// For certain sites, we only want to auto-detect single chapters/galleries in the clipboard,
+	// not artist lists or search results (series).
+	if strings.Contains(text, "hentaiera.com") {
+		return strings.Contains(text, "/gallery/") || strings.Contains(text, "/view/")
+	}
+	if strings.Contains(text, "hentaiforce.net") {
+		return strings.Contains(text, "/view/")
+	}
+	if strings.Contains(text, "nhentai.net") {
+		return strings.Contains(text, "/g/")
+	}
+	if strings.Contains(text, "nhentai.xxx") {
+		return strings.Contains(text, "/g/")
+	}
+	if strings.Contains(text, "imhentai.xxx") {
+		return strings.Contains(text, "/gallery/") || strings.Contains(text, "/view/")
+	}
+	if strings.Contains(text, "hentaivox.com") {
+		return strings.Contains(text, "/gallery/") || strings.Contains(text, "/view/") || strings.Contains(text, "/g/")
+	}
+
 	supported := []string{
 		"hitomi.la",
 		"manhwaweb.com",
@@ -65,13 +86,10 @@ func (m *Module) isValidURL(text string) bool {
 		"tmofans.com",
 		"turomance.com",
 		"tumangaonline.com",
-		"nhentai.net",
-		"hentaiera.com",
 		"mangadex.org",
 		"manga18.club",
 		"comics18.org",
 		"hentaifc.com",
-		"imhentai.xxx",
 		"e-hentai.org",
 		"exhentai.org",
 		"ehentai.org",
