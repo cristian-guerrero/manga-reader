@@ -56,13 +56,14 @@ func NewModule(pm *persistence.DownloaderManager, sm *persistence.SettingsManage
 			"mangadex.org":    3,
 			"nhentai.net":     2,
 			"nhentai.xxx":     2,
-			"e-hentai.org":    1,
+			"e-hentai.org":    3,
 			"imhentai.xxx":    2,
 			"manga18.club":    4,
 			"submanhwa.com":   3,
 			"hentaiforce.net": 2,
 			"hentaivox.com":   2,
 			"hentai2read.com": 4,
+			"lhentai.com":     2,
 		},
 		algorithms: []DownloaderInterface{
 			&HitomiDownloader{},
@@ -82,6 +83,7 @@ func NewModule(pm *persistence.DownloaderManager, sm *persistence.SettingsManage
 			&SubManhwaDownloader{},
 			&HentaiforceDownloader{},
 			&Hentai2ReadDownloader{},
+			&LHentaiDownloader{},
 		},
 	}
 }

@@ -170,8 +170,8 @@ func TestIntegration_FetchMangaInfo_ManhwaWeb(t *testing.T) {
 
 	// URLs de ejemplo del código
 	testURLs := []string{
-		"https://manhwaweb.com/manhwa/slug",      // Serie
-		"https://manhwaweb.com/leer/slug",        // Capítulo
+		"https://manhwaweb.com/manhwa/slug",       // Serie
+		"https://manhwaweb.com/leer/slug",         // Capítulo
 		"https://manhwaweb.com/chapters/see/slug", // Capítulo alternativo
 	}
 
@@ -250,9 +250,9 @@ func TestIntegration_FetchMangaInfo_Manga18(t *testing.T) {
 
 	// URLs de ejemplo del código
 	testURLs := []string{
-		"https://manga18.club/manhwa/soeun",              // Serie
-		"https://manga18.club/manhwa/soeun/chap-79",      // Capítulo
-		"https://manga18.club/manhwa/so-eun-raw/42",      // Capítulo alternativo
+		"https://manga18.club/manhwa/soeun",                 // Serie
+		"https://manga18.club/manhwa/soeun/chap-79",         // Capítulo
+		"https://manga18.club/manhwa/so-eun-raw/42",         // Capítulo alternativo
 		"https://manga18.club/manhwa/so-eun-raw/chapter-80", // Capítulo alternativo
 	}
 
@@ -313,6 +313,49 @@ func TestIntegration_FetchMangaInfo_Comics18(t *testing.T) {
 			if len(info.Images) == 0 {
 				t.Error("Expected at least one image")
 			}
+		})
+	}
+}
+
+// TestIntegration_FetchMangaInfo_LHentai verifica que FetchMangaInfo funcione con URLs reales de lhentai
+func TestIntegration_FetchMangaInfo_LHentai(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+
+	pm := persistence.NewDownloaderManager()
+	sm := persistence.NewSettingsManager()
+	logger := &mockLogger{}
+
+	module := NewModule(pm, sm, logger)
+
+	// URL de ejemplo proporcionada por el usuario: https://lhentai.com/g/49486
+	testURLs := []string{
+		"https://lhentai.com/g/49486",
+	}
+
+	for _, url := range testURLs {
+		t.Run(url, func(t *testing.T) {
+			info, err := module.FetchMangaInfo(url)
+			if err != nil {
+				t.Logf("Error fetching %s (may be expected if URL doesn't exist or site blocks bots): %v", url, err)
+				return
+			}
+
+			if info == nil {
+				t.Error("Got nil SiteInfo")
+				return
+			}
+
+			if info.SiteID != "lhentai.com" {
+				t.Errorf("Expected SiteID 'lhentai.com', got %q", info.SiteID)
+			}
+
+			if len(info.Images) == 0 {
+				t.Error("Expected at least one image")
+			}
+
+			t.Logf("Successfully fetched gallery: %s with %d images", info.SeriesName, len(info.Images))
 		})
 	}
 }
