@@ -11,12 +11,22 @@ A premium desktop manga viewer and downloader application built with Wails, Reac
 ### 📥 Downloader
 - **High-speed Downloader** - Multi-threaded image downloading.
 - **Supported Sites** - Integrated support for:
-  - **Hitomi.la** (with language filtering)
-  - **MangaDex** (with language filtering)
-  - **nHentai**
-  - **ManhwaWeb**
-  - **ZonaTMO**
+  - **Hitomi.la**
+  - **MangaDex.org**
+  - **nHentai.net**
+  - **nHentai.xxx**
+  - **ManhwaWeb.com**
+  - **ZonaTMO.com**
+  - **Hentaiera.com**
+  - **IMHentai.xxx**
+  - **Hentaivox.com**
   - **Manga18.club**
+  - **Comics18.org**
+  - **Hentaifc.com**
+  - **ComicPorn.xxx**
+  - **E-Hentai.org**
+  - **Submanhwa.com**
+  - **Hentaiforce.net**
 - **Smart Monitoring** - Automatic clipboard monitoring for instant downloads.
 - **Queue Management** - Sequential download queue with pause/resume support.
 - **Auto-resume** - Automatically resume incomplete downloads on app restart.
