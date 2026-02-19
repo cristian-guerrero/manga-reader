@@ -137,6 +137,20 @@ func TestCanHandle(t *testing.T) {
 			},
 		},
 		{
+			name:       "HentaiforceDownloader",
+			downloader: &HentaiforceDownloader{},
+			validURLs: []string{
+				"https://hentaiforce.net/view/75850",
+				"https://hentaiforce.net/view/75850/1",
+				"https://hentaiforce.net/artist/ebi-fry-teishoku",
+				"https://hentaiforce.net/search?q=naruto",
+			},
+			invalidURLs: []string{
+				"https://example.com/page",
+				"https://hitomi.la/galleries/123.html",
+			},
+		},
+		{
 			name:       "SubManhwaDownloader",
 			downloader: &SubManhwaDownloader{},
 			validURLs: []string{
@@ -216,6 +230,11 @@ func TestGetSiteID(t *testing.T) {
 			downloader: &Comics18Downloader{},
 			expectedID: "comics18.org",
 		},
+		{
+			name:       "HentaiforceDownloader",
+			downloader: &HentaiforceDownloader{},
+			expectedID: "hentaiforce.net",
+		},
 	}
 
 	for _, tc := range testCases {
@@ -271,6 +290,10 @@ func TestModule_AlgorithmSelection(t *testing.T) {
 		{
 			url:        "https://comics18.org/test/",
 			expectedID: "comics18.org",
+		},
+		{
+			url:        "https://hentaiforce.net/view/75850",
+			expectedID: "hentaiforce.net",
 		},
 	}
 
