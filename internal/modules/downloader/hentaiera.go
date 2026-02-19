@@ -3,6 +3,7 @@ package downloader
 import (
 	"encoding/json"
 	"fmt"
+	"html"
 	"io"
 	"net/http"
 	"regexp"
@@ -44,7 +45,7 @@ func (d *HentaieraDownloader) GetImages(url string) (*SiteInfo, error) {
 	titleMatch := reTitle.FindStringSubmatch(bodyStr)
 	title := "Unknown"
 	if len(titleMatch) > 1 {
-		title = titleMatch[1]
+		title = html.UnescapeString(titleMatch[1])
 	}
 
 	// Extract image extensions from g_th JSON

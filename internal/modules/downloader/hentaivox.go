@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"html"
 	"io"
 	"net/http"
 	"regexp"
@@ -82,7 +83,7 @@ func (d *HentaivoxDownloader) GetImages(url string) (*SiteInfo, error) {
 		titleMatch := reTitle.FindStringSubmatch(bodyStr)
 		title := "Unknown"
 		if len(titleMatch) > 1 {
-			title = titleMatch[1]
+			title = html.UnescapeString(titleMatch[1])
 		}
 
 		// Extract image extensions from g_th JSON
@@ -154,7 +155,7 @@ func (d *HentaivoxDownloader) parseReaderPages(bodyStr, url string) (*SiteInfo, 
 	}
 
 	// Extract clean title
-	title := data.Title
+	title := html.UnescapeString(data.Title)
 	title = strings.ReplaceAll(title, " - Page {:page}", "")
 	title = strings.ReplaceAll(title, " - HentaiVox", "")
 	title = strings.TrimSpace(title)
@@ -208,7 +209,8 @@ func (d *HentaivoxDownloader) getSeriesInfo(url string) (*SiteInfo, error) {
 	reTitle := regexp.MustCompile(`<title>(.*?)</title>`)
 	titleMatch := reTitle.FindStringSubmatch(bodyStr)
 	if len(titleMatch) > 1 {
-		title = strings.TrimSuffix(titleMatch[1], " - HentaiVox")
+		title = html.UnescapeString(titleMatch[1])
+		title = strings.TrimSuffix(title, " - HentaiVox")
 		title = strings.TrimSpace(title)
 	}
 
@@ -219,7 +221,7 @@ func (d *HentaivoxDownloader) getSeriesInfo(url string) (*SiteInfo, error) {
 	var chapters []ChapterInfo
 	for _, m := range matches {
 		galleryURL := m[1]
-		galleryTitle := strings.TrimSpace(m[2])
+		galleryTitle := html.UnescapeString(strings.TrimSpace(m[2]))
 
 		if !strings.HasPrefix(galleryURL, "http") {
 			galleryURL = "https://hentaivox.com" + galleryURL

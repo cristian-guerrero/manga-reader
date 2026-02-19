@@ -3,6 +3,7 @@ package downloader
 import (
 	"encoding/json"
 	"fmt"
+	"html"
 	"io"
 	"net/http"
 	"regexp"
@@ -78,7 +79,7 @@ func (d *IMHentaiDownloader) GetImages(url string) (*SiteInfo, error) {
 	server := d.extractValue(bodyStr, "load_server")
 	dir := d.extractValue(bodyStr, "load_dir")
 	loadID := d.extractValue(bodyStr, "load_id")
-	title := d.extractValue(bodyStr, "gallery_title")
+	title := html.UnescapeString(d.extractValue(bodyStr, "gallery_title"))
 
 	if server == "" || dir == "" || loadID == "" {
 		return nil, fmt.Errorf("failed to extract metadata from page")

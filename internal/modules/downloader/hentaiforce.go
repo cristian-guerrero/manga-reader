@@ -2,6 +2,7 @@ package downloader
 
 import (
 	"fmt"
+	"html"
 	"io"
 	"net/http"
 	"regexp"
@@ -36,12 +37,12 @@ func (d *HentaiforceDownloader) GetImages(url string) (*SiteInfo, error) {
 	reTitle := regexp.MustCompile(`(?s)<h[12][^>]*class="[^"]*font-weight-bold[^"]*"[^>]*>(.*?)</h[12]>`)
 	titleMatch := reTitle.FindStringSubmatch(bodyStr)
 	if len(titleMatch) > 1 {
-		title = strings.TrimSpace(titleMatch[1])
+		title = html.UnescapeString(strings.TrimSpace(titleMatch[1]))
 	} else {
 		reTitleFallback := regexp.MustCompile(`<title>(.*?)</title>`)
 		titleMatchFallback := reTitleFallback.FindStringSubmatch(bodyStr)
 		if len(titleMatchFallback) > 1 {
-			title = strings.TrimSuffix(titleMatchFallback[1], " - HentaiForce")
+			title = html.UnescapeString(strings.TrimSuffix(titleMatchFallback[1], " - HentaiForce"))
 			title = strings.TrimSuffix(title, " - Page 1") // In case it's a reader page
 			title = strings.TrimSpace(title)
 		}

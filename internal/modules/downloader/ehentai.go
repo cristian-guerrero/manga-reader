@@ -2,6 +2,7 @@ package downloader
 
 import (
 	"fmt"
+	"html"
 	"io"
 	"net/http"
 	"regexp"
@@ -94,7 +95,7 @@ func (d *EHentaiDownloader) GetImages(url string) (*SiteInfo, error) {
 	// Extract Title
 	reTitle := regexp.MustCompile(`<h1 id="gn">([^<]+)</h1>`)
 	if match := reTitle.FindStringSubmatch(firstPageBody); len(match) > 1 {
-		seriesName = match[1]
+		seriesName = html.UnescapeString(match[1])
 	}
 
 	// Try finding ZIP

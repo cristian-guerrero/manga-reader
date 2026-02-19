@@ -8,3 +8,4 @@ frontend/dist
 .vscode/
 info.txt
 .cursor/plans
+build/windows/installers/tmp

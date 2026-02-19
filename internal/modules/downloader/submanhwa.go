@@ -2,6 +2,7 @@ package downloader
 
 import (
 	"fmt"
+	"html"
 	"io"
 	"net/http"
 	"regexp"
@@ -58,7 +59,7 @@ func (d *SubManhwaDownloader) GetImages(viewerURL string) (*SiteInfo, error) {
 	// Extrar Título: <title> Boku no Kokoro no Yabai Yatsu capitulo 185.00 manhwa </title>
 	reTitle := regexp.MustCompile(`(?s)<title>\s*(.*?)\s*</title>`)
 	if match := reTitle.FindStringSubmatch(bodyStr); len(match) > 1 {
-		title := strings.TrimSpace(match[1])
+		title := html.UnescapeString(strings.TrimSpace(match[1]))
 		lowerTitle := strings.ToLower(title)
 		if idx := strings.Index(lowerTitle, "capitulo"); idx != -1 {
 			seriesName = strings.TrimSpace(title[:idx])
@@ -120,7 +121,7 @@ func (d *SubManhwaDownloader) parseSeries(bodyStr, seriesURL string) (*SiteInfo,
 	seriesName := "Unknown"
 	reTitle := regexp.MustCompile(`(?s)<title>\s*(.*?)\s*</title>`)
 	if match := reTitle.FindStringSubmatch(bodyStr); len(match) > 1 {
-		title := strings.TrimSpace(match[1])
+		title := html.UnescapeString(strings.TrimSpace(match[1]))
 		// Example: Boku no Kokoro no Yabai Yatsu   - Submanhwa.com
 		if idx := strings.Index(title, "  -"); idx != -1 {
 			seriesName = strings.TrimSpace(title[:idx])
