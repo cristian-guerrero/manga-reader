@@ -192,6 +192,19 @@ func TestCanHandle(t *testing.T) {
 				"https://zonatmo.com/view_uploads/123",
 			},
 		},
+		{
+			name:       "LHentaiDownloader",
+			downloader: &LHentaiDownloader{},
+			validURLs: []string{
+				"https://lhentai.com/g/49486",
+				"https://lhentai.com/g/49486/",
+				"https://lhentai.com/g/12345",
+			},
+			invalidURLs: []string{
+				"https://example.com/page",
+				"https://nhentai.net/g/123/",
+			},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -270,6 +283,11 @@ func TestGetSiteID(t *testing.T) {
 			downloader: &Hentai2ReadDownloader{},
 			expectedID: "hentai2read.com",
 		},
+		{
+			name:       "LHentaiDownloader",
+			downloader: &LHentaiDownloader{},
+			expectedID: "lhentai.com",
+		},
 	}
 
 	for _, tc := range testCases {
@@ -335,6 +353,10 @@ func TestModule_AlgorithmSelection(t *testing.T) {
 		{
 			url:        "https://hentai2read.com/ntr_midnight_pool_season_2/1/",
 			expectedID: "hentai2read.com",
+		},
+		{
+			url:        "https://lhentai.com/g/49486",
+			expectedID: "lhentai.com",
 		},
 	}
 
