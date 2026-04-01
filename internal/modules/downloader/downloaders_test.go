@@ -205,6 +205,18 @@ func TestCanHandle(t *testing.T) {
 				"https://nhentai.net/g/123/",
 			},
 		},
+		{
+			name:       "HentaiReadDownloader",
+			downloader: &HentaiReadDownloader{},
+			validURLs: []string{
+				"https://hentairead.io/pool-party-53279/",
+				"https://hentairead.io/pool-party-53279/chapter-29-153792/",
+			},
+			invalidURLs: []string{
+				"https://example.com/page",
+				"https://hentai2read.com/test/",
+			},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -287,6 +299,11 @@ func TestGetSiteID(t *testing.T) {
 			name:       "LHentaiDownloader",
 			downloader: &LHentaiDownloader{},
 			expectedID: "lhentai.com",
+		},
+		{
+			name:       "HentaiReadDownloader",
+			downloader: &HentaiReadDownloader{},
+			expectedID: "hentairead.io",
 		},
 	}
 

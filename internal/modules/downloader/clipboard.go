@@ -100,6 +100,7 @@ func (m *Module) isValidURL(text string) bool {
 		"exhentai.org",
 		"ehentai.org",
 		"submanhwa.com",
+		"hentairead.io",
 	}
 
 	for _, domain := range supported {
