@@ -61,6 +61,20 @@ func TestCanHandle(t *testing.T) {
 			invalidURLs: []string{
 				"https://example.com/page",
 				"https://hentaiera.com/gallery/123/",
+				"https://imhentai.to/g/645455/",
+			},
+		},
+		{
+			name:       "IMHentaiToDownloader",
+			downloader: &IMHentaiToDownloader{},
+			validURLs: []string{
+				"https://imhentai.to/g/645455/",
+				"https://imhentai.to/g/645455/1/",
+				"https://imhentai.to/view/645455/1/",
+			},
+			invalidURLs: []string{
+				"https://example.com/page",
+				"https://imhentai.xxx/gallery/1063156/",
 			},
 		},
 		{
@@ -304,6 +318,11 @@ func TestGetSiteID(t *testing.T) {
 			name:       "HentaiReadDownloader",
 			downloader: &HentaiReadDownloader{},
 			expectedID: "hentairead.io",
+		},
+		{
+			name:       "IMHentaiToDownloader",
+			downloader: &IMHentaiToDownloader{},
+			expectedID: "imhentai.to",
 		},
 	}
 
