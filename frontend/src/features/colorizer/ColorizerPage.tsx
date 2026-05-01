@@ -332,6 +332,13 @@ export function ColorizerPage() {
             setColorizedCache(newCache);
             setCurrentProcessingImage(null);
             showToast(`Colorized ${droppedImages.length} image(s)`, 'success');
+
+            try {
+                await AppBackend.ColorizerRestartServer();
+                showToast('Server restarted due to memory cleanup', 'info');
+            } catch (e) {
+                console.warn('Failed to restart server after colorize all:', e);
+            }
         } catch (e) {
             const msg = e instanceof Error ? e.message : 'Colorization failed';
             showToast(msg, 'error');

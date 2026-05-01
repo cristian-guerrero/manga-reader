@@ -44,6 +44,8 @@ export function ColorizerIsInstalled():Promise<boolean>;
 
 export function ColorizerIsRunning():Promise<boolean>;
 
+export function ColorizerRestartServer():Promise<void>;
+
 export function ColorizerStartServer():Promise<void>;
 
 export function ColorizerStopServer():Promise<void>;

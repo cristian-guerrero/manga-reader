@@ -78,6 +78,10 @@ export function ColorizerIsRunning() {
   return window['go']['main']['App']['ColorizerIsRunning']();
 }
 
+export function ColorizerRestartServer() {
+  return window['go']['main']['App']['ColorizerRestartServer']();
+}
+
 export function ColorizerStartServer() {
   return window['go']['main']['App']['ColorizerStartServer']();
 }

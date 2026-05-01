@@ -17,6 +17,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	stdruntime "runtime"
+	"time"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -686,6 +687,18 @@ func (a *App) ColorizerStopServer() error {
 		return fmt.Errorf("colorizer module not initialized")
 	}
 	return a.colorizerMod.StopServer()
+}
+
+// ColorizerRestartServer stops and restarts the Flask colorizer server
+func (a *App) ColorizerRestartServer() error {
+	if a.colorizerMod == nil {
+		return fmt.Errorf("colorizer module not initialized")
+	}
+	if err := a.colorizerMod.StopServer(); err != nil {
+		fmt.Printf("[Colorizer] Warning: failed to stop server: %v\n", err)
+	}
+	time.Sleep(500 * time.Millisecond)
+	return a.colorizerMod.StartServer()
 }
 
 // ColorizerIsRunning checks if the colorizer server is currently running
