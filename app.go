@@ -153,6 +153,14 @@ func (a *App) domReady(ctx context.Context) {
 func (a *App) shutdown(ctx context.Context) {
 	a.services.Logger.Info("Flushing settings to disk...")
 	a.settings().Flush()
+
+	// Stop colorizer server if running
+	if a.colorizerMod != nil {
+		a.colorizerMod.StopServer()
+	}
+
+	// Kill any orphaned python.exe processes
+	colorizer.CleanupOrphanedPython()
 }
 
 // SaveWindowState captures and saves the current window dimensions and position

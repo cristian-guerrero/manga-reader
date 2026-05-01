@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
-	"time"
 )
 
 type managedProcess struct {
@@ -33,9 +32,10 @@ func (p *managedProcess) stop() {
 		p.cmd.Process.Kill()
 		p.running = false
 	}
+}
 
-	// Fallback: kill all python processes in case children survived
-	time.Sleep(200 * time.Millisecond)
+// CleanupOrphanedPython kills all python.exe processes left over from the app
+func CleanupOrphanedPython() {
 	taskkillAll := exec.Command("taskkill", "/F", "/IM", "python.exe")
 	taskkillAll.Run()
 }

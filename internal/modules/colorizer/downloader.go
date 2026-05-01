@@ -18,6 +18,7 @@ import (
 const (
 	pythonStandaloneURL = "https://github.com/indygreg/python-build-standalone/releases/download/20241206/cpython-3.12.8+20241206-%s-full.tar.zst"
 	backendRepoURL      = "https://github.com/cristian-guerrero/Manga-Colorizer/archive/refs/heads/cristian-dev.zip"
+	alacganModelURL     = "https://drive.usercontent.google.com/download?id=12cKll-A49Dte4y9nBs9ID2u0W8bAjqQQ&export=download&confirm=t"
 )
 
 func (m *Manager) runInstallation() {
@@ -381,17 +382,97 @@ func (m *Manager) installDependencies() error {
 		return fmt.Errorf("einops not importable after install.\nDebug info:\n%s\npip output:\n%s", string(debugOut), string(output))
 	}
 
+	// Download AlacGAN model weights
+	generatorPath := filepath.Join(m.backendPath, "networks", "generator.zip")
+	if _, err := os.Stat(generatorPath); os.IsNotExist(err) {
+		if err := m.downloadAlacGANModel(generatorPath); err != nil {
+			fmt.Printf("[Colorizer] Warning: Failed to download AlacGAN model: %v\n", err)
+		}
+	}
+
 	m.setStatus(StatusReady, fmt.Sprintf("Dependencies installed (einops %s)", strings.TrimSpace(string(verifyOut))), 95)
+	return nil
+}
+
+func (m *Manager) downloadAlacGANModel(destPath string) error {
+	m.setStatus(StatusInstallingDeps, "Downloading AlacGAN model...", 90)
+
+	// Ensure networks directory exists
+	if err := os.MkdirAll(filepath.Dir(destPath), 0755); err != nil {
+		return fmt.Errorf("failed to create networks dir: %w", err)
+	}
+
+	// Download to temp file first
+	tmpFile, err := os.CreateTemp("", "alacgan-*.zip")
+	if err != nil {
+		return fmt.Errorf("failed to create temp file: %w", err)
+	}
+	defer os.Remove(tmpFile.Name())
+	defer tmpFile.Close()
+
+	client := &http.Client{
+		Timeout: 30 * time.Minute,
+		Transport: &http.Transport{
+			ResponseHeaderTimeout: 60 * time.Second,
+		},
+	}
+
+	req, err := http.NewRequest("GET", alacganModelURL, nil)
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+	req.Header.Set("User-Agent", "Manga-Colorizer-Installer/1.0")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to download model: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("model download returned status %d", resp.StatusCode)
+	}
+
+	totalSize := resp.ContentLength
+	var downloaded int64
+	buf := make([]byte, 64*1024)
+
+	for {
+		n, err := resp.Body.Read(buf)
+		if n > 0 {
+			if _, wErr := tmpFile.Write(buf[:n]); wErr != nil {
+				return fmt.Errorf("failed to write: %w", wErr)
+			}
+			downloaded += int64(n)
+			if totalSize > 0 {
+				m.setStatus(StatusInstallingDeps, fmt.Sprintf("Downloading model... %.0f%% (%.0f MB)", float64(downloaded)/float64(totalSize)*100, float64(downloaded)/1024/1024), 90)
+			}
+		}
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return fmt.Errorf("download error: %w", err)
+		}
+	}
+
+	// Move to destination
+	if err := os.Rename(tmpFile.Name(), destPath); err != nil {
+		// Fallback: copy
+		src, _ := os.Open(tmpFile.Name())
+		defer src.Close()
+		dst, _ := os.Create(destPath)
+		defer dst.Close()
+		io.Copy(dst, src)
+	}
+
+	fmt.Printf("[Colorizer] AlacGAN model downloaded to %s (%d bytes)\n", destPath, downloaded)
 	return nil
 }
 
 func (m *Manager) runStartServer() {
 	m.setStatus(StatusStartingServer, "Starting colorizer server...", 95)
 
-	//		"--colorizer_type", "CycleGAN",
-	// 		"--colorizer_type", "AlacGAN",
-	// 		"--device", "cuda",
-	// 		"--device", "cpu",
 	cmd := exec.Command(
 		m.pythonPath,
 		"app-stream.py",
