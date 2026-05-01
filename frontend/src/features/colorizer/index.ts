@@ -1,0 +1,1 @@
+export { ColorizerPage } from './ColorizerPage';

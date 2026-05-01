@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"manga-visor/internal/fileloader"
+	"manga-visor/internal/modules/colorizer"
 	"manga-visor/internal/modules/downloader"
 	"manga-visor/internal/modules/explorer"
 	"manga-visor/internal/modules/history"
@@ -31,6 +32,7 @@ type App struct {
 	historyMod    *history.Module
 	explorerMod   *explorer.Module
 	downloaderMod *downloader.Module
+	colorizerMod  *colorizer.Manager
 }
 
 // Convenience getters for backward compatibility
@@ -78,6 +80,9 @@ func NewApp() *App {
 	// Dependency injection (Circular dependency resolution)
 	lMod.SetSeriesModule(sMod)
 
+	// Colorizer module (initialized in startup with data dir)
+	var cMod *colorizer.Manager
+
 	return &App{
 		services:      container,
 		libraryMod:    lMod,
@@ -85,6 +90,7 @@ func NewApp() *App {
 		historyMod:    hMod,
 		explorerMod:   eMod,
 		downloaderMod: dMod,
+		colorizerMod:  cMod,
 	}
 }
 
@@ -105,6 +111,14 @@ func (a *App) startup(ctx context.Context) {
 	a.historyMod.SetContext(ctx)
 	a.explorerMod.SetContext(ctx)
 	a.downloaderMod.SetContext(ctx)
+
+	// Initialize colorizer module
+	homeDir, _ := os.UserHomeDir()
+	colorizerDataDir := filepath.Join(homeDir, ".manga-visor", "colorizer")
+	a.colorizerMod = colorizer.NewManager(colorizerDataDir, func(progress colorizer.InstallProgress) {
+		a.services.Logger.Infof("[Colorizer] %s: %s (%.0f%%)", progress.Status, progress.Message, progress.Percent)
+	})
+	a.services.Logger.Infof("[Colorizer] Data directory: %s", colorizerDataDir)
 
 	// Restore window position
 	settings := a.settings().Get()
@@ -624,4 +638,105 @@ func (a *App) ClearAllData() error {
 // Implementation is in app_windows.go for Windows, and app_other.go for other platforms
 func (a *App) UpdateTaskbarIcon(base64Data string) {
 	updateTaskbarIconImpl(a, base64Data)
+}
+
+// =============================================================================
+// Colorizer Methods
+// =============================================================================
+
+// ColorizerGetStatus returns the current installation/status state
+func (a *App) ColorizerGetStatus() colorizer.InstallProgress {
+	if a.colorizerMod == nil {
+		return colorizer.InstallProgress{
+			Status:  colorizer.StatusNotInstalled,
+			Message: "Colorizer module not initialized",
+			Percent: 0,
+		}
+	}
+	return a.colorizerMod.GetStatus()
+}
+
+// ColorizerInstall starts the installation process (downloads Python + backend + deps)
+func (a *App) ColorizerInstall() error {
+	if a.colorizerMod == nil {
+		return fmt.Errorf("colorizer module not initialized")
+	}
+	return a.colorizerMod.Install()
+}
+
+// ColorizerStartServer starts the Flask colorizer server
+func (a *App) ColorizerStartServer() error {
+	if a.colorizerMod == nil {
+		return fmt.Errorf("colorizer module not initialized")
+	}
+	return a.colorizerMod.StartServer()
+}
+
+// ColorizerStopServer stops the Flask colorizer server
+func (a *App) ColorizerStopServer() error {
+	if a.colorizerMod == nil {
+		return fmt.Errorf("colorizer module not initialized")
+	}
+	return a.colorizerMod.StopServer()
+}
+
+// ColorizerIsRunning checks if the colorizer server is currently running
+func (a *App) ColorizerIsRunning() bool {
+	if a.colorizerMod == nil {
+		return false
+	}
+	return a.colorizerMod.IsRunning()
+}
+
+// ColorizerIsInstalled checks if the colorizer is installed (Python + backend)
+func (a *App) ColorizerIsInstalled() bool {
+	if a.colorizerMod == nil {
+		return false
+	}
+	return a.colorizerMod.IsInstalled()
+}
+
+// ColorizerHealthCheck performs a health check on the colorizer server
+func (a *App) ColorizerHealthCheck() bool {
+	if a.colorizerMod == nil {
+		return false
+	}
+	return a.colorizerMod.HealthCheck()
+}
+
+// ColorizerGetServerURL returns the URL of the running colorizer server
+func (a *App) ColorizerGetServerURL() string {
+	if a.colorizerMod == nil {
+		return ""
+	}
+	return a.colorizerMod.GetServerURL()
+}
+
+// ColorizeImage sends an image to the colorizer server for processing
+func (a *App) ColorizeImage(imagePath string, colorize, upscale, denoise bool, denoiseSigma, upscaleFactor int) (*colorizer.ColorizeResponse, error) {
+	if a.colorizerMod == nil {
+		return nil, fmt.Errorf("colorizer module not initialized")
+	}
+	if !a.colorizerMod.IsRunning() {
+		return nil, fmt.Errorf("colorizer server is not running")
+	}
+
+	req := colorizer.ColorizeRequest{
+		ImagePath:     imagePath,
+		Colorize:      colorize,
+		Upscale:       upscale,
+		Denoise:       denoise,
+		DenoiseSigma:  denoiseSigma,
+		UpscaleFactor: upscaleFactor,
+	}
+
+	return a.colorizerMod.ColorizeImage(req)
+}
+
+// LoadImageAsBase64 reads an image file and returns it as a base64 data URI for frontend preview
+func (a *App) LoadImageAsBase64(imagePath string) (string, error) {
+	if a.colorizerMod == nil {
+		return "", fmt.Errorf("colorizer module not initialized")
+	}
+	return a.colorizerMod.LoadImageAsBase64(imagePath)
 }

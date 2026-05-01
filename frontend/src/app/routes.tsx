@@ -18,6 +18,7 @@ const ExplorerPage = lazy(() => import('../features/explorer/ExplorerPage').then
 const ThumbnailsPage = lazy(() => import('../features/thumbnails/ThumbnailsPage').then(m => ({ default: m.default || m.ThumbnailsPage })));
 const SettingsPage = lazy(() => import('../features/settings/SettingsPage').then(m => ({ default: m.default || m.SettingsPage })));
 const DownloadPage = lazy(() => import('../features/download/DownloadPage').then(m => ({ default: m.default || m.DownloadPage })));
+const ColorizerPage = lazy(() => import('../features/colorizer/ColorizerPage').then(m => ({ default: m.default || m.ColorizerPage })));
 
 /**
  * Route configuration mapping page types to components
@@ -33,6 +34,7 @@ export const routes: Record<PageType, React.LazyExoticComponent<any>> = {
     thumbnails: ThumbnailsPage,
     settings: SettingsPage,
     download: DownloadPage,
+    colorizer: ColorizerPage,
 };
 
 /**
@@ -70,6 +72,8 @@ export function renderPage(
             // @ts-expect-error - Lazy loaded component types are not properly inferred
             return <PageComponent isActive={isActive} tabId={tabId} />;
         case 'download':
+            return <PageComponent />;
+        case 'colorizer':
             return <PageComponent />;
         default:
             return <routes.home />;

@@ -155,6 +155,7 @@ export const DEFAULT_SETTINGS: Settings = {
         'series': true,
         'explorer': true,
         'download': true,
+        'colorizer': true,
         'settings': true
     },
     downloadPath: '',
@@ -219,6 +220,7 @@ export type PageType =
     | 'thumbnails'
     | 'explorer'
     | 'download'
+    | 'colorizer'
     | 'settings';
 
 export interface NavigationState {
