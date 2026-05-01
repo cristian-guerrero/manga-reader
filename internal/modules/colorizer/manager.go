@@ -5,6 +5,9 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"image"
+	_ "image/jpeg"
+	_ "image/png"
 	"io"
 	"net/http"
 	"os"
@@ -43,6 +46,7 @@ type ColorizeRequest struct {
 	DenoiseSigma   int    `json:"denoise_sigma"`
 	UpscaleFactor  int    `json:"upscale_factor"`
 	ColorizerType  string `json:"colorizer_type"`
+	Size           int    `json:"size"`
 }
 
 type ColorizeResponse struct {
@@ -203,6 +207,24 @@ func (m *Manager) ColorizeImage(req ColorizeRequest) (*ColorizeResponse, error) 
 	imgName := filepath.Base(req.ImagePath)
 	dataURI := "data:" + mimeType + ";base64," + base64.StdEncoding.EncodeToString(imageBytes)
 
+	// Get original image dimensions
+	imgReader := bytes.NewReader(imageBytes)
+	imgConfig, _, err := image.DecodeConfig(imgReader)
+	if err != nil {
+		fmt.Printf("[Colorizer] Warning: Could not decode image config: %v\n", err)
+	}
+
+	// Determine image size to send
+	imgSize := req.Size
+	if imgSize == 0 && err == nil {
+		// Use original image dimensions (smaller side) as size
+		if imgConfig.Width < imgConfig.Height {
+			imgSize = imgConfig.Width
+		} else {
+			imgSize = imgConfig.Height
+		}
+	}
+
 	// Build request payload
 	payload := map[string]interface{}{
 		"imgData":       dataURI,
@@ -212,6 +234,11 @@ func (m *Manager) ColorizeImage(req ColorizeRequest) (*ColorizeResponse, error) 
 		"denoise":       req.Denoise,
 		"denoiseSigma":  req.DenoiseSigma,
 		"upscaleFactor": req.UpscaleFactor,
+		"imgSize":       imgSize,
+	}
+	if err == nil {
+		payload["imgWidth"] = imgConfig.Width
+		payload["imgHeight"] = imgConfig.Height
 	}
 
 	jsonData, err := json.Marshal(payload)
