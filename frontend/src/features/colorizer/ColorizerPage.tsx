@@ -57,6 +57,10 @@ export function ColorizerPage() {
         denoiseSigma: 25,
     });
 
+    const [isColorizingAll, setIsColorizingAll] = useState(false);
+    const [colorizeAllProgress, setColorizeAllProgress] = useState({ current: 0, total: 0 });
+    const [currentProcessingImage, setCurrentProcessingImage] = useState<string | null>(null);
+
     const statusPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     // Poll status updates from backend
@@ -221,6 +225,7 @@ export function ColorizerPage() {
         try {
             setIsColorizing(true);
             setIsProcessing(true);
+            setCurrentProcessingImage(currentImage?.split(/[\\/]/).pop() || 'current image');
 
             const result = await AppBackend.ColorizeImage(
                 currentImage,
@@ -249,6 +254,7 @@ export function ColorizerPage() {
         } finally {
             setIsColorizing(false);
             setIsProcessing(false);
+            setCurrentProcessingImage(null);
         }
     }, [currentImage, isServerRunning, settings, showToast, setIsProcessing, t]);
 
@@ -270,6 +276,97 @@ export function ColorizerPage() {
             showToast('Download failed', 'error');
         }
     }, [currentColorizedImage, showToast]);
+
+    const handleClearImages = useCallback(() => {
+        setDroppedImages([]);
+        setCurrentImage(null);
+        setCurrentImagePreview(null);
+        setColorizedCache({});
+        showToast('Image list cleared', 'info');
+    }, [showToast]);
+
+    const handleColorizeAll = useCallback(async () => {
+        if (droppedImages.length === 0) {
+            showToast('No images to colorize', 'info');
+            return;
+        }
+
+        if (!isServerRunning) {
+            showToast(t('colorizer.notRunning'), 'info');
+            return;
+        }
+
+        try {
+            setIsColorizingAll(true);
+            setIsProcessing(true);
+            setColorizeAllProgress({ current: 0, total: droppedImages.length });
+
+            const newCache = { ...colorizedCache };
+
+            for (let i = 0; i < droppedImages.length; i++) {
+                const img = droppedImages[i];
+                setColorizeAllProgress({ current: i + 1, total: droppedImages.length });
+                setCurrentProcessingImage(img.name);
+
+                try {
+                    const result = await AppBackend.ColorizeImage(
+                        img.path,
+                        settings.colorize,
+                        settings.upscale,
+                        settings.denoise,
+                        settings.denoiseSigma,
+                        settings.upscaleFactor,
+                    );
+
+                    if (result.success && result.output_base64) {
+                        const imgSrc = result.output_base64.startsWith('data:')
+                            ? result.output_base64
+                            : `data:image/png;base64,${result.output_base64}`;
+                        newCache[img.path] = imgSrc;
+                    }
+                } catch (e) {
+                    console.error(`Failed to colorize ${img.name}:`, e);
+                }
+            }
+
+            setColorizedCache(newCache);
+            setCurrentProcessingImage(null);
+            showToast(`Colorized ${droppedImages.length} image(s)`, 'success');
+        } catch (e) {
+            const msg = e instanceof Error ? e.message : 'Colorization failed';
+            showToast(msg, 'error');
+        } finally {
+            setIsColorizingAll(false);
+            setIsProcessing(false);
+            setColorizeAllProgress({ current: 0, total: 0 });
+            setCurrentProcessingImage(null);
+        }
+    }, [droppedImages, isServerRunning, settings, colorizedCache, showToast, setIsProcessing, t]);
+
+    const handleDownloadAll = useCallback(async () => {
+        const colorizedImages = droppedImages.filter(img => colorizedCache[img.path]);
+
+        if (colorizedImages.length === 0) {
+            showToast('No colorized images to download', 'info');
+            return;
+        }
+
+        try {
+            for (const img of colorizedImages) {
+                const link = document.createElement('a');
+                link.href = colorizedCache[img.path];
+                link.download = `colorized_${img.name}`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                // Small delay between downloads to avoid browser blocking
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+            showToast(`Downloaded ${colorizedImages.length} image(s)`, 'success');
+        } catch {
+            showToast('Download failed', 'error');
+        }
+    }, [droppedImages, colorizedCache, showToast]);
 
     const handleSelectFolder = useCallback(async () => {
         try {
@@ -422,7 +519,7 @@ export function ColorizerPage() {
                     className="w-64 border-r flex flex-col min-h-0"
                     style={{ borderColor: 'var(--color-border)' }}
                 >
-                    <div className="p-4 border-b" style={{ borderColor: 'var(--color-border)' }}>
+                    <div className="p-4 border-b space-y-2" style={{ borderColor: 'var(--color-border)' }}>
                         <button
                             onClick={handleSelectFolder}
                             className="w-full px-3 py-2 rounded-lg text-sm font-medium transition-all hover:scale-[1.02] active:scale-[0.98]"
@@ -433,6 +530,18 @@ export function ColorizerPage() {
                         >
                             {t('colorizer.selectFolder')}
                         </button>
+                        {droppedImages.length > 0 && (
+                            <button
+                                onClick={handleClearImages}
+                                className="w-full px-3 py-2 rounded-lg text-sm font-medium transition-all hover:scale-[1.02] active:scale-[0.98]"
+                                style={{
+                                    backgroundColor: 'var(--color-danger)',
+                                    color: 'white',
+                                }}
+                            >
+                                {t('colorizer.clear')}
+                            </button>
+                        )}
                     </div>
 
                     <div className="flex-1 overflow-y-auto p-2 space-y-1">
@@ -478,7 +587,7 @@ export function ColorizerPage() {
 
                 {/* Center Panel - Image Preview */}
                 <div className="flex-1 flex flex-col min-h-0">
-                    <div className="flex-1 min-h-0 flex items-center justify-center p-6">
+                    <div className="flex-1 min-h-0 flex items-center justify-center p-6 relative">
                         {currentColorizedImage ? (
                             <img
                                 src={currentColorizedImage}
@@ -503,6 +612,61 @@ export function ColorizerPage() {
                                 </p>
                             </div>
                         )}
+
+                        {/* Processing Overlay */}
+                        {(isColorizing || isColorizingAll) && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-gray-900/95 rounded-lg z-20">
+                                <div className="text-center px-8 min-w-[300px]">
+                                    <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-500 border-t-transparent mx-auto mb-4"></div>
+
+                                    <div className="text-white font-bold text-xl mb-2">
+                                        {isColorizingAll 
+                                            ? (status.status === 'colorizing' ? (t('colorizer.processingAll') || 'Processing All Images') : status.status || 'Processing All Images')
+                                            : (status.status === 'colorizing' ? (t('colorizer.colorizing') || 'Colorizing Image') : status.status || 'Processing')}
+                                    </div>
+
+                                    {(status.message || currentProcessingImage || currentImage) && (
+                                        <div className="text-gray-300 text-base mb-4">
+                                            {status.message || currentProcessingImage || currentImage?.split('/').pop() || 'Please wait...'}
+                                        </div>
+                                    )}
+
+                                    {status.percent !== undefined && status.percent > 0 && (
+                                        <div className="mt-4 mb-4">
+                                            <div className="text-blue-400 font-semibold text-lg mb-2">
+                                                {Math.round(status.percent)}%
+                                            </div>
+                                            <div className="w-64 h-3 bg-gray-700 rounded-full mx-auto overflow-hidden">
+                                                <div
+                                                    className="h-full bg-blue-500 rounded-full transition-all duration-300"
+                                                    style={{ width: `${status.percent}%` }}
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {isColorizingAll && (
+                                        <div className="mt-4">
+                                            <div className="text-white font-semibold text-lg mb-2">
+                                                {colorizeAllProgress.current} / {colorizeAllProgress.total}
+                                            </div>
+                                            <div className="w-64 h-3 bg-gray-700 rounded-full mx-auto overflow-hidden">
+                                                <div
+                                                    className="h-full bg-blue-500 rounded-full transition-all duration-300"
+                                                    style={{ width: `${colorizeAllProgress.total > 0 ? (colorizeAllProgress.current / colorizeAllProgress.total) * 100 : 0}%` }}
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <div className="mt-6 text-gray-500 text-sm">
+                                        {isColorizingAll 
+                                            ? t('colorizer.dontClose') || "Don't close this window"
+                                            : t('colorizer.pleaseWait') || 'Please wait while we prepare your content'}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {/* Action Bar */}
@@ -521,6 +685,7 @@ export function ColorizerPage() {
                                     checked={settings.colorize}
                                     onChange={(e) => setSettings((s) => ({ ...s, colorize: e.target.checked }))}
                                     className="rounded"
+                                    disabled={isColorizing || isColorizingAll}
                                 />
                                 {t('colorizer.settings.colorize')}
                             </label>
@@ -530,6 +695,7 @@ export function ColorizerPage() {
                                     checked={settings.upscale}
                                     onChange={(e) => setSettings((s) => ({ ...s, upscale: e.target.checked }))}
                                     className="rounded"
+                                    disabled={isColorizing || isColorizingAll}
                                 />
                                 {t('colorizer.settings.upscale')}
                             </label>
@@ -539,6 +705,7 @@ export function ColorizerPage() {
                                     checked={settings.denoise}
                                     onChange={(e) => setSettings((s) => ({ ...s, denoise: e.target.checked }))}
                                     className="rounded"
+                                    disabled={isColorizing || isColorizingAll}
                                 />
                                 {t('colorizer.settings.denoise')}
                             </label>
@@ -559,6 +726,18 @@ export function ColorizerPage() {
                                 {isColorizing ? t('common.processing') : t('colorizer.colorize')}
                             </button>
                             <button
+                                onClick={handleColorizeAll}
+                                disabled={!isServerRunning || droppedImages.length === 0 || isColorizingAll}
+                                className="px-6 py-2 rounded-lg text-sm font-semibold transition-all hover:scale-[1.02] active:scale-[0.98]"
+                                style={{
+                                    backgroundColor: isServerRunning && droppedImages.length > 0 ? 'var(--color-accent)' : 'var(--color-surface-tertiary)',
+                                    color: isServerRunning && droppedImages.length > 0 ? 'white' : 'var(--color-text-muted)',
+                                    opacity: isServerRunning && droppedImages.length > 0 ? 1 : 0.5,
+                                }}
+                            >
+                                {isColorizingAll ? `${colorizeAllProgress.current}/${colorizeAllProgress.total}` : t('colorizer.colorizeAll')}
+                            </button>
+                            <button
                                 onClick={handleDownload}
                                 disabled={!currentColorizedImage}
                                 className="px-6 py-2 rounded-lg text-sm font-semibold transition-all hover:scale-[1.02] active:scale-[0.98]"
@@ -569,6 +748,18 @@ export function ColorizerPage() {
                                 }}
                             >
                                 {t('colorizer.download')}
+                            </button>
+                            <button
+                                onClick={handleDownloadAll}
+                                disabled={droppedImages.filter(img => colorizedCache[img.path]).length === 0}
+                                className="px-6 py-2 rounded-lg text-sm font-semibold transition-all hover:scale-[1.02] active:scale-[0.98]"
+                                style={{
+                                    backgroundColor: droppedImages.filter(img => colorizedCache[img.path]).length > 0 ? 'var(--color-success)' : 'var(--color-surface-tertiary)',
+                                    color: droppedImages.filter(img => colorizedCache[img.path]).length > 0 ? 'white' : 'var(--color-text-muted)',
+                                    opacity: droppedImages.filter(img => colorizedCache[img.path]).length > 0 ? 1 : 0.5,
+                                }}
+                            >
+                                {t('colorizer.downloadAll')}
                             </button>
                         </div>
                     </div>
