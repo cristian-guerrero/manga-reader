@@ -11,7 +11,57 @@ on:
 #      - main
 
 jobs:
+  create-release:
+    if: startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    outputs:
+      release_tag: ${{ steps.set-tag.outputs.release_tag }}
+    steps:
+      - name: Checkout del código
+        uses: actions/checkout@v4
+
+      - name: Determinar tag del release
+        id: set-tag
+        shell: bash
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            echo "release_tag=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          else
+            echo "release_tag=latest" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Eliminar release y tag anteriores (para latest)
+        if: github.ref == 'refs/heads/main'
+        shell: bash
+        run: |
+          echo "Eliminando release 'latest' anterior si existe..."
+          gh release delete latest --yes || true
+          echo "Eliminando tag 'latest' anterior si existe..."
+          gh api -X DELETE /repos/${{ github.repository }}/git/refs/tags/latest || true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Crear Release en GitHub
+        shell: bash
+        run: |
+          RELEASE_TAG="${{ steps.set-tag.outputs.release_tag }}"
+          
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            RELEASE_TITLE="${{ github.ref_name }}"
+          else
+            RELEASE_TITLE="Latest Development Build"
+          fi
+          
+          echo "Creando release: $RELEASE_TAG"
+          gh release create "$RELEASE_TAG" --title "$RELEASE_TITLE" --notes "Build automático de la rama main"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   build-and-release:
+    needs: create-release
     strategy:
       matrix:
         include:
@@ -91,32 +141,11 @@ jobs:
           echo "Buscando .app:"
           find build/bin -maxdepth 1 -name "*.app" -type d
 
-      - name: Crear Release en GitHub
-        if: startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/main'
+      - name: Subir archivos al Release
         shell: bash
         run: |
-          # Determinar el nombre del release
-          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
-            RELEASE_TAG="${{ github.ref_name }}"
-            RELEASE_TITLE="${{ github.ref_name }}"
-          else
-            RELEASE_TAG="latest"
-            RELEASE_TITLE="Latest Development Build"
-          fi
-
-          echo "Creando/Actualizando release para: $RELEASE_TAG"
-          
-          # Crear release si no existe (ignorar error si ya existe)
-          gh release create "$RELEASE_TAG" --title "$RELEASE_TITLE" --notes "Build automático de la rama main" || true
-          
-          # Actualizar el release vía API para asegurar que no sea prerelease y sea latest
-          # Esto es necesario porque el release podría haber sido creado anteriormente como prerelease
-          JSON_PAYLOAD='{"prerelease": false, "make_latest": true}'
-          echo "$JSON_PAYLOAD" | gh api \
-            --method PATCH \
-            -H "Accept: application/vnd.github+json" \
-            "/repos/${{ github.repository }}/releases/tags/$RELEASE_TAG" \
-            --input -
+          RELEASE_TAG="${{ needs.create-release.outputs.release_tag }}"
+          echo "Subiendo archivos al release: $RELEASE_TAG"
           
           # Subir archivos según la plataforma
           if [ "${{ matrix.os }}" == "macos-latest" ]; then
