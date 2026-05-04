@@ -1,15 +1,11 @@
 package colorizer
 
 import (
-	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
-	"syscall"
-
-	"golang.org/x/sys/windows"
 )
 
 type managedProcess struct {
@@ -24,26 +20,6 @@ func (p *managedProcess) isRunning() bool {
 	return p.running
 }
 
-func (p *managedProcess) stop() {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-
-	if p.cmd != nil && p.cmd.Process != nil {
-		taskkill := exec.Command("taskkill", "/F", "/T", "/PID", fmt.Sprintf("%d", p.cmd.Process.Pid))
-		taskkill.SysProcAttr = hideConsoleAttr()
-		taskkill.Run()
-		p.cmd.Process.Kill()
-		p.running = false
-	}
-}
-
-// CleanupOrphanedPython kills all python.exe processes left over from the app
-func CleanupOrphanedPython() {
-	taskkillAll := exec.Command("taskkill", "/F", "/IM", "python.exe")
-	taskkillAll.SysProcAttr = hideConsoleAttr()
-	taskkillAll.Run()
-}
-
 func getExecutableName() string {
 	if _, err := exec.LookPath("python"); err == nil {
 		return "python"
@@ -56,7 +32,6 @@ func getExecutableName() string {
 
 func detectCUDA() bool {
 	cmd := exec.Command("nvidia-smi")
-	cmd.SysProcAttr = hideConsoleAttr()
 	if err := cmd.Run(); err == nil {
 		return true
 	}
@@ -88,14 +63,8 @@ func getDefaultDataDir() (string, error) {
 	return filepath.Join(homeDir, ".manga-visor", "colorizer"), nil
 }
 
-func hideConsoleAttr() *syscall.SysProcAttr {
-	return &syscall.SysProcAttr{
-		CreationFlags: windows.CREATE_NO_WINDOW,
-	}
-}
-
 func setupHiddenCommand(cmd *exec.Cmd) {
-	cmd.SysProcAttr = hideConsoleAttr()
+	cmd.SysProcAttr = getSysProcAttr()
 	if cmd.Env == nil {
 		cmd.Env = os.Environ()
 	}
@@ -111,7 +80,7 @@ func hideEnv() []string {
 func runHiddenPythonDir(dir, pythonPath string, args ...string) (string, error) {
 	cmd := exec.Command(pythonPath, args...)
 	cmd.Dir = dir
-	cmd.SysProcAttr = hideConsoleAttr()
+	cmd.SysProcAttr = getSysProcAttr()
 	cmd.Env = hideEnv()
 	out, err := cmd.CombinedOutput()
 	return string(out), err
@@ -120,7 +89,7 @@ func runHiddenPythonDir(dir, pythonPath string, args ...string) (string, error) 
 func runHiddenCommandDir(dir, name string, args ...string) (string, error) {
 	cmd := exec.Command(name, args...)
 	cmd.Dir = dir
-	cmd.SysProcAttr = hideConsoleAttr()
+	cmd.SysProcAttr = getSysProcAttr()
 	cmd.Env = hideEnv()
 	out, err := cmd.CombinedOutput()
 	return string(out), err

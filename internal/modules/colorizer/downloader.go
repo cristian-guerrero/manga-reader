@@ -340,7 +340,7 @@ func (m *Manager) installDependencies() error {
 	// First ensure pip is bootstrapped
 	ensureCmd := exec.Command(m.pythonPath, "-m", "ensurepip", "--upgrade")
 	ensureCmd.Dir = m.backendPath
-	ensureCmd.SysProcAttr = hideConsoleAttr()
+	ensureCmd.SysProcAttr = getSysProcAttr()
 	ensureCmd.Env = hideEnv()
 	ensureCmd.Run()
 
@@ -472,7 +472,7 @@ func (m *Manager) runStartServer() {
 		"--colorizer_type", "AlacGAN",
 	)
 	cmd.Dir = m.backendPath
-	cmd.SysProcAttr = hideConsoleAttr()
+	cmd.SysProcAttr = getSysProcAttr()
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
