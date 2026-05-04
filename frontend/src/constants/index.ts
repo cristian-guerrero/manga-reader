@@ -35,6 +35,7 @@ export const MAIN_PAGES: PageType[] = [
     'oneShot',
     'series',
     'download',
+    'colorizer',
     'settings',
 ] as const;
 

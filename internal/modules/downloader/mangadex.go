@@ -140,7 +140,7 @@ func (d *MangaDexDownloader) GetImages(url string) (*SiteInfo, error) {
 	}
 
 	// 3. Get image URLs from at-home endpoint
-	atHome, err := d.getAtHomeServer(client, chapterID)
+	atHome, err := d.GetAtHomeServer(client, chapterID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get image server: %v", err)
 	}
@@ -158,9 +158,11 @@ func (d *MangaDexDownloader) GetImages(url string) (*SiteInfo, error) {
 		}
 
 		images[i] = ImageDownload{
-			URL:      imageURL,
-			Filename: fmt.Sprintf("%03d.%s", i+1, ext),
-			Index:    i,
+			URL:            imageURL,
+			Filename:       fmt.Sprintf("%03d.%s", i+1, ext),
+			Index:          i,
+			SkipHeaders:    true, // MangaDex rejects requests with auth headers
+			SourceFilename: filename,
 		}
 	}
 
@@ -183,6 +185,9 @@ func (d *MangaDexDownloader) GetImages(url string) (*SiteInfo, error) {
 		ChapterName: chapterName,
 		Images:      images,
 		SiteID:      d.GetSiteID(),
+		Extra: map[string]string{
+			"chapterId": chapterID,
+		},
 	}, nil
 }
 
@@ -228,7 +233,7 @@ func (d *MangaDexDownloader) getMangaInfo(client *http.Client, mangaID string) (
 	return &result, nil
 }
 
-func (d *MangaDexDownloader) getAtHomeServer(client *http.Client, chapterID string) (*mangaDexAtHomeResponse, error) {
+func (d *MangaDexDownloader) GetAtHomeServer(client *http.Client, chapterID string) (*mangaDexAtHomeResponse, error) {
 	url := fmt.Sprintf("https://api.mangadex.org/at-home/server/%s", chapterID)
 	req, _ := http.NewRequest("GET", url, nil)
 	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0")

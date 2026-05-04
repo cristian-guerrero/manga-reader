@@ -50,6 +50,46 @@ export function ClearThumbnailCache() {
   return window['go']['main']['App']['ClearThumbnailCache']();
 }
 
+export function ColorizeImage(arg1, arg2, arg3, arg4, arg5, arg6) {
+  return window['go']['main']['App']['ColorizeImage'](arg1, arg2, arg3, arg4, arg5, arg6);
+}
+
+export function ColorizerGetServerURL() {
+  return window['go']['main']['App']['ColorizerGetServerURL']();
+}
+
+export function ColorizerGetStatus() {
+  return window['go']['main']['App']['ColorizerGetStatus']();
+}
+
+export function ColorizerHealthCheck() {
+  return window['go']['main']['App']['ColorizerHealthCheck']();
+}
+
+export function ColorizerInstall() {
+  return window['go']['main']['App']['ColorizerInstall']();
+}
+
+export function ColorizerIsInstalled() {
+  return window['go']['main']['App']['ColorizerIsInstalled']();
+}
+
+export function ColorizerIsRunning() {
+  return window['go']['main']['App']['ColorizerIsRunning']();
+}
+
+export function ColorizerRestartServer() {
+  return window['go']['main']['App']['ColorizerRestartServer']();
+}
+
+export function ColorizerStartServer() {
+  return window['go']['main']['App']['ColorizerStartServer']();
+}
+
+export function ColorizerStopServer() {
+  return window['go']['main']['App']['ColorizerStopServer']();
+}
+
 export function ExploreFolder(arg1) {
   return window['go']['main']['App']['ExploreFolder'](arg1);
 }
@@ -136,6 +176,10 @@ export function HasCustomOrder(arg1) {
 
 export function IsSeries(arg1) {
   return window['go']['main']['App']['IsSeries'](arg1);
+}
+
+export function LoadImageAsBase64(arg1) {
+  return window['go']['main']['App']['LoadImageAsBase64'](arg1);
 }
 
 export function OpenInFileManager(arg1) {

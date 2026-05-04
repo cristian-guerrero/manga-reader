@@ -37,6 +37,7 @@
         "oneShot": "One shot",
         "series": "Series",
         "download": "Downloads",
+        "colorizer": "Colorizer",
         "settings": "Settings",
         "viewer": "Viewer",
         "explorer": "Explorer"
@@ -267,5 +268,54 @@
         "toggleFullscreen": "Toggle Fullscreen",
         "toggleSidebar": "Toggle Sidebar",
         "escape": "Exit / Panic"
+    },
+    "colorizer": {
+        "title": "Manga Colorizer",
+        "subtitle": "AI-powered colorization for black and white manga",
+        "firstTimeSetup": "First time setup: Installing dependencies. This may take several minutes...",
+        "install": "Install Colorizer",
+        "installing": "Installing...",
+        "start": "Start Server",
+        "stop": "Stop Server",
+        "running": "Server Running",
+        "notRunning": "Server Not Running",
+        "colorize": "Colorize",
+        "colorizeAll": "Colorize All",
+        "processing": "Processing",
+        "processingAll": "Processing All Images",
+        "colorizing": "Colorizing Image",
+        "dontClose": "Don't close this window",
+        "download": "Download Colorized",
+        "downloadAll": "Download All",
+        "clear": "Clear",
+        "dragDrop": "Drag and drop manga images or folders here",
+        "selectFolder": "Select Folder",
+        "settings": {
+            "colorize": "Enable Colorization",
+            "upscale": "Enable Upscaling",
+            "denoise": "Enable Denoising",
+            "upscaleFactor": "Upscale Factor",
+            "denoiseSigma": "Denoise Strength"
+        },
+        "status": {
+            "not_installed": "Not installed",
+            "downloading_python": "Downloading Python runtime...",
+            "downloading_backend": "Downloading colorizer backend...",
+            "installing_deps": "Installing dependencies...",
+            "installing": "Installing...",
+            "ready": "Ready",
+            "starting_server": "Starting server...",
+            "running": "Running",
+            "error": "Error",
+            "stopping": "Stopping..."
+        },
+        "progress": {
+            "title": "Installation Progress",
+            "downloadingPython": "Downloading Python runtime...",
+            "downloadingBackend": "Downloading backend...",
+            "installingDeps": "Installing Python dependencies...",
+            "complete": "Installation complete!",
+            "error": "Installation failed"
+        }
     }
 }

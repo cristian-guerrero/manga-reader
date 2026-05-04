@@ -125,7 +125,7 @@ export function TitleBar({ title }: TitleBarProps) {
                 {/* Minimize */}
                 <Tooltip content={t('common.minimize') || "Minimize"} placement="bottom" className="h-full no-drag">
                     <button
-                        onMouseDown={(e) => {
+                        onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
                             handleMinimize();
@@ -143,7 +143,7 @@ export function TitleBar({ title }: TitleBarProps) {
                 {/* Maximize/Restore */}
                 <Tooltip content={isMaximized ? (t('common.restore') || "Restore") : (t('common.maximize') || "Maximize")} placement="bottom" className="h-full no-drag">
                     <button
-                        onMouseDown={(e) => {
+                        onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
                             handleMaximize();
@@ -161,7 +161,7 @@ export function TitleBar({ title }: TitleBarProps) {
                 {/* Close */}
                 <Tooltip content={t('common.close') || "Close"} placement="bottom" className="h-full no-drag">
                     <button
-                        onMouseDown={(e) => {
+                        onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
                             handleClose();

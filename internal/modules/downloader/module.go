@@ -58,6 +58,7 @@ func NewModule(pm *persistence.DownloaderManager, sm *persistence.SettingsManage
 			"nhentai.xxx":     2,
 			"e-hentai.org":    3,
 			"imhentai.xxx":    2,
+			"imhentai.to":     2,
 			"manga18.club":    4,
 			"submanhwa.com":   3,
 			"hentaiforce.net": 2,
@@ -65,6 +66,7 @@ func NewModule(pm *persistence.DownloaderManager, sm *persistence.SettingsManage
 			"hentai2read.com": 4,
 			"lhentai.com":     2,
 			"nhentai.website":  2,
+			"hentairead.io":   2,
 		},
 		algorithms: []DownloaderInterface{
 			&HitomiDownloader{},
@@ -76,6 +78,7 @@ func NewModule(pm *persistence.DownloaderManager, sm *persistence.SettingsManage
 			&NHentaiXXXDownloader{},
 			&HentaieraDownloader{},
 			&IMHentaiDownloader{},
+			&IMHentaiToDownloader{},
 			&HentaivoxDownloader{},
 			&Manga18Downloader{},
 			&Comics18Downloader{},
@@ -86,6 +89,7 @@ func NewModule(pm *persistence.DownloaderManager, sm *persistence.SettingsManage
 			&HentaiforceDownloader{},
 			&Hentai2ReadDownloader{},
 			&LHentaiDownloader{},
+			&HentaiReadDownloader{},
 		},
 	}
 }
@@ -404,13 +408,27 @@ func (m *Module) runDownload(job persistence.DownloadJob, info *SiteInfo) {
 				}
 			}
 
-			err := downloadFileWithContext(ctx, img.URL, destPath, img.Headers)
+			err := downloadFileWithContext(ctx, img.URL, destPath, img.Headers, img.SkipHeaders)
 			if err != nil {
 				// Check if it's a context cancellation
 				if err == context.Canceled || err == context.DeadlineExceeded {
 					m.pm.UpdateJob(job.ID, map[string]interface{}{"status": persistence.StatusCancelled})
 					m.notifyUpdate()
 					return
+				}
+				// For MangaDex, try refreshing the at-home server URLs on failure
+				if job.Site == "mangadex.org" && info.Extra != nil && info.Extra["chapterId"] != "" {
+					if refreshed := m.refreshMangaDexUrls(info); refreshed {
+						// Retry with fresh URLs
+						img = info.Images[i]
+						imageURL := img.URL
+						err = downloadFileWithContext(ctx, imageURL, destPath, img.Headers, img.SkipHeaders)
+						if err == nil {
+							m.pm.UpdateJob(job.ID, map[string]interface{}{"progress": i + 1})
+							m.notifyUpdate()
+							continue
+						}
+					}
 				}
 				// Retry is handled inside downloadFile, if it still fails, we fail the job
 				m.failJob(job.ID, fmt.Sprintf("Failed to download page %d: %v", i+1, err))
@@ -636,7 +654,7 @@ func sanitizeFilename(name string) string {
 }
 
 // downloadFileWithContext downloads a file with context support for cancellation and timeout
-func downloadFileWithContext(ctx context.Context, url string, path string, headers map[string]string) error {
+func downloadFileWithContext(ctx context.Context, url string, path string, headers map[string]string, skipHeaders bool) error {
 	// Create HTTP client with timeout
 	client := &http.Client{
 		Timeout: 60 * time.Second, // Default timeout per request
@@ -671,12 +689,12 @@ func downloadFileWithContext(ctx context.Context, url string, path string, heade
 			return err // Fatal error building request
 		}
 
-		// Add headers
+		// Skip headers entirely if requested (required for some CDNs like MangaDex)
 		if headers != nil {
 			for k, v := range headers {
 				req.Header.Set(k, v)
 			}
-		} else {
+		} else if !skipHeaders {
 			req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0")
 		}
 
@@ -731,5 +749,46 @@ func downloadFileWithContext(ctx context.Context, url string, path string, heade
 
 // downloadFile is kept for backward compatibility but now uses background context
 func downloadFile(url string, path string, headers map[string]string) error {
-	return downloadFileWithContext(context.Background(), url, path, headers)
+	return downloadFileWithContext(context.Background(), url, path, headers, false)
+}
+
+// refreshMangaDexUrls refreshes the at-home server URLs for a MangaDex download
+func (m *Module) refreshMangaDexUrls(info *SiteInfo) bool {
+	if info.Extra == nil || info.Extra["chapterId"] == "" {
+		return false
+	}
+
+	chapterID := info.Extra["chapterId"]
+	client := &http.Client{Timeout: 30 * time.Second}
+
+	downloader := &MangaDexDownloader{}
+	atHome, err := downloader.GetAtHomeServer(client, chapterID)
+	if err != nil || atHome.Result != "ok" {
+		if m.logger != nil {
+			m.logger.Errorf("[Downloader] Failed to refresh MangaDex at-home server: %v", err)
+		}
+		return false
+	}
+
+	// Build a map of source filename to index
+	sourceToIndex := make(map[string]int)
+	for i, img := range info.Images {
+		if img.SourceFilename != "" {
+			sourceToIndex[img.SourceFilename] = i
+		}
+	}
+
+	// Update all remaining image URLs using the fresh at-home data
+	for _, filename := range atHome.Chapter.Data {
+		if idx, ok := sourceToIndex[filename]; ok {
+			imageURL := fmt.Sprintf("%s/data/%s/%s", atHome.BaseURL, atHome.Chapter.Hash, filename)
+			info.Images[idx].URL = imageURL
+			info.Images[idx].SkipHeaders = true
+		}
+	}
+
+	if m.logger != nil {
+		m.logger.Infof("[Downloader] Refreshed MangaDex at-home server URLs")
+	}
+	return true
 }

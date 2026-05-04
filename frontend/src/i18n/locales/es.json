@@ -36,8 +36,10 @@
         "oneShot": "One shot",
         "series": "Series",
         "download": "Descargas",
+        "colorizer": "Colorizador",
         "settings": "Configuración",
-        "viewer": "Visor"
+        "viewer": "Visor",
+        "explorer": "Explorador"
     },
     "home": {
         "welcome": "Bienvenido a Manga Visor",
@@ -262,5 +264,54 @@
         "toggleFullscreen": "Pantalla Completa",
         "toggleSidebar": "Mostrar/Ocultar Barra Lateral",
         "escape": "Salir / Pánico"
+    },
+    "colorizer": {
+        "title": "Colorizador de Manga",
+        "subtitle": "Colorización con IA para manga en blanco y negro",
+        "firstTimeSetup": "Primera configuración: Instalando dependencias. Esto puede tardar varios minutos...",
+        "install": "Instalar Colorizador",
+        "installing": "Instalando...",
+        "start": "Iniciar Servidor",
+        "stop": "Detener Servidor",
+        "running": "Servidor Activo",
+        "notRunning": "Servidor Inactivo",
+        "colorize": "Colorizar",
+        "colorizeAll": "Colorizar Todo",
+        "processing": "Procesando",
+        "processingAll": "Procesando Todas las Imágenes",
+        "colorizing": "Colorizando Imagen",
+        "dontClose": "No cierres esta ventana",
+        "download": "Descargar Colorizado",
+        "downloadAll": "Descargar Todo",
+        "clear": "Limpiar",
+        "dragDrop": "Arrastra y suelta imágenes o carpetas de manga aquí",
+        "selectFolder": "Seleccionar Carpeta",
+        "settings": {
+            "colorize": "Habilitar Colorización",
+            "upscale": "Habilitar Escalado",
+            "denoise": "Habilitar Reducción de Ruido",
+            "upscaleFactor": "Factor de Escalado",
+            "denoiseSigma": "Fuerza de Reducción de Ruido"
+        },
+        "status": {
+            "not_installed": "No instalado",
+            "downloading_python": "Descargando Python...",
+            "downloading_backend": "Descargando backend...",
+            "installing_deps": "Instalando dependencias...",
+            "installing": "Instalando...",
+            "ready": "Listo",
+            "starting_server": "Iniciando servidor...",
+            "running": "Activo",
+            "error": "Error",
+            "stopping": "Deteniendo..."
+        },
+        "progress": {
+            "title": "Progreso de Instalación",
+            "downloadingPython": "Descargando Python...",
+            "downloadingBackend": "Descargando backend...",
+            "installingDeps": "Instalando dependencias...",
+            "complete": "¡Instalación completa!",
+            "error": "Instalación fallida"
+        }
     }
 }

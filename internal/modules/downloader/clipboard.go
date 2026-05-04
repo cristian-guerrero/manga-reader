@@ -74,6 +74,9 @@ func (m *Module) isValidURL(text string) bool {
 	if strings.Contains(text, "nhentai.website") {
 		return strings.Contains(text, "/g/")
 	}
+	if strings.Contains(text, "imhentai.to") {
+		return strings.Contains(text, "/g/") || strings.Contains(text, "/view/")
+	}
 	if strings.Contains(text, "imhentai.xxx") {
 		return strings.Contains(text, "/gallery/") || strings.Contains(text, "/view/")
 	}
@@ -100,6 +103,7 @@ func (m *Module) isValidURL(text string) bool {
 		"exhentai.org",
 		"ehentai.org",
 		"submanhwa.com",
+		"hentairead.io",
 	}
 
 	for _, domain := range supported {

@@ -63,78 +63,121 @@ func (d *NHentaiDownloader) GetImages(url string) (*SiteInfo, error) {
 	bodyStr := string(bodyBytes)
 
 	// Extract JSON embedded in HTML
-	// Look for JSON.parse('...');
-	// Note: The Python script used: split('JSON.parse(')[1].split(');')[0]
-	// The content inside JSON.parse is often a string that needs to be unescaped content-wise or just parsed.
-	// Actually, usually it's `JSON.parse("{\"id\":...}")`.
+	// New nhentai pages use SvelteKit and embed data in an application/json script tag:
+	reSvelte := regexp.MustCompile(`<script type="application/json" data-sveltekit-fetched data-url="/api/v2/galleries/[^"]+">(.*?)</script>`)
+	matchSvelte := reSvelte.FindStringSubmatch(bodyStr)
 
-	// Let's try to find the JSON string.
+	// Fallback to older format (look for JSON.parse)
 	reJSON := regexp.MustCompile(`JSON\.parse\((.*?)\);`)
-	match := reJSON.FindStringSubmatch(bodyStr)
+	matchOld := reJSON.FindStringSubmatch(bodyStr)
 
-	if len(match) < 2 {
+	var mediaID, title, id string
+	var images []ImageDownload
+
+	if len(matchSvelte) >= 2 {
+		var svelteResp struct {
+			Body string `json:"body"`
+		}
+		if err := json.Unmarshal([]byte(matchSvelte[1]), &svelteResp); err != nil {
+			return nil, fmt.Errorf("failed to parse SvelteKit JSON wrapper: %v", err)
+		}
+
+		var parsedData struct {
+			ID      json.Number `json:"id"`
+			MediaID string      `json:"media_id"`
+			Title   struct {
+				English string `json:"english"`
+				Pretty  string `json:"pretty"`
+			} `json:"title"`
+			Pages []struct {
+				Path string `json:"path"` // e.g. "galleries/3868199/1.webp"
+			} `json:"pages"`
+		}
+		if err := json.Unmarshal([]byte(svelteResp.Body), &parsedData); err != nil {
+			return nil, fmt.Errorf("failed to parse SvelteKit body JSON: %v", err)
+		}
+
+		id = parsedData.ID.String()
+		mediaID = parsedData.MediaID
+		title = parsedData.Title.English
+		if title == "" {
+			title = parsedData.Title.Pretty
+		}
+
+		images = make([]ImageDownload, len(parsedData.Pages))
+		for i, page := range parsedData.Pages {
+			parts := strings.Split(page.Path, "/")
+			filename := parts[len(parts)-1] // e.g. "1.webp"
+			
+			ext := "jpg"
+			dotParts := strings.Split(filename, ".")
+			if len(dotParts) > 1 {
+				ext = dotParts[len(dotParts)-1]
+			}
+
+			// Prepend the image host
+			imageURL := fmt.Sprintf("https://i.nhentai.net/%s", page.Path)
+
+			images[i] = ImageDownload{
+				URL:      imageURL,
+				Filename: fmt.Sprintf("%03d.%s", i+1, ext),
+				Index:    i,
+				Headers: map[string]string{
+					"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0",
+					"Referer":    "https://nhentai.net/",
+				},
+			}
+		}
+
+	} else if len(matchOld) >= 2 {
+		jsonStringQuoted := matchOld[1]
+
+		var jsonRaw string
+		if err := json.Unmarshal([]byte(jsonStringQuoted), &jsonRaw); err != nil {
+			jsonRaw = jsonStringQuoted
+		}
+
+		var oldData nhentaiData
+		if err := json.Unmarshal([]byte(jsonRaw), &oldData); err != nil {
+			return nil, fmt.Errorf("failed to parse metadata JSON: %v", err)
+		}
+
+		id = oldData.ID.String()
+		mediaID = oldData.MediaID.String()
+		title = oldData.Title.English
+		if title == "" {
+			title = oldData.Title.Pretty
+		}
+
+		images = make([]ImageDownload, len(oldData.Images.Pages))
+		for i, page := range oldData.Images.Pages {
+			ext := "jpg"
+			switch page.T {
+			case "p":
+				ext = "png"
+			case "g":
+				ext = "gif"
+			case "w":
+				ext = "webp"
+			}
+
+			imageURL := fmt.Sprintf("https://i.nhentai.net/galleries/%s/%d.%s", mediaID, i+1, ext)
+
+			images[i] = ImageDownload{
+				URL:      imageURL,
+				Filename: fmt.Sprintf("%03d.%s", i+1, ext),
+				Index:    i,
+				Headers: map[string]string{
+					"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0",
+					"Referer":    "https://nhentai.net/",
+				},
+			}
+		}
+	} else {
 		return nil, fmt.Errorf("could not find metadata JSON in page")
 	}
 
-	// The matched string is typically a quoted string like "..." containing escaped JSON.
-	// We need to unmarshal it as a string first to get the actual JSON string, then unmarshal that.
-	jsonStringQuoted := match[1]
-
-	var jsonRaw string
-	if err := json.Unmarshal([]byte(jsonStringQuoted), &jsonRaw); err != nil {
-		// Fallback: maybe it wasn't a quoted string?
-		jsonRaw = jsonStringQuoted
-	}
-
-	var data nhentaiData
-	if err := json.Unmarshal([]byte(jsonRaw), &data); err != nil {
-		return nil, fmt.Errorf("failed to parse metadata JSON: %v", err)
-	}
-
-	// Build image list
-	mediaID := data.MediaID.String()
-	title := data.Title.English
-	if title == "" {
-		title = data.Title.Pretty
-	}
-
-	images := make([]ImageDownload, len(data.Images.Pages))
-	for i, page := range data.Images.Pages {
-		ext := "jpg"
-		switch page.T {
-		case "p":
-			ext = "png"
-		case "g":
-			ext = "gif"
-		case "w":
-			ext = "webp"
-		}
-
-		// URL structure: https://i.nhentai.net/galleries/{media_id}/{page}.{ext}
-		// Page numbers start at 1
-		imageURL := fmt.Sprintf("https://i.nhentai.net/galleries/%s/%d.%s", mediaID, i+1, ext)
-
-		images[i] = ImageDownload{
-			URL:      imageURL,
-			Filename: fmt.Sprintf("%03d.%s", i+1, ext),
-			Index:    i,
-			Headers: map[string]string{
-				"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0",
-				"Referer":    "https://nhentai.net/",
-			},
-		}
-	}
-
-	// Incorporate ID into the series name to avoid a nested folder for the ID
-	// Desired structure: nhentai.net / Title [ID] / images
-	fullTitle := fmt.Sprintf("%s [%s]", title, mediaID) // actually use the gallery ID, not mediaID for the folder name usually?
-	// Wait, the user's example showed ID at the end of path: .../SeriesName/ID/
-	// He said "the id could be part of the name".
-	// Usually people want "Title [12345]".
-	// ID variable comes from data.ID.
-
-	// Let's use data.ID
-	fullTitle = fmt.Sprintf("%s [%s]", title, data.ID.String())
+	fullTitle := fmt.Sprintf("%s [%s]", title, id)
 
 	return &SiteInfo{
 		SeriesName:  fullTitle,

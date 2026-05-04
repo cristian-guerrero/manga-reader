@@ -1,3 +1,46 @@
+export namespace colorizer {
+	
+	export class ColorizeResponse {
+	    success: boolean;
+	    output_path?: string;
+	    output_base64?: string;
+	    message?: string;
+	    processing_ms: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new ColorizeResponse(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.success = source["success"];
+	        this.output_path = source["output_path"];
+	        this.output_base64 = source["output_base64"];
+	        this.message = source["message"];
+	        this.processing_ms = source["processing_ms"];
+	    }
+	}
+	export class InstallProgress {
+	    status: string;
+	    message: string;
+	    percent: number;
+	    error?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new InstallProgress(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.status = source["status"];
+	        this.message = source["message"];
+	        this.percent = source["percent"];
+	        this.error = source["error"];
+	    }
+	}
+
+}
+
 export namespace downloader {
 	
 	export class ChapterInfo {
@@ -27,6 +70,8 @@ export namespace downloader {
 	    Filename: string;
 	    Index: number;
 	    Headers: Record<string, string>;
+	    SkipHeaders: boolean;
+	    SourceFilename: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new ImageDownload(source);
@@ -38,6 +83,8 @@ export namespace downloader {
 	        this.Filename = source["Filename"];
 	        this.Index = source["Index"];
 	        this.Headers = source["Headers"];
+	        this.SkipHeaders = source["SkipHeaders"];
+	        this.SourceFilename = source["SourceFilename"];
 	    }
 	}
 	export class SiteInfo {
@@ -48,6 +95,7 @@ export namespace downloader {
 	    DownloadDelay: number;
 	    Type: string;
 	    Chapters: ChapterInfo[];
+	    Extra: Record<string, string>;
 	
 	    static createFrom(source: any = {}) {
 	        return new SiteInfo(source);
@@ -62,6 +110,7 @@ export namespace downloader {
 	        this.DownloadDelay = source["DownloadDelay"];
 	        this.Type = source["Type"];
 	        this.Chapters = this.convertValues(source["Chapters"], ChapterInfo);
+	        this.Extra = source["Extra"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
