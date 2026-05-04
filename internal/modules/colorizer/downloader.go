@@ -338,47 +338,36 @@ func (m *Manager) installDependencies() error {
 	// First ensure pip is bootstrapped
 	ensureCmd := exec.Command(m.pythonPath, "-m", "ensurepip", "--upgrade")
 	ensureCmd.Dir = m.backendPath
+	ensureCmd.SysProcAttr = hideConsoleAttr()
+	ensureCmd.Env = hideEnv()
 	ensureCmd.Run()
 
 	// Install requirements from requirements.txt
 	m.setStatus(StatusInstallingDeps, "Installing pip requirements...", 70)
-	cmd := exec.Command(m.pythonPath, "-m", "pip", "install", "--no-cache-dir", "--no-warn-conflicts", "-r", requirementsPath)
-	cmd.Dir = m.backendPath
-
-	output, err := cmd.CombinedOutput()
+	output, err := runHiddenPythonDir(m.backendPath, m.pythonPath, "-m", "pip", "install", "--no-cache-dir", "--no-warn-conflicts", "-r", requirementsPath)
 	if err != nil {
 		return fmt.Errorf("pip install failed: %v\n%s", err, string(output))
 	}
 
 	// Explicitly install einops (may not have been captured in requirements output)
 	m.setStatus(StatusInstallingDeps, "Installing einops...", 75)
-	einopsCmd := exec.Command(m.pythonPath, "-m", "pip", "install", "--no-cache-dir", "--no-warn-conflicts", "einops")
-	einopsCmd.Dir = m.backendPath
-	einopsOut, einopsErr := einopsCmd.CombinedOutput()
+	einopsOut, einopsErr := runHiddenPythonDir(m.backendPath, m.pythonPath, "-m", "pip", "install", "--no-cache-dir", "--no-warn-conflicts", "einops")
 	if einopsErr != nil {
 		return fmt.Errorf("einops install failed: %v\n%s", einopsErr, string(einopsOut))
 	}
 
 	// Install PyTorch (CUDA 12.4 version for NVIDIA GPUs)
 	m.setStatus(StatusInstallingDeps, "Installing PyTorch (CUDA)...", 85)
-	torchCmd := exec.Command(m.pythonPath, "-m", "pip", "install", "--no-cache-dir", "--no-warn-conflicts", "torch", "torchvision", "--index-url", "https://download.pytorch.org/whl/cu124")
-	torchCmd.Dir = m.backendPath
-
-	torchOutput, err := torchCmd.CombinedOutput()
+	torchOutput, err := runHiddenPythonDir(m.backendPath, m.pythonPath, "-m", "pip", "install", "--no-cache-dir", "--no-warn-conflicts", "torch", "torchvision", "--index-url", "https://download.pytorch.org/whl/cu124")
 	if err != nil {
 		return fmt.Errorf("torch install failed: %v\n%s", err, string(torchOutput))
 	}
 
 	// Verify einops can be imported
 	m.setStatus(StatusInstallingDeps, "Verifying einops...", 90)
-	verifyCmd := exec.Command(m.pythonPath, "-c", "import einops; print('einops', einops.__version__)")
-	verifyCmd.Dir = m.backendPath
-	verifyOut, verifyErr := verifyCmd.CombinedOutput()
+	verifyOut, verifyErr := runHiddenPythonDir(m.backendPath, m.pythonPath, "-c", "import einops; print('einops', einops.__version__)")
 	if verifyErr != nil {
-		// Print debug info
-		debugCmd := exec.Command(m.pythonPath, "-c", "import sys; print('exe:', sys.executable); print('path:', sys.path)")
-		debugCmd.Dir = m.backendPath
-		debugOut, _ := debugCmd.CombinedOutput()
+		debugOut, _ := runHiddenPythonDir(m.backendPath, m.pythonPath, "-c", "import sys; print('exe:', sys.executable); print('path:', sys.path)")
 		return fmt.Errorf("einops not importable after install.\nDebug info:\n%s\npip output:\n%s", string(debugOut), string(output))
 	}
 
@@ -481,6 +470,7 @@ func (m *Manager) runStartServer() {
 		"--colorizer_type", "AlacGAN",
 	)
 	cmd.Dir = m.backendPath
+	cmd.SysProcAttr = hideConsoleAttr()
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 

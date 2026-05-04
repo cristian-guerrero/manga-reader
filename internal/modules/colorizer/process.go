@@ -7,6 +7,9 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"syscall"
+
+	"golang.org/x/sys/windows"
 )
 
 type managedProcess struct {
@@ -26,8 +29,8 @@ func (p *managedProcess) stop() {
 	defer p.mu.Unlock()
 
 	if p.cmd != nil && p.cmd.Process != nil {
-		// Try to kill the process tree
 		taskkill := exec.Command("taskkill", "/F", "/T", "/PID", fmt.Sprintf("%d", p.cmd.Process.Pid))
+		taskkill.SysProcAttr = hideConsoleAttr()
 		taskkill.Run()
 		p.cmd.Process.Kill()
 		p.running = false
@@ -37,6 +40,7 @@ func (p *managedProcess) stop() {
 // CleanupOrphanedPython kills all python.exe processes left over from the app
 func CleanupOrphanedPython() {
 	taskkillAll := exec.Command("taskkill", "/F", "/IM", "python.exe")
+	taskkillAll.SysProcAttr = hideConsoleAttr()
 	taskkillAll.Run()
 }
 
@@ -52,6 +56,7 @@ func getExecutableName() string {
 
 func detectCUDA() bool {
 	cmd := exec.Command("nvidia-smi")
+	cmd.SysProcAttr = hideConsoleAttr()
 	if err := cmd.Run(); err == nil {
 		return true
 	}
@@ -81,4 +86,42 @@ func getDefaultDataDir() (string, error) {
 		return "", err
 	}
 	return filepath.Join(homeDir, ".manga-visor", "colorizer"), nil
+}
+
+func hideConsoleAttr() *syscall.SysProcAttr {
+	return &syscall.SysProcAttr{
+		CreationFlags: windows.CREATE_NO_WINDOW,
+	}
+}
+
+func setupHiddenCommand(cmd *exec.Cmd) {
+	cmd.SysProcAttr = hideConsoleAttr()
+	if cmd.Env == nil {
+		cmd.Env = os.Environ()
+	}
+	cmd.Env = append(cmd.Env, "PYTHONUNBUFFERED=1", "PYTHONDONTWRITEBYTECODE=1")
+}
+
+func hideEnv() []string {
+	env := os.Environ()
+	env = append(env, "PYTHONUNBUFFERED=1", "PYTHONDONTWRITEBYTECODE=1")
+	return env
+}
+
+func runHiddenPythonDir(dir, pythonPath string, args ...string) (string, error) {
+	cmd := exec.Command(pythonPath, args...)
+	cmd.Dir = dir
+	cmd.SysProcAttr = hideConsoleAttr()
+	cmd.Env = hideEnv()
+	out, err := cmd.CombinedOutput()
+	return string(out), err
+}
+
+func runHiddenCommandDir(dir, name string, args ...string) (string, error) {
+	cmd := exec.Command(name, args...)
+	cmd.Dir = dir
+	cmd.SysProcAttr = hideConsoleAttr()
+	cmd.Env = hideEnv()
+	out, err := cmd.CombinedOutput()
+	return string(out), err
 }

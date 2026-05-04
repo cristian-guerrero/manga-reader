@@ -13,7 +13,7 @@ Wails v2 (Go 1.24 backend, React 18 + TypeScript + Vite frontend). State: Zustan
 
 ## Architecture
 - **Entrypoints**: `main.go` → `app.go` (Wails app struct with bound methods)
-- **Go backend**: `internal/` with `services/` (DI container), `modules/` (downloader, explorer, library, series, history), `persistence/` (JSON file stores), `fileloader/` (image server), `thumbnails/`, `archiver/`
+- **Go backend**: `internal/` with `services/` (DI container), `modules/` (colorizer, downloader, explorer, library, series, history), `persistence/` (JSON file stores), `fileloader/` (image server), `thumbnails/`, `archiver/`
 - **Frontend**: Vite with path aliases (`@app`, `@features`, `@shared`, `@services`, `@stores`, `@hooks`, `@components`, `@types`, `@utils`, `@constants`, `@themes`, `@i18n`) — see `vite.config.ts:32-44`
 - **API bridge**: Go methods in `app.go` exposed to frontend via Wails binding; frontend calls via `services/api/*`
 
