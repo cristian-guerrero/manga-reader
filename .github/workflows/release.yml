@@ -99,17 +99,24 @@ jobs:
           if [[ "${{ github.ref }}" == refs/tags/* ]]; then
             RELEASE_TAG="${{ github.ref_name }}"
             RELEASE_TITLE="${{ github.ref_name }}"
-            PRERELEASE_FLAG=""
           else
             RELEASE_TAG="latest"
             RELEASE_TITLE="Latest Development Build"
-            PRERELEASE_FLAG="--prerelease"
           fi
 
           echo "Creando/Actualizando release para: $RELEASE_TAG"
           
           # Crear release si no existe (ignorar error si ya existe)
-          gh release create "$RELEASE_TAG" --title "$RELEASE_TITLE" --notes "Build automático de la rama main" $PRERELEASE_FLAG || true
+          gh release create "$RELEASE_TAG" --title "$RELEASE_TITLE" --notes "Build automático de la rama main" || true
+          
+          # Actualizar el release vía API para asegurar que no sea prerelease y sea latest
+          # Esto es necesario porque el release podría haber sido creado anteriormente como prerelease
+          JSON_PAYLOAD='{"prerelease": false, "make_latest": true}'
+          echo "$JSON_PAYLOAD" | gh api \
+            --method PATCH \
+            -H "Accept: application/vnd.github+json" \
+            "/repos/${{ github.repository }}/releases/tags/$RELEASE_TAG" \
+            --input -
           
           # Subir archivos según la plataforma
           if [ "${{ matrix.os }}" == "macos-latest" ]; then
