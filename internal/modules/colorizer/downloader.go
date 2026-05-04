@@ -43,7 +43,9 @@ func (m *Manager) runInstallation() {
 		return
 	}
 
-	m.setStatus(StatusReady, "Installation complete! You can now start the colorizer.", 100)
+	m.setStatus(StatusReady, "Installation complete! Starting server...", 100)
+	// Automatically start server after installation
+	m.runStartServer()
 }
 
 func (m *Manager) installPython() error {

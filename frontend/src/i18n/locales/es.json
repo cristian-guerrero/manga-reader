@@ -268,6 +268,7 @@
     "colorizer": {
         "title": "Colorizador de Manga",
         "subtitle": "Colorización con IA para manga en blanco y negro",
+        "firstTimeSetup": "Primera configuración: Instalando dependencias. Esto puede tardar varios minutos...",
         "install": "Instalar Colorizador",
         "installing": "Instalando...",
         "start": "Iniciar Servidor",

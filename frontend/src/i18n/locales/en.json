@@ -272,6 +272,7 @@
     "colorizer": {
         "title": "Manga Colorizer",
         "subtitle": "AI-powered colorization for black and white manga",
+        "firstTimeSetup": "First time setup: Installing dependencies. This may take several minutes...",
         "install": "Install Colorizer",
         "installing": "Installing...",
         "start": "Start Server",

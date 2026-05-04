@@ -38,7 +38,6 @@ export function ColorizerPage() {
         message: t('colorizer.status.not_installed'),
         percent: 0,
     });
-    const [isInstalling, setIsInstalling] = useState(false);
     const [isStarting, setIsStarting] = useState(false);
     const [isServerRunning, setIsServerRunning] = useState(false);
 
@@ -176,21 +175,12 @@ export function ColorizerPage() {
         };
     }, [showToast, currentImage]);
 
-    const handleInstall = useCallback(async () => {
-        try {
-            setIsInstalling(true);
-            await AppBackend.ColorizerInstall();
-            showToast(t('colorizer.progress.downloadingPython'), 'info');
-        } catch (e) {
-            const msg = e instanceof Error ? e.message : 'Failed to start installation';
-            showToast(msg, 'error');
-            setIsInstalling(false);
-        }
-    }, [showToast, t]);
-
     const handleStartServer = useCallback(async () => {
         try {
             setIsStarting(true);
+            if (status.status === 'not_installed' || status.status === 'error') {
+                showToast(t('colorizer.firstTimeSetup'), 'warning');
+            }
             await AppBackend.ColorizerStartServer();
             showToast(t('colorizer.status.starting_server'), 'info');
         } catch (e) {
@@ -198,7 +188,7 @@ export function ColorizerPage() {
             showToast(msg, 'error');
             setIsStarting(false);
         }
-    }, [showToast, t]);
+    }, [showToast, t, status.status]);
 
     const handleStopServer = useCallback(async () => {
         try {
@@ -431,47 +421,30 @@ export function ColorizerPage() {
 
                 {/* Server Controls */}
                 <div className="flex items-center gap-2">
-                    {status.status === 'not_installed' || status.status === 'error' ? (
+                    {isServerRunning ? (
                         <button
-                            onClick={handleInstall}
-                            disabled={isInstalling}
+                            onClick={handleStopServer}
                             className="px-4 py-2 rounded-lg text-sm font-medium transition-all hover:scale-[1.02] active:scale-[0.98]"
                             style={{
-                                backgroundColor: 'var(--color-accent)',
+                                backgroundColor: 'var(--color-danger)',
                                 color: 'white',
-                                opacity: isInstalling ? 0.6 : 1,
                             }}
                         >
-                            {isInstalling ? t('colorizer.installing') : t('colorizer.install')}
+                            {t('colorizer.stop')}
                         </button>
                     ) : (
-                        <>
-                            {isServerRunning ? (
-                                <button
-                                    onClick={handleStopServer}
-                                    className="px-4 py-2 rounded-lg text-sm font-medium transition-all hover:scale-[1.02] active:scale-[0.98]"
-                                    style={{
-                                        backgroundColor: 'var(--color-danger)',
-                                        color: 'white',
-                                    }}
-                                >
-                                    {t('colorizer.stop')}
-                                </button>
-                            ) : (
-                                <button
-                                    onClick={handleStartServer}
-                                    disabled={isStarting}
-                                    className="px-4 py-2 rounded-lg text-sm font-medium transition-all hover:scale-[1.02] active:scale-[0.98]"
-                                    style={{
-                                        backgroundColor: 'var(--color-success)',
-                                        color: 'white',
-                                        opacity: isStarting ? 0.6 : 1,
-                                    }}
-                                >
-                                    {isStarting ? t('colorizer.status.starting_server') : t('colorizer.start')}
-                                </button>
-                            )}
-                        </>
+                        <button
+                            onClick={handleStartServer}
+                            disabled={isStarting}
+                            className="px-4 py-2 rounded-lg text-sm font-medium transition-all hover:scale-[1.02] active:scale-[0.98]"
+                            style={{
+                                backgroundColor: 'var(--color-success)',
+                                color: 'white',
+                                opacity: isStarting ? 0.6 : 1,
+                            }}
+                        >
+                            {isStarting ? t('colorizer.status.starting_server') : t('colorizer.start')}
+                        </button>
                     )}
 
                     {/* Status Indicator */}

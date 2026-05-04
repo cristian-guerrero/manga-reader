@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"time"
 )
@@ -84,6 +85,23 @@ func NewManager(baseDir string, onStatusChange func(InstallProgress)) *Manager {
 	}
 }
 
+func (m *Manager) scanInstallation() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	// Scan for Python runtime
+	if m.pythonPath == "" {
+		pyDir := filepath.Join(m.baseDir, "python-runtime")
+		m.pythonPath = findPythonExecutable(pyDir, runtime.GOOS)
+	}
+
+	// Scan for Backend directory
+	if m.backendPath == "" {
+		backendDir := filepath.Join(m.baseDir, "colorizer-backend")
+		m.backendPath = findBackendDir(backendDir)
+	}
+}
+
 func (m *Manager) GetStatus() InstallProgress {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -124,6 +142,8 @@ func (m *Manager) GetServerURL() string {
 }
 
 func (m *Manager) IsInstalled() bool {
+	m.scanInstallation()
+
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	return (m.pythonPath != "" && m.backendPath != "") || m.status == StatusRunning
@@ -151,14 +171,29 @@ func (m *Manager) Install() error {
 }
 
 func (m *Manager) StartServer() error {
-	if !m.IsInstalled() {
-		return fmt.Errorf("colorizer not installed, run Install() first")
-	}
-
+	// If already running, do nothing
 	if m.IsRunning() {
 		return nil
 	}
 
+	// Check if currently in progress
+	m.mu.RLock()
+	currentStatus := m.status
+	m.mu.RUnlock()
+
+	switch currentStatus {
+	case StatusDownloadingPy, StatusDownloadingBE, StatusInstallingDeps, StatusInstalling, StatusStartingServer:
+		// Already in progress, do nothing
+		return nil
+	}
+
+	// If not installed, start installation (which auto-starts server)
+	if !m.IsInstalled() {
+		go m.runInstallation()
+		return nil
+	}
+
+	// Installed, start server directly
 	go m.runStartServer()
 	return nil
 }
