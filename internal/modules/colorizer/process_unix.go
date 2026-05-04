@@ -3,7 +3,6 @@
 package colorizer
 
 import (
-	"fmt"
 	"os/exec"
 	"syscall"
 )
