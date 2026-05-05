@@ -4,4 +4,3 @@
  */
 
 export { TabPersistenceService, type SavedTab, type SavedTabsData } from './tabPersistenceService';
-export { ViewerPersistenceService, type SavedViewerState } from './viewerPersistenceService';

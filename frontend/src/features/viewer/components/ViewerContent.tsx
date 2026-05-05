@@ -19,7 +19,7 @@ interface ViewerContentProps {
     onAutoScrollStateChange: (isAutoScrolling: boolean) => void;
     onRestorationComplete: () => void;
     onIndexChange: (index: number) => void;
-    onScrollPositionChange: (scrollTop: number) => void;
+    onScrollPositionChange?: (scrollTop: number) => void;
     verticalWidth: number;
     onWidthChange: (width: number) => void;
     isActive: boolean;

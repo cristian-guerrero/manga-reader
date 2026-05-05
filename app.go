@@ -245,8 +245,8 @@ func (a *App) GetViewerState(folderPath string) *persistence.ViewerState {
 	return a.viewerStatesManager().GetState(folderPath)
 }
 
-func (a *App) SaveViewerState(folderPath string, currentIndex int, verticalWidth int) error {
-	return a.viewerStatesManager().UpdateState(folderPath, currentIndex, verticalWidth)
+func (a *App) SaveViewerState(folderPath string, currentIndex int, verticalWidth int, scrollPosition float64) error {
+	return a.viewerStatesManager().UpdateState(folderPath, currentIndex, verticalWidth, scrollPosition)
 }
 
 func (a *App) UpdateSettings(updates map[string]interface{}) error {

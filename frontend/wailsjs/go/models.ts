@@ -457,6 +457,7 @@ export namespace persistence {
 	    currentIndex: number;
 	    mode: string;
 	    verticalWidth: number;
+	    scrollPosition: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new ViewerState(source);
@@ -467,6 +468,7 @@ export namespace persistence {
 	        this.currentIndex = source["currentIndex"];
 	        this.mode = source["mode"];
 	        this.verticalWidth = source["verticalWidth"];
+	        this.scrollPosition = source["scrollPosition"];
 	    }
 	}
 

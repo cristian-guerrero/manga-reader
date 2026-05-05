@@ -19,6 +19,7 @@ import { LibraryAPI } from './libraryAPI';
 import { ImageOrderAPI } from './imageOrderAPI';
 import { DownloadAPI } from './downloadAPI';
 import { SettingsAPI } from './settingsAPI';
+import { ViewerStateAPI } from './viewerStateAPI';
 
 /**
  * Base folder interface for explorer
@@ -107,6 +108,10 @@ export class AppAPI extends BaseAPI {
     static getSettings = SettingsAPI.getSettings;
     static updateSettings = SettingsAPI.updateSettings;
     static saveSettings = SettingsAPI.saveSettings;
+
+    // Viewer State operations - delegate to ViewerStateAPI
+    static getViewerState = ViewerStateAPI.getViewerState;
+    static saveViewerState = ViewerStateAPI.saveViewerState;
 
     /**
      * Clear all data (history, library, series, etc.)

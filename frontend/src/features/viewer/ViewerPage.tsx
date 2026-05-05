@@ -3,7 +3,7 @@
  * Refactored to use custom hooks for better separation of concerns
  */
 
-import { useEffect, useCallback, useState } from 'react';
+import { useEffect, useCallback, useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ViewerControls } from './ViewerControls';
 import { AutoScrollControls } from './AutoScrollControls';
@@ -68,27 +68,43 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
         currentIndex: viewerState.currentIndex,
         scrollPosition: tabState?.scrollPosition || 0,
         isNoHistorySession,
+        verticalWidth: viewerState.currentVerticalWidth,
     });
 
-    // Wrapper to maintain compatibility with existing code
+    // Ref para trackear el estado actual
+    const currentStateRef = useRef({
+        folderPath: viewerState.currentFolder?.path || '',
+        currentIndex: viewerState.currentIndex,
+        scrollPosition: 0,
+        isNoHistorySession
+    });
+
+    // Actualizar ref cuando cambien los valores
+    useEffect(() => {
+        currentStateRef.current = {
+            folderPath: viewerState.currentFolder?.path || '',
+            currentIndex: viewerState.currentIndex,
+            scrollPosition: tabState?.scrollPosition || 0,
+            isNoHistorySession
+        };
+    }, [viewerState.currentFolder, viewerState.currentIndex, tabState?.scrollPosition, isNoHistorySession]);
+
+    // Guardar progreso con el estado del ref
     const saveProgress = useCallback(async () => {
-        if (!viewerState.currentFolder || viewerState.images.length === 0) return;
-        if (isNoHistorySession) return;
+        const state = currentStateRef.current;
+        if (!state.folderPath || state.isNoHistorySession) return;
 
-        // Get scroll position from tabState (single source of truth)
-        const tab = useTabStore.getState().tabs.find((t) => t.id === tabId);
-        const storePos = tab?.viewerState?.scrollPosition ?? 0;
-        const historyScrollPos = storePos >= 0 && storePos <= 1 ? storePos : 0;
+        const historyScrollPos = state.scrollPosition >= 0 && state.scrollPosition <= 1 ? state.scrollPosition : 0;
 
-        // Update tab state with scroll position before saving
-        updateTabState({ scrollPosition: historyScrollPos });
+        try {
+            await saveProgressHook(historyScrollPos);
+        } catch (error) {
+            console.error('[ViewerPage] Failed to save progress:', error);
+        }
+    }, [saveProgressHook]);
 
-        // Use the hook's saveProgress
-        await saveProgressHook(historyScrollPos);
-    }, [viewerState.currentFolder, viewerState.images, viewerState.currentIndex, isNoHistorySession, tabId, updateTabState, saveProgressHook]);
-
-    // Use folder loading hook
-    useViewerFolderLoading({
+    // Use folder loading hook - DEBE estar después de saveProgress
+    const { isLoading: folderLoading } = useViewerFolderLoading({
         folderPath,
         tabId,
         isActive,
@@ -117,7 +133,6 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
         setResumeScrollPos: viewerState.setResumeScrollPos,
         lastSyncedIndexRef: viewerState.lastSyncedIndexRef,
         lastProcessedParamsRef: viewerState.lastProcessedParamsRef,
-        currentScrollTopRef: viewerState.currentScrollTopRef,
     });
 
     // Use navigation seek hook
@@ -161,10 +176,14 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
         }
     }, [viewerMode, isActive, updateTabState]);
 
-    // Save progress when leaving
+    // Guardar antes de cerrar/recargar
     useEffect(() => {
-        return () => {
+        const handleBeforeUnload = () => {
             saveProgress();
+        };
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        return () => {
+            window.removeEventListener('beforeunload', handleBeforeUnload);
         };
     }, [saveProgress]);
 
@@ -221,8 +240,8 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
 
     const hasChapterButtons = !!(chapterNav && (chapterNav.prevChapter || chapterNav.nextChapter));
 
-    // Loading state
-    if (viewerState.isLoading || (folderPath && viewerState.images.length === 0)) {
+    // Loading state - usar folderLoading del hook
+    if (folderLoading || viewerState.isLoading || (folderPath && viewerState.images.length === 0)) {
         return <ViewerLoadingState />;
     }
 
@@ -247,7 +266,6 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
                     onAutoScrollStateChange={controls.setIsAutoScrolling}
                     onRestorationComplete={handleRestorationComplete}
                     onIndexChange={viewerState.handleIndexChange}
-                    onScrollPositionChange={viewerState.handleScrollPositionChange}
                     verticalWidth={viewerState.currentVerticalWidth}
                     onWidthChange={viewerState.handleWidthChange}
                     isActive={isActive}
@@ -308,5 +326,3 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
         </div>
     );
 }
-
-export default ViewerPage;
