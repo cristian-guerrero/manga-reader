@@ -25,9 +25,12 @@ import (
 )
 
 const (
-	thumbnailWidth    = 400
-	thumbnailHeight   = 600
-	thumbnailCacheDir = "cache/thumbnails"
+	thumbnailWidth        = 400
+	thumbnailHeight       = 600
+	thumbnailCacheDir     = "cache/thumbnails"
+	tallImageThresholdRatio = 3.0  // If height/width > 3, treat as tall image (manhwa)
+	tallImageCropHeight    = 2000 // Height in pixels to crop from top of tall images
+	thumbnailCacheVersion  = "v2" // Cache version for invalidation when logic changes
 )
 
 // Generator handles thumbnail generation and caching
@@ -59,7 +62,7 @@ func NewGenerator() *Generator {
 
 // generateCacheKey generates a cache key for an image path
 func (g *Generator) generateCacheKey(imagePath string) string {
-	hash := md5.Sum([]byte(imagePath))
+	hash := md5.Sum([]byte(imagePath + thumbnailCacheVersion))
 	return fmt.Sprintf("%x.jpg", hash)
 }
 
@@ -220,11 +223,28 @@ func (g *Generator) generateThumbnail(imagePath string) (string, error) {
 	origWidth := bounds.Dx()
 	origHeight := bounds.Dy()
 
-	newWidth, newHeight := calculateThumbnailSize(origWidth, origHeight, thumbnailWidth, thumbnailHeight)
+	// Check if image is too tall (manhwa style)
+	aspectRatio := float64(origHeight) / float64(origWidth)
+	var sourceImg image.Image = img
+
+	if aspectRatio > tallImageThresholdRatio {
+		// Crop top portion for very tall images
+		cropHeight := tallImageCropHeight
+		if cropHeight > origHeight {
+			cropHeight = origHeight
+		}
+		croppedBounds := image.Rect(0, 0, origWidth, cropHeight)
+		if subImager, ok := img.(interface{ SubImage(image.Rectangle) image.Image }); ok {
+			sourceImg = subImager.SubImage(croppedBounds)
+		}
+	}
+
+	// Use sourceImg for thumbnail generation
+	newWidth, newHeight := calculateThumbnailSize(sourceImg.Bounds().Dx(), sourceImg.Bounds().Dy(), thumbnailWidth, thumbnailHeight)
 
 	// Create thumbnail using Catmull-Rom scaling for much better quality
 	thumbnail := image.NewRGBA(image.Rect(0, 0, newWidth, newHeight))
-	draw.CatmullRom.Scale(thumbnail, thumbnail.Bounds(), img, img.Bounds(), draw.Over, nil)
+	draw.CatmullRom.Scale(thumbnail, thumbnail.Bounds(), sourceImg, sourceImg.Bounds(), draw.Over, nil)
 
 	// Save to cache
 	cachePath := g.GetCachePath(imagePath)
@@ -359,9 +379,28 @@ func (g *Generator) GenerateThumbnailPNG(imagePath string, outputPath string) er
 	}
 
 	bounds := img.Bounds()
-	newWidth, newHeight := calculateThumbnailSize(bounds.Dx(), bounds.Dy(), thumbnailWidth, thumbnailHeight)
+	origWidth := bounds.Dx()
+	origHeight := bounds.Dy()
+
+	// Check if image is too tall (manhwa style)
+	aspectRatio := float64(origHeight) / float64(origWidth)
+	var sourceImg image.Image = img
+
+	if aspectRatio > tallImageThresholdRatio {
+		// Crop top portion for very tall images
+		cropHeight := tallImageCropHeight
+		if cropHeight > origHeight {
+			cropHeight = origHeight
+		}
+		croppedBounds := image.Rect(0, 0, origWidth, cropHeight)
+		if subImager, ok := img.(interface{ SubImage(image.Rectangle) image.Image }); ok {
+			sourceImg = subImager.SubImage(croppedBounds)
+		}
+	}
+
+	newWidth, newHeight := calculateThumbnailSize(sourceImg.Bounds().Dx(), sourceImg.Bounds().Dy(), thumbnailWidth, thumbnailHeight)
 	thumbnail := image.NewRGBA(image.Rect(0, 0, newWidth, newHeight))
-	draw.CatmullRom.Scale(thumbnail, thumbnail.Bounds(), img, img.Bounds(), draw.Over, nil)
+	draw.CatmullRom.Scale(thumbnail, thumbnail.Bounds(), sourceImg, sourceImg.Bounds(), draw.Over, nil)
 
 	out, err := os.Create(outputPath)
 	if err != nil {
