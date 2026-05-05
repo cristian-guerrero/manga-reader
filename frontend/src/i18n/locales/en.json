@@ -69,6 +69,8 @@
         "imageInfo": "Image Info",
         "prevChapter": "Previous Chapter",
         "nextChapter": "Next Chapter",
+        "prevFolder": "Previous Folder",
+        "nextFolder": "Next Folder",
         "goToStart": "Go to Start",
         "autoScroll": "Auto Scroll",
         "play": "Play",

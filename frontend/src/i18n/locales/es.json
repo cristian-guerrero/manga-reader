@@ -71,6 +71,8 @@
         "imageInfo": "Info de Imagen",
         "prevChapter": "Capítulo Anterior",
         "nextChapter": "Capítulo Siguiente",
+        "prevFolder": "Carpeta Anterior",
+        "nextFolder": "Carpeta Siguiente",
         "goToStart": "Ir al Inicio",
         "autoScroll": "Scroll Automático",
         "play": "Reproducir",

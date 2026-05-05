@@ -21,6 +21,7 @@ import {
     useViewerNavigationSeek,
     useViewerControls,
     useChapterNavigation,
+    useFolderNavigation,
     useViewerHistory,
 } from './hooks';
 
@@ -32,7 +33,11 @@ interface ViewerPageProps {
 
 export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPageProps) {
     const { t } = useTranslation();
-    const { goBack, navigate, params } = useNavigation();
+    const { goBack, navigate, params, fromPage: navFromPage } = useNavigation();
+    const fromPage = navFromPage || params.from || 'series';
+    const isExplorerMode = fromPage === 'explorer';
+    console.log('[ViewerPage] fromPage:', fromPage, 'isExplorer:', isExplorerMode, 'folderPath:', folderPath);
+    console.log('[ViewerPage] fromPage:', fromPage, 'isExplorerMode:', isExplorerMode, 'folderPath:', folderPath, 'navFromPage:', navFromPage, 'params.from:', params.from);
     const { viewerMode, setViewerMode, scrollSpeed, setScrollSpeed } = useSettingsStore();
     const { setViewerState: updateTabState } = useViewer(tabId);
     const tabState = useTabStore((state) => state.tabs.find((t) => t.id === tabId)?.viewerState);
@@ -51,8 +56,9 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
     // Session flag state
     const [isNoHistorySession, setIsNoHistorySession] = useState(params.noHistory === 'true');
 
-    // Use custom hook for chapter navigation
-    const chapterNav = useChapterNavigation(folderPath, isActive || false);
+    // Use custom hook for chapter navigation (series) or folder navigation (explorer)
+    const chapterNav = !isExplorerMode ? useChapterNavigation(folderPath, isActive || false) : null;
+    const folderNav = isExplorerMode ? useFolderNavigation(folderPath, isActive || false) : null;
 
     // Callbacks
     const handleRestorationComplete = useCallback(() => {
@@ -194,20 +200,35 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
         setViewerMode(newMode);
     };
 
-    // Chapter navigation handlers
-    const handlePrevChapter = useCallback(async () => {
-        if (chapterNav?.prevChapter) {
-            await saveProgress();
-            navigate('viewer', { folder: chapterNav.prevChapter.path }, 'series');
-        }
-    }, [chapterNav, navigate, saveProgress]);
+// Chapter navigation handlers (series)
+const handlePrevChapter = useCallback(async () => {
+    if (chapterNav?.prevChapter) {
+        await saveProgress();
+        navigate('viewer', { folder: chapterNav.prevChapter.path }, 'series');
+    }
+}, [chapterNav, navigate, saveProgress]);
 
-    const handleNextChapter = useCallback(async () => {
-        if (chapterNav?.nextChapter) {
-            await saveProgress();
-            navigate('viewer', { folder: chapterNav.nextChapter.path }, 'series');
-        }
-    }, [chapterNav, navigate, saveProgress]);
+const handleNextChapter = useCallback(async () => {
+    if (chapterNav?.nextChapter) {
+        await saveProgress();
+        navigate('viewer', { folder: chapterNav.nextChapter.path }, 'series');
+    }
+}, [chapterNav, navigate, saveProgress]);
+
+// Folder navigation handlers (explorer)
+const handlePrevFolder = useCallback(async () => {
+    if (folderNav?.prevFolder) {
+        await saveProgress();
+        navigate('viewer', { folder: folderNav.prevFolder.path, shallow: 'true', from: fromPage }, 'explorer');
+    }
+}, [folderNav, navigate, saveProgress, fromPage]);
+
+const handleNextFolder = useCallback(async () => {
+    if (folderNav?.nextFolder) {
+        await saveProgress();
+        navigate('viewer', { folder: folderNav.nextFolder.path, shallow: 'true', from: fromPage }, 'explorer');
+    }
+}, [folderNav, navigate, saveProgress, fromPage]);
 
     const handleGoToStart = useCallback(async () => {
         viewerState.setResumeIndex(0);
@@ -238,7 +259,11 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
         }
     }, [viewerState, isNoHistorySession, updateTabState]);
 
-    const hasChapterButtons = !!(chapterNav && (chapterNav.prevChapter || chapterNav.nextChapter));
+    const hasChapterButtons = !!(
+    isExplorerMode 
+        ? (folderNav && (folderNav.prevFolder || folderNav.nextFolder)) 
+        : (chapterNav && (chapterNav.prevChapter || chapterNav.nextChapter))
+);
 
     // Loading state - usar folderLoading del hook
     if (folderLoading || viewerState.isLoading || (folderPath && viewerState.images.length === 0)) {
@@ -314,15 +339,18 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
                 />
             )}
 
-            {/* Bottom chapter navigation bar */}
-            <ChapterNavigation
-                prevChapter={chapterNav?.prevChapter}
-                nextChapter={chapterNav?.nextChapter}
-                showControls={controls.showControls}
-                onPrevChapter={handlePrevChapter}
-                onNextChapter={handleNextChapter}
-                t={t}
-            />
+            {/* Bottom navigation bar (chapter for series, folder for explorer) */}
+            {(isExplorerMode && folderNav && (folderNav.prevFolder || folderNav.nextFolder)) || 
+             (!isExplorerMode && chapterNav && (chapterNav.prevChapter || chapterNav.nextChapter)) ? (
+                <ChapterNavigation
+                    prevChapter={isExplorerMode ? folderNav?.prevFolder : chapterNav?.prevChapter}
+                    nextChapter={isExplorerMode ? folderNav?.nextFolder : chapterNav?.nextChapter}
+                    showControls={controls.showControls}
+                    onPrevChapter={isExplorerMode ? handlePrevFolder : handlePrevChapter}
+                    onNextChapter={isExplorerMode ? handleNextFolder : handleNextChapter}
+                    t={t}
+                />
+            ) : null}
         </div>
     );
 }

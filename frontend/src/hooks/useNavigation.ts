@@ -53,9 +53,13 @@ export function useNavigation() {
             newTitle = folderName;
         }
 
+        // Preserve fromPage from params if provided, otherwise set from current page
+        const fromPage = params.from ? params.from as PageType : activeTab.page;
+        console.log('[useNavigation] navigate called - page:', page, 'params:', params, 'fromPage:', fromPage);
+
         updateActiveTab({
             page,
-            fromPage: activeTab.page,
+            fromPage,
             params,
             history: newHistory,
             activeMenuPage,

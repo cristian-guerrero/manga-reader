@@ -20,6 +20,7 @@ import { ImageOrderAPI } from './imageOrderAPI';
 import { DownloadAPI } from './downloadAPI';
 import { SettingsAPI } from './settingsAPI';
 import { ViewerStateAPI } from './viewerStateAPI';
+import { ExplorerAPI } from './explorerAPI';
 
 /**
  * Base folder interface for explorer
@@ -78,6 +79,9 @@ export class AppAPI extends BaseAPI {
     static removeSeries = SeriesAPI.removeSeries;
     static clearSeries = SeriesAPI.clearSeries;
     static getChapterNavigation = SeriesAPI.getChapterNavigation;
+
+    // Explorer operations - delegate to ExplorerAPI
+    static getFolderNavigation = ExplorerAPI.getFolderNavigation;
 
     // Library operations - delegate to LibraryAPI
     static addBaseFolder = LibraryAPI.addBaseFolder;

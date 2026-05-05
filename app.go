@@ -461,6 +461,11 @@ func (a *App) ExploreFolder(path string) ([]explorer.ExplorerEntry, error) {
 	return a.explorerMod.ListDirectory(path)
 }
 
+// GetFolderNavigation returns prev/next folder navigation for explorer
+func (a *App) GetFolderNavigation(folderPath string) *explorer.FolderNavigation {
+	return a.explorerMod.GetFolderNavigation(folderPath)
+}
+
 // =============================================================================
 // Thumbnail Methods
 // =============================================================================

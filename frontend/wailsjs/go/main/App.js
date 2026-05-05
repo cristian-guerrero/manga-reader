@@ -118,6 +118,10 @@ export function GetFolderInfoShallow(arg1) {
   return window['go']['main']['App']['GetFolderInfoShallow'](arg1);
 }
 
+export function GetFolderNavigation(arg1) {
+  return window['go']['main']['App']['GetFolderNavigation'](arg1);
+}
+
 export function GetHistory() {
   return window['go']['main']['App']['GetHistory']();
 }

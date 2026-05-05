@@ -64,6 +64,8 @@ export function GetFolderInfo(arg1:string):Promise<persistence.FolderInfo>;
 
 export function GetFolderInfoShallow(arg1:string):Promise<persistence.FolderInfo>;
 
+export function GetFolderNavigation(arg1:string):Promise<explorer.FolderNavigation>;
+
 export function GetHistory():Promise<Array<persistence.HistoryEntry>>;
 
 export function GetHistoryEntry(arg1:string):Promise<persistence.HistoryEntry>;
