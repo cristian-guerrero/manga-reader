@@ -15,7 +15,7 @@ export function MenuItemsSelector({ enabledMenuItems, onToggleMenuItem }: MenuIt
 
     return (
         <div className="grid grid-cols-2 gap-3 mt-2">
-            {['home', 'explorer', 'history', 'oneShot', 'series', 'download'].map((item) => {
+            {['home', 'explorer', 'history', 'oneShot', 'series', 'download', 'colorizer'].map((item) => {
                 const isSettings = item === 'settings';
                 const isEnabled = enabledMenuItems?.[item] !== false;
 
