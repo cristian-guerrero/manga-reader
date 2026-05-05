@@ -230,6 +230,11 @@ const handleNextFolder = useCallback(async () => {
     }
 }, [folderNav, navigate, saveProgress, fromPage]);
 
+// Custom back handler - navigates directly to the original entry point
+const handleBack = useCallback(() => {
+    navigate(fromPage, {});
+}, [navigate, fromPage]);
+
     const handleGoToStart = useCallback(async () => {
         viewerState.setResumeIndex(0);
         viewerState.lastSyncedIndexRef.current = 0;
@@ -272,7 +277,7 @@ const handleNextFolder = useCallback(async () => {
 
     // Empty state
     if (!viewerState.currentFolder || viewerState.images.length === 0) {
-        return <ViewerEmptyState onBack={goBack} />;
+        return <ViewerEmptyState onBack={handleBack} />;
     }
 
     return (
@@ -307,7 +312,7 @@ const handleNextFolder = useCallback(async () => {
                 chapterNav={chapterNav}
                 mode={viewerState.mode}
                 showControls={controls.showControls}
-                onBack={goBack}
+                onBack={handleBack}
                 onModeToggle={toggleMode}
                 onThumbnails={() => navigate('thumbnails', { folder: viewerState.currentFolder!.path })}
                 onGoToStart={handleGoToStart}
