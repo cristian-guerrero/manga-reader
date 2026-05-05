@@ -24,6 +24,7 @@ import {
     useFolderNavigation,
     useViewerHistory,
 } from './hooks';
+import { PageType } from '@types';
 
 interface ViewerPageProps {
     folderPath?: string;
@@ -232,7 +233,7 @@ const handleNextFolder = useCallback(async () => {
 
 // Custom back handler - navigates directly to the original entry point
 const handleBack = useCallback(() => {
-    navigate(fromPage, {});
+    navigate(fromPage as PageType, {});
 }, [navigate, fromPage]);
 
     const handleGoToStart = useCallback(async () => {
