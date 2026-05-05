@@ -44,6 +44,19 @@ A premium desktop manga viewer and downloader application built with Wails, Reac
   - **Middle-click Actions** - Quickly close tabs or open folders/series in new tabs via middle-click.
   - **Smart Compression** - Tabs dynamically resize to fit any window width.
 
+### 🎨 Manga Colorizer
+- **AI-Powered Colorization** - Transform black and white manga into vibrant color using advanced AI models.
+- **Image Enhancement**:
+  - **Colorization** - Automatically add color to grayscale manga pages.
+  - **Upscaling** - Enhance image resolution with adjustable upscale factor.
+  - **Denoising** - Remove noise and artifacts with configurable denoise strength.
+- **Batch Processing** - Drag & drop multiple images or entire folders for bulk colorization.
+- **Flexible Workflow**:
+  - **Single Image Mode** - Process and preview one image at a time.
+  - **Batch Mode** - Colorize all images in a folder with progress tracking.
+- **Easy Export** - Download individual colorized images or batch download all results.
+- **Self-Contained Setup** - Automatic installation of Python runtime and colorizer backend on first use.
+
 ### 🖼️ Viewing Modes
 - **Vertical Scroll** - Infinite scroll with configurable width (30-100%).
   - **Auto-scroll** - Automatic scrolling with adjustable speed (0-100) for hands-free reading.
