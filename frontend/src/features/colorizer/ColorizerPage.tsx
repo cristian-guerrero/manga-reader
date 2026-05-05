@@ -61,6 +61,7 @@ export function ColorizerPage() {
     const [currentProcessingImage, setCurrentProcessingImage] = useState<string | null>(null);
 
     const statusPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const cancelColorizeRef = useRef(false);
 
     // Poll status updates from backend
     useEffect(() => {
@@ -248,7 +249,6 @@ export function ColorizerPage() {
 
         try {
             setIsColorizing(true);
-            setIsProcessing(true);
             setCurrentProcessingImage(currentImage?.split(/[\\/]/).pop() || 'current image');
 
             const result = await AppBackend.ColorizeImage(
@@ -320,14 +320,21 @@ export function ColorizerPage() {
             return;
         }
 
+        cancelColorizeRef.current = false;
+        let wasCancelled = false;
+
         try {
             setIsColorizingAll(true);
-            setIsProcessing(true);
             setColorizeAllProgress({ current: 0, total: droppedImages.length });
 
             const newCache = { ...colorizedCache };
 
             for (let i = 0; i < droppedImages.length; i++) {
+                if (cancelColorizeRef.current) {
+                    wasCancelled = true;
+                    break;
+                }
+
                 const img = droppedImages[i];
                 setColorizeAllProgress({ current: i + 1, total: droppedImages.length });
                 setCurrentProcessingImage(img.name);
@@ -354,8 +361,14 @@ export function ColorizerPage() {
             }
 
             setColorizedCache(newCache);
-            setCurrentProcessingImage(null);
-            showToast(`Colorized ${droppedImages.length} image(s)`, 'success');
+
+            if (wasCancelled) {
+                const processedCount = colorizeAllProgress.current;
+                showToast(`Cancelled after ${processedCount} image(s)`, 'info');
+            } else {
+                setCurrentProcessingImage(null);
+                showToast(`Colorized ${droppedImages.length} image(s)`, 'success');
+            }
 
             try {
                 await AppBackend.ColorizerRestartServer();
@@ -372,7 +385,11 @@ export function ColorizerPage() {
             setColorizeAllProgress({ current: 0, total: 0 });
             setCurrentProcessingImage(null);
         }
-    }, [droppedImages, isServerRunning, settings, colorizedCache, showToast, setIsProcessing, t]);
+    }, [droppedImages, isServerRunning, settings, colorizedCache, showToast, setIsProcessing, t, colorizeAllProgress.current]);
+
+    const handleCancelColorize = useCallback(() => {
+        cancelColorizeRef.current = true;
+    }, []);
 
     const handleDownloadAll = useCallback(async () => {
         const colorizedImages = droppedImages.filter(img => colorizedCache[img.path]);
@@ -645,19 +662,7 @@ export function ColorizerPage() {
                                         </div>
                                     )}
 
-                                    {status.percent !== undefined && status.percent > 0 && (
-                                        <div className="mt-4 mb-4">
-                                            <div className="text-blue-400 font-semibold text-lg mb-2">
-                                                {Math.round(status.percent)}%
-                                            </div>
-                                            <div className="w-64 h-3 bg-gray-700 rounded-full mx-auto overflow-hidden">
-                                                <div
-                                                    className="h-full bg-blue-500 rounded-full transition-all duration-300"
-                                                    style={{ width: `${status.percent}%` }}
-                                                />
-                                            </div>
-                                        </div>
-                                    )}
+                                    
 
                                     {isColorizingAll && (
                                         <div className="mt-4">
@@ -670,6 +675,16 @@ export function ColorizerPage() {
                                                     style={{ width: `${colorizeAllProgress.total > 0 ? (colorizeAllProgress.current / colorizeAllProgress.total) * 100 : 0}%` }}
                                                 />
                                             </div>
+                                            <button
+                                                onClick={handleCancelColorize}
+                                                className="mt-4 px-6 py-2 rounded-lg text-sm font-semibold transition-all hover:scale-[1.02] active:scale-[0.98]"
+                                                style={{
+                                                    backgroundColor: 'var(--color-danger)',
+                                                    color: 'white',
+                                                }}
+                                            >
+                                                {t('common.cancel') || 'Cancel'}
+                                            </button>
                                         </div>
                                     )}
 
