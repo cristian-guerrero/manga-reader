@@ -6,7 +6,6 @@
 import { useEffect, useState } from 'react';
 import { useTabStore } from '@stores';
 import { AppAPI } from '@services/api/appAPI';
-import { ViewerPersistenceService } from '@services/persistence';
 import { ImageInfo, FolderInfo } from '@types';
 
 interface UseViewerDataLoadingOptions {
@@ -83,8 +82,8 @@ export function useViewerDataLoading({
                 // Fetch history for this folder (legacy fallback)
                 const historyEntry = await AppAPI.getHistoryEntry(folderPath);
 
-                // Fetch viewer state from localStorage (primary source for restoration)
-                const savedViewerState = ViewerPersistenceService.load(folderPath);
+                // Fetch viewer state from backend (primary source for restoration)
+                const savedViewerState = await AppAPI.getViewerState(folderPath);
 
                 const imgs = imageList as ImageInfo[];
                 let targetIndex = 0;

@@ -25,6 +25,7 @@ type FileLoaderInterface interface {
 	FindFirstImageShallow(folderPath string) (string, bool)
 	GetShallowImageCount(folderPath string) int
 	HasSubdirectories(folderPath string) bool
+	GetSubdirectoryCount(folderPath string) int
 }
 
 // URLBuilderInterface defines the interface for URL construction

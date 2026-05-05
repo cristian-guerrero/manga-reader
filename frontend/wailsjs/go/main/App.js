@@ -118,6 +118,10 @@ export function GetFolderInfoShallow(arg1) {
   return window['go']['main']['App']['GetFolderInfoShallow'](arg1);
 }
 
+export function GetFolderNavigation(arg1) {
+  return window['go']['main']['App']['GetFolderNavigation'](arg1);
+}
+
 export function GetHistory() {
   return window['go']['main']['App']['GetHistory']();
 }
@@ -234,8 +238,8 @@ export function SaveTabs(arg1) {
   return window['go']['main']['App']['SaveTabs'](arg1);
 }
 
-export function SaveViewerState(arg1, arg2, arg3) {
-  return window['go']['main']['App']['SaveViewerState'](arg1, arg2, arg3);
+export function SaveViewerState(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['SaveViewerState'](arg1, arg2, arg3, arg4);
 }
 
 export function SaveWindowState() {

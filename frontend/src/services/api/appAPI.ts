@@ -19,6 +19,8 @@ import { LibraryAPI } from './libraryAPI';
 import { ImageOrderAPI } from './imageOrderAPI';
 import { DownloadAPI } from './downloadAPI';
 import { SettingsAPI } from './settingsAPI';
+import { ViewerStateAPI } from './viewerStateAPI';
+import { ExplorerAPI } from './explorerAPI';
 
 /**
  * Base folder interface for explorer
@@ -41,6 +43,7 @@ export interface ExplorerEntry {
     isDirectory: boolean;
     hasImages: boolean;
     imageCount: number;
+    subdirectoryCount: number;
     coverImage: string;
     thumbnailUrl?: string;
     size: number;
@@ -78,6 +81,9 @@ export class AppAPI extends BaseAPI {
     static clearSeries = SeriesAPI.clearSeries;
     static getChapterNavigation = SeriesAPI.getChapterNavigation;
 
+    // Explorer operations - delegate to ExplorerAPI
+    static getFolderNavigation = ExplorerAPI.getFolderNavigation;
+
     // Library operations - delegate to LibraryAPI
     static addBaseFolder = LibraryAPI.addBaseFolder;
     static removeBaseFolder = LibraryAPI.removeBaseFolder;
@@ -107,6 +113,10 @@ export class AppAPI extends BaseAPI {
     static getSettings = SettingsAPI.getSettings;
     static updateSettings = SettingsAPI.updateSettings;
     static saveSettings = SettingsAPI.saveSettings;
+
+    // Viewer State operations - delegate to ViewerStateAPI
+    static getViewerState = ViewerStateAPI.getViewerState;
+    static saveViewerState = ViewerStateAPI.saveViewerState;
 
     /**
      * Clear all data (history, library, series, etc.)

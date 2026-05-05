@@ -9,7 +9,7 @@ import { PageType } from '../types';
 // Lazy load pages for code splitting
 // Handle both named and default exports
 const HomePage = lazy(() => import('../features/home/HomePage').then(m => ({ default: m.default || m.HomePage })));
-const ViewerPage = lazy(() => import('../features/viewer/ViewerPage').then(m => ({ default: m.default || m.ViewerPage })));
+const ViewerPage = lazy(() => import('../features/viewer/ViewerPage').then(m => ({ default: m.ViewerPage })));
 const OneShotPage = lazy(() => import('../features/oneshot/OneShotPage').then(m => ({ default: m.default || m.OneShotPage })));
 const SeriesPage = lazy(() => import('../features/series/SeriesPage').then(m => ({ default: m.default || m.SeriesPage })));
 const SeriesDetailsPage = lazy(() => import('../features/series/SeriesDetailsPage').then(m => ({ default: m.default || m.SeriesDetailsPage })));

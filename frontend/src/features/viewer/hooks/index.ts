@@ -11,6 +11,7 @@ export { useViewerControls } from './useViewerControls';
 
 // Hooks moved from src/hooks/viewer/
 export { useChapterNavigation } from './useChapterNavigation';
+export { useFolderNavigation } from './useFolderNavigation';
 export { useViewerHistory } from './useViewerHistory';
 export { useViewerData } from './useViewerData';
 export { useViewerDataLoading } from './useViewerDataLoading';

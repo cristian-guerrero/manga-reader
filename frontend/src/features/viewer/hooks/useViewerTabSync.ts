@@ -16,7 +16,6 @@ interface UseViewerTabSyncOptions {
     setResumeScrollPos: (pos: number) => void;
     lastSyncedIndexRef: React.MutableRefObject<number>;
     lastProcessedParamsRef: React.MutableRefObject<{ targetPath?: string; startIndex?: string } | null>;
-    currentScrollTopRef: React.MutableRefObject<number>;
 }
 
 export function useViewerTabSync({
@@ -29,15 +28,9 @@ export function useViewerTabSync({
     setResumeScrollPos,
     lastSyncedIndexRef,
     lastProcessedParamsRef,
-    currentScrollTopRef,
 }: UseViewerTabSyncOptions) {
     useEffect(() => {
         if (!isActive) {
-            // When tab becomes inactive, save the current scrollTop for precise restoration later
-            if (currentScrollTopRef.current > 0) {
-                setResumeScrollPos(currentScrollTopRef.current);
-                console.log(`[useViewerTabSync] Tab inactive: Saved scrollTop ${currentScrollTopRef.current}px for tab ${tabId}`);
-            }
             // Reset lastSyncedIndexRef when tab becomes inactive so we sync again when it becomes active
             lastSyncedIndexRef.current = -1;
             // Also reset last processed params

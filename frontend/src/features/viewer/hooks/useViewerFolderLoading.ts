@@ -3,10 +3,9 @@
  * Extracted from ViewerPage to improve separation of concerns
  */
 
-import { useEffect, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { useTabStore } from '@stores';
 import { AppAPI } from '@services/api/appAPI';
-import { ViewerPersistenceService } from '@services/persistence';
 import { FolderInfo, ImageInfo } from '@types';
 
 interface UseViewerFolderLoadingOptions {
@@ -44,68 +43,58 @@ export function useViewerFolderLoading({
     onRestorationComplete,
     saveProgress,
 }: UseViewerFolderLoadingOptions) {
-    // Load folder and images
+    const [isLoading, setIsLoading] = useState(false);
+
     useEffect(() => {
         if (!folderPath) return;
-        if (!isActive) return; // Don't load if tab is not active - prevents content bleeding between tabs
+        if (!isActive) return;
 
-        // Read tab state to check if we are in restoration
-        const activeTabFromState = useTabStore.getState().tabs.find((t) => t.id === tabId);
-        const isRestoredFromState = activeTabFromState?.restored;
+        let cancelled = false;
+        setIsLoading(true);
+        updateTabState({ isLoading: true });
 
-        if (!isRestoredFromState && images.length > 0 && currentFolder?.path === folderPath) {
-            console.log(`[useViewerFolderLoading] Eager check: Using existing images for ${folderPath}. Resuming at index ${currentIndex} (resumeIndex: ${resumeIndex}, lastSynced: ${lastSyncedIndexRef.current})`);
-            // Important: ensure resumeIndex is updated to our last known position
-            if (currentIndex !== resumeIndex) {
-                console.log(`[useViewerFolderLoading] Eager check: Updating resumeIndex from ${resumeIndex} to ${currentIndex}`);
-                setResumeIndex(currentIndex);
-                lastSyncedIndexRef.current = currentIndex;
-            } else {
-                console.log(`[useViewerFolderLoading] Eager check: Already synced (resumeIndex=${resumeIndex}, currentIndex=${currentIndex})`);
-            }
-            return;
-        }
-
-        const loadFolder = async () => {
-            const activeTab = useTabStore.getState().tabs.find((t) => t.id === tabId);
-            // Save restored flag BEFORE clearing it - we need it for prioritization logic
-            const isRestored = activeTab?.restored;
-
-            if (isRestored) {
-                console.log(`[useViewerFolderLoading] Restored tab detected for ${folderPath}. Forcing refresh to update stale URLs.`);
-                // Clear restored flag so we don't force refresh every time we switch back to this tab
-                useTabStore.getState().updateTab(tabId!, { restored: false });
-            }
-
-            // Save current progress before switching if not a no-history session
-            if (currentFolder && !isNoHistorySession) {
-                await saveProgress();
-            }
-
-            updateTabState({ isLoading: true });
+        const loadData = async () => {
             try {
+                const activeTab = useTabStore.getState().tabs.find((t) => t.id === tabId);
+                const isRestored = activeTab?.restored;
+
+                if (isRestored) {
+                    console.log(`[useViewerFolderLoading] Restored tab detected for ${folderPath}. Forcing refresh.`);
+                    useTabStore.getState().updateTab(tabId!, { restored: false });
+                }
+
+                // Save current progress before switching if not a no-history session
+                if (currentFolder && !isNoHistorySession && !cancelled) {
+                    await saveProgress();
+                }
+
+                if (cancelled) return;
+
                 // Check if we should use shallow loading (non-recursive)
                 const useShallow = params && params.shallow === 'true';
 
-                // Use AppAPI service instead of direct window.go calls
+                // Load folder info and images
                 const folderInfo = useShallow
                     ? await AppAPI.getFolderInfoShallow(folderPath)
                     : await AppAPI.getFolderInfo(folderPath);
+
+                if (cancelled) return;
 
                 const imageList = useShallow
                     ? await AppAPI.getImagesShallow(folderPath)
                     : await AppAPI.getImages(folderPath);
 
-                // Fetch history for this folder (legacy fallback)
+                if (cancelled) return;
+
+                // Fetch history and viewer state sequentially
                 const historyEntry = await AppAPI.getHistoryEntry(folderPath);
+                if (cancelled) return;
 
-                // Fetch viewer state from localStorage (primary source for restoration)
-                const savedViewerState = ViewerPersistenceService.load(folderPath);
+                const savedViewerState = await AppAPI.getViewerState(folderPath);
 
-                if (folderInfo) {
-                    updateTabState({ currentFolder: folderInfo as FolderInfo });
-                }
-                if (imageList) {
+                if (cancelled) return;
+
+                if (folderInfo && imageList) {
                     const imgs = imageList as ImageInfo[];
                     let targetIndex = 0;
                     let targetScroll = 0;
@@ -115,33 +104,32 @@ export function useViewerFolderLoading({
                     const targetPath = tabParams.targetPath;
                     const explicitStartIndex = tabParams.startIndex ? parseInt(tabParams.startIndex, 10) : -1;
 
-                    // First, try to get scroll position from current tabState if available
+                    // Get scroll position from current viewer state if available
                     const currentTabScroll = activeTab?.viewerState?.scrollPosition;
                     if (currentTabScroll && currentTabScroll > 0 && currentTabScroll <= 1) {
-                        targetScroll = currentTabScroll; // Store percentage for now
+                        targetScroll = currentTabScroll;
                     }
 
-                    // PRIORITIZATION LOGIC:
-                    // 1. savedViewerState from backend (Resume from last session) - PRIORITY when restoring
-                    // 2. targetPath specified in navigation params (Explicit user click) - Only if NOT restoring
-                    // 3. explicitStartIndex in navigation params (Explicit user click) - Only if NOT restoring
-                    // 4. history entry (Legacy fallback)
-
+                    // Prioritization logic for target index
                     if (isRestored && savedViewerState && savedViewerState.currentIndex >= 0 && savedViewerState.currentIndex < imgs.length) {
                         targetIndex = savedViewerState.currentIndex;
-                        console.log(`[useViewerFolderLoading] Restoring from BACKEND state (ignoring params): index=${targetIndex}`);
-                    } else if (savedViewerState && savedViewerState.currentIndex >= 0 && savedViewerState.currentIndex < imgs.length) {
-                        targetIndex = savedViewerState.currentIndex;
-                        console.log(`[useViewerFolderLoading] Resuming from BACKEND state (ignoring targetPath): index=${targetIndex}`);
+                        console.log(`[useViewerFolderLoading] Restoring from BACKEND state (tab restoration): index=${targetIndex}`);
                     } else if (targetPath && !isRestored) {
                         const pathIndex = imgs.findIndex((img) => img.path === targetPath);
                         if (pathIndex >= 0) {
                             targetIndex = pathIndex;
                             console.log(`[useViewerFolderLoading] Starting from TARGET PATH: ${targetIndex} (${targetPath})`);
+                        } else if (savedViewerState && savedViewerState.currentIndex >= 0 && savedViewerState.currentIndex < imgs.length) {
+                            // Fallback to saved state if targetPath not found
+                            targetIndex = savedViewerState.currentIndex;
+                            console.log(`[useViewerFolderLoading] TARGET PATH not found, resuming from BACKEND state: index=${targetIndex}`);
                         }
                     } else if (explicitStartIndex >= 0 && explicitStartIndex < imgs.length && !isRestored) {
                         targetIndex = explicitStartIndex;
                         console.log(`[useViewerFolderLoading] Starting from EXPLICIT INDEX: ${targetIndex}`);
+                    } else if (savedViewerState && savedViewerState.currentIndex >= 0 && savedViewerState.currentIndex < imgs.length) {
+                        targetIndex = savedViewerState.currentIndex;
+                        console.log(`[useViewerFolderLoading] Resuming from BACKEND state: index=${targetIndex}`);
                     } else if (historyEntry && historyEntry.lastImageIndex >= 0 && historyEntry.lastImageIndex < imgs.length) {
                         targetIndex = historyEntry.lastImageIndex;
                         console.log(`[useViewerFolderLoading] Resuming from history index: ${targetIndex}`);
@@ -165,15 +153,25 @@ export function useViewerFolderLoading({
                         currentFolder: folderInfo as FolderInfo,
                         isLoading: false
                     });
+                    setIsLoading(false);
+                } else {
+                    updateTabState({ isLoading: false });
+                    setIsLoading(false);
                 }
-
             } catch (error) {
                 console.error('[useViewerFolderLoading] Failed to load folder:', error);
                 updateTabState({ isLoading: false });
+                setIsLoading(false);
             }
         };
 
-        loadFolder();
+        loadData();
+
+        return () => {
+            cancelled = true;
+        };
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [folderPath, isActive, tabId]); // REMOVED resetKey to prevent infinite loop
+    }, [folderPath, isActive, tabId]);
+
+    return { isLoading };
 }

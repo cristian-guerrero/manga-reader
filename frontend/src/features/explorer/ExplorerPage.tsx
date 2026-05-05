@@ -236,7 +236,11 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
                                 }
                                 footerLeft={
                                     <span className="text-xs text-white/50">
-                                        {entry.isDirectory ? (entry.hasImages ? `${entry.imageCount} ${t('explorer.images')}` : t('explorer.folder')) : t('explorer.file')}
+                                        {entry.isDirectory 
+                                            ? (entry.hasImages 
+                                                ? `${entry.imageCount} ${t('explorer.images')}${entry.subdirectoryCount > 0 ? ` · ${entry.subdirectoryCount} ${t('explorer.subfolders')}` : ''}` 
+                                                : (entry.subdirectoryCount > 0 ? `${entry.subdirectoryCount} ${t('explorer.subfolders')}` : t('explorer.folder')))
+                                            : t('explorer.file')}
                                     </span>
                                 }
                                 footerRight={

@@ -9,3 +9,4 @@ frontend/dist
 info.txt
 .cursor/plans
 build/windows/installers/tmp
+.kilo

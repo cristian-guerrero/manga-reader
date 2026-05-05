@@ -64,6 +64,8 @@ export function GetFolderInfo(arg1:string):Promise<persistence.FolderInfo>;
 
 export function GetFolderInfoShallow(arg1:string):Promise<persistence.FolderInfo>;
 
+export function GetFolderNavigation(arg1:string):Promise<explorer.FolderNavigation>;
+
 export function GetHistory():Promise<Array<persistence.HistoryEntry>>;
 
 export function GetHistoryEntry(arg1:string):Promise<persistence.HistoryEntry>;
@@ -122,7 +124,7 @@ export function SaveSettings(arg1:persistence.Settings):Promise<void>;
 
 export function SaveTabs(arg1:persistence.TabsData):Promise<void>;
 
-export function SaveViewerState(arg1:string,arg2:number,arg3:number):Promise<void>;
+export function SaveViewerState(arg1:string,arg2:number,arg3:number,arg4:number):Promise<void>;
 
 export function SaveWindowState():Promise<void>;
 

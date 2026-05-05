@@ -12,6 +12,7 @@ interface UseViewerHistoryOptions {
     currentIndex: number;
     scrollPosition: number; // 0-1 percentage
     isNoHistorySession: boolean;
+    verticalWidth: number;
 }
 
 export function useViewerHistory({
@@ -20,6 +21,7 @@ export function useViewerHistory({
     currentIndex,
     scrollPosition,
     isNoHistorySession,
+    verticalWidth,
 }: UseViewerHistoryOptions) {
     const saveProgress = useCallback(async (customScrollPosition?: number) => {
         if (!currentFolder || images.length === 0 || isNoHistorySession) {
@@ -41,11 +43,13 @@ export function useViewerHistory({
                 totalImages: images.length,
                 lastRead: new Date().toISOString(),
             });
+            // Sync viewer state to backend
+            await AppAPI.saveViewerState(currentFolder.path, currentIndex, verticalWidth, historyScrollPos);
             console.log(`[useViewerHistory] Saved progress: index=${currentIndex}, scrollPos=${historyScrollPos}`);
         } catch (error) {
             console.error('[useViewerHistory] Failed to save progress:', error);
         }
-    }, [currentFolder, images, currentIndex, scrollPosition, isNoHistorySession]);
+    }, [currentFolder, images, currentIndex, scrollPosition, isNoHistorySession, verticalWidth]);
 
     return { saveProgress };
 }

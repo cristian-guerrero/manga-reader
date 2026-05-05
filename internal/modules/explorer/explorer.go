@@ -344,15 +344,31 @@ func (m *Module) GetBaseFolders() []BaseFolderEntry {
 
 // ExplorerEntry represents a file or folder in the explorer
 type ExplorerEntry struct {
-	Path         string `json:"path"`
-	Name         string `json:"name"`
-	IsDirectory  bool   `json:"isDirectory"`
-	HasImages    bool   `json:"hasImages"`
-	ImageCount   int    `json:"imageCount"`
-	CoverImage   string `json:"coverImage"` // Path to first image if available
-	ThumbnailURL string `json:"thumbnailUrl"`
-	Size         int64  `json:"size"`
-	LastModified int64  `json:"lastModified"`
+	Path              string `json:"path"`
+	Name              string `json:"name"`
+	IsDirectory       bool   `json:"isDirectory"`
+	HasImages         bool   `json:"hasImages"`
+	ImageCount        int    `json:"imageCount"`
+	SubdirectoryCount int    `json:"subdirectoryCount"`
+	CoverImage        string `json:"coverImage"` // Path to first image if available
+	ThumbnailURL      string `json:"thumbnailUrl"`
+	Size              int64  `json:"size"`
+	LastModified      int64  `json:"lastModified"`
+}
+
+// FolderNavigation represents previous/next folder navigation for explorer
+type FolderNavigation struct {
+	PrevFolder   *FolderInfo `json:"prevFolder,omitempty"`
+	NextFolder   *FolderInfo `json:"nextFolder,omitempty"`
+	ParentPath   string      `json:"parentPath"`
+	CurrentIndex int         `json:"currentIndex"`
+	TotalFolders int         `json:"totalFolders"`
+}
+
+// FolderInfo represents a folder with basic info for navigation
+type FolderInfo struct {
+	Path string `json:"path"`
+	Name string `json:"name"`
 }
 
 // ListDirectory returns contents of a directory for exploration
@@ -377,6 +393,7 @@ func (m *Module) ListDirectory(path string) ([]ExplorerEntry, error) {
 		var hasImages bool
 		var coverImage string
 		var thumbnailURL string
+		var subdirCount int
 
 		if isDir {
 			// Use optimized search (shallow first, then recursive)
@@ -392,6 +409,7 @@ func (m *Module) ListDirectory(path string) ([]ExplorerEntry, error) {
 			// For count, we use shallow count (only immediate directory images)
 			count := m.fileLoader.GetShallowImageCount(fullPath)
 			imageCount = count
+			subdirCount = m.fileLoader.GetSubdirectoryCount(fullPath)
 
 			if hasImages {
 				coverImage = imagePath
@@ -414,15 +432,16 @@ func (m *Module) ListDirectory(path string) ([]ExplorerEntry, error) {
 		}
 
 		result = append(result, ExplorerEntry{
-			Path:         fullPath,
-			Name:         entry.Name(),
-			IsDirectory:  isDir,
-			HasImages:    hasImages,
-			ImageCount:   imageCount,
-			CoverImage:   coverImage,
-			ThumbnailURL: thumbnailURL,
-			Size:         info.Size(),
-			LastModified: info.ModTime().Unix(),
+			Path:              fullPath,
+			Name:              entry.Name(),
+			IsDirectory:       isDir,
+			HasImages:         hasImages,
+			ImageCount:        imageCount,
+			SubdirectoryCount: subdirCount,
+			CoverImage:        coverImage,
+			ThumbnailURL:      thumbnailURL,
+			Size:              info.Size(),
+			LastModified:      info.ModTime().Unix(),
 		})
 	}
 
@@ -435,6 +454,77 @@ func (m *Module) ListDirectory(path string) ([]ExplorerEntry, error) {
 	})
 
 	return result, nil
+}
+
+// GetFolderNavigation returns prev/next folder for a given folder path within its parent directory
+func (m *Module) GetFolderNavigation(folderPath string) *FolderNavigation {
+	// Get parent directory
+	parentPath := filepath.Dir(folderPath)
+
+	// List parent directory contents
+	entries, err := os.ReadDir(parentPath)
+	if err != nil {
+		return nil
+	}
+
+	// Find subdirectories that have images (same filter as ListDirectory)
+	var siblingFolders []FolderInfo
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+
+		subdirPath := filepath.Join(parentPath, entry.Name())
+
+		// Check if this subdirectory has images or subdirectories
+		_, hasImages := m.fileLoader.FindFirstImage(subdirPath)
+		hasSubdirs := m.fileLoader.HasSubdirectories(subdirPath)
+
+		if !hasImages && !hasSubdirs {
+			continue
+		}
+
+		siblingFolders = append(siblingFolders, FolderInfo{
+			Path: subdirPath,
+			Name: entry.Name(),
+		})
+	}
+
+	// Sort folders alphabetically (same as ListDirectory)
+	sort.Slice(siblingFolders, func(i, j int) bool {
+		return strings.ToLower(siblingFolders[i].Name) < strings.ToLower(siblingFolders[j].Name)
+	})
+
+	// Find current folder index
+	currentIndex := -1
+	for i, folder := range siblingFolders {
+		if folder.Path == folderPath {
+			currentIndex = i
+			break
+		}
+	}
+
+	if currentIndex == -1 || len(siblingFolders) <= 1 {
+		return nil
+	}
+
+	nav := &FolderNavigation{
+		ParentPath:   parentPath,
+		CurrentIndex: currentIndex,
+		TotalFolders: len(siblingFolders),
+	}
+
+	if currentIndex > 0 {
+		prev := siblingFolders[currentIndex-1]
+		nav.PrevFolder = &prev
+	}
+
+	if currentIndex < len(siblingFolders)-1 {
+		next := siblingFolders[currentIndex+1]
+		nav.NextFolder = &next
+	}
+
+	return nav
 }
 
 // fileExists checks if a file exists and is not a directory
