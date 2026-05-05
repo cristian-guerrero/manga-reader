@@ -113,19 +113,23 @@ export function useViewerFolderLoading({
                     // Prioritization logic for target index
                     if (isRestored && savedViewerState && savedViewerState.currentIndex >= 0 && savedViewerState.currentIndex < imgs.length) {
                         targetIndex = savedViewerState.currentIndex;
-                        console.log(`[useViewerFolderLoading] Restoring from BACKEND state (ignoring params): index=${targetIndex}`);
-                    } else if (savedViewerState && savedViewerState.currentIndex >= 0 && savedViewerState.currentIndex < imgs.length) {
-                        targetIndex = savedViewerState.currentIndex;
-                        console.log(`[useViewerFolderLoading] Resuming from BACKEND state (ignoring targetPath): index=${targetIndex}`);
+                        console.log(`[useViewerFolderLoading] Restoring from BACKEND state (tab restoration): index=${targetIndex}`);
                     } else if (targetPath && !isRestored) {
                         const pathIndex = imgs.findIndex((img) => img.path === targetPath);
                         if (pathIndex >= 0) {
                             targetIndex = pathIndex;
                             console.log(`[useViewerFolderLoading] Starting from TARGET PATH: ${targetIndex} (${targetPath})`);
+                        } else if (savedViewerState && savedViewerState.currentIndex >= 0 && savedViewerState.currentIndex < imgs.length) {
+                            // Fallback to saved state if targetPath not found
+                            targetIndex = savedViewerState.currentIndex;
+                            console.log(`[useViewerFolderLoading] TARGET PATH not found, resuming from BACKEND state: index=${targetIndex}`);
                         }
                     } else if (explicitStartIndex >= 0 && explicitStartIndex < imgs.length && !isRestored) {
                         targetIndex = explicitStartIndex;
                         console.log(`[useViewerFolderLoading] Starting from EXPLICIT INDEX: ${targetIndex}`);
+                    } else if (savedViewerState && savedViewerState.currentIndex >= 0 && savedViewerState.currentIndex < imgs.length) {
+                        targetIndex = savedViewerState.currentIndex;
+                        console.log(`[useViewerFolderLoading] Resuming from BACKEND state: index=${targetIndex}`);
                     } else if (historyEntry && historyEntry.lastImageIndex >= 0 && historyEntry.lastImageIndex < imgs.length) {
                         targetIndex = historyEntry.lastImageIndex;
                         console.log(`[useViewerFolderLoading] Resuming from history index: ${targetIndex}`);
