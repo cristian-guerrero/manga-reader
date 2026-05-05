@@ -2,7 +2,7 @@
 
 A premium desktop manga viewer and downloader application built with Wails, React, and Go. High performance, beautiful aesthetics, and smooth experience.
 
-![Manga Visor](https://img.shields.io/badge/version-1.1.0-blue.svg)
+![Manga Visor](https://img.shields.io/badge/version-1.0.5-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 
@@ -10,15 +10,20 @@ A premium desktop manga viewer and downloader application built with Wails, Reac
 
 ### 📥 Downloader
 - **High-speed Downloader** - Multi-threaded image downloading.
-- **Supported Sites** - Integrated support for:
+- **Supported Sites** - Integrated support for 22 sites:
   - **Hitomi.la**
   - **MangaDex.org**
   - **nHentai.net**
   - **nHentai.xxx**
+  - **nHentai.com**
+  - **nHentai.website**
   - **ManhwaWeb.com**
   - **ZonaTMO.com**
   - **Hentaiera.com**
+  - **HentaiRead.io**
+  - **Hentai2Read.com**
   - **IMHentai.xxx**
+  - **IMHentai.to**
   - **Hentaivox.com**
   - **Manga18.club**
   - **Comics18.org**
@@ -84,7 +89,7 @@ A premium desktop manga viewer and downloader application built with Wails, Reac
 ## 🚀 Getting Started
 
 ### Prerequisites
-- [Go 1.24+](https://golang.org/dl/)
+- [Go 1.24.0](https://golang.org/dl/)
 - [Node.js 20+](https://nodejs.org/)
 - [Wails CLI](https://wails.io/docs/gettingstarted/installation)
 
@@ -103,14 +108,14 @@ wails dev
 ```
 
 ### 📦 Building & Releases
-The project uses GitHub Actions for **multiplatform builds**. When a new tag (e.g., `v1.1.0`) is pushed, builds are automatically generated for:
+The project uses GitHub Actions for **multiplatform builds**. When a new tag (e.g., `v1.0.5`) is pushed, builds are automatically generated for:
 - **Windows** (AMD64)
 - **Linux** (AMD64 - requires `libgtk-3-dev` and `libwebkit2gtk-4.1-dev`)
 - **macOS** (Universal/Silicon support)
 
 To build manually:
 ```bash
-wails build -platform windows/amd64
+wails build -platform windows/amd64 -name manga-visor2
 ```
 
 ## 🎮 Keyboard Shortcuts
@@ -144,7 +149,7 @@ wails build -platform windows/amd64
 - **Framework**: [Wails v2](https://wails.io/) (Go + Webview)
 - **Backend**: Go 1.24 (High performance logic and file handling)
 - **Frontend**: React 18 + TypeScript + Vite
-- **Styling**: Vanilla CSS (Premium, custom-crafted designs)
+- **Styling**: Tailwind CSS (Premium, custom-crafted designs)
 - **State Management**: Zustand
 - **Drag & Drop**: @dnd-kit
 - **i18n**: react-i18next
