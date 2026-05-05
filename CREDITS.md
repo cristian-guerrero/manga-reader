@@ -37,4 +37,21 @@ Manga Visor is made possible by the following open source projects:
   Internationalization framework.
 
 - **[Vite](https://vitejs.dev/)** - MIT License
-  Next Generation Frontend Tooling.
+   Next Generation Frontend Tooling.
+
+## Colorizer Module
+
+- **[Manga-Colorizer](https://github.com/cristian-guerrero/Manga-Colorizer)** - Custom License
+   The colorizer backend providing AI-based manga colorization, upscaling, and denoising.
+
+- **[python-build-standalone](https://github.com/indygreg/python-build-standalone)** - Python License
+   Standalone Python distributions used for the embedded Python runtime.
+
+- **[PyTorch](https://pytorch.org/)** - BSD 3-Clause License
+   Machine learning framework for the colorizer's neural network inference.
+
+- **[einops](https://github.com/arogozhnikov/einops)** - MIT License
+   Flexible tensor operations for readable and reliable code.
+
+- **AlacGAN Model**
+   Generative adversarial network model for manga colorization.
