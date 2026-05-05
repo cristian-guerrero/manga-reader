@@ -100,13 +100,14 @@ export function TitleBar({ title }: TitleBarProps) {
 
     return (
         <header
-            className="flex items-center justify-between select-none theme-transition wails-drag"
+            className="flex items-center justify-between select-none theme-transition"
             style={{
                 height: 'var(--titlebar-height)',
                 backgroundColor: 'var(--color-surface-secondary)',
                 color: 'var(--color-titlebar-text)',
-                borderBottom: '1px solid var(--color-border-primary)'
-            }}
+                borderBottom: '1px solid var(--color-border-primary)',
+                '--wails-draggable': 'drag'
+            } as any}
         >
             {/* Left side: Tabs starting with a small margin */}
             <div className="flex items-center flex-1 h-full min-w-0">
@@ -121,19 +122,23 @@ export function TitleBar({ title }: TitleBarProps) {
             </div>
 
             {/* Window Controls */}
-            <div className="flex items-center h-full no-drag">
+            <div
+                className="flex items-center h-full"
+                style={{ '--wails-draggable': 'no-drag' } as any}
+            >
                 {/* Minimize */}
-                <Tooltip content={t('common.minimize') || "Minimize"} placement="bottom" className="h-full no-drag">
+                <Tooltip content={t('common.minimize') || "Minimize"} placement="bottom" className="h-full">
                     <button
                         onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
                             handleMinimize();
                         }}
-                        className="flex items-center justify-center w-12 h-full transition-colors hover:bg-white/5 hover:text-text-primary no-drag"
+                        className="flex items-center justify-center w-12 h-full transition-colors hover:bg-white/5 hover:text-text-primary"
                         style={{
                             color: 'var(--color-text-secondary)',
-                        }}
+                            '--wails-draggable': 'no-drag'
+                        } as any}
                         aria-label="Minimize"
                     >
                         <MinimizeIcon />
@@ -141,17 +146,18 @@ export function TitleBar({ title }: TitleBarProps) {
                 </Tooltip>
 
                 {/* Maximize/Restore */}
-                <Tooltip content={isMaximized ? (t('common.restore') || "Restore") : (t('common.maximize') || "Maximize")} placement="bottom" className="h-full no-drag">
+                <Tooltip content={isMaximized ? (t('common.restore') || "Restore") : (t('common.maximize') || "Maximize")} placement="bottom" className="h-full">
                     <button
                         onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
                             handleMaximize();
                         }}
-                        className="flex items-center justify-center w-12 h-full transition-colors hover:bg-white/5 hover:text-text-primary no-drag"
+                        className="flex items-center justify-center w-12 h-full transition-colors hover:bg-white/5 hover:text-text-primary"
                         style={{
                             color: 'var(--color-text-secondary)',
-                        }}
+                            '--wails-draggable': 'no-drag'
+                        } as any}
                         aria-label={isMaximized ? 'Restore' : 'Maximize'}
                     >
                         {isMaximized ? <RestoreIcon /> : <MaximizeIcon />}
@@ -159,17 +165,18 @@ export function TitleBar({ title }: TitleBarProps) {
                 </Tooltip>
 
                 {/* Close */}
-                <Tooltip content={t('common.close') || "Close"} placement="bottom" className="h-full no-drag">
+                <Tooltip content={t('common.close') || "Close"} placement="bottom" className="h-full">
                     <button
                         onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
                             handleClose();
                         }}
-                        className="flex items-center justify-center w-12 h-full transition-colors hover:bg-red-600 hover:text-white no-drag"
+                        className="flex items-center justify-center w-12 h-full transition-colors hover:bg-red-600 hover:text-white"
                         style={{
                             color: 'var(--color-text-secondary)',
-                        }}
+                            '--wails-draggable': 'no-drag'
+                        } as any}
                         aria-label="Close"
                     >
                         <CloseIcon />
