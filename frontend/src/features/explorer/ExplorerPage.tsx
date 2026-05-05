@@ -244,19 +244,39 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
                                     </span>
                                 }
                                 footerRight={
-                                    entry.hasImages && (
-                                        <Tooltip content={t('explorer.openInViewer')} placement="left">
-                                            <button
-                                                onClick={(e) => navigation.handleOpenInViewer(entry.path, e)}
-                                                className="p-1.5 rounded-full bg-accent text-white hover:bg-accent-hover transform hover:scale-110 transition-all opacity-0 group-hover/tile:opacity-100"
-                                                aria-label={t('explorer.openInViewer')}
-                                            >
-                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                                                    <path d="M8 5v14l11-7z" />
-                                                </svg>
-                                            </button>
-                                        </Tooltip>
-                                    )
+                                    <div className="flex items-center gap-1">
+                                        {entry.isDirectory && entry.hasImages && entry.subdirectoryCount === 0 && (
+                                            <Tooltip content={t('explorer.openInColorizer')} placement="left">
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        navigate('colorizer', { folderPath: entry.path });
+                                                    }}
+                                                    className="p-1.5 rounded-full bg-purple-500 text-white hover:bg-purple-600 transform hover:scale-110 transition-all opacity-0 group-hover/tile:opacity-100"
+                                                    aria-label={t('explorer.openInColorizer')}
+                                                >
+                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                        <circle cx="12" cy="12" r="10" />
+                                                        <path d="M12 2a10 10 0 0 1 0 20 10 10 0 0 1 0-20" />
+                                                        <circle cx="12" cy="12" r="4" />
+                                                    </svg>
+                                                </button>
+                                            </Tooltip>
+                                        )}
+                                        {entry.hasImages && (
+                                            <Tooltip content={t('explorer.openInViewer')} placement="left">
+                                                <button
+                                                    onClick={(e) => navigation.handleOpenInViewer(entry.path, e)}
+                                                    className="p-1.5 rounded-full bg-accent text-white hover:bg-accent-hover transform hover:scale-110 transition-all opacity-0 group-hover/tile:opacity-100"
+                                                    aria-label={t('explorer.openInViewer')}
+                                                >
+                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                                        <path d="M8 5v14l11-7z" />
+                                                    </svg>
+                                                </button>
+                                            </Tooltip>
+                                        )}
+                                    </div>
                                 }
                             />
                         </GridItem>

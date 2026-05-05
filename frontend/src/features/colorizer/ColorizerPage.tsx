@@ -31,7 +31,7 @@ interface ColorizeSettings {
 export function ColorizerPage() {
     const { t } = useTranslation();
     const { showToast } = useToast();
-    const { setIsProcessing } = useNavigation();
+    const { navigate, params, setParams, setIsProcessing } = useNavigation();
 
     const [status, setStatus] = useState<colorizer.InstallProgress>({
         status: 'not_installed',
@@ -174,6 +174,40 @@ export function ColorizerPage() {
             OnFileDropOff();
         };
     }, [showToast, currentImage]);
+
+    useEffect(() => {
+        const folderPath = params?.folderPath;
+        if (!folderPath || droppedImages.length > 0) return;
+
+        const loadFolderImages = async () => {
+            try {
+                setIsLoadingImages(true);
+                const entries = await AppBackend.ExploreFolder(folderPath);
+                const newImages: ImageFile[] = [];
+                for (const entry of entries) {
+                    if (!entry.isDirectory && entry.hasImages) {
+                        newImages.push({
+                            path: entry.coverImage || entry.path,
+                            name: entry.name,
+                        });
+                    }
+                }
+                if (newImages.length > 0) {
+                    setDroppedImages(newImages);
+                    setCurrentImage(newImages[0].path);
+                    showToast(`Loaded ${newImages.length} images from folder`, 'success');
+                }
+            } catch (e) {
+                console.error('Failed to load folder images:', e);
+                showToast('Failed to load folder images', 'error');
+            } finally {
+                setIsLoadingImages(false);
+            }
+        };
+
+        loadFolderImages();
+        setParams({});
+    }, [params?.folderPath]);
 
     const handleStartServer = useCallback(async () => {
         try {
