@@ -232,6 +232,7 @@
         "folder": "Carpeta",
         "file": "Archivo",
         "images": "imágenes",
+        "subfolders": "carpetas",
         "noFoldersAdded": "No hay carpetas agregadas aún",
         "addFolderToStart": "Agrega una carpeta base para comenzar a explorar",
         "searchPlaceholder": "Buscar por nombre...",

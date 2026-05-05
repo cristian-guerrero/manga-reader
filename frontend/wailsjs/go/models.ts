@@ -164,6 +164,7 @@ export namespace explorer {
 	    isDirectory: boolean;
 	    hasImages: boolean;
 	    imageCount: number;
+	    subdirectoryCount: number;
 	    coverImage: string;
 	    thumbnailUrl: string;
 	    size: number;
@@ -180,6 +181,7 @@ export namespace explorer {
 	        this.isDirectory = source["isDirectory"];
 	        this.hasImages = source["hasImages"];
 	        this.imageCount = source["imageCount"];
+	        this.subdirectoryCount = source["subdirectoryCount"];
 	        this.coverImage = source["coverImage"];
 	        this.thumbnailUrl = source["thumbnailUrl"];
 	        this.size = source["size"];

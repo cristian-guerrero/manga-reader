@@ -289,6 +289,22 @@ func (fl *FileLoader) HasSubdirectories(folderPath string) bool {
 	return false
 }
 
+// GetSubdirectoryCount returns the count of subdirectories in the specified folder (non-recursive)
+func (fl *FileLoader) GetSubdirectoryCount(folderPath string) int {
+	entries, err := os.ReadDir(folderPath)
+	if err != nil {
+		return 0
+	}
+
+	count := 0
+	for _, entry := range entries {
+		if entry.IsDir() {
+			count++
+		}
+	}
+	return count
+}
+
 // LoadImageBytes loads an image and returns the raw bytes
 func (fl *FileLoader) LoadImageBytes(imagePath string) ([]byte, string, error) {
 	// Check if file exists

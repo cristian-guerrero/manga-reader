@@ -43,6 +43,7 @@ export interface ExplorerEntry {
     isDirectory: boolean;
     hasImages: boolean;
     imageCount: number;
+    subdirectoryCount: number;
     coverImage: string;
     thumbnailUrl?: string;
     size: number;

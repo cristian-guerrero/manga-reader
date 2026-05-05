@@ -344,15 +344,16 @@ func (m *Module) GetBaseFolders() []BaseFolderEntry {
 
 // ExplorerEntry represents a file or folder in the explorer
 type ExplorerEntry struct {
-	Path         string `json:"path"`
-	Name         string `json:"name"`
-	IsDirectory  bool   `json:"isDirectory"`
-	HasImages    bool   `json:"hasImages"`
-	ImageCount   int    `json:"imageCount"`
-	CoverImage   string `json:"coverImage"` // Path to first image if available
-	ThumbnailURL string `json:"thumbnailUrl"`
-	Size         int64  `json:"size"`
-	LastModified int64  `json:"lastModified"`
+	Path              string `json:"path"`
+	Name              string `json:"name"`
+	IsDirectory       bool   `json:"isDirectory"`
+	HasImages         bool   `json:"hasImages"`
+	ImageCount        int    `json:"imageCount"`
+	SubdirectoryCount int    `json:"subdirectoryCount"`
+	CoverImage        string `json:"coverImage"` // Path to first image if available
+	ThumbnailURL      string `json:"thumbnailUrl"`
+	Size              int64  `json:"size"`
+	LastModified      int64  `json:"lastModified"`
 }
 
 // FolderNavigation represents previous/next folder navigation for explorer
@@ -392,6 +393,7 @@ func (m *Module) ListDirectory(path string) ([]ExplorerEntry, error) {
 		var hasImages bool
 		var coverImage string
 		var thumbnailURL string
+		var subdirCount int
 
 		if isDir {
 			// Use optimized search (shallow first, then recursive)
@@ -407,6 +409,7 @@ func (m *Module) ListDirectory(path string) ([]ExplorerEntry, error) {
 			// For count, we use shallow count (only immediate directory images)
 			count := m.fileLoader.GetShallowImageCount(fullPath)
 			imageCount = count
+			subdirCount = m.fileLoader.GetSubdirectoryCount(fullPath)
 
 			if hasImages {
 				coverImage = imagePath
@@ -429,15 +432,16 @@ func (m *Module) ListDirectory(path string) ([]ExplorerEntry, error) {
 		}
 
 		result = append(result, ExplorerEntry{
-			Path:         fullPath,
-			Name:         entry.Name(),
-			IsDirectory:  isDir,
-			HasImages:    hasImages,
-			ImageCount:   imageCount,
-			CoverImage:   coverImage,
-			ThumbnailURL: thumbnailURL,
-			Size:         info.Size(),
-			LastModified: info.ModTime().Unix(),
+			Path:              fullPath,
+			Name:              entry.Name(),
+			IsDirectory:       isDir,
+			HasImages:         hasImages,
+			ImageCount:        imageCount,
+			SubdirectoryCount: subdirCount,
+			CoverImage:        coverImage,
+			ThumbnailURL:      thumbnailURL,
+			Size:              info.Size(),
+			LastModified:      info.ModTime().Unix(),
 		})
 	}
 

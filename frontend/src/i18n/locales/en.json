@@ -236,6 +236,7 @@
         "folder": "Folder",
         "file": "File",
         "images": "images",
+        "subfolders": "folders",
         "noFoldersAdded": "No folders added yet",
         "addFolderToStart": "Add a base folder to start exploring",
         "searchPlaceholder": "Search by name...",
