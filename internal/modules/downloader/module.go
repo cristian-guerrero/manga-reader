@@ -58,6 +58,7 @@ func NewModule(pm *persistence.DownloaderManager, sm *persistence.SettingsManage
 		"nhentai.xxx":     2,
 		"nhentai.com":     2,
 		"e-hentai.org":    3,
+		"mangatoon.mobi":  3,
 			"imhentai.xxx":    2,
 			"imhentai.to":     2,
 			"manga18.club":    4,
@@ -90,9 +91,10 @@ func NewModule(pm *persistence.DownloaderManager, sm *persistence.SettingsManage
 			&SubManhwaDownloader{},
 			&HentaiforceDownloader{},
 			&Hentai2ReadDownloader{},
-			&LHentaiDownloader{},
-			&HentaiReadDownloader{},
-		},
+	&LHentaiDownloader{},
+		&HentaiReadDownloader{},
+		&MangaToonDownloader{},
+	},
 	}
 }
 
