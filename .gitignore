@@ -10,3 +10,5 @@ info.txt
 .cursor/plans
 build/windows/installers/tmp
 .kilo
+.raggrep/
+.playwright-mcp
