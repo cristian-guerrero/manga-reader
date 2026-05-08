@@ -20,7 +20,7 @@ Wails v2 (Go 1.24 backend, React 18 + TypeScript + Vite frontend). State: Zustan
 - **Colorizer**: Python/Flask server for image processing; managed by `internal/modules/colorizer/`
 
 ## Data Storage
-`~/.manga-visor/` (Windows: `%APPDATA%/manga-visor/`). JSON files: `settings.json`, `downloader.json`, `explorer.json`, `history.json`, `library.json`, `series.json`, `tabs.json`, `orders.json`. Cache: `cache/`, downloads: `downloads/`, temp: `temp/`.
+`~/.manga-visor/` (Windows: `%USERPROFILE%\.manga-visor\`). JSON files: `settings.json`, `downloader.json`, `explorer.json`, `history.json`, `library.json`, `series.json`, `tabs.json`, `orders.json`. Cache: `cache/`, downloads: `downloads/`, temp: `temp/`.
 
 ## Conventions
 - **Commits**: English only, conventional format (`type: description`), no Spanish characters (see `.cursorrules`)
