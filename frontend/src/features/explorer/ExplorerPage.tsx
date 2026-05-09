@@ -179,8 +179,8 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
             )}
 
             {/* Content */}
-            <div className="flex-1 overflow-auto pr-2">
-                <GridContainer key={explorerStateHook.currentPath || 'root'}>
+            <div className="flex-1 overflow-auto pr-2" key={explorerStateHook.currentPath || 'root'}>
+                <GridContainer>
                     {/* Base Folders View */}
                     {!explorerStateHook.currentPath && search.sortedBaseFolders.map((folder) => (
                         <GridItem key={folder.path}>
