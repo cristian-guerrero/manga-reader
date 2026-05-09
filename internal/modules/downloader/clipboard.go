@@ -89,6 +89,12 @@ func (m *Module) isValidURL(text string) bool {
 	if strings.Contains(text, "lhentai.com") {
 		return strings.Contains(text, "/g/")
 	}
+	if strings.Contains(text, "3hentai.net") {
+		return strings.Contains(text, "/d/")
+	}
+	if strings.Contains(text, "lectorhentai.com") {
+		return strings.Contains(text, "/manga/") || strings.Contains(text, "/read/")
+	}
 
 	supported := []string{
 		"hitomi.la",
@@ -107,6 +113,7 @@ func (m *Module) isValidURL(text string) bool {
 		"ehentai.org",
 		"submanhwa.com",
 		"hentairead.io",
+		"mangatoon.mobi",
 	}
 
 	for _, domain := range supported {

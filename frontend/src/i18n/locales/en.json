@@ -233,6 +233,7 @@
         "noFolders": "No base folders added",
         "startMessage": "Add a base folder to start exploring your files recursively.",
         "openInViewer": "Open in Viewer",
+        "openInColorizer": "Open in Colorizer",
         "folder": "Folder",
         "file": "File",
         "images": "images",

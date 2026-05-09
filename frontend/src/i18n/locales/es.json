@@ -229,6 +229,7 @@
         "noFolders": "No hay carpetas base agregadas",
         "startMessage": "Agrega una carpeta base para comenzar a explorar tus archivos recursivamente.",
         "openInViewer": "Abrir en Visor",
+        "openInColorizer": "Abrir en Colorizador",
         "folder": "Carpeta",
         "file": "Archivo",
         "images": "imágenes",

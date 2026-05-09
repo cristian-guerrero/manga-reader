@@ -31,7 +31,7 @@ interface ColorizeSettings {
 export function ColorizerPage() {
     const { t } = useTranslation();
     const { showToast } = useToast();
-    const { setIsProcessing } = useNavigation();
+    const { navigate, params, setParams, setIsProcessing } = useNavigation();
 
     const [status, setStatus] = useState<colorizer.InstallProgress>({
         status: 'not_installed',
@@ -61,6 +61,7 @@ export function ColorizerPage() {
     const [currentProcessingImage, setCurrentProcessingImage] = useState<string | null>(null);
 
     const statusPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const cancelColorizeRef = useRef(false);
 
     // Poll status updates from backend
     useEffect(() => {
@@ -175,6 +176,40 @@ export function ColorizerPage() {
         };
     }, [showToast, currentImage]);
 
+    useEffect(() => {
+        const folderPath = params?.folderPath;
+        if (!folderPath || droppedImages.length > 0) return;
+
+        const loadFolderImages = async () => {
+            try {
+                setIsLoadingImages(true);
+                const entries = await AppBackend.ExploreFolder(folderPath);
+                const newImages: ImageFile[] = [];
+                for (const entry of entries) {
+                    if (!entry.isDirectory && entry.hasImages) {
+                        newImages.push({
+                            path: entry.coverImage || entry.path,
+                            name: entry.name,
+                        });
+                    }
+                }
+                if (newImages.length > 0) {
+                    setDroppedImages(newImages);
+                    setCurrentImage(newImages[0].path);
+                    showToast(`Loaded ${newImages.length} images from folder`, 'success');
+                }
+            } catch (e) {
+                console.error('Failed to load folder images:', e);
+                showToast('Failed to load folder images', 'error');
+            } finally {
+                setIsLoadingImages(false);
+            }
+        };
+
+        loadFolderImages();
+        setParams({});
+    }, [params?.folderPath]);
+
     const handleStartServer = useCallback(async () => {
         try {
             setIsStarting(true);
@@ -214,7 +249,6 @@ export function ColorizerPage() {
 
         try {
             setIsColorizing(true);
-            setIsProcessing(true);
             setCurrentProcessingImage(currentImage?.split(/[\\/]/).pop() || 'current image');
 
             const result = await AppBackend.ColorizeImage(
@@ -286,14 +320,21 @@ export function ColorizerPage() {
             return;
         }
 
+        cancelColorizeRef.current = false;
+        let wasCancelled = false;
+
         try {
             setIsColorizingAll(true);
-            setIsProcessing(true);
             setColorizeAllProgress({ current: 0, total: droppedImages.length });
 
             const newCache = { ...colorizedCache };
 
             for (let i = 0; i < droppedImages.length; i++) {
+                if (cancelColorizeRef.current) {
+                    wasCancelled = true;
+                    break;
+                }
+
                 const img = droppedImages[i];
                 setColorizeAllProgress({ current: i + 1, total: droppedImages.length });
                 setCurrentProcessingImage(img.name);
@@ -320,8 +361,14 @@ export function ColorizerPage() {
             }
 
             setColorizedCache(newCache);
-            setCurrentProcessingImage(null);
-            showToast(`Colorized ${droppedImages.length} image(s)`, 'success');
+
+            if (wasCancelled) {
+                const processedCount = colorizeAllProgress.current;
+                showToast(`Cancelled after ${processedCount} image(s)`, 'info');
+            } else {
+                setCurrentProcessingImage(null);
+                showToast(`Colorized ${droppedImages.length} image(s)`, 'success');
+            }
 
             try {
                 await AppBackend.ColorizerRestartServer();
@@ -338,7 +385,11 @@ export function ColorizerPage() {
             setColorizeAllProgress({ current: 0, total: 0 });
             setCurrentProcessingImage(null);
         }
-    }, [droppedImages, isServerRunning, settings, colorizedCache, showToast, setIsProcessing, t]);
+    }, [droppedImages, isServerRunning, settings, colorizedCache, showToast, setIsProcessing, t, colorizeAllProgress.current]);
+
+    const handleCancelColorize = useCallback(() => {
+        cancelColorizeRef.current = true;
+    }, []);
 
     const handleDownloadAll = useCallback(async () => {
         const colorizedImages = droppedImages.filter(img => colorizedCache[img.path]);
@@ -611,19 +662,7 @@ export function ColorizerPage() {
                                         </div>
                                     )}
 
-                                    {status.percent !== undefined && status.percent > 0 && (
-                                        <div className="mt-4 mb-4">
-                                            <div className="text-blue-400 font-semibold text-lg mb-2">
-                                                {Math.round(status.percent)}%
-                                            </div>
-                                            <div className="w-64 h-3 bg-gray-700 rounded-full mx-auto overflow-hidden">
-                                                <div
-                                                    className="h-full bg-blue-500 rounded-full transition-all duration-300"
-                                                    style={{ width: `${status.percent}%` }}
-                                                />
-                                            </div>
-                                        </div>
-                                    )}
+                                    
 
                                     {isColorizingAll && (
                                         <div className="mt-4">
@@ -636,6 +675,16 @@ export function ColorizerPage() {
                                                     style={{ width: `${colorizeAllProgress.total > 0 ? (colorizeAllProgress.current / colorizeAllProgress.total) * 100 : 0}%` }}
                                                 />
                                             </div>
+                                            <button
+                                                onClick={handleCancelColorize}
+                                                className="mt-4 px-6 py-2 rounded-lg text-sm font-semibold transition-all hover:scale-[1.02] active:scale-[0.98]"
+                                                style={{
+                                                    backgroundColor: 'var(--color-danger)',
+                                                    color: 'white',
+                                                }}
+                                            >
+                                                {t('common.cancel') || 'Cancel'}
+                                            </button>
                                         </div>
                                     )}
 

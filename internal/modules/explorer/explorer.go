@@ -476,11 +476,10 @@ func (m *Module) GetFolderNavigation(folderPath string) *FolderNavigation {
 
 		subdirPath := filepath.Join(parentPath, entry.Name())
 
-		// Check if this subdirectory has images or subdirectories
-		_, hasImages := m.fileLoader.FindFirstImage(subdirPath)
-		hasSubdirs := m.fileLoader.HasSubdirectories(subdirPath)
-
-		if !hasImages && !hasSubdirs {
+		// Check if this subdirectory has images in its immediate directory (shallow check)
+		// The viewer uses GetImagesShallow, so only folders with immediate images should be navigable
+		shallowImageCount := m.fileLoader.GetShallowImageCount(subdirPath)
+		if shallowImageCount == 0 {
 			continue
 		}
 
