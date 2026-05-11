@@ -18,6 +18,10 @@ var (
 // getDataDir returns the data directory for the application
 func getDataDir() string {
 	dataDirOnce.Do(func() {
+		// If dataDir is already set by tests, respect it
+		if dataDir != "" {
+			return
+		}
 		homeDir, err := os.UserHomeDir()
 		if err != nil {
 			homeDir = "."
@@ -62,6 +66,18 @@ func fileExists(filename string) bool {
 	filePath := filepath.Join(getDataDir(), filename)
 	_, err := os.Stat(filePath)
 	return err == nil
+}
+
+// SetTestDataDir overrides the data directory for testing. Returns a cleanup function.
+// This is only meant for use in tests.
+func SetTestDataDir(dir string) func() {
+	oldDir := dataDir
+	dataDir = dir
+	dataDirOnce = sync.Once{}
+	return func() {
+		dataDir = oldDir
+		dataDirOnce = sync.Once{}
+	}
 }
 
 // GetTempDir returns the temporary directory for archives

@@ -12,3 +12,4 @@ build/windows/installers/tmp
 .kilo
 .raggrep/
 .playwright-mcp
+.go-mcp
