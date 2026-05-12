@@ -7,6 +7,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigation } from "@hooks";
 import { useToast } from "@components/common/Toast";
+import { Tooltip } from "@shared/components";
 import * as AppBackend from "../../../wailsjs/go/main/App";
 import { OnFileDrop, OnFileDropOff } from "../../../wailsjs/runtime";
 import type { colorizer } from "../../../wailsjs/go/models";
@@ -824,51 +825,66 @@ export function ColorizerPage() {
           >
             {/* Settings */}
             <div className="flex items-center gap-4">
-              <label
-                className="flex items-center gap-2 text-sm cursor-pointer"
-                style={{ color: "var(--color-text-secondary)" }}
+              <Tooltip
+                content={t("colorizer.settings.colorize_desc")}
+                placement="top"
               >
-                <input
-                  type="checkbox"
-                  checked={settings.colorize}
-                  onChange={(e) =>
-                    setSettings((s) => ({ ...s, colorize: e.target.checked }))
-                  }
-                  className="rounded"
-                  disabled={isColorizing || isColorizingAll}
-                />
-                {t("colorizer.settings.colorize")}
-              </label>
-              <label
-                className="flex items-center gap-2 text-sm cursor-pointer"
-                style={{ color: "var(--color-text-secondary)" }}
+                <label
+                  className="flex items-center gap-2 text-sm cursor-pointer"
+                  style={{ color: "var(--color-text-secondary)" }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={settings.colorize}
+                    onChange={(e) =>
+                      setSettings((s) => ({ ...s, colorize: e.target.checked }))
+                    }
+                    className="rounded"
+                    disabled={isColorizing || isColorizingAll}
+                  />
+                  {t("colorizer.settings.colorize")}
+                </label>
+              </Tooltip>
+              <Tooltip
+                content={t("colorizer.settings.upscale_desc")}
+                placement="top"
               >
-                <input
-                  type="checkbox"
-                  checked={settings.upscale}
-                  onChange={(e) =>
-                    setSettings((s) => ({ ...s, upscale: e.target.checked }))
-                  }
-                  className="rounded"
-                  disabled={isColorizing || isColorizingAll}
-                />
-                {t("colorizer.settings.upscale")}
-              </label>
-              <label
-                className="flex items-center gap-2 text-sm cursor-pointer"
-                style={{ color: "var(--color-text-secondary)" }}
+                <label
+                  className="flex items-center gap-2 text-sm cursor-pointer"
+                  style={{ color: "var(--color-text-secondary)" }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={settings.upscale}
+                    onChange={(e) =>
+                      setSettings((s) => ({ ...s, upscale: e.target.checked }))
+                    }
+                    className="rounded"
+                    disabled={isColorizing || isColorizingAll}
+                  />
+                  {t("colorizer.settings.upscale")}
+                </label>
+              </Tooltip>
+              <Tooltip
+                content={t("colorizer.settings.denoise_desc")}
+                placement="top"
               >
-                <input
-                  type="checkbox"
-                  checked={settings.denoise}
-                  onChange={(e) =>
-                    setSettings((s) => ({ ...s, denoise: e.target.checked }))
-                  }
-                  className="rounded"
-                  disabled={isColorizing || isColorizingAll}
-                />
-                {t("colorizer.settings.denoise")}
-              </label>
+                <label
+                  className="flex items-center gap-2 text-sm cursor-pointer"
+                  style={{ color: "var(--color-text-secondary)" }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={settings.denoise}
+                    onChange={(e) =>
+                      setSettings((s) => ({ ...s, denoise: e.target.checked }))
+                    }
+                    className="rounded"
+                    disabled={isColorizing || isColorizingAll}
+                  />
+                  {t("colorizer.settings.denoise")}
+                </label>
+              </Tooltip>
             </div>
 
             {/* Buttons */}
