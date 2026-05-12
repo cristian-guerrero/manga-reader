@@ -55,6 +55,8 @@ export function ExploreFolder(arg1:string):Promise<Array<explorer.ExplorerEntry>
 
 export function FetchMangaInfo(arg1:string):Promise<downloader.SiteInfo>;
 
+export function GetAVIFStatus():Promise<string>;
+
 export function GetBaseFolders():Promise<Array<explorer.BaseFolderEntry>>;
 
 export function GetChapterNavigation(arg1:string):Promise<series.ChapterNavigation>;

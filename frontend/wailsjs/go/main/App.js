@@ -98,6 +98,10 @@ export function FetchMangaInfo(arg1) {
   return window['go']['main']['App']['FetchMangaInfo'](arg1);
 }
 
+export function GetAVIFStatus() {
+  return window['go']['main']['App']['GetAVIFStatus']();
+}
+
 export function GetBaseFolders() {
   return window['go']['main']['App']['GetBaseFolders']();
 }

@@ -223,7 +223,10 @@
     "clearCacheError": "Failed to clear cache. Please restart the app and try again.",
     "tabs": "Tabs",
     "tabMemorySaving": "Memory Saving Mode",
-    "tabMemorySavingDesc": "Unmount inactive tabs to save memory. Disable for instant tab switching."
+    "tabMemorySavingDesc": "Unmount inactive tabs to save memory. Disable for instant tab switching.",
+    "avifStatus": "AVIF Decoding",
+    "avifNative": "Native (Fast)",
+    "avifWasm": "WASM (Normal)"
   },
   "explorer": {
     "title": "Explorer",
