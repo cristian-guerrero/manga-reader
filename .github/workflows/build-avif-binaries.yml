@@ -373,7 +373,7 @@ jobs:
           gh release delete "$TAG" --repo "${{ github.repository }}" --yes 2>/dev/null || true
           gh api -X DELETE "/repos/${{ github.repository }}/git/refs/tags/$TAG" 2>/dev/null || true
 
-          # Create new release
+          # Create new release (without --draft, so it publishes immediately)
           gh release create "$TAG" \
             --repo "${{ github.repository }}" \
             --title "AVIF Native Binaries v1" \
