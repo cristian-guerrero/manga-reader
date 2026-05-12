@@ -62,6 +62,8 @@ type Settings struct {
 	RestoreTabs bool `json:"restoreTabs"`
 	// Saved tabs state (JSON string)
 	SavedTabs string `json:"savedTabs"`
+	// Generate thumbnails for images
+	GenerateThumbnails bool `json:"generateThumbnails"`
 }
 
 // DefaultSettings returns the default settings
@@ -104,6 +106,7 @@ func DefaultSettings() *Settings {
 		TabMemorySaving:      false,
 		RestoreTabs:          true,
 		SavedTabs:            "",
+		GenerateThumbnails:   false,
 	}
 }
 
@@ -350,6 +353,10 @@ func (sm *SettingsManager) Update(updates map[string]interface{}) error {
 		case "savedTabs":
 			if v, ok := value.(string); ok {
 				sm.settings.SavedTabs = v
+			}
+		case "generateThumbnails":
+			if v, ok := value.(bool); ok {
+				sm.settings.GenerateThumbnails = v
 			}
 		}
 

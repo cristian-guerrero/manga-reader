@@ -433,6 +433,7 @@ export namespace persistence {
 	    tabMemorySaving: boolean;
 	    restoreTabs: boolean;
 	    savedTabs: string;
+	    generateThumbnails: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new Settings(source);
@@ -468,6 +469,7 @@ export namespace persistence {
 	        this.tabMemorySaving = source["tabMemorySaving"];
 	        this.restoreTabs = source["restoreTabs"];
 	        this.savedTabs = source["savedTabs"];
+	        this.generateThumbnails = source["generateThumbnails"];
 	    }
 	}
 	export class Tab {

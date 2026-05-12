@@ -65,6 +65,8 @@
     "width": "Ancho",
     "goToPage": "Ir a Página",
     "enableHistory": "Habilitar Historial",
+    "generateThumbnails": "Generar Miniaturas",
+    "generateThumbnailsDesc": "Cuando está desactivado, se muestran las imágenes originales en lugar de miniaturas",
     "minImageSize": "Tamaño Mín de Imagen (KB)",
     "processDroppedFolders": "Añadir carpetas arrastradas a la librería y el historial",
     "thumbnails": "Miniaturas",
