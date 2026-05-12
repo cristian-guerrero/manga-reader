@@ -661,14 +661,15 @@ func sanitizeFilename(name string) string {
 	return res
 }
 
-// stripLeadingBrackets removes any leading text enclosed in square brackets,
-// like [Censored] or [Group Name (Author)], including the trailing whitespace.
-// This is used to clean up titles like "[Group] Real Title" -> "Real Title".
+// stripLeadingBrackets removes any leading text enclosed in square brackets [...]
+// or parentheses (...) from the beginning of the name, including trailing whitespace.
+// This cleans up titles like "[Group] Real Title", "(C96) [Group] Real Title",
+// or "(C96) [Group (Author)] Real Title".
 func stripLeadingBrackets(name string) string {
 	if name == "" {
 		return ""
 	}
-	re := regexp.MustCompile(`^\[.*?\]\s*`)
+	re := regexp.MustCompile(`^(\[.*?\]|\(.*?\))\s*`)
 	for {
 		stripped := re.ReplaceAllString(name, "")
 		if stripped == name {
