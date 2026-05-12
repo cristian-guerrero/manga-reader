@@ -445,12 +445,9 @@ func (m *Module) ListDirectory(path string) ([]ExplorerEntry, error) {
 		})
 	}
 
-	// Sort: Directories first, then alphabetical
-	sort.Slice(result, func(i, j int) bool {
-		if result[i].IsDirectory != result[j].IsDirectory {
-			return result[i].IsDirectory
-		}
-		return strings.ToLower(result[i].Name) < strings.ToLower(result[j].Name)
+	// Sort: Directories first; frontend handles detailed sorting within each group
+	sort.SliceStable(result, func(i, j int) bool {
+		return result[i].IsDirectory && !result[j].IsDirectory
 	})
 
 	return result, nil
