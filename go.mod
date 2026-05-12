@@ -6,6 +6,7 @@ require (
 	github.com/disintegration/imaging v1.6.2
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/gen2brain/avif v0.4.4
+	github.com/gen2brain/webp v0.5.5
 	github.com/nwaples/rardecode/v2 v2.2.2
 	github.com/wailsapp/wails/v2 v2.12.0
 	golang.org/x/image v0.34.0
@@ -46,3 +47,5 @@ require (
 
 // replace github.com/wailsapp/wails/v2 v2.11.0 => C:\Users\cristian\go\pkg\mod
 replace github.com/gen2brain/avif v0.4.4 => github.com/cristian-guerrero/avif v0.0.0-20260512212139-a2b38ab3db95
+
+replace github.com/gen2brain/webp v0.5.5 => github.com/cristian-guerrero/webp v0.0.0-20260512233251-b74594c79bcb

@@ -95,6 +95,8 @@ export function GetThumbnail(arg1:string):Promise<string>;
 
 export function GetViewerState(arg1:string):Promise<persistence.ViewerState>;
 
+export function GetWebPStatus():Promise<string>;
+
 export function HasCustomOrder(arg1:string):Promise<boolean>;
 
 export function IsSeries(arg1:string):Promise<boolean>;

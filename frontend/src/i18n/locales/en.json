@@ -226,7 +226,8 @@
     "tabMemorySavingDesc": "Unmount inactive tabs to save memory. Disable for instant tab switching.",
     "avifStatus": "AVIF Decoding",
     "avifNative": "Native (Fast)",
-    "avifWasm": "WASM (Normal)"
+    "avifWasm": "WASM (Normal)",
+    "webpStatus": "WebP Decoding"
   },
   "explorer": {
     "title": "Explorer",

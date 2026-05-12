@@ -24,9 +24,11 @@ interface AdvancedSectionProps {
 export function AdvancedSection({ settings }: AdvancedSectionProps) {
   const { t } = useTranslation();
   const [avifStatus, setAvifStatus] = useState<string>('');
+  const [webpStatus, setWebpStatus] = useState<string>('');
 
   useEffect(() => {
     AppBackend.GetAVIFStatus().then((s: string) => setAvifStatus(s));
+    AppBackend.GetWebPStatus().then((s: string) => setWebpStatus(s));
   }, []);
 
   return (
@@ -45,6 +47,23 @@ export function AdvancedSection({ settings }: AdvancedSectionProps) {
           {avifStatus === 'native'
             ? t('settings.avifNative', 'Native (Fast)')
             : avifStatus === 'wasm'
+              ? t('settings.avifWasm', 'WASM (Normal)')
+              : t('common.loading', 'Loading...')}
+        </span>
+      </SettingRow>
+
+      <SettingRow label={t('settings.webpStatus', 'WebP Decoding')}>
+        <span
+          className="text-sm font-medium"
+          style={{
+            color: webpStatus === 'native'
+              ? 'var(--color-success, #22c55e)'
+              : 'var(--color-text-secondary)',
+          }}
+        >
+          {webpStatus === 'native'
+            ? t('settings.avifNative', 'Native (Fast)')
+            : webpStatus === 'wasm'
               ? t('settings.avifWasm', 'WASM (Normal)')
               : t('common.loading', 'Loading...')}
         </span>

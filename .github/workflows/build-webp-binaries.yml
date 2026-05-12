@@ -1,0 +1,277 @@
+name: Build WebP Native Binaries
+
+on:
+  workflow_dispatch:
+    inputs:
+      libwebp_ref:
+        description: "Git ref from webmproject/libwebp to build (tag or commit)"
+        required: true
+        default: "v1.5.0"
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - name: Setup MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          update: true
+          install: >
+            git
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-cmake
+            mingw-w64-x86_64-ninja
+            mingw-w64-x86_64-nasm
+            mingw-w64-x86_64-libwebp
+            mingw-w64-x86_64-libsharpyuv
+            mingw-w64-x86_64-zlib
+
+      - name: Checkout libwebp source
+        run: |
+          git clone --depth 1 --branch ${{ inputs.libwebp_ref }} \
+            https://github.com/webmproject/libwebp.git
+          cd libwebp
+          git log -1 --oneline
+
+      - name: Build libwebp (shared)
+        working-directory: libwebp
+        run: |
+          mkdir build && cd build
+          cmake -G Ninja .. \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_SHARED_LIBS=ON \
+            -DWEBP_BUILD_ANIM_UTILS=OFF \
+            -DWEBP_BUILD_CWEBP=OFF \
+            -DWEBP_BUILD_DWEBP=OFF \
+            -DWEBP_BUILD_GIF2WEBP=OFF \
+            -DWEBP_BUILD_IMG2WEBP=OFF \
+            -DWEBP_BUILD_VWEBP=OFF \
+            -DWEBP_BUILD_WEBPINFO=OFF \
+            -DWEBP_BUILD_WEBPMUX=OFF \
+            -DWEBP_BUILD_EXTRAS=OFF
+          ninja -j$(nproc)
+
+      - name: Package binaries
+        shell: msys2 {0}
+        run: |
+          mkdir -p output
+          find libwebp/build -name "*.dll" -type f -exec cp -v {} output/ \;
+          for dep in libsharpyuv-0; do
+            if [ -f "/mingw64/bin/${dep}.dll" ]; then
+              cp -v "/mingw64/bin/${dep}.dll" output/
+            fi
+          done
+          for f in /mingw64/bin/libstdc++-6.dll /mingw64/bin/libgcc_s_seh-1.dll /mingw64/bin/libwinpthread-1.dll; do
+            if [ -f "$f" ]; then cp -v "$f" output/; fi
+          done
+          ls -la output/
+
+      - name: Create ZIP archive
+        shell: pwsh
+        run: |
+          Compress-Archive -Path output\* -DestinationPath webp-windows-x64.zip
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: webp-windows-x64
+          path: webp-windows-x64.zip
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            ninja-build \
+            nasm \
+            git \
+            clang \
+            libwebp-dev
+
+      - name: Checkout libwebp source
+        uses: actions/checkout@v4
+        with:
+          repository: webmproject/libwebp
+          ref: ${{ inputs.libwebp_ref }}
+          path: libwebp
+
+      - name: Build libwebp (shared)
+        working-directory: libwebp
+        run: |
+          mkdir build && cd build
+          cmake -G Ninja .. \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_SHARED_LIBS=ON \
+            -DWEBP_BUILD_ANIM_UTILS=OFF \
+            -DWEBP_BUILD_CWEBP=OFF \
+            -DWEBP_BUILD_DWEBP=OFF \
+            -DWEBP_BUILD_GIF2WEBP=OFF \
+            -DWEBP_BUILD_IMG2WEBP=OFF \
+            -DWEBP_BUILD_VWEBP=OFF \
+            -DWEBP_BUILD_WEBPINFO=OFF \
+            -DWEBP_BUILD_WEBPMUX=OFF \
+            -DWEBP_BUILD_EXTRAS=OFF
+          ninja -j$(nproc)
+
+      - name: Package binaries
+        run: |
+          mkdir -p output
+          find libwebp/build -name "libwebp.so*" -type f -exec cp -v {} output/ \;
+          find libwebp/build -name "libwebpdemux.so*" -type f -exec cp -v {} output/ \;
+          cd output
+          for f in libwebp.so* libwebpdemux.so*; do
+            if [ -f "$f" ] && [ "$f" != "libwebp.so" ]; then
+              cp -v "$f" libwebp.so 2>/dev/null || true
+            fi
+          done
+          for f in libwebpdemux.so*; do
+            if [ -f "$f" ] && [ "$f" != "libwebpdemux.so" ]; then
+              cp -v "$f" libwebpdemux.so 2>/dev/null || true
+            fi
+          done
+          ls -la
+          tar czf ../webp-linux-x64.tar.gz *
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: webp-linux-x64
+          path: webp-linux-x64.tar.gz
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - name: Install system dependencies
+        run: |
+          brew update
+          brew install ninja cmake webp
+
+      - name: Checkout libwebp source
+        uses: actions/checkout@v4
+        with:
+          repository: webmproject/libwebp
+          ref: ${{ inputs.libwebp_ref }}
+          path: libwebp
+
+      - name: Build libwebp (shared)
+        working-directory: libwebp
+        run: |
+          mkdir build && cd build
+          cmake -G Ninja .. \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_SHARED_LIBS=ON \
+            -DWEBP_BUILD_ANIM_UTILS=OFF \
+            -DWEBP_BUILD_CWEBP=OFF \
+            -DWEBP_BUILD_DWEBP=OFF \
+            -DWEBP_BUILD_GIF2WEBP=OFF \
+            -DWEBP_BUILD_IMG2WEBP=OFF \
+            -DWEBP_BUILD_VWEBP=OFF \
+            -DWEBP_BUILD_WEBPINFO=OFF \
+            -DWEBP_BUILD_WEBPMUX=OFF \
+            -DWEBP_BUILD_EXTRAS=OFF
+          ninja -j$(sysctl -n hw.logicalcpu)
+
+      - name: Package binaries
+        run: |
+          mkdir -p output
+          find libwebp/build -name "libwebp*.dylib" -type f -exec cp -v {} output/ \;
+          cd output
+          for f in libwebp*.dylib; do
+            if [ -f "$f" ] && [ "$f" != "libwebp.dylib" ] && [[ "$f" == libwebp.* ]]; then
+              cp -v "$f" libwebp.dylib 2>/dev/null || true
+            fi
+            if [ -f "$f" ] && [ "$f" != "libwebpdemux.dylib" ] && [[ "$f" == libwebpdemux.* ]]; then
+              cp -v "$f" libwebpdemux.dylib 2>/dev/null || true
+            fi
+          done
+          ls -la
+          tar czf ../webp-darwin-arm64.tar.gz *
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: webp-darwin-arm64
+          path: webp-darwin-arm64.tar.gz
+
+  release:
+    if: always()
+    needs: [build-windows, build-linux, build-macos]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check which builds succeeded
+        id: check
+        shell: bash
+        run: |
+          echo "windows=${{ needs.build-windows.result }}" >> $GITHUB_OUTPUT
+          echo "linux=${{ needs.build-linux.result }}" >> $GITHUB_OUTPUT
+          echo "macos=${{ needs.build-macos.result }}" >> $GITHUB_OUTPUT
+
+      - name: Download Windows artifact
+        if: steps.check.outputs.windows == 'success'
+        uses: actions/download-artifact@v4
+        with:
+          name: webp-windows-x64
+          path: dist
+
+      - name: Download Linux artifact
+        if: steps.check.outputs.linux == 'success'
+        uses: actions/download-artifact@v4
+        with:
+          name: webp-linux-x64
+          path: dist
+
+      - name: Download macOS artifact
+        if: steps.check.outputs.macos == 'success'
+        uses: actions/download-artifact@v4
+        with:
+          name: webp-darwin-arm64
+          path: dist
+
+      - name: List files to release
+        run: ls -la dist/
+
+      - name: Create or update Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="webp-binaries-v1"
+          cat > /tmp/release-notes.md <<-EOF
+          Pre-built native WebP libraries (libwebp ${{ inputs.libwebp_ref || 'v1.5.0' }}).
+
+          **Included binaries:**
+          ${{ steps.check.outputs.windows == 'success' && '✅' || '⬜' }} \`webp-windows-x64.zip\` — libwebp.dll + deps
+          ${{ steps.check.outputs.linux == 'success' && '✅' || '⬜' }} \`webp-linux-x64.tar.gz\` — libwebp.so
+          ${{ steps.check.outputs.macos == 'success' && '✅' || '⬜' }} \`webp-darwin-arm64.tar.gz\` — libwebp.dylib
+
+          Generated from: [${{ github.repository }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          EOF
+
+          gh release delete "$TAG" --repo "${{ github.repository }}" --yes 2>/dev/null || true
+          gh api -X DELETE "/repos/${{ github.repository }}/git/refs/tags/$TAG" 2>/dev/null || true
+
+          gh release create "$TAG" \
+            --repo "${{ github.repository }}" \
+            --title "WebP Native Binaries v1" \
+            --notes-file /tmp/release-notes.md
+
+      - name: Upload assets to Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="webp-binaries-v1"
+          for file in dist/*; do
+            if [ -f "$file" ]; then
+              echo "Uploading: $file"
+              gh release upload "$TAG" "$file" --repo "${{ github.repository }}" --clobber
+            fi
+          done
