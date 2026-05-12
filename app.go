@@ -105,30 +105,23 @@ func NewApp() *App {
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 
-	// Initialize AVIF native binaries (download if needed).
-	// gen2brain/avif's init() already pre-loaded the DLLs via the fork's
-	// preloadNative() if they were cached from a previous run.
-	avifMgr := &avifbin.Manager{}
-	firstRun := stdruntime.GOOS == "windows" && !avifMgr.IsAvailable()
+	// Initialize AVIF and WebP native binaries (download if needed).
+	// Check if any native library needs to be downloaded for the first time.
+	needsRestart := false
+	if stdruntime.GOOS == "windows" {
+		avifAvail := (&avifbin.Manager{}).IsAvailable()
+		webpAvail := (&webpbin.Manager{}).IsAvailable()
+		needsRestart = !avifAvail || !webpAvail
+	}
 
+	avifMgr := &avifbin.Manager{}
 	if err := avifMgr.Ensure(); err != nil {
 		a.services.Logger.Warnf("[AVIF] Native libraries not available, using WASM fallback: %v", err)
 	} else {
-		if firstRun {
-			a.services.Logger.Infof("[AVIF] Native libraries downloaded, restarting to activate...")
-			runtime.MessageDialog(ctx, runtime.MessageDialogOptions{
-				Title:   "Manga Visor",
-				Message: "AVIF native components configured.\nThe application will restart to activate them.",
-				Type:    runtime.InfoDialog,
-			})
-			if exe, err := os.Executable(); err == nil {
-				exec.Command(exe, os.Args[1:]...).Start()
-			}
-			os.Exit(0)
-		}
 		a.services.Logger.Infof("[AVIF] Native library ready: %s", avifMgr.LibraryPath())
 	}
 
+	// Check AVIF decoding path
 	if dllErr := avif.Dynamic(); dllErr != nil {
 		a.services.Logger.Warnf("[AVIF] gen2brain/avif using WASM: %v", dllErr)
 	} else {
@@ -136,12 +129,25 @@ func (a *App) startup(ctx context.Context) {
 		runtime.EventsEmit(ctx, "avif_native_ready")
 	}
 
-	// Initialize WebP native binaries (download if needed).
 	webpMgr := &webpbin.Manager{}
 	if err := webpMgr.Ensure(); err != nil {
 		a.services.Logger.Warnf("[WebP] Native libraries not available, using WASM fallback: %v", err)
 	} else {
 		a.services.Logger.Infof("[WebP] Native library ready: %s", webpMgr.BinaryDir())
+	}
+
+	// Restart once if any native library was downloaded for the first time
+	if needsRestart {
+		a.services.Logger.Infof("[AVIF/WebP] Native libraries downloaded, restarting to activate...")
+		runtime.MessageDialog(ctx, runtime.MessageDialogOptions{
+			Title:   "Manga Visor",
+			Message: "Native rendering components configured.\nThe application will restart to activate them.",
+			Type:    runtime.InfoDialog,
+		})
+		if exe, err := os.Executable(); err == nil {
+			exec.Command(exe, os.Args[1:]...).Start()
+		}
+		os.Exit(0)
 	}
 
 	if w := webp.Dynamic(); w != nil {

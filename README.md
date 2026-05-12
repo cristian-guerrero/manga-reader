@@ -99,20 +99,25 @@ A premium desktop manga viewer and downloader application built with Wails, Reac
 - **Customizable Menu** - Show/hide sidebar navigation items to your preference.
 - **Auto-hide Controls** - Viewer controls automatically hide for immersive reading.
 
-## 🖼️ AVIF Native Rendering
+## 🖼️ Native Image Decoding (AVIF & WebP)
 
-Manga Visor uses a **forked version** of [gen2brain/avif](https://github.com/gen2brain/avif) at [github.com/cristian-guerrero/avif](https://github.com/cristian-guerrero/avif) to support **native AVIF decoding** via FFI (not WASM).
+Manga Visor uses **forked versions** of the [gen2brain/avif](https://github.com/gen2brain/avif) and [gen2brain/webp](https://github.com/gen2brain/webp) libraries to accelerate AVIF and WebP decoding via native FFI (not WASM).
+
+| Format | Fork | Native library |
+|--------|------|----------------|
+| **AVIF** | [cristian-guerrero/avif](https://github.com/cristian-guerrero/avif) | `libavif` + `libdav1d` |
+| **WebP** | [cristian-guerrero/webp](https://github.com/cristian-guerrero/webp) | `libwebp` + `libwebpdemux` |
 
 ### How it works
 
-gen2brain/avif ships with a built-in WASM decoder (slow fallback) and an optional native FFI path that calls libavif (`libavif.dll` / `libavif.so`) via purego. The problem is that `LoadLibrary` only searches standard system paths and the executable directory, not a custom cache folder.
+Both libraries ship with a built-in WASM decoder (slow fallback) and an optional native FFI path that calls the C library via purego. The problem is that `LoadLibrary` / `dlopen` only searches standard system paths, not a custom cache folder.
 
-The fork solves this by intercepting the library's `init()` call:
+The forks solve this by intercepting the library's `init()` call via `preloadNative()`:
 
 | Platform | Mechanism |
 |----------|-----------|
-| **Windows** | `LoadLibraryExW(DLL_LOAD_DIR)` — pre-loads all DLLs from `~/.manga-visor/avif-bin/` resolving all dependencies from the same directory. |
-| **Linux** | Sets `LD_LIBRARY_PATH` before `purego.Dlopen` so that `dlopen("libavif.so")` finds the cached copy. |
+| **Windows** | `LoadLibraryExW(DLL_LOAD_DIR)` — pre-loads all DLLs from `~/.manga-visor/avif-bin/` and `~/.manga-visor/webp-bin/` resolving all dependencies from the same directory. |
+| **Linux** | Sets `LD_LIBRARY_PATH` before `purego.Dlopen` so that `dlopen("libavif.so")` / `dlopen("libwebp.so")` finds the cached copy. |
 | **macOS** | No-op (WASM fallback; DYLD_LIBRARY_PATH can be configured if needed). |
 
 This means:
@@ -123,7 +128,7 @@ This means:
 
 ### Pre-built binaries
 
-Native libraries are built via CI ([`build-avif-binaries.yml`](.github/workflows/build-avif-binaries.yml)) from [AOMediaCodec/libavif](https://github.com/AOMediaCodec/libavif) with dav1d decoder support. They are published as a GitHub Release and auto-downloaded on first run to:
+Native libraries are built via CI workflows ([`build-avif-binaries.yml`](.github/workflows/build-avif-binaries.yml), [`build-webp-binaries.yml`](.github/workflows/build-webp-binaries.yml)) and published as GitHub Releases. They are auto-downloaded on first run to:
 
 ```
 ~/.manga-visor/avif-bin/
@@ -131,6 +136,11 @@ Native libraries are built via CI ([`build-avif-binaries.yml`](.github/workflows
 ├── libdav1d-7.dll
 ├── libyuv.dll
 ├── libsharpyuv-0.dll
+└── ... (runtime dependencies)
+
+~/.manga-visor/webp-bin/
+├── libwebp.dll       (Windows) / libwebp.so (Linux)
+├── libwebpdemux.dll
 └── ... (runtime dependencies)
 ```
 
@@ -210,6 +220,7 @@ Data is stored locally in the user's home directory under `~/.manga-visor/` (on 
 
 ### Folders
 - **`avif-bin/`** - Cached native AVIF libraries (libavif.dll / libavif.so + runtime deps) auto-downloaded from GitHub Releases.
+- **`webp-bin/`** - Cached native WebP libraries (libwebp.dll / libwebp.so + libwebpdemux) auto-downloaded from GitHub Releases.
 - **`cache/`** - Persistent storage for high-quality thumbnails generated for the Explorer and Library.
 - **`downloads/`** - Default location for all downloaded manga chapters.
 - **`temp/`** - Temporary workspace for extracting archives (ZIP, RAR, etc.) and processing transient data.

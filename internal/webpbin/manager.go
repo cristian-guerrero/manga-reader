@@ -41,7 +41,6 @@ func init() {
 		"windows/arm64": {AssetName: "webp-windows-arm64.zip", LibraryName: "libwebp.dll", DemuxName: "libwebpdemux.dll"},
 		"linux/amd64":   {AssetName: "webp-linux-x64.tar.gz", LibraryName: "libwebp.so", DemuxName: "libwebpdemux.so"},
 		"linux/arm64":   {AssetName: "webp-linux-arm64.tar.gz", LibraryName: "libwebp.so", DemuxName: "libwebpdemux.so"},
-		"darwin/amd64":  {AssetName: "webp-darwin-x64.tar.gz", LibraryName: "libwebp.dylib", DemuxName: "libwebpdemux.dylib"},
 		"darwin/arm64":  {AssetName: "webp-darwin-arm64.tar.gz", LibraryName: "libwebp.dylib", DemuxName: "libwebpdemux.dylib"},
 	}
 }
