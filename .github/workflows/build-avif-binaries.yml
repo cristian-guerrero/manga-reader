@@ -31,6 +31,9 @@ on:
         default: false
         type: boolean
 
+permissions:
+  contents: write
+
 jobs:
   # ──────────────────────────────────────────────────────────────
   # WINDOWS: Build libavif shared library via MSYS2 / MinGW
@@ -125,8 +128,11 @@ jobs:
           fi
 
           ls -la output/
-          cd output
-          7z a -tzip ../avif-windows-x64.zip *
+
+      - name: Create ZIP archive (PowerShell)
+        shell: pwsh
+        run: |
+          Compress-Archive -Path output\* -DestinationPath avif-windows-x64.zip
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -229,13 +235,11 @@ jobs:
           brew install \
             ninja \
             nasm \
+            cmake \
             dav1d \
-            libyuv \
-            libsharpyuv \
             jpeg-turbo \
             libpng \
-            libxml2 \
-            cmake
+            libxml2
 
       - name: Checkout libavif source
         uses: actions/checkout@v4
@@ -256,8 +260,8 @@ jobs:
             -DAVIF_CODEC_DAV1D=SYSTEM \
             -DAVIF_CODEC_DAV1D_ENCODE=OFF \
             -DAVIF_CODEC_AOM=OFF \
-            -DAVIF_LIBYUV=SYSTEM \
-            -DAVIF_LIBSHARPYUV=SYSTEM \
+            -DAVIF_LIBYUV=LOCAL \
+            -DAVIF_LIBSHARPYUV=LOCAL \
             -DAVIF_JPEG=SYSTEM \
             -DAVIF_ZLIBPNG=SYSTEM \
             -DAVIF_BUILD_APPS=OFF \
@@ -296,3 +300,84 @@ jobs:
         with:
           name: avif-darwin-arm64
           path: avif-darwin-arm64.tar.gz
+
+  # ──────────────────────────────────────────────────────────────
+  # RELEASE: Create/update GitHub Release with all artifacts
+  # ──────────────────────────────────────────────────────────────
+  release:
+    if: always()
+    needs: [build-windows, build-linux, build-macos]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check which builds succeeded
+        id: check
+        shell: bash
+        run: |
+          echo "windows=${{ needs.build-windows.result }}" >> $GITHUB_OUTPUT
+          echo "linux=${{ needs.build-linux.result }}" >> $GITHUB_OUTPUT
+          echo "macos=${{ needs.build-macos.result }}" >> $GITHUB_OUTPUT
+
+      - name: Download Windows artifact
+        if: steps.check.outputs.windows == 'success'
+        uses: actions/download-artifact@v4
+        with:
+          name: avif-windows-x64
+          path: dist
+
+      - name: Download Linux artifact
+        if: steps.check.outputs.linux == 'success'
+        uses: actions/download-artifact@v4
+        with:
+          name: avif-linux-x64
+          path: dist
+
+      - name: Download macOS artifact
+        if: steps.check.outputs.macos == 'success'
+        uses: actions/download-artifact@v4
+        with:
+          name: avif-darwin-arm64
+          path: dist
+
+      - name: List files to release
+        run: ls -la dist/
+
+      - name: Create or update Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="avif-binaries-v1"
+
+          # Generate release notes
+          cat > /tmp/release-notes.md <<-EOF
+          Pre-built native AVIF libraries (libavif ${{ inputs.libavif_ref || 'v1.4.1' }}) compiled with dav1d decoder.
+
+          **Included binaries:**
+          ${{ steps.check.outputs.windows == 'success' && '✅' || '⬜' }} \`avif-windows-x64.zip\` — libavif.dll + deps
+          ${{ steps.check.outputs.linux == 'success' && '✅' || '⬜' }} \`avif-linux-x64.tar.gz\` — libavif.so
+          ${{ steps.check.outputs.macos == 'success' && '✅' || '⬜' }} \`avif-darwin-arm64.tar.gz\` — libavif.dylib
+
+          Generated from: [${{ github.repository }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          EOF
+
+          # Delete existing tag and release if they exist (to update)
+          gh release delete "$TAG" --yes 2>/dev/null || true
+          gh api -X DELETE "/repos/${{ github.repository }}/git/refs/tags/$TAG" 2>/dev/null || true
+
+          # Create new release
+          gh release create "$TAG" \
+            --title "AVIF Native Binaries v1" \
+            --notes-file /tmp/release-notes.md
+
+      - name: Upload assets to Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="avif-binaries-v1"
+          for file in dist/*; do
+            if [ -f "$file" ]; then
+              echo "Uploading: $file"
+              gh release upload "$TAG" "$file" --clobber
+            fi
+          done
