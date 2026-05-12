@@ -51,27 +51,27 @@ func NewModule(pm *persistence.DownloaderManager, sm *persistence.SettingsManage
 		queues:       make(map[string][]*queuedJob),
 		activeCounts: make(map[string]int),
 		maxConcurrency: map[string]int{
-			"hitomi.la":       2,
-			"zonatmo":         3,
-			"mangadex.org":    3,
-			"nhentai.net":     2,
-			"nhentai.xxx":     2,
-			"nhentai.com":     2,
-			"e-hentai.org":    3,
-			"mangatoon.mobi":  3,
-			"imhentai.xxx":    2,
-			"imhentai.to":     2,
-			"manga18.club":    4,
-			"submanhwa.com":   3,
-			"hentaiforce.net": 2,
-			"hentaivox.com":   2,
-			"hentai2read.com": 4,
-			"lhentai.com":     2,
-			"nhentai.website": 2,
-			"hentairead.io":   2,
-		"3hentai.net":     1,
-		"lectorhentai.com": 3,
-	},
+			"hitomi.la":        2,
+			"zonatmo":          3,
+			"mangadex.org":     3,
+			"nhentai.net":      2,
+			"nhentai.xxx":      2,
+			"nhentai.com":      2,
+			"e-hentai.org":     3,
+			"mangatoon.mobi":   3,
+			"imhentai.xxx":     2,
+			"imhentai.to":      2,
+			"manga18.club":     4,
+			"submanhwa.com":    3,
+			"hentaiforce.net":  2,
+			"hentaivox.com":    2,
+			"hentai2read.com":  4,
+			"lhentai.com":      2,
+			"nhentai.website":  2,
+			"hentairead.io":    2,
+			"3hentai.net":      1,
+			"lectorhentai.com": 3,
+		},
 		algorithms: []DownloaderInterface{
 			&HitomiDownloader{},
 			&ManhwaWebDownloader{},
@@ -97,8 +97,8 @@ func NewModule(pm *persistence.DownloaderManager, sm *persistence.SettingsManage
 			&HentaiReadDownloader{},
 			&MangaToonDownloader{},
 			&ThreeHentaiDownloader{},
-		&LectorHentaiDownloader{},
-	},
+			&LectorHentaiDownloader{},
+		},
 	}
 }
 
@@ -371,8 +371,8 @@ func (m *Module) runDownload(job persistence.DownloadJob, info *SiteInfo) {
 	}
 
 	// Folder structure: Site / Series / Chapter
-	safeSeries := sanitizeFilename(info.SeriesName)
-	safeChapter := sanitizeFilename(info.ChapterName)
+	safeSeries := sanitizeFilename(stripLeadingBrackets(info.SeriesName))
+	safeChapter := sanitizeFilename(stripLeadingBrackets(info.ChapterName))
 	downloadDir := filepath.Join(basePath, info.SiteID, safeSeries, safeChapter)
 
 	if err := os.MkdirAll(downloadDir, 0755); err != nil {
@@ -659,6 +659,24 @@ func sanitizeFilename(name string) string {
 	}
 
 	return res
+}
+
+// stripLeadingBrackets removes any leading text enclosed in square brackets,
+// like [Censored] or [Group Name (Author)], including the trailing whitespace.
+// This is used to clean up titles like "[Group] Real Title" -> "Real Title".
+func stripLeadingBrackets(name string) string {
+	if name == "" {
+		return ""
+	}
+	re := regexp.MustCompile(`^\[.*?\]\s*`)
+	for {
+		stripped := re.ReplaceAllString(name, "")
+		if stripped == name {
+			break
+		}
+		name = stripped
+	}
+	return strings.TrimSpace(name)
 }
 
 // downloadFileWithContext downloads a file with context support for cancellation and timeout
