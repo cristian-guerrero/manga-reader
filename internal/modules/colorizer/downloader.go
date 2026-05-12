@@ -487,15 +487,45 @@ func (m *Manager) runStartServer() {
 
 	// Wait briefly to see if the process crashes immediately
 	time.Sleep(3 * time.Second)
-	if cmd.ProcessState == nil || !cmd.ProcessState.Exited() {
-		m.setStatus(StatusRunning, "Colorizer server is running!", 100)
-	} else {
+	if cmd.ProcessState != nil && cmd.ProcessState.Exited() {
 		m.setStatus(StatusError, "Server crashed during startup. Check console for details.", 0)
 		m.mu.Lock()
 		m.serverProcess = nil
 		m.mu.Unlock()
 		return
 	}
+
+	// Actively poll the health endpoint until the server is ready
+	m.setStatus(StatusStartingServer, "Waiting for server to be ready...", 98)
+	ready := false
+	for i := 0; i < 30; i++ {
+		time.Sleep(1 * time.Second)
+		if cmd.ProcessState != nil && cmd.ProcessState.Exited() {
+			m.setStatus(StatusError, "Server crashed while waiting for readiness.", 0)
+			m.mu.Lock()
+			m.serverProcess = nil
+			m.mu.Unlock()
+			return
+		}
+		if m.HealthCheck() {
+			ready = true
+			break
+		}
+		fmt.Printf("[Colorizer] Waiting for server to be ready... (%d/30)\n", i+1)
+	}
+
+	if !ready {
+		m.setStatus(StatusError, "Server did not become ready within 30 seconds.", 0)
+		m.mu.Lock()
+		if m.serverProcess != nil {
+			m.serverProcess.stop()
+			m.serverProcess = nil
+		}
+		m.mu.Unlock()
+		return
+	}
+
+	m.setStatus(StatusRunning, "Colorizer server is running!", 100)
 
 	// Wait for process to finish
 	cmd.Wait()

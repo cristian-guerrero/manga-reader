@@ -5,6 +5,7 @@ import {colorizer} from '../models';
 import {explorer} from '../models';
 import {downloader} from '../models';
 import {series} from '../models';
+import {main} from '../models';
 
 export function AddBaseFolder(arg1:string):Promise<void>;
 
@@ -118,7 +119,15 @@ export function ResolveFolder(arg1:string):Promise<string>;
 
 export function ResumeIncompleteDownloads(arg1:boolean):Promise<void>;
 
+export function SaveColorizedImage(arg1:string,arg2:string):Promise<string>;
+
+export function SaveColorizedImageAuto(arg1:string,arg2:string,arg3:string):Promise<string>;
+
 export function SaveImageOrder(arg1:string,arg2:Array<string>,arg3:Array<string>):Promise<void>;
+
+export function SaveMultipleColorizedImages(arg1:Array<main.SaveImageRequest>):Promise<Array<string>>;
+
+export function SaveMultipleColorizedImagesAuto(arg1:Array<main.SaveImageRequest>,arg2:Array<string>):Promise<Array<string>>;
 
 export function SaveSettings(arg1:persistence.Settings):Promise<void>;
 
