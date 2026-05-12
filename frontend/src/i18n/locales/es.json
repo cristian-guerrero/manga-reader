@@ -219,7 +219,10 @@
     "clearCacheError": "Error al borrar caché. Por favor reinicia la app e intenta nuevamente.",
     "tabs": "Pestañas",
     "tabMemorySaving": "Modo Ahorro de Memoria",
-    "tabMemorySavingDesc": "Desmonta las pestañas inactivas para ahorrar memoria. Desactívalo para cambios de pestaña instantáneos."
+    "tabMemorySavingDesc": "Desmonta las pestañas inactivas para ahorrar memoria. Desactívalo para cambios de pestaña instantáneos.",
+    "avifStatus": "Decodificación AVIF",
+    "avifNative": "Nativa (Rápido)",
+    "avifWasm": "WASM (Normal)"
   },
   "explorer": {
     "title": "Explorador",

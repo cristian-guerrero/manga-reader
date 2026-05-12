@@ -252,6 +252,14 @@ func (a *App) WindowToggleMaximise() {
 // Settings Methods
 // =============================================================================
 
+// GetAVIFStatus returns the current AVIF decoding method: "native" or "wasm".
+func (a *App) GetAVIFStatus() string {
+	if avif.Dynamic() == nil {
+		return "native"
+	}
+	return "wasm"
+}
+
 func (a *App) GetSettings() *persistence.Settings {
 	return a.settings().Get()
 }
