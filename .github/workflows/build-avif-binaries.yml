@@ -107,12 +107,21 @@ jobs:
 
           # Also copy runtime dependencies (dav1d, libyuv, etc.)
           # These live in /mingw64/bin/
-          for dep in libdav1d libyuv libsharpyuv-0 libheif \
+          # Also copy runtime dependencies (dav1d, libyuv, etc.)
+          # These live in /mingw64/bin/
+          for dep in libyuv libsharpyuv-0 libheif \
                       libde265-0 libx265 libjpeg-8 libpng16-16 \
                       liblzma-5 libxml2-2 libbz2-1 libz-1 \
                       libstdc++-6 libgcc_s_seh-1 libwinpthread-1; do
             if [ -f "/mingw64/bin/${dep}.dll" ]; then
               cp -v "/mingw64/bin/${dep}.dll" output/
+            fi
+          done
+
+          # dav1d may have a versioned name (e.g. libdav1d-7.dll)
+          for f in /mingw64/bin/libdav1d*.dll; do
+            if [ -f "$f" ]; then
+              cp -v "$f" output/
             fi
           done
 

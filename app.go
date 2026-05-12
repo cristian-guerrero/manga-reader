@@ -22,6 +22,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gen2brain/avif"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
@@ -109,6 +110,15 @@ func (a *App) startup(ctx context.Context) {
 		a.services.Logger.Warnf("[AVIF] Native libraries not available, using WASM fallback: %v", err)
 	} else {
 		a.services.Logger.Infof("[AVIF] Native library ready: %s", avifMgr.LibraryPath())
+	}
+
+	// Verify which decoding path gen2brain/avif is using
+	// Dynamic() returns nil if native library was loaded successfully at init time,
+	// or an error if it fell back to WASM.
+	if dllErr := avif.Dynamic(); dllErr != nil {
+		a.services.Logger.Warnf("[AVIF] gen2brain/avif using WASM (native DLL not loaded at init): %v", dllErr)
+	} else {
+		a.services.Logger.Infof("[AVIF] gen2brain/avif using native library (DLL loaded at init)")
 	}
 
 	// Initialize services (starts ImageServer and updates URLBuilder)
