@@ -198,6 +198,8 @@
     "preloadImages": "Preload Images",
     "preloadCount": "Images to Preload",
     "enableHistory": "Enable History",
+    "generateThumbnails": "Generate Thumbnails",
+    "generateThumbnailsDesc": "When disabled, original images are served directly instead of thumbnails",
     "minImageSize": "Min Image Size (KB)",
     "processDroppedFolders": "Add dropped folders to library & history",
     "minImageSizeDesc": "Filter out images smaller than this size (useful for removing covers/logos)",

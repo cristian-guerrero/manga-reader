@@ -7,39 +7,39 @@
 // ============================================================================
 
 export interface ImageInfo {
-    /** Full path to the image file */
-    path: string;
-    /** Shortened URL for the thumbnail */
-    thumbnailUrl?: string;
-    /** Shortened URL for the full image */
-    imageUrl?: string;
-    /** Filename only */
-    name: string;
-    /** File extension (lowercase, without dot) */
-    extension: string;
-    /** File size in bytes */
-    size: number;
-    /** Index in the current folder */
-    index: number;
-    /** Modification time (timestamp) */
-    modTime?: number;
+  /** Full path to the image file */
+  path: string;
+  /** Shortened URL for the thumbnail */
+  thumbnailUrl?: string;
+  /** Shortened URL for the full image */
+  imageUrl?: string;
+  /** Filename only */
+  name: string;
+  /** File extension (lowercase, without dot) */
+  extension: string;
+  /** File size in bytes */
+  size: number;
+  /** Index in the current folder */
+  index: number;
+  /** Modification time (timestamp) */
+  modTime?: number;
 }
 
 export interface FolderInfo {
-    /** Full path to the folder */
-    path: string;
-    /** Folder name only */
-    name: string;
-    /** Number of images in the folder */
-    imageCount: number;
-    /** First image path for thumbnail */
-    coverImage?: string;
-    /** Shortened URL for the cover thumbnail */
-    thumbnailUrl?: string;
-    /** Last modified timestamp */
-    lastModified: string;
-    /** Whether it's a temporary archive folder */
-    isTemporary?: boolean;
+  /** Full path to the folder */
+  path: string;
+  /** Folder name only */
+  name: string;
+  /** Number of images in the folder */
+  imageCount: number;
+  /** First image path for thumbnail */
+  coverImage?: string;
+  /** Shortened URL for the cover thumbnail */
+  thumbnailUrl?: string;
+  /** Last modified timestamp */
+  lastModified: string;
+  /** Whether it's a temporary archive folder */
+  isTemporary?: boolean;
 }
 
 // ============================================================================
@@ -47,22 +47,22 @@ export interface FolderInfo {
 // ============================================================================
 
 export interface HistoryEntry {
-    /** Unique ID (hash of folder path) */
-    id: string;
-    /** Full path to the folder */
-    folderPath: string;
-    /** Folder name for display */
-    folderName: string;
-    /** Last viewed image filename */
-    lastImage: string;
-    /** Last viewed image index */
-    lastImageIndex: number;
-    /** Scroll position (0-1 for percentage) */
-    scrollPosition: number;
-    /** Total number of images in folder */
-    totalImages: number;
-    /** Last read timestamp (ISO string) */
-    lastRead: string;
+  /** Unique ID (hash of folder path) */
+  id: string;
+  /** Full path to the folder */
+  folderPath: string;
+  /** Folder name for display */
+  folderName: string;
+  /** Last viewed image filename */
+  lastImage: string;
+  /** Last viewed image index */
+  lastImageIndex: number;
+  /** Scroll position (0-1 for percentage) */
+  scrollPosition: number;
+  /** Total number of images in folder */
+  totalImages: number;
+  /** Last read timestamp (ISO string) */
+  lastRead: string;
 }
 
 // ============================================================================
@@ -74,96 +74,99 @@ export type LateralMode = 'single' | 'double';
 export type ReadingDirection = 'ltr' | 'rtl';
 
 export interface Settings {
-    /** Language code (en, es, etc.) */
-    language: string;
-    /** Theme ID */
-    theme: string;
-    /** Default viewer mode */
-    viewerMode: ViewerMode;
-    /** Width percentage for vertical viewer (10-100) */
-    verticalWidth: number;
-    /** Auto-scroll speed for vertical viewer (0-100) */
-    scrollSpeed: number;
-    /** Lateral viewer mode (single/double page) */
-    lateralMode: LateralMode;
-    /** Reading direction for lateral mode */
-    readingDirection: ReadingDirection;
-    /** Panic button key */
-    panicKey: string;
-    /** Last opened folder path */
-    lastFolder: string;
-    /** Sidebar collapsed state */
-    sidebarCollapsed: boolean;
-    /** Show image info overlay */
-    showImageInfo: boolean;
-    /** Preload adjacent images */
-    preloadImages: boolean;
-    /** Number of images to preload */
-    /** Number of images to preload */
-    preloadCount: number;
-    /** Enable/Disable history tracking */
-    /** Enable/Disable history tracking */
-    enableHistory: boolean;
-    /** Minimum image size in KB */
-    minImageSize: number;
-    /** Process dropped folders (add to library and save history) */
-    processDroppedFolders: boolean;
-    /** Last visited page (for startup restore) */
-    lastPage: string;
-    /** Enabled menu items */
-    enabledMenuItems: Record<string, boolean>;
-    /** Download path */
-    downloadPath: string;
-    /** Clipboard auto monitor */
-    clipboardAutoMonitor: boolean;
-    /** Auto resume incomplete downloads */
-    autoResumeDownloads?: boolean;
-    /** Per-theme accent colors { themeId: color } */
-    themeAccents: Record<string, string>;
-    /** Memory saving mode for tabs (unmount inactive tabs) */
-    tabMemorySaving: boolean;
-    /** Restore tabs on startup */
-    restoreTabs: boolean;
+  /** Language code (en, es, etc.) */
+  language: string;
+  /** Theme ID */
+  theme: string;
+  /** Default viewer mode */
+  viewerMode: ViewerMode;
+  /** Width percentage for vertical viewer (10-100) */
+  verticalWidth: number;
+  /** Auto-scroll speed for vertical viewer (0-100) */
+  scrollSpeed: number;
+  /** Lateral viewer mode (single/double page) */
+  lateralMode: LateralMode;
+  /** Reading direction for lateral mode */
+  readingDirection: ReadingDirection;
+  /** Panic button key */
+  panicKey: string;
+  /** Last opened folder path */
+  lastFolder: string;
+  /** Sidebar collapsed state */
+  sidebarCollapsed: boolean;
+  /** Show image info overlay */
+  showImageInfo: boolean;
+  /** Preload adjacent images */
+  preloadImages: boolean;
+  /** Number of images to preload */
+  /** Number of images to preload */
+  preloadCount: number;
+  /** Enable/Disable history tracking */
+  /** Enable/Disable history tracking */
+  enableHistory: boolean;
+  /** Minimum image size in KB */
+  minImageSize: number;
+  /** Process dropped folders (add to library and save history) */
+  processDroppedFolders: boolean;
+  /** Last visited page (for startup restore) */
+  lastPage: string;
+  /** Enabled menu items */
+  enabledMenuItems: Record<string, boolean>;
+  /** Download path */
+  downloadPath: string;
+  /** Clipboard auto monitor */
+  clipboardAutoMonitor: boolean;
+  /** Auto resume incomplete downloads */
+  autoResumeDownloads?: boolean;
+  /** Per-theme accent colors { themeId: color } */
+  themeAccents: Record<string, string>;
+  /** Memory saving mode for tabs (unmount inactive tabs) */
+  tabMemorySaving: boolean;
+  /** Restore tabs on startup */
+  restoreTabs: boolean;
+  /** Generate thumbnails for images */
+  generateThumbnails: boolean;
 }
 
 
 
 export const DEFAULT_SETTINGS: Settings = {
-    language: 'en',
-    theme: 'dark',
-    viewerMode: 'vertical',
-    verticalWidth: 80,
-    scrollSpeed: 50,
-    lateralMode: 'single',
-    readingDirection: 'ltr',
-    panicKey: 'Escape',
-    lastFolder: '',
-    sidebarCollapsed: false,
-    showImageInfo: false,
-    preloadImages: true,
+  language: 'en',
+  theme: 'dark',
+  viewerMode: 'vertical',
+  verticalWidth: 80,
+  scrollSpeed: 50,
+  lateralMode: 'single',
+  readingDirection: 'ltr',
+  panicKey: 'Escape',
+  lastFolder: '',
+  sidebarCollapsed: false,
+  showImageInfo: false,
+  preloadImages: true,
 
-    preloadCount: 3,
+  preloadCount: 3,
 
-    enableHistory: true,
-    minImageSize: 0,
-    processDroppedFolders: true,
-    lastPage: 'home',
-    enabledMenuItems: {
-        'home': true,
-        'history': true,
-        'oneShot': true,
-        'series': true,
-        'explorer': true,
-        'download': true,
-        'colorizer': true,
-        'settings': true
-    },
-    downloadPath: '',
-    clipboardAutoMonitor: false,
-    autoResumeDownloads: false,
-    themeAccents: {},
-    tabMemorySaving: true,
-    restoreTabs: false,
+  enableHistory: true,
+  minImageSize: 0,
+  processDroppedFolders: true,
+  lastPage: 'home',
+  enabledMenuItems: {
+    'home': true,
+    'history': true,
+    'oneShot': true,
+    'series': true,
+    'explorer': true,
+    'download': true,
+    'colorizer': true,
+    'settings': true
+  },
+  downloadPath: '',
+  clipboardAutoMonitor: false,
+  autoResumeDownloads: false,
+  themeAccents: {},
+  tabMemorySaving: true,
+  restoreTabs: false,
+  generateThumbnails: false,
 };
 
 
@@ -173,14 +176,14 @@ export const DEFAULT_SETTINGS: Settings = {
 // ============================================================================
 
 export interface ImageOrder {
-    /** Folder path */
-    folderPath: string;
-    /** Custom order (array of filenames) */
-    customOrder: string[];
-    /** Original order for reset */
-    originalOrder: string[];
-    /** When the order was modified */
-    modifiedAt: string;
+  /** Folder path */
+  folderPath: string;
+  /** Custom order (array of filenames) */
+  customOrder: string[];
+  /** Original order for reset */
+  originalOrder: string[];
+  /** When the order was modified */
+  modifiedAt: string;
 }
 
 // ============================================================================
@@ -188,22 +191,22 @@ export interface ImageOrder {
 // ============================================================================
 
 export interface ChapterInfo {
-    path: string;
-    name: string;
-    coverImage?: string;
-    imageCount: number;
-    thumbnailUrl?: string;
+  path: string;
+  name: string;
+  coverImage?: string;
+  imageCount: number;
+  thumbnailUrl?: string;
 }
 
 export interface SeriesEntry {
-    id: string;
-    path: string;
-    name: string;
-    coverImage: string;
-    thumbnailUrl?: string;
-    addedAt: string;
-    chapters: ChapterInfo[];
-    isTemporary?: boolean;
+  id: string;
+  path: string;
+  name: string;
+  coverImage: string;
+  thumbnailUrl?: string;
+  addedAt: string;
+  chapters: ChapterInfo[];
+  isTemporary?: boolean;
 }
 
 // ============================================================================
@@ -211,22 +214,22 @@ export interface SeriesEntry {
 // ============================================================================
 
 export type PageType =
-    | 'home'
-    | 'viewer'
-    | 'history'
-    | 'oneShot'
-    | 'series'
-    | 'series-details'
-    | 'thumbnails'
-    | 'explorer'
-    | 'download'
-    | 'colorizer'
-    | 'settings';
+  | 'home'
+  | 'viewer'
+  | 'history'
+  | 'oneShot'
+  | 'series'
+  | 'series-details'
+  | 'thumbnails'
+  | 'explorer'
+  | 'download'
+  | 'colorizer'
+  | 'settings';
 
 export interface NavigationState {
-    currentPage: PageType;
-    previousPage: PageType | null;
-    params: Record<string, string>;
+  currentPage: PageType;
+  previousPage: PageType | null;
+  params: Record<string, string>;
 }
 
 // ============================================================================
@@ -234,21 +237,21 @@ export interface NavigationState {
 // ============================================================================
 
 export interface ToastMessage {
-    id: string;
-    type: 'info' | 'success' | 'warning' | 'error';
-    title: string;
-    message?: string;
-    duration?: number;
+  id: string;
+  type: 'info' | 'success' | 'warning' | 'error';
+  title: string;
+  message?: string;
+  duration?: number;
 }
 
 export interface ContextMenuItem {
-    id: string;
-    label: string;
-    icon?: string;
-    shortcut?: string;
-    disabled?: boolean;
-    danger?: boolean;
-    onClick: () => void;
+  id: string;
+  label: string;
+  icon?: string;
+  shortcut?: string;
+  disabled?: boolean;
+  danger?: boolean;
+  onClick: () => void;
 }
 
 // ============================================================================
@@ -256,24 +259,24 @@ export interface ContextMenuItem {
 // ============================================================================
 
 export interface ViewerState {
-    /** Current folder being viewed */
-    currentFolder: FolderInfo | null;
-    /** All images in current folder */
-    images: ImageInfo[];
-    /** Currently viewed image index */
-    currentIndex: number;
-    /** Current viewer mode */
-    mode: ViewerMode;
-    /** Is loading images */
-    isLoading: boolean;
-    /** Current zoom level (1 = 100%) */
-    zoomLevel: number;
-    /** Scroll position (for vertical mode) */
-    scrollPosition: number;
-    /** Current vertical width (zoom) for this manga */
-    verticalWidth?: number;
-    /** Is currently restoring state (prevents premature saving) */
-    isRestoring?: boolean;
+  /** Current folder being viewed */
+  currentFolder: FolderInfo | null;
+  /** All images in current folder */
+  images: ImageInfo[];
+  /** Currently viewed image index */
+  currentIndex: number;
+  /** Current viewer mode */
+  mode: ViewerMode;
+  /** Is loading images */
+  isLoading: boolean;
+  /** Current zoom level (1 = 100%) */
+  zoomLevel: number;
+  /** Scroll position (for vertical mode) */
+  scrollPosition: number;
+  /** Current vertical width (zoom) for this manga */
+  verticalWidth?: number;
+  /** Is currently restoring state (prevents premature saving) */
+  isRestoring?: boolean;
 }
 
 // ============================================================================
@@ -281,8 +284,8 @@ export interface ViewerState {
 // ============================================================================
 
 export interface WindowControls {
-    minimize: () => void;
-    maximize: () => void;
-    close: () => void;
-    isMaximized: () => Promise<boolean>;
+  minimize: () => void;
+  maximize: () => void;
+  close: () => void;
+  isMaximized: () => Promise<boolean>;
 }

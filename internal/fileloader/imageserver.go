@@ -48,10 +48,13 @@ type ImageServer struct {
 	cacheDir   string          // Cache directory for converted images
 	pendingCon sync.Map        // map[string]chan struct{} for deduplicating conversions
 	semaphore  chan struct{}   // Global limit for concurrent conversions
+	// generateThumbnails is a function that returns whether thumbnails should be generated.
+	// When false, thumbnail requests will serve the original image instead.
+	generateThumbnails func() bool
 }
 
 // NewImageServer creates a new image server
-func NewImageServer(fl *FileLoader, tg *thumbnails.Generator, logger LoggerInterface) *ImageServer {
+func NewImageServer(fl *FileLoader, tg *thumbnails.Generator, logger LoggerInterface, generateThumbnails func() bool) *ImageServer {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		homeDir = "."
@@ -63,11 +66,12 @@ func NewImageServer(fl *FileLoader, tg *thumbnails.Generator, logger LoggerInter
 	os.MkdirAll(fullCacheDir, 0755)
 
 	return &ImageServer{
-		fileLoader: fl,
-		thumbGen:   tg,
-		logger:     logger,
-		cacheDir:   fullCacheDir,
-		semaphore:  make(chan struct{}, 2), // Limit to 2 concurrent AVIF decodes
+		fileLoader:         fl,
+		thumbGen:           tg,
+		logger:             logger,
+		cacheDir:           fullCacheDir,
+		semaphore:          make(chan struct{}, 2), // Limit to 2 concurrent AVIF decodes
+		generateThumbnails: generateThumbnails,
 	}
 }
 
@@ -189,14 +193,21 @@ func (is *ImageServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	var finalPath string
 	if isThumbnail {
-		// Ensure thumbnail exists and get its cache path
-		_, err := is.thumbGen.GetThumbnailBytes(originalImagePath)
-		if err != nil {
-			is.logError("[ImageServer] Thumbnail generation failed for %s: %v", originalImagePath, err)
-			http.Error(w, "Failed to generate thumbnail", http.StatusInternalServerError)
-			return
+		// Check if thumbnail generation is enabled
+		if is.generateThumbnails != nil && !is.generateThumbnails() {
+			// Thumbnails disabled: serve the original image directly
+			is.logInfo("[ImageServer] Thumbnails disabled, serving original image: %s", originalImagePath)
+			finalPath = originalImagePath
+		} else {
+			// Ensure thumbnail exists and get its cache path
+			_, err := is.thumbGen.GetThumbnailBytes(originalImagePath)
+			if err != nil {
+				is.logError("[ImageServer] Thumbnail generation failed for %s: %v", originalImagePath, err)
+				http.Error(w, "Failed to generate thumbnail", http.StatusInternalServerError)
+				return
+			}
+			finalPath = is.thumbGen.GetCachePath(originalImagePath)
 		}
-		finalPath = is.thumbGen.GetCachePath(originalImagePath)
 	} else {
 		finalPath = originalImagePath
 	}

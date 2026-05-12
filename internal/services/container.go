@@ -53,7 +53,9 @@ func NewContainer() *Container {
 	viewerStates := persistence.NewViewerStatesManager()
 
 	// Image server (not started yet, will be started in Initialize)
-	imageServer := fileloader.NewImageServer(fileLoader, thumbGen, loggerAdapter)
+	imageServer := fileloader.NewImageServer(fileLoader, thumbGen, loggerAdapter, func() bool {
+		return settings.Get().GenerateThumbnails
+	})
 
 	return &Container{
 		FileLoader:   fileLoader,

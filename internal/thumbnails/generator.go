@@ -16,7 +16,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"golang.org/x/image/draw"
+	"github.com/disintegration/imaging"
 
 	_ "github.com/gen2brain/avif" // AVIF support
 	_ "golang.org/x/image/bmp"    // BMP support
@@ -243,8 +243,7 @@ func (g *Generator) generateThumbnail(imagePath string) (string, error) {
 	newWidth, newHeight := calculateThumbnailSize(sourceImg.Bounds().Dx(), sourceImg.Bounds().Dy(), thumbnailWidth, thumbnailHeight)
 
 	// Create thumbnail using Catmull-Rom scaling for much better quality
-	thumbnail := image.NewRGBA(image.Rect(0, 0, newWidth, newHeight))
-	draw.CatmullRom.Scale(thumbnail, thumbnail.Bounds(), sourceImg, sourceImg.Bounds(), draw.Over, nil)
+	thumbnail := imaging.Resize(sourceImg, newWidth, newHeight, imaging.CatmullRom)
 
 	// Save to cache
 	cachePath := g.GetCachePath(imagePath)
@@ -399,8 +398,7 @@ func (g *Generator) GenerateThumbnailPNG(imagePath string, outputPath string) er
 	}
 
 	newWidth, newHeight := calculateThumbnailSize(sourceImg.Bounds().Dx(), sourceImg.Bounds().Dy(), thumbnailWidth, thumbnailHeight)
-	thumbnail := image.NewRGBA(image.Rect(0, 0, newWidth, newHeight))
-	draw.CatmullRom.Scale(thumbnail, thumbnail.Bounds(), sourceImg, sourceImg.Bounds(), draw.Over, nil)
+	thumbnail := imaging.Resize(sourceImg, newWidth, newHeight, imaging.CatmullRom)
 
 	out, err := os.Create(outputPath)
 	if err != nil {

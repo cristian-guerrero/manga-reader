@@ -1,0 +1,298 @@
+# .github/workflows/build-avif-binaries.yml
+# Builds native AVIF libraries (libavif.dll / libavif.so / libavif.dylib)
+# for use by gen2brain/avif via FFI.
+#
+# Trigger: manual (workflow_dispatch). Run once and upload artifacts.
+# The resulting binaries are then published as a GitHub Release
+# so the app can download them at runtime.
+
+name: Build AVIF Native Binaries
+
+on:
+  workflow_dispatch:
+    inputs:
+      libavif_ref:
+        description: "Git ref from AOMediaCodec/libavif to build (tag or commit)"
+        required: true
+        default: "v1.4.1"
+      skip_windows:
+        description: "Skip Windows build"
+        required: false
+        default: false
+        type: boolean
+      skip_linux:
+        description: "Skip Linux build"
+        required: false
+        default: false
+        type: boolean
+      skip_macos:
+        description: "Skip macOS build"
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  # ──────────────────────────────────────────────────────────────
+  # WINDOWS: Build libavif shared library via MSYS2 / MinGW
+  # ──────────────────────────────────────────────────────────────
+  build-windows:
+    if: ${{ !inputs.skip_windows }}
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - name: Setup MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          update: true
+          install: >
+            git
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-cmake
+            mingw-w64-x86_64-ninja
+            mingw-w64-x86_64-nasm
+            mingw-w64-x86_64-dav1d
+            mingw-w64-x86_64-libyuv
+            mingw-w64-x86_64-libsharpyuv
+            mingw-w64-x86_64-libjpeg-turbo
+            mingw-w64-x86_64-zlib
+            mingw-w64-x86_64-libpng
+            mingw-w64-x86_64-libxml2
+            mingw-w64-x86_64-libheif
+
+      - name: Checkout libavif source
+        run: |
+          git clone --depth 1 --branch ${{ inputs.libavif_ref }} \
+            https://github.com/AOMediaCodec/libavif.git
+          cd libavif
+          git log -1 --oneline
+
+      - name: Build libavif (shared)
+        working-directory: libavif
+        run: |
+          mkdir build && cd build
+          cmake -G Ninja .. \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_SHARED_LIBS=ON \
+            -DAVIF_CODEC_DAV1D=SYSTEM \
+            -DAVIF_CODEC_DAV1D_ENCODE=OFF \
+            -DAVIF_CODEC_AOM=OFF \
+            -DAVIF_LIBYUV=SYSTEM \
+            -DAVIF_LIBSHARPYUV=SYSTEM \
+            -DAVIF_JPEG=SYSTEM \
+            -DAVIF_ZLIBPNG=SYSTEM \
+            -DAVIF_BUILD_APPS=OFF \
+            -DAVIF_BUILD_TESTS=OFF
+          ninja -j$(nproc)
+
+      - name: Package binaries
+        shell: msys2 {0}
+        run: |
+          mkdir -p output
+
+          # libavif generates libavif.dll (not libavif-16.dll) when built
+          # from source with BUILD_SHARED_LIBS=ON.
+          # Find and copy the DLL.
+          dll_path=$(find libavif/build -name "*.dll" -type f 2>/dev/null | head -5)
+          echo "Found DLLs:"
+          echo "$dll_path"
+
+          for dll in $dll_path; do
+            cp -v "$dll" output/
+          done
+
+          # Also copy runtime dependencies (dav1d, libyuv, etc.)
+          # These live in /mingw64/bin/
+          for dep in libdav1d libyuv libsharpyuv-0 libheif \
+                      libde265-0 libx265 libjpeg-8 libpng16-16 \
+                      liblzma-5 libxml2-2 libbz2-1 libz-1 \
+                      libstdc++-6 libgcc_s_seh-1 libwinpthread-1; do
+            if [ -f "/mingw64/bin/${dep}.dll" ]; then
+              cp -v "/mingw64/bin/${dep}.dll" output/
+            fi
+          done
+
+          # If the DLL is named differently (e.g. libavif-16.dll),
+          # create a symlink or copy as libavif.dll for gen2brain/avif
+          if [ -f "output/libavif.dll" ]; then
+            echo "libavif.dll found"
+          else
+            avif_dll=$(ls output/libavif*.dll 2>/dev/null | head -1)
+            if [ -n "$avif_dll" ]; then
+              cp -v "$avif_dll" output/libavif.dll
+            fi
+          fi
+
+          ls -la output/
+          cd output
+          7z a -tzip ../avif-windows-x64.zip *
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: avif-windows-x64
+          path: avif-windows-x64.zip
+
+  # ──────────────────────────────────────────────────────────────
+  # LINUX: Build libavif shared library
+  # ──────────────────────────────────────────────────────────────
+  build-linux:
+    if: ${{ !inputs.skip_linux }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            ninja-build \
+            nasm \
+            git \
+            clang \
+            libdav1d-dev \
+            libyuv-dev \
+            libsharpyuv-dev \
+            libjpeg-turbo8-dev \
+            libpng-dev \
+            libz-dev \
+            libxml2-dev
+
+      - name: Checkout libavif source
+        uses: actions/checkout@v4
+        with:
+          repository: AOMediaCodec/libavif
+          ref: ${{ inputs.libavif_ref }}
+          path: libavif
+
+      - name: Build libavif (shared)
+        working-directory: libavif
+        run: |
+          mkdir build && cd build
+          cmake -G Ninja .. \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_SHARED_LIBS=ON \
+            -DAVIF_CODEC_DAV1D=SYSTEM \
+            -DAVIF_CODEC_DAV1D_ENCODE=OFF \
+            -DAVIF_CODEC_AOM=OFF \
+            -DAVIF_LIBYUV=SYSTEM \
+            -DAVIF_LIBSHARPYUV=SYSTEM \
+            -DAVIF_JPEG=SYSTEM \
+            -DAVIF_ZLIBPNG=SYSTEM \
+            -DAVIF_BUILD_APPS=OFF \
+            -DAVIF_BUILD_TESTS=OFF
+          ninja -j$(nproc)
+
+      - name: Package binaries
+        run: |
+          mkdir -p output
+
+          # Find the built .so files
+          find libavif/build -name "libavif.so*" -type f -exec cp -v {} output/ \;
+
+          # Also copy system dependencies that are linked
+          # (dav1d, libyuv, etc. are SYSTEM deps that may be needed at runtime)
+          for dep in libdav1d.so libyuv.so libsharpyuv.so; do
+            so_path=$(dpkg -L $(dpkg -S "$dep" 2>/dev/null | awk -F: '{print $1}') 2>/dev/null | grep "/${dep}$" | head -1 || true)
+            if [ -n "$so_path" ] && [ ! -f "output/$dep" ]; then
+              cp -v "$so_path" output/ 2>/dev/null || true
+            fi
+          done
+
+          # Copy libavif.so (with possible version suffix) as plain libavif.so
+          cd output
+          for f in libavif.so*; do
+            if [ -f "$f" ] && [ "$f" != "libavif.so" ]; then
+              cp -v "$f" libavif.so 2>/dev/null || true
+              break
+            fi
+          done
+
+          ls -la
+          tar czf ../avif-linux-x64.tar.gz *
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: avif-linux-x64
+          path: avif-linux-x64.tar.gz
+
+  # ──────────────────────────────────────────────────────────────
+  # MACOS: Build libavif shared library (dylib)
+  # ──────────────────────────────────────────────────────────────
+  build-macos:
+    if: ${{ !inputs.skip_macos }}
+    runs-on: macos-latest
+    steps:
+      - name: Install system dependencies
+        run: |
+          brew update
+          brew install \
+            ninja \
+            nasm \
+            dav1d \
+            libyuv \
+            libsharpyuv \
+            jpeg-turbo \
+            libpng \
+            libxml2 \
+            cmake
+
+      - name: Checkout libavif source
+        uses: actions/checkout@v4
+        with:
+          repository: AOMediaCodec/libavif
+          ref: ${{ inputs.libavif_ref }}
+          path: libavif
+
+      - name: Build libavif (shared)
+        working-directory: libavif
+        run: |
+          export PKG_CONFIG_PATH=$(brew --prefix)/lib/pkgconfig:$PKG_CONFIG_PATH
+
+          mkdir build && cd build
+          cmake -G Ninja .. \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_SHARED_LIBS=ON \
+            -DAVIF_CODEC_DAV1D=SYSTEM \
+            -DAVIF_CODEC_DAV1D_ENCODE=OFF \
+            -DAVIF_CODEC_AOM=OFF \
+            -DAVIF_LIBYUV=SYSTEM \
+            -DAVIF_LIBSHARPYUV=SYSTEM \
+            -DAVIF_JPEG=SYSTEM \
+            -DAVIF_ZLIBPNG=SYSTEM \
+            -DAVIF_BUILD_APPS=OFF \
+            -DAVIF_BUILD_TESTS=OFF
+          ninja -j$(sysctl -n hw.logicalcpu)
+
+      - name: Package binaries
+        run: |
+          mkdir -p output
+
+          # Find the built .dylib files
+          find libavif/build -name "libavif*.dylib" -type f -exec cp -v {} output/ \;
+
+          # Copy system dependencies (from Homebrew)
+          for dep in libdav1d libyuv libsharpyuv; do
+            dylib_path=$(find $(brew --prefix)/lib -name "${dep}.dylib" -o -name "${dep}*.dylib" 2>/dev/null | head -1)
+            if [ -n "$dylib_path" ] && [ ! -f "output/$(basename $dylib_path)" ]; then
+              cp -v "$dylib_path" output/
+            fi
+          done
+
+          cd output
+          # Rename to the expected name
+          for f in libavif*.dylib; do
+            if [ -f "$f" ] && [ "$f" != "libavif.dylib" ]; then
+              cp -v "$f" libavif.dylib 2>/dev/null || true
+              break
+            fi
+          done
+
+          ls -la
+          tar czf ../avif-darwin-arm64.tar.gz *
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: avif-darwin-arm64
+          path: avif-darwin-arm64.tar.gz
