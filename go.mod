@@ -3,6 +3,7 @@ module manga-visor
 go 1.24.0
 
 require (
+	github.com/disintegration/imaging v1.6.2
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/gen2brain/avif v0.4.4
 	github.com/nwaples/rardecode/v2 v2.2.2
