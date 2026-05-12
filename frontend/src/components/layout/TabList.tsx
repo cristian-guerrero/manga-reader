@@ -95,28 +95,26 @@ function SortableTab({
     >
       {/* Tab Background */}
       <div
-        className={`absolute inset-0 transition-all duration-200 rounded-[6px] ${
-          activeTabId === tab.id
+        className={`absolute inset-0 transition-all duration-200 rounded-[6px] ${activeTabId === tab.id
             ? isDark
               ? "bg-white/10 opacity-100 shadow-sm"
               : "bg-black/10 opacity-100 shadow-sm"
             : isDark
               ? "bg-transparent group-hover:bg-white/5"
               : "bg-transparent group-hover:bg-black/5"
-        }`}
+          }`}
       />
 
       {/* Content */}
-      <Tooltip content={tab.title}>
+      <Tooltip content={tab.title} className="w-full min-w-0 overflow-hidden">
         <div className="relative flex items-center justify-between w-full gap-1 z-10 overflow-hidden px-2">
           {/* Title - hidden when very compressed */}
           {!isVeryCompressed && (
             <span
-              className={`text-[11px] font-medium truncate whitespace-nowrap transition-all flex-1 min-w-0 ${
-                activeTabId === tab.id
+              className={`text-[11px] font-medium truncate whitespace-nowrap transition-all flex-1 min-w-0 ${activeTabId === tab.id
                   ? "opacity-100"
                   : "opacity-60 group-hover:opacity-90"
-              } ${isCompressed ? "text-[10px]" : ""}`}
+                } ${isCompressed ? "text-[10px]" : ""}`}
             >
               {tab.title}
             </span>
@@ -132,11 +130,10 @@ function SortableTab({
                 e.stopPropagation();
                 closeTab(tab.id);
               }}
-              className={`flex items-center justify-center flex-shrink-0 rounded-md hover:bg-white/20 transition-all ${
-                activeTabId === tab.id
+              className={`flex items-center justify-center flex-shrink-0 rounded-md hover:bg-white/20 transition-all ${activeTabId === tab.id
                   ? "opacity-70"
                   : "opacity-30 group-hover:opacity-60"
-              } hover:!opacity-100 ${isVeryCompressed ? "w-6 h-6" : "w-5 h-5"}`}
+                } hover:!opacity-100 ${isVeryCompressed ? "w-6 h-6" : "w-5 h-5"}`}
             >
               <svg
                 width="8"
@@ -295,11 +292,10 @@ export function TabList() {
       <Tooltip content={t("common.addTab") || "New Tab"} placement="bottom">
         <button
           onMouseDown={handleAddTab}
-          className={`flex items-center justify-center min-w-[26px] h-[26px] rounded-md transition-all ml-1 flex-shrink-0 ${
-            isDark
+          className={`flex items-center justify-center min-w-[26px] h-[26px] rounded-md transition-all ml-1 flex-shrink-0 ${isDark
               ? "hover:bg-white/10 text-white/50 hover:text-white"
               : "hover:bg-black/5 text-[var(--color-accent)]"
-          }`}
+            }`}
         >
           <svg
             width="14"
