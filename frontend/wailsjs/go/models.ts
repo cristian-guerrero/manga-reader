@@ -243,6 +243,25 @@ export namespace explorer {
 
 }
 
+export namespace main {
+	
+	export class SaveImageRequest {
+	    base64Data: string;
+	    fileName: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new SaveImageRequest(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.base64Data = source["base64Data"];
+	        this.fileName = source["fileName"];
+	    }
+	}
+
+}
+
 export namespace persistence {
 	
 	export class AddFolderResult {

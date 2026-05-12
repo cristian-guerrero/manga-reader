@@ -7,7 +7,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigation } from "@hooks";
 import { useToast } from "@components/common/Toast";
-import { Tooltip } from "@shared/components";
+import { Tooltip, Toggle } from "@shared/components";
 import * as AppBackend from "../../../wailsjs/go/main/App";
 import { OnFileDrop, OnFileDropOff } from "../../../wailsjs/runtime";
 import type { colorizer } from "../../../wailsjs/go/models";
@@ -72,6 +72,7 @@ export function ColorizerPage() {
 
   const statusPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const cancelColorizeRef = useRef(false);
+  const [useDefaultFolder, setUseDefaultFolder] = useState(true);
 
   // Poll status updates from backend
   useEffect(() => {
@@ -316,18 +317,48 @@ export function ColorizerPage() {
       return;
     }
 
-    try {
-      const link = document.createElement("a");
-      link.href = currentColorizedImage;
-      link.download = "colorized_manga.png";
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      showToast("Download started", "success");
-    } catch {
-      showToast("Download failed", "error");
+    // Generate filename from current image name or use default
+    const suggestedName = currentImage
+      ? `colorized_${currentImage.split(/[\\/]/).pop() || "manga"}.png`
+      : "colorized_manga.png";
+
+    if (useDefaultFolder) {
+      // Auto-save to _colorized folder next to the original image
+      try {
+        const savedPath = await AppBackend.SaveColorizedImageAuto(
+          currentColorizedImage,
+          suggestedName,
+          currentImage || "",
+        );
+        if (savedPath) {
+          showToast(
+            t("colorizer.downloadDialog.savedTo", { path: savedPath }) || `Saved to ${savedPath}`,
+            "success",
+          );
+        }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err) || "Download failed";
+        showToast(msg, "error");
+      }
+    } else {
+      // Manual mode: open native save dialog directly
+      try {
+        const savedPath = await AppBackend.SaveColorizedImage(
+          currentColorizedImage,
+          suggestedName,
+        );
+        if (savedPath) {
+          showToast(
+            t("colorizer.downloadDialog.savedTo", { path: savedPath }) || `Saved to ${savedPath}`,
+            "success",
+          );
+        }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err) || "Download failed";
+        showToast(msg, "error");
+      }
     }
-  }, [currentColorizedImage, showToast]);
+  }, [currentColorizedImage, currentImage, useDefaultFolder, showToast, t]);
 
   const handleClearImages = useCallback(() => {
     setDroppedImages([]);
@@ -442,22 +473,54 @@ export function ColorizerPage() {
       return;
     }
 
-    try {
-      for (const img of colorizedImages) {
-        const link = document.createElement("a");
-        link.href = colorizedCache[img.path];
-        link.download = `colorized_${img.name}`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        // Small delay between downloads to avoid browser blocking
-        await new Promise((resolve) => setTimeout(resolve, 100));
+    if (useDefaultFolder) {
+      // Auto-save all to _colorized folder
+      try {
+        const items = colorizedImages.map((img) => ({
+          base64Data: colorizedCache[img.path],
+          fileName: `colorized_${img.name}`,
+        }));
+        const sourcePaths = colorizedImages.map((img) => img.path);
+
+        const savedPaths = await AppBackend.SaveMultipleColorizedImagesAuto(
+          items,
+          sourcePaths,
+        );
+
+        if (savedPaths && savedPaths.length > 0) {
+          showToast(
+            t("colorizer.downloadDialog.savedAllTo", { count: savedPaths.length }) ||
+            `${savedPaths.length} images saved to colorized folder`,
+            "success",
+          );
+        }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err) || "Download failed";
+        showToast(msg, "error");
       }
-      showToast(`Downloaded ${colorizedImages.length} image(s)`, "success");
-    } catch {
-      showToast("Download failed", "error");
+    } else {
+      // Manual mode: open native folder picker directly
+      try {
+        const items = colorizedImages.map((img) => ({
+          base64Data: colorizedCache[img.path],
+          fileName: `colorized_${img.name}`,
+        }));
+
+        const savedPaths = await AppBackend.SaveMultipleColorizedImages(items);
+
+        if (savedPaths && savedPaths.length > 0) {
+          showToast(
+            t("colorizer.downloadDialog.savedAllTo", { count: savedPaths.length }) ||
+            `${savedPaths.length} images saved successfully`,
+            "success",
+          );
+        }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err) || "Download failed";
+        showToast(msg, "error");
+      }
     }
-  }, [droppedImages, colorizedCache, showToast]);
+  }, [droppedImages, colorizedCache, useDefaultFolder, showToast, t]);
 
   const handleSelectFolder = useCallback(async () => {
     try {
@@ -571,6 +634,33 @@ export function ColorizerPage() {
             />
             {t(`colorizer.status.${status.status}`)}
           </div>
+          {/* Default Folder Toggle */}
+          <div
+            className="flex items-center gap-2 cursor-pointer select-none"
+            onClick={() => setUseDefaultFolder(!useDefaultFolder)}
+            title={
+              useDefaultFolder
+                ? t("colorizer.defaultFolderOnDesc") || "Saving to _colorized folder next to originals"
+                : t("colorizer.defaultFolderOffDesc") || "Will ask where to save"
+            }
+          >
+            <Toggle
+              checked={useDefaultFolder}
+              onChange={setUseDefaultFolder}
+            />
+            <span
+              className="text-sm font-medium whitespace-nowrap"
+              style={{
+                color: useDefaultFolder
+                  ? "var(--color-accent)"
+                  : "var(--color-text-muted)",
+              }}
+            >
+              {useDefaultFolder
+                ? t("colorizer.defaultFolderOn") || "Auto"
+                : t("colorizer.defaultFolderOff") || "Manual"}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -683,11 +773,10 @@ export function ColorizerPage() {
                   onClick={() => {
                     setCurrentImage(img.path);
                   }}
-                  className={`w-full px-3 py-2 rounded-lg text-sm text-left truncate transition-all ${
-                    currentImage === img.path
-                      ? "bg-accent/20 border-accent"
-                      : "hover:bg-surface-hover"
-                  }`}
+                  className={`w-full px-3 py-2 rounded-lg text-sm text-left truncate transition-all ${currentImage === img.path
+                    ? "bg-accent/20 border-accent"
+                    : "hover:bg-surface-hover"
+                    }`}
                   style={{
                     backgroundColor:
                       currentImage === img.path
@@ -759,7 +848,7 @@ export function ColorizerPage() {
                     {isColorizingAll
                       ? status.status === "colorizing"
                         ? t("colorizer.processingAll") ||
-                          "Processing All Images"
+                        "Processing All Images"
                         : status.status || "Processing All Images"
                       : status.status === "colorizing"
                         ? t("colorizer.colorizing") || "Colorizing Image"
@@ -769,13 +858,13 @@ export function ColorizerPage() {
                   {(status.message ||
                     currentProcessingImage ||
                     currentImage) && (
-                    <div className="text-gray-300 text-base mb-4">
-                      {status.message ||
-                        currentProcessingImage ||
-                        currentImage?.split("/").pop() ||
-                        "Please wait..."}
-                    </div>
-                  )}
+                      <div className="text-gray-300 text-base mb-4">
+                        {status.message ||
+                          currentProcessingImage ||
+                          currentImage?.split("/").pop() ||
+                          "Please wait..."}
+                      </div>
+                    )}
 
                   {isColorizingAll && (
                     <div className="mt-4">
@@ -808,7 +897,7 @@ export function ColorizerPage() {
                     {isColorizingAll
                       ? t("colorizer.dontClose") || "Don't close this window"
                       : t("colorizer.pleaseWait") ||
-                        "Please wait while we prepare your content"}
+                      "Please wait while we prepare your content"}
                   </div>
                 </div>
               </div>

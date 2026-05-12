@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"manga-visor/internal/fileloader"
 	"manga-visor/internal/modules/colorizer"
@@ -17,6 +18,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	stdruntime "runtime"
+	"strings"
 	"time"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -765,4 +767,226 @@ func (a *App) LoadImageAsBase64(imagePath string) (string, error) {
 		return "", fmt.Errorf("colorizer module not initialized")
 	}
 	return a.colorizerMod.LoadImageAsBase64(imagePath)
+}
+
+// =============================================================================
+// Colorizer Save Methods
+// =============================================================================
+
+// SaveImageRequest represents a request to save a colorized image
+type SaveImageRequest struct {
+	Base64Data string `json:"base64Data"`
+	FileName   string `json:"fileName"`
+}
+
+// SaveColorizedImage saves a single base64-encoded image to a user-selected file.
+// Opens a native save file dialog so the webview download dialog is not triggered.
+// Returns the saved file path, or an empty string if the user cancelled.
+func (a *App) SaveColorizedImage(base64Data string, suggestedName string) (string, error) {
+	// Open the native save file dialog
+	filePath, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+		Title:           "Save Colorized Image",
+		DefaultFilename: suggestedName,
+		Filters: []runtime.FileFilter{
+			{
+				DisplayName: "PNG Images (*.png)",
+				Pattern:     "*.png",
+			},
+			{
+				DisplayName: "JPEG Images (*.jpg)",
+				Pattern:     "*.jpg",
+			},
+			{
+				DisplayName: "All Files (*.*)",
+				Pattern:     "*.*",
+			},
+		},
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to open save dialog: %w", err)
+	}
+	if filePath == "" {
+		return "", nil // User cancelled
+	}
+
+	// Decode base64 data
+	rawData := base64Data
+	// Remove data URL prefix if present (e.g. "data:image/png;base64,...")
+	if idx := strings.Index(rawData, ","); idx != -1 {
+		rawData = rawData[idx+1:]
+	}
+
+	imageBytes, err := base64.StdEncoding.DecodeString(rawData)
+	if err != nil {
+		return "", fmt.Errorf("failed to decode image data: %w", err)
+	}
+
+	// Write the file
+	if err := os.WriteFile(filePath, imageBytes, 0644); err != nil {
+		return "", fmt.Errorf("failed to save file: %w", err)
+	}
+
+	return filePath, nil
+}
+
+// SaveMultipleColorizedImages saves multiple base64-encoded images to a user-selected directory.
+// Opens a native directory picker first, then saves all images with their suggested filenames.
+// Returns the list of saved file paths.
+func (a *App) SaveMultipleColorizedImages(images []SaveImageRequest) ([]string, error) {
+	if len(images) == 0 {
+		return nil, fmt.Errorf("no images to save")
+	}
+
+	// Open directory picker
+	dirPath, err := runtime.OpenDirectoryDialog(a.ctx, runtime.OpenDialogOptions{
+		Title: "Select Destination Folder for Colorized Images",
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to open directory dialog: %w", err)
+	}
+	if dirPath == "" {
+		return nil, nil // User cancelled
+	}
+
+	var savedPaths []string
+
+	for _, img := range images {
+		// Decode base64
+		rawData := img.Base64Data
+		if idx := strings.Index(rawData, ","); idx != -1 {
+			rawData = rawData[idx+1:]
+		}
+
+		imageBytes, err := base64.StdEncoding.DecodeString(rawData)
+		if err != nil {
+			// Log the error but continue with remaining images
+			fmt.Printf("[Colorizer] Failed to decode image %s: %v\n", img.FileName, err)
+			continue
+		}
+
+		destPath := filepath.Join(dirPath, img.FileName)
+		destPath = uniqueFilePath(destPath)
+
+		if err := os.WriteFile(destPath, imageBytes, 0644); err != nil {
+			fmt.Printf("[Colorizer] Failed to save %s: %v\n", destPath, err)
+			continue
+		}
+
+		savedPaths = append(savedPaths, destPath)
+	}
+
+	return savedPaths, nil
+}
+
+// uniqueFilePath returns a file path that doesn't exist yet by appending a number suffix
+// if the original path already exists. E.g., "file.png" -> "file (1).png", "file (2).png", etc.
+func uniqueFilePath(path string) string {
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		return path
+	}
+	ext := filepath.Ext(path)
+	base := strings.TrimSuffix(path, ext)
+	for i := 1; ; i++ {
+		newPath := fmt.Sprintf("%s (%d)%s", base, i, ext)
+		if _, err := os.Stat(newPath); os.IsNotExist(err) {
+			return newPath
+		}
+	}
+}
+
+// SaveColorizedImageAuto saves a single base64-encoded image to a "_colorized" folder
+// next to the original image's parent directory. Creates the folder if it doesn't exist.
+// Returns the saved file path.
+func (a *App) SaveColorizedImageAuto(base64Data string, fileName string, originalImagePath string) (string, error) {
+	// Get parent folder of the original image
+	fmt.Printf("[Colorizer Save] originalImagePath=%q\n", originalImagePath)
+	parentDir := filepath.Dir(originalImagePath)
+	baseName := filepath.Base(parentDir)
+	colorizedDir := filepath.Join(filepath.Dir(parentDir), baseName+"_colorized")
+	fmt.Printf("[Colorizer Save] parentDir=%q baseName=%q colorizedDir=%q\n", parentDir, baseName, colorizedDir)
+
+	// Create the _colorized directory if it doesn't exist
+	if err := os.MkdirAll(colorizedDir, 0755); err != nil {
+		return "", fmt.Errorf("failed to create colorized directory: %w", err)
+	}
+	fmt.Printf("[Colorizer Save] Directory created/verified: %s\n", colorizedDir)
+
+	// Decode base64 data
+	rawData := base64Data
+	if idx := strings.Index(rawData, ","); idx != -1 {
+		rawData = rawData[idx+1:]
+	}
+	fmt.Printf("[Colorizer Save] base64 data length after stripping prefix: %d bytes\n", len(rawData))
+
+	imageBytes, err := base64.StdEncoding.DecodeString(rawData)
+	if err != nil {
+		fmt.Printf("[Colorizer Save] base64 decode ERROR: %v\n", err)
+		return "", fmt.Errorf("failed to decode image data: %w", err)
+	}
+	fmt.Printf("[Colorizer Save] Decoded image: %d bytes\n", len(imageBytes))
+
+	// Sanitize filename: extract just the base name to remove any path components
+	safeFileName := filepath.Base(fileName)
+	destPath := filepath.Join(colorizedDir, safeFileName)
+	destPath = uniqueFilePath(destPath)
+	fmt.Printf("[Colorizer Save] safeFileName=%q destPath=%q\n", safeFileName, destPath)
+
+	if err := os.WriteFile(destPath, imageBytes, 0644); err != nil {
+		fmt.Printf("[Colorizer Save] WriteFile ERROR: %v\n", err)
+		return "", fmt.Errorf("failed to save file: %w", err)
+	}
+
+	fmt.Printf("[Colorizer Save] Successfully saved to: %s\n", destPath)
+	return destPath, nil
+}
+
+// SaveMultipleColorizedImagesAuto saves multiple base64-encoded images to a "_colorized" folder
+// next to the original images' parent directory. All images are saved in the same colorized folder.
+// Returns the list of saved file paths.
+func (a *App) SaveMultipleColorizedImagesAuto(images []SaveImageRequest, sourceImagePaths []string) ([]string, error) {
+	if len(images) == 0 {
+		return nil, fmt.Errorf("no images to save")
+	}
+
+	// Determine the parent directory from the first source image path
+	var colorizedDir string
+	if len(sourceImagePaths) > 0 {
+		parentDir := filepath.Dir(sourceImagePaths[0])
+		baseName := filepath.Base(parentDir)
+		colorizedDir = filepath.Join(filepath.Dir(parentDir), baseName+"_colorized")
+	} else {
+		return nil, fmt.Errorf("no source image paths provided")
+	}
+
+	// Create the _colorized directory if it doesn't exist
+	if err := os.MkdirAll(colorizedDir, 0755); err != nil {
+		return nil, fmt.Errorf("failed to create colorized directory: %w", err)
+	}
+
+	var savedPaths []string
+
+	for _, img := range images {
+		rawData := img.Base64Data
+		if idx := strings.Index(rawData, ","); idx != -1 {
+			rawData = rawData[idx+1:]
+		}
+
+		imageBytes, err := base64.StdEncoding.DecodeString(rawData)
+		if err != nil {
+			fmt.Printf("[Colorizer] Failed to decode image %s: %v\n", img.FileName, err)
+			continue
+		}
+
+		destPath := filepath.Join(colorizedDir, img.FileName)
+		destPath = uniqueFilePath(destPath)
+
+		if err := os.WriteFile(destPath, imageBytes, 0644); err != nil {
+			fmt.Printf("[Colorizer] Failed to save %s: %v\n", destPath, err)
+			continue
+		}
+
+		savedPaths = append(savedPaths, destPath)
+	}
+
+	return savedPaths, nil
 }

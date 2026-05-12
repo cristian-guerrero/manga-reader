@@ -226,8 +226,24 @@ export function ResumeIncompleteDownloads(arg1) {
   return window['go']['main']['App']['ResumeIncompleteDownloads'](arg1);
 }
 
+export function SaveColorizedImage(arg1, arg2) {
+  return window['go']['main']['App']['SaveColorizedImage'](arg1, arg2);
+}
+
+export function SaveColorizedImageAuto(arg1, arg2, arg3) {
+  return window['go']['main']['App']['SaveColorizedImageAuto'](arg1, arg2, arg3);
+}
+
 export function SaveImageOrder(arg1, arg2, arg3) {
   return window['go']['main']['App']['SaveImageOrder'](arg1, arg2, arg3);
+}
+
+export function SaveMultipleColorizedImages(arg1) {
+  return window['go']['main']['App']['SaveMultipleColorizedImages'](arg1);
+}
+
+export function SaveMultipleColorizedImagesAuto(arg1, arg2) {
+  return window['go']['main']['App']['SaveMultipleColorizedImagesAuto'](arg1, arg2);
 }
 
 export function SaveSettings(arg1) {
