@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"manga-visor/internal/avifbin"
 	"manga-visor/internal/fileloader"
 	"manga-visor/internal/modules/colorizer"
 	"manga-visor/internal/modules/downloader"
@@ -100,6 +101,15 @@ func NewApp() *App {
 // startup is called when the app starts
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+
+	// Initialize AVIF native binaries (download if needed, configure DLL search path)
+	// If download fails, gen2brain/avif will automatically fall back to WASM decoding.
+	avifMgr := &avifbin.Manager{}
+	if err := avifMgr.Ensure(); err != nil {
+		a.services.Logger.Warnf("[AVIF] Native libraries not available, using WASM fallback: %v", err)
+	} else {
+		a.services.Logger.Infof("[AVIF] Native library ready: %s", avifMgr.LibraryPath())
+	}
 
 	// Initialize services (starts ImageServer and updates URLBuilder)
 	if err := a.services.Initialize(ctx); err != nil {
