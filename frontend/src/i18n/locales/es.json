@@ -222,7 +222,8 @@
     "tabMemorySavingDesc": "Desmonta las pestañas inactivas para ahorrar memoria. Desactívalo para cambios de pestaña instantáneos.",
     "avifStatus": "Decodificación AVIF",
     "avifNative": "Nativa (Rápido)",
-    "avifWasm": "WASM (Normal)"
+    "avifWasm": "WASM (Normal)",
+    "webpStatus": "Decodificación WebP"
   },
   "explorer": {
     "title": "Explorador",

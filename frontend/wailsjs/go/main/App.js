@@ -178,6 +178,10 @@ export function GetViewerState(arg1) {
   return window['go']['main']['App']['GetViewerState'](arg1);
 }
 
+export function GetWebPStatus() {
+  return window['go']['main']['App']['GetWebPStatus']();
+}
+
 export function HasCustomOrder(arg1) {
   return window['go']['main']['App']['HasCustomOrder'](arg1);
 }

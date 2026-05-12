@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"manga-visor/internal/avifbin"
 	"manga-visor/internal/fileloader"
+	"manga-visor/internal/webpbin"
 	"manga-visor/internal/modules/colorizer"
 	"manga-visor/internal/modules/downloader"
 	"manga-visor/internal/modules/explorer"
@@ -23,6 +24,7 @@ import (
 	"time"
 
 	"github.com/gen2brain/avif"
+	"github.com/gen2brain/webp"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
@@ -132,6 +134,20 @@ func (a *App) startup(ctx context.Context) {
 	} else {
 		a.services.Logger.Infof("[AVIF] gen2brain/avif using native library")
 		runtime.EventsEmit(ctx, "avif_native_ready")
+	}
+
+	// Initialize WebP native binaries (download if needed).
+	webpMgr := &webpbin.Manager{}
+	if err := webpMgr.Ensure(); err != nil {
+		a.services.Logger.Warnf("[WebP] Native libraries not available, using WASM fallback: %v", err)
+	} else {
+		a.services.Logger.Infof("[WebP] Native library ready: %s", webpMgr.BinaryDir())
+	}
+
+	if w := webp.Dynamic(); w != nil {
+		a.services.Logger.Warnf("[WebP] gen2brain/webp using WASM: %v", w)
+	} else {
+		a.services.Logger.Infof("[WebP] gen2brain/webp using native library")
 	}
 
 	// Initialize services (starts ImageServer and updates URLBuilder)
@@ -255,6 +271,14 @@ func (a *App) WindowToggleMaximise() {
 // GetAVIFStatus returns the current AVIF decoding method: "native" or "wasm".
 func (a *App) GetAVIFStatus() string {
 	if avif.Dynamic() == nil {
+		return "native"
+	}
+	return "wasm"
+}
+
+// GetWebPStatus returns the current WebP decoding method: "native" or "wasm".
+func (a *App) GetWebPStatus() string {
+	if webp.Dynamic() == nil {
 		return "native"
 	}
 	return "wasm"
