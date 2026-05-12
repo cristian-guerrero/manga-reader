@@ -45,3 +45,4 @@ require (
 )
 
 // replace github.com/wailsapp/wails/v2 v2.11.0 => C:\Users\cristian\go\pkg\mod
+replace github.com/gen2brain/avif v0.4.4 => github.com/cristian-guerrero/avif v0.0.0-20260512210219-7cdd1e39a199

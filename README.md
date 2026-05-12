@@ -99,6 +99,41 @@ A premium desktop manga viewer and downloader application built with Wails, Reac
 - **Customizable Menu** - Show/hide sidebar navigation items to your preference.
 - **Auto-hide Controls** - Viewer controls automatically hide for immersive reading.
 
+## 🖼️ AVIF Native Rendering
+
+Manga Visor uses a **forked version** of [gen2brain/avif](https://github.com/gen2brain/avif) at [github.com/cristian-guerrero/avif](https://github.com/cristian-guerrero/avif) to support **native AVIF decoding** via FFI (not WASM).
+
+### How it works
+
+gen2brain/avif ships with a built-in WASM decoder (slow fallback) and an optional native FFI path that calls libavif (`libavif.dll` / `libavif.so`) via purego. The problem is that `LoadLibrary` only searches standard system paths and the executable directory, not a custom cache folder.
+
+The fork solves this by intercepting the library's `init()` call:
+
+| Platform | Mechanism |
+|----------|-----------|
+| **Windows** | `LoadLibraryExW(DLL_LOAD_DIR)` — pre-loads all DLLs from `~/.manga-visor/avif-bin/` resolving all dependencies from the same directory. |
+| **Linux** | Sets `LD_LIBRARY_PATH` before `purego.Dlopen` so that `dlopen("libavif.so")` finds the cached copy. |
+| **macOS** | No-op (WASM fallback; DYLD_LIBRARY_PATH can be configured if needed). |
+
+This means:
+- ✅ No changes to Go's compilation flags (no CGO, no build tags)
+- ✅ No permanent PATH modifications
+- ✅ All binaries stay inside the app's data directory
+- ✅ WASM fallback when native library is not available
+
+### Pre-built binaries
+
+Native libraries are built via CI ([`build-avif-binaries.yml`](.github/workflows/build-avif-binaries.yml)) from [AOMediaCodec/libavif](https://github.com/AOMediaCodec/libavif) with dav1d decoder support. They are published as a GitHub Release and auto-downloaded on first run to:
+
+```
+~/.manga-visor/avif-bin/
+├── libavif.dll       (Windows) / libavif.so (Linux)
+├── libdav1d-7.dll
+├── libyuv.dll
+├── libsharpyuv-0.dll
+└── ... (runtime dependencies)
+```
+
 ## 🚀 Getting Started
 
 ### Prerequisites
@@ -112,6 +147,9 @@ A premium desktop manga viewer and downloader application built with Wails, Reac
 # Clone the repository
 git clone https://github.com/yourusername/manga-visor.git
 cd manga-visor
+
+# The fork is referenced via replace in go.mod:
+#   replace github.com/gen2brain/avif v0.4.4 => github.com/cristian-guerrero/avif v0.0.0-...
 
 # Install frontend dependencies
 cd frontend && npm install && cd ..
@@ -171,6 +209,7 @@ wails build -platform windows/amd64 -name manga-visor2
 Data is stored locally in the user's home directory under `~/.manga-visor/` (on Windows: `%APPDATA%/manga-visor/`).
 
 ### Folders
+- **`avif-bin/`** - Cached native AVIF libraries (libavif.dll / libavif.so + runtime deps) auto-downloaded from GitHub Releases.
 - **`cache/`** - Persistent storage for high-quality thumbnails generated for the Explorer and Library.
 - **`downloads/`** - Default location for all downloaded manga chapters.
 - **`temp/`** - Temporary workspace for extracting archives (ZIP, RAR, etc.) and processing transient data.

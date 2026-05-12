@@ -1,9 +1,8 @@
-// Package avifbin manages downloading and configuring native AVIF libraries
-// (libavif.dll / libavif.so / libavif.dylib) for use by gen2brain/avif via FFI.
-//
-// The libraries are downloaded once from a GitHub Release and cached in
-// ~/.manga-visor/avif-bin/. The DLL search path is configured at init() time
-// (before gen2brain/avif's own init() runs) so that LoadLibrary finds them.
+// Package avifbin manages downloading native AVIF libraries from a GitHub
+// Release and caching them in ~/.manga-visor/avif-bin/. The actual library
+// loading is handled by gen2brain/avif's fork which pre-loads them via
+// platform-specific mechanisms (LoadLibraryExW on Windows, LD_LIBRARY_PATH
+// on Linux) before its own init() calls loadLibrary().
 package avifbin
 
 import (
@@ -19,8 +18,6 @@ import (
 	"runtime"
 	"strings"
 	"sync"
-	"syscall"
-	"unsafe"
 )
 
 // GitHub repository and release tag for the pre-built AVIF binaries.
@@ -146,15 +143,16 @@ func (m *Manager) ensure() error {
 		return fmt.Errorf("failed to create binary directory %s: %w", binDir, err)
 	}
 
-	archivePath, err := m.download(plat)
+	archivePath, err := m.download(plat, binDir)
 	if err != nil {
 		return fmt.Errorf("failed to download AVIF binaries: %w", err)
 	}
-	defer os.Remove(archivePath)
 
 	if err := extractArchive(archivePath, binDir, plat.AssetName); err != nil {
 		return fmt.Errorf("failed to extract AVIF binaries: %w", err)
 	}
+
+	// ZIP kept in avif-bin for debugging
 
 	// Verify the library was extracted; if not found with the expected name,
 	// look for any libavif* file and rename it.
@@ -178,7 +176,7 @@ func (m *Manager) ensure() error {
 	return configurePath(binDir)
 }
 
-func (m *Manager) download(plat Platform) (string, error) {
+func (m *Manager) download(plat Platform, destDir string) (string, error) {
 	url := m.DownloadURL
 	if url == "" {
 		url = fmt.Sprintf(
@@ -187,23 +185,24 @@ func (m *Manager) download(plat Platform) (string, error) {
 		)
 	}
 
-	tmpFile, err := os.CreateTemp("", "avif-"+plat.AssetName)
+	// Download directly into the destination directory
+	archivePath := filepath.Join(destDir, plat.AssetName)
+	tmpFile, err := os.Create(archivePath)
 	if err != nil {
-		return "", fmt.Errorf("failed to create temp file: %w", err)
+		return "", fmt.Errorf("failed to create archive file: %w", err)
 	}
-	tmpPath := tmpFile.Name()
 
 	resp, err := m.httpClient().Get(url)
 	if err != nil {
 		tmpFile.Close()
-		os.Remove(tmpPath)
+		os.Remove(archivePath)
 		return "", fmt.Errorf("failed to download %s: %w", url, err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		tmpFile.Close()
-		os.Remove(tmpPath)
+		os.Remove(archivePath)
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
 		return "", fmt.Errorf("download failed with status %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
 	}
@@ -211,16 +210,16 @@ func (m *Manager) download(plat Platform) (string, error) {
 	written, err := io.Copy(tmpFile, resp.Body)
 	tmpFile.Close()
 	if err != nil {
-		os.Remove(tmpPath)
+		os.Remove(archivePath)
 		return "", fmt.Errorf("failed to write download: %w", err)
 	}
 
 	if written == 0 {
-		os.Remove(tmpPath)
+		os.Remove(archivePath)
 		return "", fmt.Errorf("downloaded file is empty")
 	}
 
-	return tmpPath, nil
+	return archivePath, nil
 }
 
 // extractArchive extracts a .zip or .tar.gz archive to the destination directory.
@@ -276,7 +275,6 @@ func extractZip(zipPath, destDir string) error {
 			return nil
 		}
 	}
-
 	return fmt.Errorf("failed to extract zip: no suitable extractor found")
 }
 
@@ -394,19 +392,13 @@ func runCmd(name string, args ...string) error {
 	return cmd.Run()
 }
 
-// configurePath sets up the OS-specific library search path so that
-// gen2brain/avif can find the native libraries.
-//
-// NOTE: On Windows, gen2brain/avif's init() tries to load libavif.dll
-// BEFORE our startup() runs (Go package initialization order). This means
-// SetDllDirectory is called too late. The only reliable way is to copy
-// the DLL to the executable's directory, which IS in LoadLibrary's default
-// search path at init time. On first run the DLL is not yet there (WASM
-// fallback), but subsequent runs will find it natively.
+// configurePath is kept as a no-op for Windows; the fork of gen2brain/avif
+// handles pre-loading via its preloadNative() in init(). On macOS/Linux,
+// DYLD_LIBRARY_PATH / LD_LIBRARY_PATH are still set here as a fallback.
 func configurePath(binDir string) error {
 	switch runtime.GOOS {
 	case "windows":
-		return configureWindowsPath(binDir)
+		return nil
 	case "darwin":
 		return configureDarwinPath(binDir)
 	case "linux":
@@ -414,26 +406,6 @@ func configurePath(binDir string) error {
 	}
 	return nil
 }
-
-// configureWindowsPath uses SetDllDirectoryW to register our bin dir so that
-// LoadLibrary (called by gen2brain/avif's init()) can find libavif.dll there.
-// This is called from init() which runs BEFORE gen2brain/avif's init().
-func configureWindowsPath(binDir string) error {
-	kernel32 := syscall.NewLazyDLL("kernel32.dll")
-	proc := kernel32.NewProc("SetDllDirectoryW")
-
-	dirPtr, err := syscall.UTF16PtrFromString(binDir)
-	if err != nil {
-		return fmt.Errorf("failed to convert path: %w", err)
-	}
-
-	ret, _, callErr := proc.Call(uintptr(unsafe.Pointer(dirPtr)))
-	if ret == 0 {
-		return fmt.Errorf("SetDllDirectoryW failed: %w", callErr)
-	}
-	return nil
-}
-
 // configureDarwinPath sets DYLD_LIBRARY_PATH so purego.Dlopen can find libavif.dylib.
 func configureDarwinPath(binDir string) error {
 	libPath := filepath.Join(binDir, "libavif.dylib")
@@ -467,46 +439,4 @@ func configureLinuxPath(binDir string) error {
 		os.Setenv("LD_LIBRARY_PATH", binDir+string(os.PathListSeparator)+current)
 	}
 	return nil
-}
-
-// init runs before gen2brain/avif's init() because:
-//   - avifbin is imported directly by main (app.go)
-//   - gen2brain/avif is imported by thumbnails and fileloader (deeper deps)
-//   - Go initializes packages in dependency order, leaf-first
-//
-// This allows us to configure the DLL search path (via SetDllDirectory or
-// environment variables) BEFORE gen2brain/avif attempts LoadLibrary().
-//
-// If the binary directory doesn't exist yet (first run), this is a no-op.
-// The download will happen later in Manager.Ensure() called from startup().
-func init() {
-	// Determine the binary directory (same logic as Manager.BinaryDir)
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return
-	}
-	binDir := filepath.Join(home, ".manga-visor", "avif-bin")
-
-	// Only configure if binaries already downloaded from a previous run
-	if _, err := os.Stat(binDir); err != nil {
-		return
-	}
-
-	// Check if at least the main library exists
-	libName := "libavif.dll"
-	if runtime.GOOS == "darwin" {
-		libName = "libavif.dylib"
-	} else if runtime.GOOS == "linux" {
-		libName = "libavif.so"
-	}
-
-	libPath := filepath.Join(binDir, libName)
-	if _, err := os.Stat(libPath); err != nil {
-		return
-	}
-
-	// Configure the DLL search path before gen2brain/avif's init() runs
-	if err := configurePath(binDir); err != nil {
-		// Not much we can do; gen2brain/avif will fall back to WASM
-	}
 }
