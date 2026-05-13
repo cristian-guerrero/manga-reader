@@ -51,7 +51,9 @@ export function FeaturedCard({ entry, onContinue, onAuxClick, onRemove }: Featur
                 </div>
 
                 <h1 className="text-3xl font-bold text-text-primary mb-2 line-clamp-2 animate-slide-in-right" style={{ animationDelay: '0.1s' }}>
-                    {entry.folderName}
+                    <Tooltip content={entry.folderName}>
+                        <span>{entry.folderName}</span>
+                    </Tooltip>
                 </h1>
 
                 <p className="text-text-secondary mb-6 line-clamp-1 opacity-60 text-sm animate-slide-in-right" style={{ animationDelay: '0.15s' }}>

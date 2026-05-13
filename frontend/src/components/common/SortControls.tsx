@@ -45,11 +45,27 @@ export function SortControls({
             <select
                 value={sortBy}
                 onChange={(e) => onSortByChange(e.target.value)}
-                className="bg-transparent text-sm border-none focus:ring-0 cursor-pointer pl-2 pr-8 text-text-secondary hover:text-text-primary"
-                style={{ outline: 'none' }}
+                className="bg-transparent text-sm border-none focus:outline-none cursor-pointer pl-2 pr-8 text-text-secondary hover:text-text-primary"
+                style={{
+                    outline: 'none',
+                    WebkitAppearance: 'none',
+                    MozAppearance: 'none',
+                    appearance: 'none',
+                    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%239ca3af'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
+                    backgroundRepeat: 'no-repeat',
+                    backgroundPosition: 'right 0.5rem center',
+                    backgroundSize: '1rem',
+                }}
             >
                 {options.map((option) => (
-                    <option key={option.value} value={option.value}>
+                    <option
+                        key={option.value}
+                        value={option.value}
+                        style={{
+                            backgroundColor: 'var(--color-surface-secondary)',
+                            color: 'var(--color-text-primary)',
+                        }}
+                    >
                         {option.label}
                     </option>
                 ))}

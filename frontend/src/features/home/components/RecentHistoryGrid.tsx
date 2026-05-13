@@ -37,7 +37,7 @@ export function RecentHistoryGrid({
                     return (
                         <div
                             key={entry.id}
-                            className="bg-surface-secondary rounded-xl overflow-hidden border border-white/5 hover:border-accent/30 transition-all group flex flex-col hover:-translate-y-1 animate-scale-in"
+                            className="bg-surface-secondary rounded-xl overflow-hidden border border-white/5 hover:border-accent/30 transition-all group flex flex-col hover:-translate-y-1 animate-scale-in cursor-pointer"
                             style={{ animationDelay: `${(idx + 1) * 0.05}s` }}
                             onClick={() => onContinue(entry.folderPath)}
                             onMouseDown={(e) => { if (e.button === 1) e.preventDefault(); }}
@@ -58,7 +58,9 @@ export function RecentHistoryGrid({
                             <div className="p-4 flex-1 flex flex-col justify-between">
                                 <div>
                                     <h3 className="font-bold text-text-primary line-clamp-1 mb-1 group-hover:text-accent transition-colors">
-                                        {entry.folderName}
+                                        <Tooltip content={entry.folderName}>
+                                            <span>{entry.folderName}</span>
+                                        </Tooltip>
                                     </h3>
                                     <p className="text-xs text-text-muted line-clamp-1 opacity-80">
                                         {entry.folderPath}
