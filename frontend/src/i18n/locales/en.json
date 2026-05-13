@@ -249,7 +249,8 @@
     "searchPlaceholder": "Search by name...",
     "noResultsFound": "No results found",
     "tryDifferentSearch": "Try a different search term",
-    "customOrder": "Custom"
+    "customOrder": "Custom",
+    "automaticOrder": "Automatic"
   },
   "themes": {
     "dark": "Dark",

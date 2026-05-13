@@ -51,7 +51,7 @@ export function ColorizerStartServer():Promise<void>;
 
 export function ColorizerStopServer():Promise<void>;
 
-export function ExploreFolder(arg1:string):Promise<Array<explorer.ExplorerEntry>>;
+export function ExploreFolder(arg1:string,arg2:string):Promise<Array<explorer.ExplorerEntry>>;
 
 export function FetchMangaInfo(arg1:string):Promise<downloader.SiteInfo>;
 
@@ -62,6 +62,8 @@ export function GetBaseFolders():Promise<Array<explorer.BaseFolderEntry>>;
 export function GetChapterNavigation(arg1:string):Promise<series.ChapterNavigation>;
 
 export function GetDownloadHistory():Promise<Array<persistence.DownloadJob>>;
+
+export function GetFolderAutoOrder(arg1:string):Promise<Array<string>>;
 
 export function GetFolderInfo(arg1:string):Promise<persistence.FolderInfo>;
 
@@ -105,6 +107,8 @@ export function GetWebPStatus():Promise<string>;
 
 export function HasCustomOrder(arg1:string):Promise<boolean>;
 
+export function HasFolderAutoOrder(arg1:string):Promise<boolean>;
+
 export function HasFolderCustomOrder(arg1:string):Promise<boolean>;
 
 export function IsSeries(arg1:string):Promise<boolean>;
@@ -115,6 +119,8 @@ export function OpenInFileManager(arg1:string):Promise<void>;
 
 export function PreloadThumbnails(arg1:Array<string>):Promise<void>;
 
+export function PromoteToAutoOrder(arg1:string,arg2:string,arg3:Array<string>):Promise<Array<string>>;
+
 export function RemoveBaseFolder(arg1:string):Promise<void>;
 
 export function RemoveDownloadJob(arg1:string):Promise<void>;
@@ -124,6 +130,8 @@ export function RemoveHistory(arg1:string):Promise<void>;
 export function RemoveLibraryEntry(arg1:string):Promise<void>;
 
 export function RemoveSeries(arg1:string):Promise<void>;
+
+export function ResetFolderAutoOrder(arg1:string):Promise<void>;
 
 export function ResetFolderOrder(arg1:string):Promise<void>;
 
@@ -152,6 +160,8 @@ export function SaveViewerState(arg1:string,arg2:number,arg3:number,arg4:number)
 export function SaveWindowState():Promise<void>;
 
 export function SelectFolder():Promise<string>;
+
+export function SetFolderAutoOrder(arg1:string,arg2:Array<string>,arg3:Array<string>):Promise<void>;
 
 export function SetFolderOrder(arg1:string,arg2:Array<string>,arg3:Array<string>):Promise<void>;
 

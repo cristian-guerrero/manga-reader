@@ -22,12 +22,14 @@ Wails v2 (Go 1.24 backend, React 18 + TypeScript + Vite frontend). State: Zustan
 ## Data Storage
 `~/.manga-visor/` (Windows: `%USERPROFILE%\.manga-visor\`). JSON files: `settings.json`, `downloader.json`, `explorer.json`, `history.json`, `library.json`, `series.json`, `tabs.json`, `orders.json`. Cache: `cache/`, downloads: `downloads/`, temp: `temp/`.
 
-### Folder Order (Custom Explorer Sorting)
-- `folder_orders.json` stores custom folder ordering for Explorer subdirectories.
+### Folder Order (Custom & Auto Explorer Sorting)
+- `folder_orders.json` stores custom (`customOrder`) and auto (`autoOrder`) folder ordering for Explorer subdirectories.
 - Managed by `internal/persistence/folderorder.go` (FolderOrdersManager), same pattern as ImageOrder.
-- Applied in `internal/modules/explorer/explorer.go` ListDirectory via `applyCustomOrder()`.
+- Custom mode applied in `internal/modules/explorer/explorer.go` `ListDirectoryWithSort` via `applyNamedOrder()`.
+- Auto mode: folders promoted to front on click via `PromoteToFront()`, falls back to newest-first date sort.
 - Frontend: `useExplorerDragAndDrop` hook + `SortableEntryTile` + `DirectoryView` components using `@dnd-kit`.
-- Wails-bound methods: `GetFolderOrder`, `SetFolderOrder`, `ResetFolderOrder`, `HasFolderCustomOrder`, `GetFolderOriginalOrder`.
+- Wails-bound methods for custom: `GetFolderOrder`, `SetFolderOrder`, `ResetFolderOrder`, `HasFolderCustomOrder`, `GetFolderOriginalOrder`.
+- Wails-bound methods for auto: `GetFolderAutoOrder`, `SetFolderAutoOrder`, `HasFolderAutoOrder`, `PromoteToAutoOrder`, `ResetFolderAutoOrder`.
 
 ## Conventions
 - **Commits**: English only, conventional format (`type: description`), no Spanish characters (see `.cursorrules`)

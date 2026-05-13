@@ -90,8 +90,8 @@ export function ColorizerStopServer() {
   return window['go']['main']['App']['ColorizerStopServer']();
 }
 
-export function ExploreFolder(arg1) {
-  return window['go']['main']['App']['ExploreFolder'](arg1);
+export function ExploreFolder(arg1, arg2) {
+  return window['go']['main']['App']['ExploreFolder'](arg1, arg2);
 }
 
 export function FetchMangaInfo(arg1) {
@@ -112,6 +112,10 @@ export function GetChapterNavigation(arg1) {
 
 export function GetDownloadHistory() {
   return window['go']['main']['App']['GetDownloadHistory']();
+}
+
+export function GetFolderAutoOrder(arg1) {
+  return window['go']['main']['App']['GetFolderAutoOrder'](arg1);
 }
 
 export function GetFolderInfo(arg1) {
@@ -198,6 +202,10 @@ export function HasCustomOrder(arg1) {
   return window['go']['main']['App']['HasCustomOrder'](arg1);
 }
 
+export function HasFolderAutoOrder(arg1) {
+  return window['go']['main']['App']['HasFolderAutoOrder'](arg1);
+}
+
 export function HasFolderCustomOrder(arg1) {
   return window['go']['main']['App']['HasFolderCustomOrder'](arg1);
 }
@@ -218,6 +226,10 @@ export function PreloadThumbnails(arg1) {
   return window['go']['main']['App']['PreloadThumbnails'](arg1);
 }
 
+export function PromoteToAutoOrder(arg1, arg2, arg3) {
+  return window['go']['main']['App']['PromoteToAutoOrder'](arg1, arg2, arg3);
+}
+
 export function RemoveBaseFolder(arg1) {
   return window['go']['main']['App']['RemoveBaseFolder'](arg1);
 }
@@ -236,6 +248,10 @@ export function RemoveLibraryEntry(arg1) {
 
 export function RemoveSeries(arg1) {
   return window['go']['main']['App']['RemoveSeries'](arg1);
+}
+
+export function ResetFolderAutoOrder(arg1) {
+  return window['go']['main']['App']['ResetFolderAutoOrder'](arg1);
 }
 
 export function ResetFolderOrder(arg1) {
@@ -292,6 +308,10 @@ export function SaveWindowState() {
 
 export function SelectFolder() {
   return window['go']['main']['App']['SelectFolder']();
+}
+
+export function SetFolderAutoOrder(arg1, arg2, arg3) {
+  return window['go']['main']['App']['SetFolderAutoOrder'](arg1, arg2, arg3);
 }
 
 export function SetFolderOrder(arg1, arg2, arg3) {

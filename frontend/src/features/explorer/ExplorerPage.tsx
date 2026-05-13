@@ -3,7 +3,7 @@
  * Refactored to use custom hooks for better separation of concerns
  */
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import {
   KeyboardSensor,
@@ -105,6 +105,7 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
     initializeThumbnails,
     onPathChange: handlePathChange,
     onTitleChange: handleTitleChange,
+    sortBy: sorting.sortBy,
   });
 
   // Use search hook
@@ -131,7 +132,21 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
     setExplorerState,
     navigate,
     onTitleChange: handleTitleChange,
+    sortBy: sorting.sortBy,
   });
+
+  // Reload directory when switching to modes that require backend sorting (auto, custom)
+  // This handles both dropdown selection and preference restoration on nav
+  const prevSortByRef = useRef(sorting.sortBy);
+  useEffect(() => {
+    const prev = prevSortByRef.current;
+    prevSortByRef.current = sorting.sortBy;
+    if (prev === sorting.sortBy) return;
+    const path = explorerStateHook.currentPath;
+    if (path && (sorting.sortBy === 'auto' || sorting.sortBy === 'custom')) {
+      loading.loadDirectory(path, false);
+    }
+  }, [sorting.sortBy, explorerStateHook.currentPath, loading.loadDirectory]);
 
   // Use view mode hook
   const { viewMode, setViewMode } = useExplorerView(explorerStateHook.currentPath);
@@ -143,7 +158,7 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
     onEntriesChange: loading.setEntries,
     onSortModeChange: (mode) => {
       if (mode !== sorting.sortBy) {
-        sorting.setSortBy(mode as 'name' | 'date' | 'custom');
+        sorting.setSortBy(mode as 'name' | 'date' | 'custom' | 'auto');
       }
     },
   });
@@ -220,11 +235,15 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
             <SortControls
               sortBy={sorting.sortBy}
               sortOrder={sorting.sortOrder}
-              onSortByChange={(value) =>
-                sorting.setSortBy(value as "name" | "date" | "custom")
-              }
+              onSortByChange={(value) => {
+                const newMode = value as "name" | "date" | "custom" | "auto";
+                sorting.setSortBy(newMode);
+                if (explorerStateHook.currentPath && (newMode === 'auto' || newMode === 'custom')) {
+                  loading.loadDirectory(explorerStateHook.currentPath, false, newMode);
+                }
+              }}
               onSortOrderChange={() => {
-                if (sorting.sortBy === 'custom') return;
+                if (sorting.sortBy === 'custom' || sorting.sortBy === 'auto') return;
                 sorting.setSortOrder((prev) =>
                   prev === "asc" ? "desc" : "asc",
                 );
@@ -232,6 +251,7 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
               options={[
                 { value: "name", label: t("common.name") },
                 { value: "date", label: t("common.date") },
+                { value: "auto", label: t("explorer.automaticOrder") },
                 { value: "custom", label: t("explorer.customOrder") },
               ]}
               show={Boolean(

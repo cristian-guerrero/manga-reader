@@ -6,10 +6,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { FolderOrderAPI } from '@services/api/folderOrderAPI';
 
-type SortBy = 'name' | 'date' | 'custom';
+type SortBy = 'name' | 'date' | 'custom' | 'auto';
 
 // Helper functions for sort preferences per path
-const getSortPreferences = (path: string | null) => {
+export function getSortPreferences(path: string | null) {
     const key = path || 'root';
     try {
         const stored = localStorage.getItem('explorer_sortPreferences');

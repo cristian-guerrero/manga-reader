@@ -154,7 +154,7 @@ export function ColorizerPage() {
           const resolved = await AppBackend.ResolveFolder(p);
           // Try to explore folder and get image files
           try {
-            const entries = await AppBackend.ExploreFolder(resolved);
+            const entries = await AppBackend.ExploreFolder(resolved, '');
             for (const entry of entries) {
               if (!entry.isDirectory && entry.hasImages) {
                 newImages.push({
@@ -202,7 +202,7 @@ export function ColorizerPage() {
     const loadFolderImages = async () => {
       try {
         setIsLoadingImages(true);
-        const entries = await AppBackend.ExploreFolder(folderPath);
+        const entries = await AppBackend.ExploreFolder(folderPath, '');
         const newImages: ImageFile[] = [];
         for (const entry of entries) {
           if (!entry.isDirectory && entry.hasImages) {
@@ -528,7 +528,7 @@ export function ColorizerPage() {
       if (path) {
         setIsLoadingImages(true);
         try {
-          const entries = await AppBackend.ExploreFolder(path);
+          const entries = await AppBackend.ExploreFolder(path, '');
           const newImages: ImageFile[] = [];
           for (const entry of entries) {
             if (!entry.isDirectory && entry.hasImages) {

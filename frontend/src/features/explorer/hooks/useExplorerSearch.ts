@@ -53,7 +53,7 @@ export function useExplorerSearch({
     const filtered = [...entries]
       .filter(entry => matchesSearch(entry, searchQuery));
 
-    if (sortBy === 'custom') return filtered;
+    if (sortBy === 'custom' || sortBy === 'auto') return filtered;
 
     return filtered.sort((a, b) => {
       // Folders first, then files

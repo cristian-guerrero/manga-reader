@@ -408,6 +408,26 @@ func (a *App) GetFolderOriginalOrder(parentPath string) []string {
 	return a.explorerMod.GetFolderOriginalOrder(parentPath)
 }
 
+func (a *App) GetFolderAutoOrder(parentPath string) []string {
+	return a.explorerMod.GetFolderAutoOrder(parentPath)
+}
+
+func (a *App) SetFolderAutoOrder(parentPath string, autoOrder []string, originalOrder []string) error {
+	return a.explorerMod.SetFolderAutoOrder(parentPath, autoOrder, originalOrder)
+}
+
+func (a *App) PromoteToAutoOrder(parentPath string, entryName string, allEntries []string) ([]string, error) {
+	return a.explorerMod.PromoteToAutoOrder(parentPath, entryName, allEntries)
+}
+
+func (a *App) HasFolderAutoOrder(parentPath string) bool {
+	return a.explorerMod.HasFolderAutoOrder(parentPath)
+}
+
+func (a *App) ResetFolderAutoOrder(parentPath string) error {
+	return a.explorerMod.ResetFolderAutoOrder(parentPath)
+}
+
 // =============================================================================
 // Folder View Mode Methods (Per-folder grid/list preference)
 // =============================================================================
@@ -566,8 +586,8 @@ func (a *App) RemoveBaseFolder(path string) error {
 	return a.explorerMod.RemoveBaseFolder(path)
 }
 
-func (a *App) ExploreFolder(path string) ([]explorer.ExplorerEntry, error) {
-	return a.explorerMod.ListDirectory(path)
+func (a *App) ExploreFolder(path string, sortMode string) ([]explorer.ExplorerEntry, error) {
+	return a.explorerMod.ListDirectoryWithSort(path, sortMode)
 }
 
 // GetFolderNavigation returns prev/next folder navigation for explorer

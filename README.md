@@ -73,6 +73,9 @@ A premium desktop manga viewer and downloader application built with Wails, Reac
 - **Explorer** - Recursive folder browsing with base folder management.
   - **Recursive Search** - Automatically scans subdirectories for manga folders.
   - **Quick Access** - Pin frequently accessed base folders.
+  - **Sort Modes** - Sort folders by name, date, or use Automatic mode where folders move to top when opened.
+  - **Auto Sort** - Automatically promotes accessed folders to position 1, persisted per directory.
+  - **Drag & Drop** - Manually reorder subfolders with Custom sort mode.
 - **Library Management**:
   - **One Shot Library** - Organize standalone manga chapters and one-shots.
   - **Series Library** - Group chapters into series with automatic chapter detection.
@@ -228,6 +231,7 @@ Data is stored locally in the user's home directory under `~/.manga-visor/` (on 
 ### Configuration Files
 - **`downloader.json`** - Manages the state of the download queue, including pending, running, and completed jobs.
 - **`explorer.json`** - Stores user-defined base folders, pinned locations, and explorer view preferences.
+- **`folder_orders.json`** - Stores custom and automatic folder ordering for Explorer subdirectories.
 - **`history.json`** - Detailed record of your reading progress (last page, completion status, scroll position).
 - **`library.json`** - Metadata and organization info for folders managed within the One Shot Library.
 - **`orders.json`** - Stores custom manual sorting and reordering of images within specific folders.

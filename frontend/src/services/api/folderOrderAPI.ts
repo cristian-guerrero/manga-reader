@@ -69,4 +69,72 @@ export class FolderOrderAPI extends BaseAPI {
             }
         );
     }
+
+    static async getFolderAutoOrder(parentPath: string): Promise<string[]> {
+        return this.callOrEmpty(
+            async () => {
+                const result = await AppBackend.GetFolderAutoOrder(parentPath);
+                return (result as string[]) || [];
+            },
+            {
+                component: 'FolderOrderAPI',
+                action: 'getFolderAutoOrder',
+                details: { parentPath }
+            }
+        );
+    }
+
+    static async setFolderAutoOrder(parentPath: string, autoOrder: string[], originalOrder: string[]): Promise<void> {
+        return this.callVoid(
+            async () => {
+                await AppBackend.SetFolderAutoOrder(parentPath, autoOrder, originalOrder);
+            },
+            {
+                component: 'FolderOrderAPI',
+                action: 'setFolderAutoOrder',
+                details: { parentPath }
+            }
+        );
+    }
+
+    static async promoteToAutoOrder(parentPath: string, entryName: string, allEntries: string[]): Promise<string[]> {
+        return this.callOrEmpty(
+            async () => {
+                const result = await AppBackend.PromoteToAutoOrder(parentPath, entryName, allEntries);
+                return (result as string[]) || [];
+            },
+            {
+                component: 'FolderOrderAPI',
+                action: 'promoteToAutoOrder',
+                details: { parentPath, entryName }
+            }
+        );
+    }
+
+    static async hasFolderAutoOrder(parentPath: string): Promise<boolean> {
+        return this.callOrFalse(
+            async () => {
+                const result = await AppBackend.HasFolderAutoOrder(parentPath);
+                return result || false;
+            },
+            {
+                component: 'FolderOrderAPI',
+                action: 'hasFolderAutoOrder',
+                details: { parentPath }
+            }
+        );
+    }
+
+    static async resetFolderAutoOrder(parentPath: string): Promise<void> {
+        return this.callVoid(
+            async () => {
+                await AppBackend.ResetFolderAutoOrder(parentPath);
+            },
+            {
+                component: 'FolderOrderAPI',
+                action: 'resetFolderAutoOrder',
+                details: { parentPath }
+            }
+        );
+    }
 }

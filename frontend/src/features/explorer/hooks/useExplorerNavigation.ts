@@ -7,6 +7,8 @@ import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useTabStore } from '@stores';
 import { AppAPI } from '@services/api/appAPI';
+import { FolderOrderAPI } from '@services/api/folderOrderAPI';
+import { getSortPreferences } from './useExplorerSorting';
 import { ExplorerEntry, BaseFolder } from '../types';
 import type { PageType } from '@types';
 
@@ -20,11 +22,12 @@ interface UseExplorerNavigationOptions {
     setCurrentPath: (path: string | null) => void;
     setPathHistory: React.Dispatch<React.SetStateAction<string[]>>;
     setEntries: React.Dispatch<React.SetStateAction<ExplorerEntry[]>>;
-    loadDirectory: (path: string, pushHistory?: boolean) => Promise<void>;
+    loadDirectory: (path: string, pushHistory?: boolean, sortModeOverride?: string) => Promise<void>;
     loadBaseFolders: () => Promise<void>;
     setExplorerState: (state: { currentPath: string | null; pathHistory: string[] }) => void;
     navigate: (page: PageType, params?: Record<string, string>, activeMenuPageOverride?: PageType) => void;
     onTitleChange: (title: string) => void;
+    sortBy?: string;
 }
 
 export function useExplorerNavigation({
@@ -42,6 +45,7 @@ export function useExplorerNavigation({
     setExplorerState,
     navigate,
     onTitleChange,
+    sortBy,
 }: UseExplorerNavigationOptions) {
     const { t } = useTranslation();
     const addTab = useTabStore((state) => state.addTab);
@@ -50,7 +54,8 @@ export function useExplorerNavigation({
         if (pathHistory.length > 0) {
             const previous = pathHistory[pathHistory.length - 1];
             setPathHistory(prev => prev.slice(0, -1));
-            loadDirectory(previous, false);
+            const savedPrefs = getSortPreferences(previous);
+            loadDirectory(previous, false, savedPrefs.sortBy);
         } else {
             setCurrentPath(null);
             setPathHistory([]);
@@ -139,7 +144,8 @@ export function useExplorerNavigation({
                 }
             }
 
-            loadDirectory(path, false);
+            const savedPrefs = getSortPreferences(path);
+            loadDirectory(path, false, savedPrefs.sortBy);
         }
     }, [currentPath, baseFolders, setCurrentPath, setPathHistory, setEntries, loadDirectory, tabId, onTitleChange, t]);
 
@@ -219,7 +225,8 @@ export function useExplorerNavigation({
         if ('addedAt' in entry) {
             // When clicking a base folder, reset history
             setPathHistory([]);
-            loadDirectory(entry.path);
+            const targetPrefs = getSortPreferences(entry.path);
+            loadDirectory(entry.path, true, targetPrefs.sortBy);
         } else {
             const e = entry as ExplorerEntry;
             if (e.isDirectory) {
@@ -227,7 +234,16 @@ export function useExplorerNavigation({
                 if (currentPath) {
                     setPathHistory(prev => [...prev, currentPath]);
                 }
-                loadDirectory(e.path);
+                const targetPrefs = getSortPreferences(e.path);
+                loadDirectory(e.path, true, targetPrefs.sortBy);
+
+                // Auto-promotion: move folder to front of parent's auto order
+                if (sortBy === 'auto' && currentPath) {
+                    const allDirNames = entries.filter(ent => ent.isDirectory).map(ent => ent.name);
+                    FolderOrderAPI.promoteToAutoOrder(currentPath, e.name, allDirNames).catch(err => {
+                        console.error('Failed to promote to auto order:', err);
+                    });
+                }
             } else {
                 if (currentPath) {
                     const imageEntries = sortedEntries.filter(ent => !ent.isDirectory);
@@ -249,7 +265,7 @@ export function useExplorerNavigation({
                 }
             }
         }
-    }, [currentPath, pathHistory, entries, sortedEntries, loadDirectory, setPathHistory, setExplorerState, navigate]);
+    }, [currentPath, pathHistory, entries, sortedEntries, loadDirectory, setPathHistory, setExplorerState, navigate, sortBy]);
 
     const handleItemAuxClick = useCallback((e: React.MouseEvent, entry: ExplorerEntry | BaseFolder) => {
         if (e.button === 1) { // Middle click

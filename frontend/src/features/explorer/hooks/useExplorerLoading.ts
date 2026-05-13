@@ -18,6 +18,7 @@ interface UseExplorerLoadingOptions {
     initializeThumbnails: (thumbs: Record<string, string>) => void;
     onPathChange: (path: string | null) => void;
     onTitleChange: (title: string) => void;
+    sortBy?: string;
 }
 
 export function useExplorerLoading({
@@ -27,6 +28,7 @@ export function useExplorerLoading({
     initializeThumbnails,
     onPathChange,
     onTitleChange,
+    sortBy,
 }: UseExplorerLoadingOptions) {
     const { t } = useTranslation();
     const { showToast } = useToast();
@@ -67,12 +69,13 @@ export function useExplorerLoading({
         }
     }, [tabId, currentPathRef, initializeThumbnails, onTitleChange, t]);
 
-    const loadDirectory = useCallback(async (path: string, pushHistory = true) => {
+    const loadDirectory = useCallback(async (path: string, pushHistory = true, sortModeOverride?: string) => {
         if (!isMountedRef.current) return;
 
         setLoading(true);
         try {
-            const items = await AppAPI.exploreFolder(path);
+            const mode = typeof sortModeOverride === 'string' ? sortModeOverride : (sortBy || '');
+            const items = await AppAPI.exploreFolder(path, mode);
 
             if (!isMountedRef.current) return;
 
@@ -115,7 +118,7 @@ export function useExplorerLoading({
                 setLoading(false);
             }
         }
-    }, [tabId, isMountedRef, onPathChange, onTitleChange, initializeThumbnails, showToast, t]);
+    }, [tabId, isMountedRef, onPathChange, onTitleChange, initializeThumbnails, showToast, t, sortBy]);
 
     // Initial load - defer to allow UI to render first
     useEffect(() => {

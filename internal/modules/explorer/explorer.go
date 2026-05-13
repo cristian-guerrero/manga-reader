@@ -377,6 +377,12 @@ type FolderInfo struct {
 
 // ListDirectory returns contents of a directory for exploration
 func (m *Module) ListDirectory(path string) ([]ExplorerEntry, error) {
+	return m.ListDirectoryWithSort(path, "")
+}
+
+// ListDirectoryWithSort returns contents of a directory for exploration with a sort mode.
+// sortMode can be "custom", "auto", or empty (default: directories first).
+func (m *Module) ListDirectoryWithSort(path string, sortMode string) ([]ExplorerEntry, error) {
 	entries, err := os.ReadDir(path)
 	if err != nil {
 		return nil, err
@@ -449,17 +455,26 @@ func (m *Module) ListDirectory(path string) ([]ExplorerEntry, error) {
 		})
 	}
 
-	// Sort: Directories first; frontend handles detailed sorting within each group
+	// Sort based on mode
 	sort.SliceStable(result, func(i, j int) bool {
 		// Directories before files
 		if result[i].IsDirectory != result[j].IsDirectory {
 			return result[i].IsDirectory && !result[j].IsDirectory
 		}
-		// If both are directories, check for custom order
+		// If both are directories, check for order based on mode
 		if result[i].IsDirectory && m.folderOrders != nil {
-			customOrder := m.folderOrders.GetOrder(path)
-			if len(customOrder) > 0 {
-				return applyCustomOrder(customOrder, result[i].Name, result[j].Name)
+			if sortMode == "custom" {
+				customOrder := m.folderOrders.GetOrder(path)
+				if len(customOrder) > 0 {
+					return applyNamedOrder(customOrder, result[i].Name, result[j].Name)
+				}
+			} else if sortMode == "auto" {
+				autoOrder := m.folderOrders.GetAutoOrder(path)
+				if len(autoOrder) > 0 {
+					return applyNamedOrder(autoOrder, result[i].Name, result[j].Name)
+				}
+				// Fallback: newest first by lastModified
+				return result[i].LastModified > result[j].LastModified
 			}
 		}
 		return false
@@ -468,11 +483,11 @@ func (m *Module) ListDirectory(path string) ([]ExplorerEntry, error) {
 	return result, nil
 }
 
-// applyCustomOrder returns true if nameA should sort before nameB per customOrder.
-func applyCustomOrder(customOrder []string, nameA, nameB string) bool {
+// applyNamedOrder returns true if nameA should sort before nameB per the given order.
+func applyNamedOrder(order []string, nameA, nameB string) bool {
 	idxA := -1
 	idxB := -1
-	for i, name := range customOrder {
+	for i, name := range order {
 		if name == nameA {
 			idxA = i
 		}
@@ -480,18 +495,18 @@ func applyCustomOrder(customOrder []string, nameA, nameB string) bool {
 			idxB = i
 		}
 	}
-	// If both are in the custom order, compare by their position
+	// If both are in the order, compare by their position
 	if idxA >= 0 && idxB >= 0 {
 		return idxA < idxB
 	}
-	// Items in the custom order come before items not in it
+	// Items in the order come before items not in it
 	if idxA >= 0 {
 		return true
 	}
 	if idxB >= 0 {
 		return false
 	}
-	// Neither is in the custom order, sort alphabetically
+	// Neither is in the order, sort alphabetically
 	return nameA < nameB
 }
 
@@ -602,6 +617,53 @@ func (m *Module) HasFolderCustomOrder(parentPath string) bool {
 		return false
 	}
 	return m.folderOrders.HasCustomOrder(parentPath)
+}
+
+// GetFolderAutoOrder returns the auto order for a parent directory.
+func (m *Module) GetFolderAutoOrder(parentPath string) []string {
+	if m.folderOrders == nil {
+		return nil
+	}
+	return m.folderOrders.GetAutoOrder(parentPath)
+}
+
+// SetFolderAutoOrder saves an auto order for a parent directory.
+func (m *Module) SetFolderAutoOrder(parentPath string, autoOrder []string, originalOrder []string) error {
+	if m.folderOrders == nil {
+		return nil
+	}
+	if m.logger != nil {
+		m.logger.Infof("[Explorer] Saving auto order for %s: %v", parentPath, autoOrder)
+	}
+	err := m.folderOrders.SetAutoOrder(parentPath, autoOrder, originalOrder)
+	if err != nil && m.logger != nil {
+		m.logger.Errorf("[Explorer] Failed to save auto order: %v", err)
+	}
+	return err
+}
+
+// HasFolderAutoOrder returns true if the parent directory has an auto order.
+func (m *Module) HasFolderAutoOrder(parentPath string) bool {
+	if m.folderOrders == nil {
+		return false
+	}
+	return m.folderOrders.HasAutoOrder(parentPath)
+}
+
+// PromoteToAutoOrder moves an entry to the front of the auto order for the parent directory.
+func (m *Module) PromoteToAutoOrder(parentPath string, entryName string, allEntries []string) ([]string, error) {
+	if m.folderOrders == nil {
+		return nil, nil
+	}
+	return m.folderOrders.PromoteToFront(parentPath, entryName, allEntries)
+}
+
+// ResetFolderAutoOrder removes the auto order, falling back to date sort.
+func (m *Module) ResetFolderAutoOrder(parentPath string) error {
+	if m.folderOrders == nil {
+		return nil
+	}
+	return m.folderOrders.ResetAutoOrder(parentPath)
 }
 
 // GetFolderOriginalOrder returns the original (alphabetical) order for a parent directory.
