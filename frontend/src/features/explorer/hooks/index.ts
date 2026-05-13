@@ -9,3 +9,4 @@ export { useExplorerSearch } from './useExplorerSearch';
 export { useExplorerNavigation } from './useExplorerNavigation';
 export { useExplorerRestoration } from './useExplorerRestoration';
 export { useExplorerDragAndDrop } from './useExplorerDragAndDrop';
+export { useExplorerView } from './useExplorerView';

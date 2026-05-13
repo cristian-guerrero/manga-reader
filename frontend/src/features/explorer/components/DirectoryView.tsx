@@ -11,7 +11,8 @@ import {
 } from '@dnd-kit/sortable';
 import { GridItem, GridContainer, Tooltip, MediaTile } from '@shared/components';
 import { SortableEntryTile } from './SortableEntryTile';
-import type { ExplorerEntry } from '../types';
+import { ExplorerListItem } from './ExplorerListItem';
+import type { ExplorerEntry, ViewMode } from '../types';
 import type { SensorDescriptor, SensorOptions } from '@dnd-kit/core';
 
 interface DirectoryViewProps {
@@ -28,6 +29,7 @@ interface DirectoryViewProps {
     onLoadThumbnail: (path: string, coverImage: string) => Promise<void>;
     onOpenViewer: (path: string, e: React.MouseEvent) => void;
     onOpenColorizer: (path: string) => void;
+    viewMode: ViewMode;
 }
 
 function renderFooterLeft(entry: ExplorerEntry, t: (key: string) => string) {
@@ -128,10 +130,11 @@ export function DirectoryView({
     onLoadThumbnail,
     onOpenViewer,
     onOpenColorizer,
+    viewMode,
 }: DirectoryViewProps) {
     const { t } = useTranslation();
 
-    const renderEntry = useCallback((entry: ExplorerEntry) => {
+    const renderGridEntry = useCallback((entry: ExplorerEntry) => {
         const thumb = entry.thumbnailUrl || thumbnails[entry.path];
         const isSortable = isCustomMode && entry.isDirectory;
 
@@ -177,7 +180,30 @@ export function DirectoryView({
         );
     }, [entries, thumbnails, isCustomMode, onItemClick, onItemAuxClick, onLoadThumbnail, onOpenViewer, onOpenColorizer, t]);
 
-    const renderContent = () => entries.map(renderEntry);
+    const renderListEntry = useCallback((entry: ExplorerEntry) => {
+        const thumb = entry.thumbnailUrl || thumbnails[entry.path];
+        return (
+            <ExplorerListItem
+                key={entry.path}
+                entry={entry}
+                thumbnail={thumb}
+                onClick={() => onItemClick(entry)}
+                onAuxClick={(e: React.MouseEvent) => onItemAuxClick(e, entry)}
+                onOpenViewer={onOpenViewer}
+                onOpenColorizer={onOpenColorizer}
+            />
+        );
+    }, [entries, thumbnails, onItemClick, onItemAuxClick, onOpenViewer, onOpenColorizer]);
+
+    if (viewMode === 'list') {
+        return (
+            <div className="space-y-3">
+                {entries.map(renderListEntry)}
+            </div>
+        );
+    }
+
+    const renderContent = () => entries.map(renderGridEntry);
 
     if (isCustomMode && directoryEntries.length > 0) {
         const sortableIds = directoryEntries.map((e) => e.path);

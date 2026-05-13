@@ -33,9 +33,11 @@ import {
   useExplorerNavigation,
   useExplorerRestoration,
   useExplorerDragAndDrop,
+  useExplorerView,
 } from "./hooks";
 import { BaseFolder } from "./types";
 import { DirectoryView } from "./components/DirectoryView";
+import { GridIcon, ListIcon } from "./components/ExplorerIcons";
 
 // Icons
 const TrashIcon = () => (
@@ -130,6 +132,9 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
     navigate,
     onTitleChange: handleTitleChange,
   });
+
+  // Use view mode hook
+  const { viewMode, setViewMode } = useExplorerView(explorerStateHook.currentPath);
 
   // Use drag-and-drop hook (for custom folder ordering)
   const dnd = useExplorerDragAndDrop({
@@ -236,6 +241,36 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
               )}
             />
           </div>
+
+          {/* View Mode Toggle */}
+          {explorerStateHook.currentPath && loading.entries.length > 0 && (
+            <div className="flex items-center bg-surface-tertiary rounded-lg p-1 border border-white/5 ml-4 flex-shrink-0">
+              <Tooltip content={t('explorer.gridView') || 'Grid View'} placement="bottom">
+                <button
+                  onClick={() => setViewMode('grid')}
+                  className={`p-1.5 rounded transition-colors ${
+                    viewMode === 'grid'
+                      ? 'bg-accent text-white'
+                      : 'text-text-secondary hover:text-text-primary hover:bg-white/10'
+                  }`}
+                >
+                  <GridIcon />
+                </button>
+              </Tooltip>
+              <Tooltip content={t('explorer.listView') || 'List View'} placement="bottom">
+                <button
+                  onClick={() => setViewMode('list')}
+                  className={`p-1.5 rounded transition-colors ${
+                    viewMode === 'list'
+                      ? 'bg-accent text-white'
+                      : 'text-text-secondary hover:text-text-primary hover:bg-white/10'
+                  }`}
+                >
+                  <ListIcon />
+                </button>
+              </Tooltip>
+            </div>
+          )}
         </div>
 
         {!explorerStateHook.currentPath && (
@@ -339,6 +374,7 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
             isCustomMode={isInCustomMode}
             directoryEntries={dnd.directoryEntries}
             sensors={sensors}
+            viewMode={viewMode}
             onDragStart={dnd.handleDragStart}
             onDragEnd={dnd.handleDragEnd}
             activeEntry={dnd.activeEntry}

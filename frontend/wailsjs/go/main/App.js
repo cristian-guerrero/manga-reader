@@ -134,6 +134,10 @@ export function GetFolderOriginalOrder(arg1) {
   return window['go']['main']['App']['GetFolderOriginalOrder'](arg1);
 }
 
+export function GetFolderViewMode(arg1) {
+  return window['go']['main']['App']['GetFolderViewMode'](arg1);
+}
+
 export function GetHistory() {
   return window['go']['main']['App']['GetHistory']();
 }
@@ -292,6 +296,10 @@ export function SelectFolder() {
 
 export function SetFolderOrder(arg1, arg2, arg3) {
   return window['go']['main']['App']['SetFolderOrder'](arg1, arg2, arg3);
+}
+
+export function SetFolderViewMode(arg1, arg2) {
+  return window['go']['main']['App']['SetFolderViewMode'](arg1, arg2);
 }
 
 export function SetThumbnailsPaused(arg1) {

@@ -97,7 +97,7 @@ export function HistoryPage() {
                     >
                         <VirtualizedList
                             items={history}
-                            itemHeight={120}
+                            itemHeight={156}
                             containerRef={scrollContainerRef}
                             renderItem={renderListItem}
                             overscan={3}

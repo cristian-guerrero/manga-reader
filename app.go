@@ -81,7 +81,7 @@ func NewApp() *App {
 	lMod := library.NewModule(container.Library, container.FileLoader, container.URLBuilder, container.Logger)
 	sMod := series.NewModule(container.Series, container.FileLoader, container.URLBuilder, container.Logger)
 	hMod := history.NewModule(container.History, container.Settings)
-	eMod := explorer.NewModule(container.FileLoader, container.URLBuilder, container.Logger, container.FolderOrders)
+	eMod := explorer.NewModule(container.FileLoader, container.URLBuilder, container.Logger, container.FolderOrders, container.FolderViewModes)
 	dMod := downloader.NewModule(container.Downloader, container.Settings, container.Logger)
 
 	// Dependency injection (Circular dependency resolution)
@@ -406,6 +406,18 @@ func (a *App) HasFolderCustomOrder(parentPath string) bool {
 
 func (a *App) GetFolderOriginalOrder(parentPath string) []string {
 	return a.explorerMod.GetFolderOriginalOrder(parentPath)
+}
+
+// =============================================================================
+// Folder View Mode Methods (Per-folder grid/list preference)
+// =============================================================================
+
+func (a *App) GetFolderViewMode(parentPath string) string {
+	return a.explorerMod.GetFolderViewMode(parentPath)
+}
+
+func (a *App) SetFolderViewMode(parentPath string, viewMode string) error {
+	return a.explorerMod.SetFolderViewMode(parentPath, viewMode)
 }
 
 // =============================================================================

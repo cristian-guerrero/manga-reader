@@ -11,6 +11,8 @@ export interface BaseFolder {
     thumbnailUrl?: string;
 }
 
+export type ViewMode = 'grid' | 'list';
+
 export interface ExplorerEntry {
     path: string;
     name: string;

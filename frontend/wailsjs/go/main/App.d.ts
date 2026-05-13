@@ -73,6 +73,8 @@ export function GetFolderOrder(arg1:string):Promise<Array<string>>;
 
 export function GetFolderOriginalOrder(arg1:string):Promise<Array<string>>;
 
+export function GetFolderViewMode(arg1:string):Promise<string>;
+
 export function GetHistory():Promise<Array<persistence.HistoryEntry>>;
 
 export function GetHistoryEntry(arg1:string):Promise<persistence.HistoryEntry>;
@@ -152,6 +154,8 @@ export function SaveWindowState():Promise<void>;
 export function SelectFolder():Promise<string>;
 
 export function SetFolderOrder(arg1:string,arg2:Array<string>,arg3:Array<string>):Promise<void>;
+
+export function SetFolderViewMode(arg1:string,arg2:string):Promise<void>;
 
 export function SetThumbnailsPaused(arg1:boolean):Promise<void>;
 

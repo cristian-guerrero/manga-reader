@@ -20,6 +20,7 @@ type Module struct {
 	ctx             context.Context
 	explorerManager *persistence.ExplorerManager
 	folderOrders    *persistence.FolderOrdersManager
+	folderViewModes *persistence.FolderViewModeManager
 	fileLoader      services.FileLoaderInterface
 	urlBuilder      services.URLBuilderInterface
 	logger          services.LoggerInterface
@@ -31,7 +32,7 @@ type Module struct {
 }
 
 // NewModule creates a new Explorer module
-func NewModule(fileLoader services.FileLoaderInterface, urlBuilder services.URLBuilderInterface, logger services.LoggerInterface, folderOrders *persistence.FolderOrdersManager) *Module {
+func NewModule(fileLoader services.FileLoaderInterface, urlBuilder services.URLBuilderInterface, logger services.LoggerInterface, folderOrders *persistence.FolderOrdersManager, folderViewModes *persistence.FolderViewModeManager) *Module {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		// If file watching fails, continue without it
@@ -44,6 +45,7 @@ func NewModule(fileLoader services.FileLoaderInterface, urlBuilder services.URLB
 	return &Module{
 		explorerManager: persistence.NewExplorerManager(),
 		folderOrders:    folderOrders,
+		folderViewModes: folderViewModes,
 		fileLoader:      fileLoader,
 		urlBuilder:      urlBuilder,
 		logger:          logger,
@@ -612,6 +614,33 @@ func (m *Module) GetFolderOriginalOrder(parentPath string) []string {
 		return order.OriginalOrder
 	}
 	return nil
+}
+
+// GetFolderViewMode returns the stored view mode for a parent directory (grid or list).
+func (m *Module) GetFolderViewMode(parentPath string) string {
+	if m.folderViewModes == nil {
+		return "grid"
+	}
+	mode := m.folderViewModes.Get(parentPath)
+	if mode == nil {
+		return "grid"
+	}
+	return *mode
+}
+
+// SetFolderViewMode saves the view mode preference for a parent directory.
+func (m *Module) SetFolderViewMode(parentPath string, viewMode string) error {
+	if m.folderViewModes == nil {
+		return nil
+	}
+	if m.logger != nil {
+		m.logger.Infof("[Explorer] Saving view mode for %s: %s", parentPath, viewMode)
+	}
+	err := m.folderViewModes.Set(parentPath, viewMode)
+	if err != nil && m.logger != nil {
+		m.logger.Errorf("[Explorer] Failed to save view mode: %v", err)
+	}
+	return err
 }
 
 // fileExists checks if a file exists and is not a directory
