@@ -69,6 +69,10 @@ export function GetFolderInfoShallow(arg1:string):Promise<persistence.FolderInfo
 
 export function GetFolderNavigation(arg1:string):Promise<explorer.FolderNavigation>;
 
+export function GetFolderOrder(arg1:string):Promise<Array<string>>;
+
+export function GetFolderOriginalOrder(arg1:string):Promise<Array<string>>;
+
 export function GetHistory():Promise<Array<persistence.HistoryEntry>>;
 
 export function GetHistoryEntry(arg1:string):Promise<persistence.HistoryEntry>;
@@ -99,6 +103,8 @@ export function GetWebPStatus():Promise<string>;
 
 export function HasCustomOrder(arg1:string):Promise<boolean>;
 
+export function HasFolderCustomOrder(arg1:string):Promise<boolean>;
+
 export function IsSeries(arg1:string):Promise<boolean>;
 
 export function LoadImageAsBase64(arg1:string):Promise<string>;
@@ -116,6 +122,8 @@ export function RemoveHistory(arg1:string):Promise<void>;
 export function RemoveLibraryEntry(arg1:string):Promise<void>;
 
 export function RemoveSeries(arg1:string):Promise<void>;
+
+export function ResetFolderOrder(arg1:string):Promise<void>;
 
 export function ResetImageOrder(arg1:string):Promise<void>;
 
@@ -142,6 +150,8 @@ export function SaveViewerState(arg1:string,arg2:number,arg3:number,arg4:number)
 export function SaveWindowState():Promise<void>;
 
 export function SelectFolder():Promise<string>;
+
+export function SetFolderOrder(arg1:string,arg2:Array<string>,arg3:Array<string>):Promise<void>;
 
 export function SetThumbnailsPaused(arg1:boolean):Promise<void>;
 

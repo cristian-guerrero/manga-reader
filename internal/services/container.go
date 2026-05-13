@@ -22,6 +22,7 @@ type Container struct {
 	Library      *persistence.LibraryManager
 	Series       *persistence.SeriesManager
 	Orders       *persistence.OrdersManager
+	FolderOrders *persistence.FolderOrdersManager
 	Downloader   *persistence.DownloaderManager
 	Tabs         *persistence.TabsManager
 	ViewerStates *persistence.ViewerStatesManager
@@ -48,6 +49,7 @@ func NewContainer() *Container {
 	library := persistence.NewLibraryManager()
 	series := persistence.NewSeriesManager()
 	orders := persistence.NewOrdersManager()
+	folderOrders := persistence.NewFolderOrdersManager()
 	downloader := persistence.NewDownloaderManager()
 	tabs := persistence.NewTabsManager()
 	viewerStates := persistence.NewViewerStatesManager()
@@ -68,6 +70,7 @@ func NewContainer() *Container {
 		Library:      library,
 		Series:       series,
 		Orders:       orders,
+		FolderOrders: folderOrders,
 		Downloader:   downloader,
 		Tabs:         tabs,
 		ViewerStates: viewerStates,

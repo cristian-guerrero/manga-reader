@@ -244,7 +244,8 @@
     "addFolderToStart": "Agrega una carpeta base para comenzar a explorar",
     "searchPlaceholder": "Buscar por nombre...",
     "noResultsFound": "No se encontraron resultados",
-    "tryDifferentSearch": "Prueba con un término de búsqueda diferente"
+    "tryDifferentSearch": "Prueba con un término de búsqueda diferente",
+    "customOrder": "Personalizado"
   },
   "themes": {
     "dark": "Oscuro",

@@ -33,6 +33,10 @@ interface MediaTileProps {
   className?: string;
   variant?: "default" | "elevated" | "glass";
   showFooter?: boolean;
+
+  // Drag & drop
+  dragHandleProps?: Record<string, any>;
+  isDragging?: boolean;
 }
 
 /**
@@ -59,6 +63,8 @@ export function MediaTile({
   className = "",
   variant = "default",
   showFooter = true,
+  dragHandleProps,
+  isDragging,
 }: MediaTileProps) {
   const [isVisible, setIsVisible] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -106,7 +112,7 @@ export function MediaTile({
   return (
     <div
       ref={containerRef}
-      className={`group/tile relative rounded-xl border border-white/5 hover:border-accent/50 transition-all hover:shadow-xl cursor-pointer animate-scale-in hover-lift ${getVariantClasses()} ${className}`}
+      className={`group/tile relative rounded-xl border border-white/5 hover:border-accent/50 transition-all hover:shadow-xl cursor-pointer animate-scale-in hover-lift ${getVariantClasses()} ${className} ${isDragging ? 'opacity-50 scale-95 z-50' : ''}`}
       onClick={onClick}
       onMouseDown={(e) => {
         // Prevent browser autoscroll on middle-click
@@ -189,6 +195,22 @@ export function MediaTile({
                 {secondaryActionIcon}
               </button>
             </Tooltip>
+          </div>
+        )}
+
+        {/* Drag Handle (for custom reordering) */}
+        {dragHandleProps && (
+          <div className="absolute top-2 left-2 z-20 opacity-0 group-hover/tile:opacity-100 transition-all">
+            <button
+              {...dragHandleProps}
+              className="p-1.5 rounded-full bg-black/40 text-white hover:bg-accent/60 backdrop-blur-md transition-colors cursor-grab active:cursor-grabbing"
+              aria-label="Drag to reorder"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M8 6h2v2H8V6zm6 0h2v2h-2V6zM8 11h2v2H8v-2zm6 0h2v2h-2v-2zm-6 5h2v2H8v-2zm6 0h2v2h-2v-2z" />
+              </svg>
+            </button>
           </div>
         )}
 

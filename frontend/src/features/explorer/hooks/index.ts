@@ -8,3 +8,4 @@ export { useExplorerLoading } from './useExplorerLoading';
 export { useExplorerSearch } from './useExplorerSearch';
 export { useExplorerNavigation } from './useExplorerNavigation';
 export { useExplorerRestoration } from './useExplorerRestoration';
+export { useExplorerDragAndDrop } from './useExplorerDragAndDrop';

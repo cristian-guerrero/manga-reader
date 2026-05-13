@@ -5,6 +5,13 @@
 
 import { useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
+import {
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { useNavigation } from "@hooks";
 import { useThumbnails } from "@hooks/useThumbnails";
 import {
@@ -18,7 +25,6 @@ import {
   useToast,
 } from "@shared/components";
 import { AppAPI } from "@services/api/appAPI";
-import type { PageType } from "@types";
 import {
   useExplorerState,
   useExplorerSorting,
@@ -26,8 +32,10 @@ import {
   useExplorerSearch,
   useExplorerNavigation,
   useExplorerRestoration,
+  useExplorerDragAndDrop,
 } from "./hooks";
-import { BaseFolder, ExplorerEntry } from "./types";
+import { BaseFolder } from "./types";
+import { DirectoryView } from "./components/DirectoryView";
 
 // Icons
 const TrashIcon = () => (
@@ -123,6 +131,30 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
     onTitleChange: handleTitleChange,
   });
 
+  // Use drag-and-drop hook (for custom folder ordering)
+  const dnd = useExplorerDragAndDrop({
+    parentPath: explorerStateHook.currentPath,
+    entries: loading.entries,
+    onEntriesChange: loading.setEntries,
+    onSortModeChange: (mode) => {
+      if (mode !== sorting.sortBy) {
+        sorting.setSortBy(mode as 'name' | 'date' | 'custom');
+      }
+    },
+  });
+
+  // DnD sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 8 },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  );
+
+  const isInCustomMode = sorting.sortBy === 'custom' && !search.searchQuery.trim();
+
   // Use restoration hook
   useExplorerRestoration({
     tabId,
@@ -184,16 +216,18 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
               sortBy={sorting.sortBy}
               sortOrder={sorting.sortOrder}
               onSortByChange={(value) =>
-                sorting.setSortBy(value as "name" | "date")
+                sorting.setSortBy(value as "name" | "date" | "custom")
               }
-              onSortOrderChange={() =>
+              onSortOrderChange={() => {
+                if (sorting.sortBy === 'custom') return;
                 sorting.setSortOrder((prev) =>
                   prev === "asc" ? "desc" : "asc",
-                )
-              }
+                );
+              }}
               options={[
                 { value: "name", label: t("common.name") },
                 { value: "date", label: t("common.date") },
+                { value: "custom", label: t("explorer.customOrder") },
               ]}
               show={Boolean(
                 (!explorerStateHook.currentPath &&
@@ -232,10 +266,10 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
         className="flex-1 overflow-auto pr-2"
         key={explorerStateHook.currentPath || "root"}
       >
-        <GridContainer>
-          {/* Base Folders View */}
-          {!explorerStateHook.currentPath &&
-            search.sortedBaseFolders.map((folder) => (
+        {/* Base Folders View */}
+        {!explorerStateHook.currentPath && (
+          <GridContainer>
+            {search.sortedBaseFolders.map((folder) => (
               <GridItem key={folder.path}>
                 <MediaTile
                   id={folder.path}
@@ -294,111 +328,29 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
                 />
               </GridItem>
             ))}
+          </GridContainer>
+        )}
 
-          {/* Directory View */}
-          {explorerStateHook.currentPath &&
-            search.sortedEntries.map((entry) => (
-              <GridItem key={entry.path}>
-                <MediaTile
-                  id={entry.path}
-                  name={entry.name}
-                  thumbnail={entry.thumbnailUrl || thumbnails[entry.path]}
-                  onClick={() => navigation.handleItemClick(entry)}
-                  onAuxClick={(e) => navigation.handleItemAuxClick(e, entry)}
-                  onVisible={async () => {
-                    if (
-                      !entry.coverImage ||
-                      entry.thumbnailUrl ||
-                      thumbnails[entry.path]
-                    )
-                      return;
-                    await loadThumbnail(entry.path, entry.coverImage);
-                  }}
-                  fallbackIcon={
-                    <svg
-                      className="w-12 h-12 text-accent/40"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1"
-                    >
-                      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
-                    </svg>
-                  }
-                  footerLeft={
-                    <span className="text-xs text-white/50">
-                      {entry.isDirectory
-                        ? entry.hasImages
-                          ? `${entry.imageCount} ${t("explorer.images")}${entry.subdirectoryCount > 0 ? ` · ${entry.subdirectoryCount} ${t("explorer.subfolders")}` : ""}`
-                          : entry.subdirectoryCount > 0
-                            ? `${entry.subdirectoryCount} ${t("explorer.subfolders")}`
-                            : t("explorer.folder")
-                        : t("explorer.file")}
-                    </span>
-                  }
-                  footerRight={
-                    <div className="flex items-center gap-1">
-                      {entry.isDirectory &&
-                        entry.hasImages &&
-                        entry.subdirectoryCount === 0 && (
-                          <Tooltip
-                            content={t("explorer.openInColorizer")}
-                            placement="left"
-                          >
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                navigate("colorizer", {
-                                  folderPath: entry.path,
-                                });
-                              }}
-                              className="p-1.5 rounded-full bg-purple-500 text-white hover:bg-purple-600 transform hover:scale-110 transition-all opacity-0 group-hover/tile:opacity-100"
-                              aria-label={t("explorer.openInColorizer")}
-                            >
-                              <svg
-                                width="16"
-                                height="16"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                              >
-                                <circle cx="12" cy="12" r="10" />
-                                <path d="M12 2a10 10 0 0 1 0 20 10 10 0 0 1 0-20" />
-                                <circle cx="12" cy="12" r="4" />
-                              </svg>
-                            </button>
-                          </Tooltip>
-                        )}
-                      {entry.hasImages && (
-                        <Tooltip
-                          content={t("explorer.openInViewer")}
-                          placement="left"
-                        >
-                          <button
-                            onClick={(e) =>
-                              navigation.handleOpenInViewer(entry.path, e)
-                            }
-                            className="p-1.5 rounded-full bg-accent text-white hover:bg-accent-hover transform hover:scale-110 transition-all opacity-0 group-hover/tile:opacity-100"
-                            aria-label={t("explorer.openInViewer")}
-                          >
-                            <svg
-                              width="16"
-                              height="16"
-                              viewBox="0 0 24 24"
-                              fill="currentColor"
-                            >
-                              <path d="M8 5v14l11-7z" />
-                            </svg>
-                          </button>
-                        </Tooltip>
-                      )}
-                    </div>
-                  }
-                />
-              </GridItem>
-            ))}
-        </GridContainer>
+        {/* Directory View */}
+        {explorerStateHook.currentPath && (
+          <DirectoryView
+            entries={search.sortedEntries}
+            thumbnails={thumbnails}
+            isCustomMode={isInCustomMode}
+            directoryEntries={dnd.directoryEntries}
+            sensors={sensors}
+            onDragStart={dnd.handleDragStart}
+            onDragEnd={dnd.handleDragEnd}
+            activeEntry={dnd.activeEntry}
+            onItemClick={navigation.handleItemClick}
+            onItemAuxClick={navigation.handleItemAuxClick}
+            onLoadThumbnail={loadThumbnail}
+            onOpenViewer={navigation.handleOpenInViewer}
+            onOpenColorizer={(path: string) =>
+              navigate("colorizer", { folderPath: path })
+            }
+          />
+        )}
 
         {!explorerStateHook.currentPath && loading.baseFolders.length === 0 && (
           <div className="h-full flex flex-col items-center justify-center text-text-secondary opacity-60">

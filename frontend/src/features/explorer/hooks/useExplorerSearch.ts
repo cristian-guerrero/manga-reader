@@ -5,11 +5,12 @@
 
 import { useState, useMemo } from 'react';
 import { BaseFolder, ExplorerEntry } from '../types';
+import type { SortBy } from './useExplorerSorting';
 
 interface UseExplorerSearchOptions {
   baseFolders: BaseFolder[];
   entries: ExplorerEntry[];
-  sortBy: 'name' | 'date';
+  sortBy: SortBy;
   sortOrder: 'asc' | 'desc';
 }
 
@@ -49,24 +50,26 @@ export function useExplorerSearch({
 
   // Sort and filter entries (directory view)
   const sortedEntries = useMemo(() => {
-    return [...entries]
-      .filter(entry => matchesSearch(entry, searchQuery))
-      .sort((a, b) => {
-        // Folders first, then files
-        if (a.isDirectory !== b.isDirectory) {
-          return a.isDirectory ? -1 : 1;
-        }
-        let res = 0;
-        if (sortBy === 'name') {
-          res = a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
-        } else {
-          // Date sort - use lastModified for entries
-          const dateA = a.lastModified || 0;
-          const dateB = b.lastModified || 0;
-          res = dateA - dateB;
-        }
-        return sortOrder === 'asc' ? res : -res;
-      });
+    const filtered = [...entries]
+      .filter(entry => matchesSearch(entry, searchQuery));
+
+    if (sortBy === 'custom') return filtered;
+
+    return filtered.sort((a, b) => {
+      // Folders first, then files
+      if (a.isDirectory !== b.isDirectory) {
+        return a.isDirectory ? -1 : 1;
+      }
+      let res = 0;
+      if (sortBy === 'name') {
+        res = a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
+      } else {
+        const dateA = a.lastModified || 0;
+        const dateB = b.lastModified || 0;
+        res = dateA - dateB;
+      }
+      return sortOrder === 'asc' ? res : -res;
+    });
   }, [entries, searchQuery, sortBy, sortOrder]);
 
   return {

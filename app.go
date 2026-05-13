@@ -81,7 +81,7 @@ func NewApp() *App {
 	lMod := library.NewModule(container.Library, container.FileLoader, container.URLBuilder, container.Logger)
 	sMod := series.NewModule(container.Series, container.FileLoader, container.URLBuilder, container.Logger)
 	hMod := history.NewModule(container.History, container.Settings)
-	eMod := explorer.NewModule(container.FileLoader, container.URLBuilder, container.Logger)
+	eMod := explorer.NewModule(container.FileLoader, container.URLBuilder, container.Logger, container.FolderOrders)
 	dMod := downloader.NewModule(container.Downloader, container.Settings, container.Logger)
 
 	// Dependency injection (Circular dependency resolution)
@@ -382,6 +382,30 @@ func (a *App) GetOriginalOrder(folderPath string) []string {
 		return orderData.OriginalOrder
 	}
 	return nil
+}
+
+// =============================================================================
+// Folder Order Methods (Custom sorting for subfolders in Explorer)
+// =============================================================================
+
+func (a *App) GetFolderOrder(parentPath string) []string {
+	return a.explorerMod.GetFolderOrder(parentPath)
+}
+
+func (a *App) SetFolderOrder(parentPath string, customOrder []string, originalOrder []string) error {
+	return a.explorerMod.SetFolderOrder(parentPath, customOrder, originalOrder)
+}
+
+func (a *App) ResetFolderOrder(parentPath string) error {
+	return a.explorerMod.ResetFolderOrder(parentPath)
+}
+
+func (a *App) HasFolderCustomOrder(parentPath string) bool {
+	return a.explorerMod.HasFolderCustomOrder(parentPath)
+}
+
+func (a *App) GetFolderOriginalOrder(parentPath string) []string {
+	return a.explorerMod.GetFolderOriginalOrder(parentPath)
 }
 
 // =============================================================================

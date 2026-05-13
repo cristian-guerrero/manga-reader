@@ -19,6 +19,7 @@ import (
 type Module struct {
 	ctx             context.Context
 	explorerManager *persistence.ExplorerManager
+	folderOrders    *persistence.FolderOrdersManager
 	fileLoader      services.FileLoaderInterface
 	urlBuilder      services.URLBuilderInterface
 	logger          services.LoggerInterface
@@ -30,7 +31,7 @@ type Module struct {
 }
 
 // NewModule creates a new Explorer module
-func NewModule(fileLoader services.FileLoaderInterface, urlBuilder services.URLBuilderInterface, logger services.LoggerInterface) *Module {
+func NewModule(fileLoader services.FileLoaderInterface, urlBuilder services.URLBuilderInterface, logger services.LoggerInterface, folderOrders *persistence.FolderOrdersManager) *Module {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		// If file watching fails, continue without it
@@ -42,6 +43,7 @@ func NewModule(fileLoader services.FileLoaderInterface, urlBuilder services.URLB
 
 	return &Module{
 		explorerManager: persistence.NewExplorerManager(),
+		folderOrders:    folderOrders,
 		fileLoader:      fileLoader,
 		urlBuilder:      urlBuilder,
 		logger:          logger,
@@ -447,10 +449,48 @@ func (m *Module) ListDirectory(path string) ([]ExplorerEntry, error) {
 
 	// Sort: Directories first; frontend handles detailed sorting within each group
 	sort.SliceStable(result, func(i, j int) bool {
-		return result[i].IsDirectory && !result[j].IsDirectory
+		// Directories before files
+		if result[i].IsDirectory != result[j].IsDirectory {
+			return result[i].IsDirectory && !result[j].IsDirectory
+		}
+		// If both are directories, check for custom order
+		if result[i].IsDirectory && m.folderOrders != nil {
+			customOrder := m.folderOrders.GetOrder(path)
+			if len(customOrder) > 0 {
+				return applyCustomOrder(customOrder, result[i].Name, result[j].Name)
+			}
+		}
+		return false
 	})
 
 	return result, nil
+}
+
+// applyCustomOrder returns true if nameA should sort before nameB per customOrder.
+func applyCustomOrder(customOrder []string, nameA, nameB string) bool {
+	idxA := -1
+	idxB := -1
+	for i, name := range customOrder {
+		if name == nameA {
+			idxA = i
+		}
+		if name == nameB {
+			idxB = i
+		}
+	}
+	// If both are in the custom order, compare by their position
+	if idxA >= 0 && idxB >= 0 {
+		return idxA < idxB
+	}
+	// Items in the custom order come before items not in it
+	if idxA >= 0 {
+		return true
+	}
+	if idxB >= 0 {
+		return false
+	}
+	// Neither is in the custom order, sort alphabetically
+	return nameA < nameB
 }
 
 // GetFolderNavigation returns prev/next folder for a given folder path within its parent directory
@@ -521,6 +561,57 @@ func (m *Module) GetFolderNavigation(folderPath string) *FolderNavigation {
 	}
 
 	return nav
+}
+
+// GetFolderOrder returns the custom folder order for a parent directory.
+func (m *Module) GetFolderOrder(parentPath string) []string {
+	if m.folderOrders == nil {
+		return nil
+	}
+	return m.folderOrders.GetOrder(parentPath)
+}
+
+// SetFolderOrder saves a custom folder order for a parent directory.
+func (m *Module) SetFolderOrder(parentPath string, customOrder []string, originalOrder []string) error {
+	if m.folderOrders == nil {
+		return nil
+	}
+	if m.logger != nil {
+		m.logger.Infof("[Explorer] Saving folder order for %s: %v", parentPath, customOrder)
+	}
+	err := m.folderOrders.Save(parentPath, customOrder, originalOrder)
+	if err != nil && m.logger != nil {
+		m.logger.Errorf("[Explorer] Failed to save folder order: %v", err)
+	}
+	return err
+}
+
+// ResetFolderOrder removes the custom order, falling back to alphabetical.
+func (m *Module) ResetFolderOrder(parentPath string) error {
+	if m.folderOrders == nil {
+		return nil
+	}
+	return m.folderOrders.Reset(parentPath)
+}
+
+// HasFolderCustomOrder returns true if the parent directory has a custom order.
+func (m *Module) HasFolderCustomOrder(parentPath string) bool {
+	if m.folderOrders == nil {
+		return false
+	}
+	return m.folderOrders.HasCustomOrder(parentPath)
+}
+
+// GetFolderOriginalOrder returns the original (alphabetical) order for a parent directory.
+func (m *Module) GetFolderOriginalOrder(parentPath string) []string {
+	if m.folderOrders == nil {
+		return nil
+	}
+	order := m.folderOrders.Get(parentPath)
+	if order != nil && len(order.OriginalOrder) > 0 {
+		return order.OriginalOrder
+	}
+	return nil
 }
 
 // fileExists checks if a file exists and is not a directory

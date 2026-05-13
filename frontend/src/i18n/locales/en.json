@@ -248,7 +248,8 @@
     "addFolderToStart": "Add a base folder to start exploring",
     "searchPlaceholder": "Search by name...",
     "noResultsFound": "No results found",
-    "tryDifferentSearch": "Try a different search term"
+    "tryDifferentSearch": "Try a different search term",
+    "customOrder": "Custom"
   },
   "themes": {
     "dark": "Dark",

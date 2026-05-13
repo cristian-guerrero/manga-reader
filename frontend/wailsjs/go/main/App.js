@@ -126,6 +126,14 @@ export function GetFolderNavigation(arg1) {
   return window['go']['main']['App']['GetFolderNavigation'](arg1);
 }
 
+export function GetFolderOrder(arg1) {
+  return window['go']['main']['App']['GetFolderOrder'](arg1);
+}
+
+export function GetFolderOriginalOrder(arg1) {
+  return window['go']['main']['App']['GetFolderOriginalOrder'](arg1);
+}
+
 export function GetHistory() {
   return window['go']['main']['App']['GetHistory']();
 }
@@ -186,6 +194,10 @@ export function HasCustomOrder(arg1) {
   return window['go']['main']['App']['HasCustomOrder'](arg1);
 }
 
+export function HasFolderCustomOrder(arg1) {
+  return window['go']['main']['App']['HasFolderCustomOrder'](arg1);
+}
+
 export function IsSeries(arg1) {
   return window['go']['main']['App']['IsSeries'](arg1);
 }
@@ -220,6 +232,10 @@ export function RemoveLibraryEntry(arg1) {
 
 export function RemoveSeries(arg1) {
   return window['go']['main']['App']['RemoveSeries'](arg1);
+}
+
+export function ResetFolderOrder(arg1) {
+  return window['go']['main']['App']['ResetFolderOrder'](arg1);
 }
 
 export function ResetImageOrder(arg1) {
@@ -272,6 +288,10 @@ export function SaveWindowState() {
 
 export function SelectFolder() {
   return window['go']['main']['App']['SelectFolder']();
+}
+
+export function SetFolderOrder(arg1, arg2, arg3) {
+  return window['go']['main']['App']['SetFolderOrder'](arg1, arg2, arg3);
 }
 
 export function SetThumbnailsPaused(arg1) {
