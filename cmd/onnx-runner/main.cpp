@@ -49,7 +49,13 @@ int main(int argc, char** argv) {
         Ort::SessionOptions opts;
         opts.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
 
+        // ONNX Runtime 1.26 on Windows uses wchar_t for paths
+#ifdef _WIN32
+        std::wstring wpath(model_path.begin(), model_path.end());
+        Ort::Session session(env, wpath.c_str(), opts);
+#else
         Ort::Session session(env, model_path.c_str(), opts);
+#endif
         auto input_info = session.GetInputTypeInfo(0);
         auto input_shape = input_info.GetTensorTypeAndShapeInfo().GetShape();
         size_t input_h = input_shape[2];
