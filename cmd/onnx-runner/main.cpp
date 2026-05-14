@@ -58,9 +58,9 @@ int main(int argc, char** argv) {
 
         Ort::AllocatorWithDefaultOptions allocator;
 
-        // Get input/output names
-        auto input_names = session.GetInputNames(allocator);
-        auto output_names = session.GetOutputNames(allocator);
+        // Get input/output names (no arguments in ORT 1.26 C++ API)
+        auto input_names = session.GetInputNames();
+        auto output_names = session.GetOutputNames();
         auto alloc = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
 
         // Load and preprocess image
@@ -92,8 +92,8 @@ int main(int argc, char** argv) {
         auto output_tensors = session.Run(run_opts, in_names, &input_tensor, 1,
                                           out_names, 1);
 
-        // Get output data
-        float* output_data = output_tensors[0].GetTensorMutableData();
+        // Get output data (template requires explicit type)
+        float* output_data = output_tensors[0].GetTensorMutableData<float>();
         auto out_shape = output_tensors[0].GetTensorTypeAndShapeInfo().GetShape();
         size_t out_size = 1;
         for (auto d : out_shape) out_size *= d;

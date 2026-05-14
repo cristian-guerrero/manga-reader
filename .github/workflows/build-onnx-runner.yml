@@ -30,17 +30,24 @@ jobs:
       - name: Build onnx-runner
         shell: pwsh
         run: |
-          $ortDir = Resolve-Path "ort"
-          $lib = Get-ChildItem -Path "$ortDir\lib" -Filter "*.lib" | Select-Object -First 1
-          cl /EHsc /std:c++17 /I "$ortDir\include" cmd\onnx-runner\main.cpp /Fe"onnx-runner.exe" /link "$($lib.FullName)"
+          # Find ONNX Runtime directory (may be in a subfolder like onnxruntime-win-x64-1.26.0/)
+          $ortRoot = if (Test-Path "ort\include") { "ort" } else { Get-ChildItem "ort" -Directory | Select-Object -First 1 | % { $_.FullName } }
+          $includeDir = "$ortRoot\include"
+          $libFile = Get-ChildItem -Path "$ortRoot\lib" -Filter "*.lib" | Select-Object -First 1
+          Write-Host "ORT root: $ortRoot"
+          Write-Host "Include: $includeDir"
+          Write-Host "Lib: $($libFile.FullName)"
+          cl /EHsc /std:c++17 /I "$includeDir" cmd\onnx-runner\main.cpp /Fe"onnx-runner.exe" /link "$($libFile.FullName)"
 
       - name: Package
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path output
           Copy-Item onnx-runner.exe output/
-          $dll = Get-ChildItem -Path "ort" -Recurse -Filter "onnxruntime.dll" | Select-Object -First 1
+          $ortRoot = if (Test-Path "ort\include") { "ort" } else { Get-ChildItem "ort" -Directory | Select-Object -First 1 | % { $_.FullName } }
+          $dll = Get-ChildItem -Path "$ortRoot\lib" -Recurse -Filter "onnxruntime.dll" | Select-Object -First 1
           if ($dll) { Copy-Item $dll.FullName output/ }
+          ls output/
           Compress-Archive -Path output\* -DestinationPath onnx-runner-windows-x64.zip
 
       - uses: actions/upload-artifact@v4
