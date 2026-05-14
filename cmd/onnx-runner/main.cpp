@@ -1,9 +1,6 @@
 // cmd/onnx-runner/main.cpp
 // Minimal ONNX Runtime inference runner.
-// Usage: onnx-runner --model model.onnx --input image.png --output result.json
-//
-// Compile with: cl /EHsc /I onnxruntime/include main.cpp onnxruntime/lib/onnxruntime.lib
-
+// Usage: onnx-runner --model model.onnx --input image.ppm [--output result.json]
 #include <iostream>
 #include <fstream>
 #include <vector>
@@ -11,7 +8,6 @@
 #include <cstdint>
 #include <onnxruntime_cxx_api.h>
 
-// Simple image loader (NetPBM PPM format)
 struct Image {
     int w, h, c;
     std::vector<float> data;
@@ -25,7 +21,7 @@ Image load_ppm(const std::string& path) {
     int maxval;
     Image img;
     f >> img.w >> img.h >> maxval;
-    f.get(); // skip newline
+    f.get();
     std::vector<uint8_t> raw(img.w * img.h * 3);
     f.read((char*)raw.data(), raw.size());
     img.c = 3;
@@ -37,16 +33,14 @@ Image load_ppm(const std::string& path) {
 
 int main(int argc, char** argv) {
     std::string model_path, input_path, output_path;
-
     for (int i = 1; i < argc; i++) {
         std::string arg = argv[i];
         if (arg == "--model" && i + 1 < argc) model_path = argv[++i];
         else if (arg == "--input" && i + 1 < argc) input_path = argv[++i];
         else if (arg == "--output" && i + 1 < argc) output_path = argv[++i];
     }
-
     if (model_path.empty() || input_path.empty()) {
-        std::cerr << R"({"error":"Usage: onnx-runner --model model.onnx --input image.ppm [--output result.json]"})" << std::endl;
+        std::cerr << R"({"error":"Usage: onnx-runner --model model.onnx --input image.ppm"})" << std::endl;
         return 1;
     }
 
@@ -60,10 +54,18 @@ int main(int argc, char** argv) {
         auto input_shape = input_info.GetTensorTypeAndShapeInfo().GetShape();
         size_t input_h = input_shape[2];
         size_t input_w = input_shape[3];
+        size_t input_c = input_shape[1];
+
+        Ort::AllocatorWithDefaultOptions allocator;
+
+        // Get input/output names
+        auto input_names = session.GetInputNames(allocator);
+        auto output_names = session.GetOutputNames(allocator);
+        auto alloc = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
 
         // Load and preprocess image
         Image img = load_ppm(input_path);
-        std::vector<float> input(1 * 3 * input_h * input_w);
+        std::vector<float> input(1 * input_c * input_h * input_w);
         for (size_t y = 0; y < input_h; y++) {
             for (size_t x = 0; x < input_w; x++) {
                 size_t sx = x * img.w / input_w;
@@ -76,35 +78,37 @@ int main(int argc, char** argv) {
             }
         }
 
-        // Run inference
-        auto memory_info = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
+        // Create input tensor
         Ort::Value input_tensor = Ort::Value::CreateTensor<float>(
-            memory_info, input.data(), input.size(),
+            alloc, input.data(), input.size(),
             input_shape.data(), input_shape.size()
         );
+        // Prepare input/output name arrays (stable pointers, not temporaries)
+        const char* in_names[] = {input_names[0].c_str()};
+        const char* out_names[] = {output_names[0].c_str()};
 
-        auto output_tensors = session.Run(Ort::RunOptions{nullptr},
-            {session.GetInputName(0).get()}, {&input_tensor}, 1,
-            {session.GetOutputName(0).get()}, 1
-        );
+        // Run inference
+        Ort::RunOptions run_opts;
+        auto output_tensors = session.Run(run_opts, in_names, &input_tensor, 1,
+                                          out_names, 1);
 
-        // Get output
-        auto* output = output_tensors[0].GetTensorMutableData<float>();
-        auto output_shape = output_tensors[0].GetTensorTypeAndShapeInfo().GetShape();
-        size_t output_size = 1;
-        for (auto d : output_shape) output_size *= d;
+        // Get output data
+        float* output_data = output_tensors[0].GetTensorMutableData();
+        auto out_shape = output_tensors[0].GetTensorTypeAndShapeInfo().GetShape();
+        size_t out_size = 1;
+        for (auto d : out_shape) out_size *= d;
 
-        // Output as JSON
+        // Output JSON
         std::string json = R"({"success":true,"shape":[)";
-        for (size_t i = 0; i < output_shape.size(); i++) {
+        for (size_t i = 0; i < out_shape.size(); i++) {
             if (i > 0) json += ",";
-            json += std::to_string(output_shape[i]);
+            json += std::to_string(out_shape[i]);
         }
         json += R"(],"data":[)";
-        size_t max_items = std::min(output_size, size_t(100));
+        size_t max_items = std::min(out_size, size_t(8400 * 6));
         for (size_t i = 0; i < max_items; i++) {
             if (i > 0) json += ",";
-            json += std::to_string(output[i]);
+            json += std::to_string(output_data[i]);
         }
         json += "]}";
 
@@ -119,6 +123,5 @@ int main(int argc, char** argv) {
         std::cerr << R"({"error":")" << e.what() << R"("})" << std::endl;
         return 1;
     }
-
     return 0;
 }
