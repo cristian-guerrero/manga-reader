@@ -260,13 +260,15 @@ func TestModule_RemoveJob(t *testing.T) {
 }
 
 func TestModule_ClearDownloadsData(t *testing.T) {
+	cleanup := persistence.SetTestDataDir(t.TempDir())
+	defer cleanup()
+
 	pm := persistence.NewDownloaderManager()
 	sm := persistence.NewSettingsManager()
 	logger := &mockLogger{}
 
 	// Crear un directorio temporal para pruebas
-	tmpDir := filepath.Join(os.TempDir(), "manga-visor-test")
-	defer os.RemoveAll(tmpDir)
+	tmpDir := filepath.Join(t.TempDir(), "downloads")
 
 	// Configurar el path de descarga en settings
 	settings := sm.Get()

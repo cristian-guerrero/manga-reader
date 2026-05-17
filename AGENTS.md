@@ -42,7 +42,7 @@ Wails v2 (Go 1.24 backend, React 18 + TypeScript + Vite frontend). State: Zustan
 - **Frontend style**: Functional React components, TypeScript strict mode
 
 ## Downloader Module
-- 21 supported sites with site-specific concurrency limits in `internal/modules/downloader/module.go:53-70`
+- 22 supported sites with site-specific concurrency limits in `internal/modules/downloader/module.go:53-70`
 - Clipboard monitoring triggers auto-detection (`internal/modules/downloader/clipboard.go`)
 - Sites detected by URL patterns, each with dedicated `internal/modules/downloader/*.go` file
 

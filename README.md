@@ -33,6 +33,7 @@ A premium desktop manga viewer and downloader application built with Wails, Reac
   - **Submanhwa.com**
   - **Hentaiforce.net**
   - **lhentai.com**
+  - **Hentaifox.com**
 - **Smart Monitoring** - Automatic clipboard monitoring for instant downloads.
 - **Queue Management** - Sequential download queue with pause/resume support.
 - **Auto-resume** - Automatically resume incomplete downloads on app restart.
