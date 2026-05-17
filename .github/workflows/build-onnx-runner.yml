@@ -1,0 +1,148 @@
+# .github/workflows/build-onnx-runner.yml
+# Builds onnx-runner - an ONNX Runtime inference CLI for manga-translator.
+# Trigger: manual (workflow_dispatch).
+name: Build ONNX Runner
+
+on:
+  workflow_dispatch:
+    inputs:
+      ort_version:
+        description: "ONNX Runtime version"
+        required: true
+        default: "1.26.0"
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup MSVC compiler
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Download ONNX Runtime
+        shell: pwsh
+        run: |
+          $ver = "${{ inputs.ort_version }}"
+          Invoke-WebRequest -Uri "https://github.com/microsoft/onnxruntime/releases/download/v$ver/onnxruntime-win-x64-$ver.zip" -OutFile ort.zip
+          Expand-Archive -Path ort.zip -DestinationPath ort
+
+      - name: Build onnx-runner
+        shell: pwsh
+        run: |
+          # Find ONNX Runtime directory (may be in a subfolder like onnxruntime-win-x64-1.26.0/)
+          $ortRoot = if (Test-Path "ort\include") { "ort" } else { Get-ChildItem "ort" -Directory | Select-Object -First 1 | % { $_.FullName } }
+          $includeDir = "$ortRoot\include"
+          $libFile = Get-ChildItem -Path "$ortRoot\lib" -Filter "onnxruntime.lib" | Select-Object -First 1
+          Write-Host "ORT root: $ortRoot"
+          Write-Host "Include: $includeDir"
+          Write-Host "Lib: $($libFile.FullName)"
+          cl /EHsc /std:c++17 /I "$includeDir" cmd\onnx-runner\main.cpp /Fe"onnx-runner.exe" /link "$($libFile.FullName)"
+
+      - name: Package
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path output
+          Copy-Item onnx-runner.exe output/
+          $ortRoot = if (Test-Path "ort\include") { "ort" } else { Get-ChildItem "ort" -Directory | Select-Object -First 1 | % { $_.FullName } }
+          $dll = Get-ChildItem -Path "$ortRoot" -Recurse -Filter "onnxruntime.dll" | Select-Object -First 1
+          if ($dll) { Copy-Item $dll.FullName output/ }
+          ls output/
+          Compress-Archive -Path output\* -DestinationPath onnx-runner-windows-x64.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: onnx-runner-windows-x64
+          path: onnx-runner-windows-x64.zip
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download ONNX Runtime
+        run: |
+          VER="${{ inputs.ort_version }}"
+          wget -q "https://github.com/microsoft/onnxruntime/releases/download/v${VER}/onnxruntime-linux-x64-${VER}.tgz"
+          tar xzf "onnxruntime-linux-x64-${VER}.tgz"
+
+      - name: Build onnx-runner
+        run: |
+          ORT_DIR=$(ls -d onnxruntime-linux-x64-* | head -1)
+          g++ -std=c++17 -O2 -I "${ORT_DIR}/include" -L "${ORT_DIR}/lib" -Wl,-rpath,'$ORIGIN' cmd/onnx-runner/main.cpp -lonnxruntime -o onnx-runner
+
+      - name: Package
+        run: |
+          mkdir -p output && cp onnx-runner output/
+          ORT_DIR=$(ls -d onnxruntime-linux-x64-* | head -1)
+          cp "${ORT_DIR}/lib/libonnxruntime.so*" output/ 2>/dev/null || true
+          cd output && tar czf ../onnx-runner-linux-x64.tar.gz *
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: onnx-runner-linux-x64
+          path: onnx-runner-linux-x64.tar.gz
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download ONNX Runtime
+        run: |
+          VER="${{ inputs.ort_version }}"
+          wget -q "https://github.com/microsoft/onnxruntime/releases/download/v${VER}/onnxruntime-osx-arm64-${VER}.tgz"
+          tar xzf "onnxruntime-osx-arm64-${VER}.tgz"
+
+      - name: Build onnx-runner
+        run: |
+          ORT_DIR=$(ls -d onnxruntime-osx-arm64-* | head -1)
+          g++ -std=c++17 -O2 -I "${ORT_DIR}/include" -L "${ORT_DIR}/lib" -Wl,-rpath,'@executable_path' cmd/onnx-runner/main.cpp -lonnxruntime -o onnx-runner
+
+      - name: Package
+        run: |
+          mkdir -p output && cp onnx-runner output/
+          ORT_DIR=$(ls -d onnxruntime-osx-arm64-* | head -1)
+          cp "${ORT_DIR}/lib/libonnxruntime*.dylib" output/ 2>/dev/null || true
+          cd output && tar czf ../onnx-runner-darwin-arm64.tar.gz *
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: onnx-runner-darwin-arm64
+          path: onnx-runner-darwin-arm64.tar.gz
+
+  release:
+    if: always()
+    needs: [build-windows, build-linux, build-macos]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check results
+        id: check
+        shell: bash
+        run: |
+          echo "windows=${{ needs.build-windows.result }}" >> $GITHUB_OUTPUT
+          echo "linux=${{ needs.build-linux.result }}" >> $GITHUB_OUTPUT
+          echo "macos=${{ needs.build-macos.result }}" >> $GITHUB_OUTPUT
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+
+      - name: Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="onnx-runner-v1"
+          cat > /tmp/notes.md <<-EOF
+          ONNX Runtime CLI runner for manga-translator (ORT ${{ inputs.ort_version }}).
+          EOF
+          gh release delete "$TAG" --repo "${{ github.repository }}" --yes 2>/dev/null || true
+          gh api -X DELETE "/repos/${{ github.repository }}/git/refs/tags/$TAG" 2>/dev/null || true
+          gh release create "$TAG" --repo "${{ github.repository }}" --title "ONNX Runner v1" --notes-file /tmp/notes.md
+          for file in $(find dist/ -type f); do
+            gh release upload "$TAG" "$file" --repo "${{ github.repository }}" --clobber
+          done
