@@ -72,6 +72,7 @@ func NewModule(pm *persistence.DownloaderManager, sm *persistence.SettingsManage
 			"3hentai.net":      1,
 			"lectorhentai.com": 3,
 			"hentaifox.com":   2,
+			"nhentai.to":      2,
 		},
 		algorithms: []DownloaderInterface{
 			&HitomiDownloader{},
@@ -100,6 +101,7 @@ func NewModule(pm *persistence.DownloaderManager, sm *persistence.SettingsManage
 			&ThreeHentaiDownloader{},
 			&LectorHentaiDownloader{},
 			&HentaiFoxDownloader{},
+			&NHentaiToDownloader{},
 		},
 	}
 }
