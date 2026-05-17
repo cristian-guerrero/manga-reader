@@ -163,6 +163,7 @@
     "alreadyDownloaded": "Already downloaded",
     "allAlreadyDownloaded": "All chapters already downloaded",
     "autoResume": "Auto-resume downloads",
+    "copyUrl": "Copy URL",
     "resume": "Resume",
     "resumed": "Download resumed",
     "pastedFromClipboard": "URL pasted from clipboard",

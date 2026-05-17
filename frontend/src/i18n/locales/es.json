@@ -167,6 +167,7 @@
     "alreadyDownloaded": "Ya descargado",
     "allAlreadyDownloaded": "Todos los capítulos ya están descargados",
     "autoResume": "Reanudar descargas automáticamente",
+    "copyUrl": "Copiar URL",
     "resume": "Continuar",
     "resumed": "Descarga reanudada",
     "pastedFromClipboard": "URL pegada desde el portapapeles",
