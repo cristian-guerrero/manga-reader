@@ -68,6 +68,10 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
         }
     }, [tabId]);
 
+    const handleScrollPositionChange = useCallback((scrollTop: number) => {
+        updateTabState({ scrollPosition: scrollTop });
+    }, [updateTabState]);
+
     // Use custom hook for history management
     const { saveProgress: saveProgressHook } = useViewerHistory({
         currentFolder: viewerState.currentFolder,
@@ -296,6 +300,7 @@ const handleBack = useCallback(() => {
                     scrollSpeed={scrollSpeed}
                     onAutoScrollStateChange={controls.setIsAutoScrolling}
                     onRestorationComplete={handleRestorationComplete}
+                    onScrollPositionChange={handleScrollPositionChange}
                     onIndexChange={viewerState.handleIndexChange}
                     verticalWidth={viewerState.currentVerticalWidth}
                     onWidthChange={viewerState.handleWidthChange}
