@@ -19,6 +19,7 @@ interface UseExplorerLoadingOptions {
     onPathChange: (path: string | null) => void;
     onTitleChange: (title: string) => void;
     sortBy?: string;
+    sortOrder?: string;
 }
 
 export function useExplorerLoading({
@@ -29,6 +30,7 @@ export function useExplorerLoading({
     onPathChange,
     onTitleChange,
     sortBy,
+    sortOrder,
 }: UseExplorerLoadingOptions) {
     const { t } = useTranslation();
     const { showToast } = useToast();
@@ -69,13 +71,14 @@ export function useExplorerLoading({
         }
     }, [tabId, currentPathRef, initializeThumbnails, onTitleChange, t]);
 
-    const loadDirectory = useCallback(async (path: string, pushHistory = true, sortModeOverride?: string) => {
+    const loadDirectory = useCallback(async (path: string, pushHistory = true, sortModeOverride?: string, sortOrderOverride?: string) => {
         if (!isMountedRef.current) return;
 
         setLoading(true);
         try {
             const mode = typeof sortModeOverride === 'string' ? sortModeOverride : (sortBy || '');
-            const items = await AppAPI.exploreFolder(path, mode);
+            const order = typeof sortOrderOverride === 'string' ? sortOrderOverride : (sortOrder || 'asc');
+            const items = await AppAPI.exploreFolder(path, mode, order);
 
             if (!isMountedRef.current) return;
 
@@ -118,7 +121,7 @@ export function useExplorerLoading({
                 setLoading(false);
             }
         }
-    }, [tabId, isMountedRef, onPathChange, onTitleChange, initializeThumbnails, showToast, t, sortBy]);
+    }, [tabId, isMountedRef, onPathChange, onTitleChange, initializeThumbnails, showToast, t, sortBy, sortOrder]);
 
     // Initial load - defer to allow UI to render first
     useEffect(() => {

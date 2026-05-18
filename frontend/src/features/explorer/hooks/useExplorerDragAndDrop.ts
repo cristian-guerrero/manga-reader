@@ -9,6 +9,7 @@ interface UseExplorerDragAndDropOptions {
     entries: ExplorerEntry[];
     onEntriesChange: (entries: ExplorerEntry[]) => void;
     onSortModeChange: (mode: string) => void;
+    sortOrder?: 'asc' | 'desc';
 }
 
 export function useExplorerDragAndDrop({
@@ -16,6 +17,7 @@ export function useExplorerDragAndDrop({
     entries,
     onEntriesChange,
     onSortModeChange,
+    sortOrder = 'asc',
 }: UseExplorerDragAndDropOptions) {
     const [activeId, setActiveId] = useState<string | null>(null);
 
@@ -30,6 +32,9 @@ export function useExplorerDragAndDrop({
 
     const onSortModeChangeRef = useRef(onSortModeChange);
     useEffect(() => { onSortModeChangeRef.current = onSortModeChange; }, [onSortModeChange]);
+
+    const sortOrderRef = useRef(sortOrder);
+    useEffect(() => { sortOrderRef.current = sortOrder; }, [sortOrder]);
 
     const directoryEntries = useMemo(
         () => entries.filter((e) => e.isDirectory),
@@ -67,7 +72,11 @@ export function useExplorerDragAndDrop({
             const currentParentPath = parentPathRef.current;
             if (currentParentPath) {
                 try {
-                    const customOrder = newDirOrder.map((d) => d.name);
+                    let customOrder = newDirOrder.map((d) => d.name);
+                    // In desc mode, display is reversed from canonical; reverse back before saving
+                    if (sortOrderRef.current === 'desc') {
+                        customOrder = [...customOrder].reverse();
+                    }
                     const originalOrder = [...dirEntries]
                         .sort((a, b) =>
                             a.name.localeCompare(b.name, undefined, {

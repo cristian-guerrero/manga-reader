@@ -378,12 +378,13 @@ type FolderInfo struct {
 
 // ListDirectory returns contents of a directory for exploration
 func (m *Module) ListDirectory(path string) ([]ExplorerEntry, error) {
-	return m.ListDirectoryWithSort(path, "")
+	return m.ListDirectoryWithSort(path, "", "")
 }
 
-// ListDirectoryWithSort returns contents of a directory for exploration with a sort mode.
+// ListDirectoryWithSort returns contents of a directory for exploration with a sort mode and order.
 // sortMode can be "custom", "auto", or empty (default: directories first).
-func (m *Module) ListDirectoryWithSort(path string, sortMode string) ([]ExplorerEntry, error) {
+// sortOrder can be "asc" or "desc" (default "asc"). Only affects custom and auto modes.
+func (m *Module) ListDirectoryWithSort(path string, sortMode string, sortOrder string) ([]ExplorerEntry, error) {
 	entries, err := os.ReadDir(path)
 	if err != nil {
 		return nil, err
@@ -467,14 +468,33 @@ func (m *Module) ListDirectoryWithSort(path string, sortMode string) ([]Explorer
 			if sortMode == "custom" {
 				customOrder := m.folderOrders.GetOrder(path)
 				if len(customOrder) > 0 {
-					return applyNamedOrder(customOrder, result[i].Name, result[j].Name)
+					order := customOrder
+					if sortOrder == "desc" {
+						reversed := make([]string, len(order))
+						for k, v := range order {
+							reversed[len(order)-1-k] = v
+						}
+						order = reversed
+					}
+					return applyNamedOrder(order, result[i].Name, result[j].Name)
 				}
 			} else if sortMode == "auto" {
 				autoOrder := m.folderOrders.GetAutoOrder(path)
 				if len(autoOrder) > 0 {
-					return applyNamedOrder(autoOrder, result[i].Name, result[j].Name)
+					order := autoOrder
+					if sortOrder == "desc" {
+						reversed := make([]string, len(order))
+						for k, v := range order {
+							reversed[len(order)-1-k] = v
+						}
+						order = reversed
+					}
+					return applyNamedOrder(order, result[i].Name, result[j].Name)
 				}
 				// Fallback: newest first by lastModified
+				if sortOrder == "desc" {
+					return result[i].LastModified < result[j].LastModified
+				}
 				return result[i].LastModified > result[j].LastModified
 			}
 		}

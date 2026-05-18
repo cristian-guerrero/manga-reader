@@ -90,8 +90,8 @@ export function ColorizerStopServer() {
   return window['go']['main']['App']['ColorizerStopServer']();
 }
 
-export function ExploreFolder(arg1, arg2) {
-  return window['go']['main']['App']['ExploreFolder'](arg1, arg2);
+export function ExploreFolder(arg1, arg2, arg3) {
+  return window['go']['main']['App']['ExploreFolder'](arg1, arg2, arg3);
 }
 
 export function FetchMangaInfo(arg1) {

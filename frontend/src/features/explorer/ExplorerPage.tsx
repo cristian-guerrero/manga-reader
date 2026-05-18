@@ -80,16 +80,16 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
   const explorerStateHook = useExplorerState({ tabId, isActive });
 
   // Ref to break circular dep between sorting (needs loadDirectory) and loading (needs sortBy)
-  const loadDirRef = useRef<(path: string, pushHistory?: boolean, sortMode?: string) => Promise<void>>(
+  const loadDirRef = useRef<(path: string, pushHistory?: boolean, sortMode?: string, sortOrder?: string) => Promise<void>>(
     () => Promise.resolve()
   );
 
   // Use sorting hook
   const sorting = useExplorerSorting({
     currentPath: explorerStateHook.currentPath,
-    onSortReady: useCallback((path: string | null, sortBy: string) => {
+    onSortReady: useCallback((path: string | null, sortBy: string, sortOrder: string) => {
       if (path === explorerStateHook.currentPath && path) {
-        loadDirRef.current?.(path, false, sortBy);
+        loadDirRef.current?.(path, false, sortBy, sortOrder);
       }
     }, [explorerStateHook.currentPath]),
   });
@@ -119,6 +119,7 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
     onPathChange: handlePathChange,
     onTitleChange: handleTitleChange,
     sortBy: sorting.sortBy,
+    sortOrder: sorting.sortOrder,
   });
   loadDirRef.current = loading.loadDirectory;
 
@@ -153,18 +154,22 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
     },
   });
 
-  // Reload directory when switching to modes that require backend sorting (auto, custom)
-  // This handles both dropdown selection and preference restoration on nav
+  // Reload directory when sortBy or sortOrder changes in modes requiring backend sort
   const prevSortByRef = useRef(sorting.sortBy);
+  const prevSortOrderRef = useRef(sorting.sortOrder);
   useEffect(() => {
-    const prev = prevSortByRef.current;
+    const prevBy = prevSortByRef.current;
+    const prevOrder = prevSortOrderRef.current;
+    const byChanged = prevBy !== sorting.sortBy;
+    const orderChanged = prevOrder !== sorting.sortOrder;
     prevSortByRef.current = sorting.sortBy;
-    if (prev === sorting.sortBy) return;
+    prevSortOrderRef.current = sorting.sortOrder;
+    if (!byChanged && !orderChanged) return;
     const path = explorerStateHook.currentPath;
     if (path && (sorting.sortBy === 'auto' || sorting.sortBy === 'custom')) {
       loading.loadDirectory(path, false);
     }
-  }, [sorting.sortBy, explorerStateHook.currentPath, loading.loadDirectory]);
+  }, [sorting.sortBy, sorting.sortOrder, explorerStateHook.currentPath, loading.loadDirectory]);
 
   // Use view mode hook
   const { viewMode, setViewMode } = useExplorerView(explorerStateHook.currentPath);
@@ -179,6 +184,7 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
         sorting.setSortBy(mode as 'name' | 'date' | 'custom' | 'auto');
       }
     },
+    sortOrder: sorting.sortOrder,
   });
 
   // DnD sensors
@@ -305,7 +311,6 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
                 }
               }}
               onSortOrderChange={() => {
-                if (sorting.sortBy === 'custom' || sorting.sortBy === 'auto') return;
                 sorting.setSortOrder((prev) =>
                   prev === "asc" ? "desc" : "asc",
                 );

@@ -594,8 +594,8 @@ func (a *App) RemoveBaseFolder(path string) error {
 	return a.explorerMod.RemoveBaseFolder(path)
 }
 
-func (a *App) ExploreFolder(path string, sortMode string) ([]explorer.ExplorerEntry, error) {
-	return a.explorerMod.ListDirectoryWithSort(path, sortMode)
+func (a *App) ExploreFolder(path string, sortMode string, sortOrder string) ([]explorer.ExplorerEntry, error) {
+	return a.explorerMod.ListDirectoryWithSort(path, sortMode, sortOrder)
 }
 
 // GetFolderNavigation returns prev/next folder navigation for explorer

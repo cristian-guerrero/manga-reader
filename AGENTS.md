@@ -18,7 +18,7 @@ Wails v2 (Go 1.24 backend, React 18 + TypeScript + Vite frontend). State: Zustan
 - **Frontend**: Vite config at `frontend/vite.config.ts` with path aliases (`@app`, `@features`, `@shared`, `@services`, `@stores`, `@hooks`, `@components`, `@types`, `@utils`, `@constants`, `@themes`, `@i18n`)
 - **API bridge**: Go methods in `app.go` exposed to frontend via Wails binding; frontend calls via `services/api/*`
 - **Colorizer**: Python/Flask server for image processing; managed by `internal/modules/colorizer/`
-- **Go is single source of truth**: No localStorage. All state lives in Go SQLite, exposed through Wails-bound methods. Frontend calls backend for every preference (sort, view mode, tabs, viewer state). Backend always returns defaults when nothing saved.
+- **Go is single source of truth**: No localStorage, no IndexedDB, no frontend defaults. All state lives in Go SQLite, exposed through Wails-bound methods. Frontend calls backend for **every** preference (sort, view mode, tabs, viewer state). Backend always returns defaults when nothing saved. Frontend Zustand stores are ephemeral UI state only — never pre-seed defaults, never persist to IndexedDB/localStorage. If a value needs to survive restart, add a backend repository method.
 
 ## Data Storage
 `~/.manga-visor/` (Windows: `%USERPROFILE%\.manga-visor\`). SQLite database: `manga-visor.db`. Cache: `cache/`, downloads: `downloads/`, temp: `temp/`.
@@ -36,8 +36,8 @@ Wails v2 (Go 1.24 backend, React 18 + TypeScript + Vite frontend). State: Zustan
 - Auto mode: folders promoted to front on click via `PromoteToFront()`, falls back to newest-first date sort.
 - Frontend: `useExplorerDragAndDrop` hook + `SortableEntryTile` + `DirectoryView` components using `@dnd-kit`.
 
-### UI Preferences (formerly localStorage)
-All moved to Go backend. Backend always returns defaults when nothing saved:
+### UI Preferences
+**Backend is the single source of truth.** No localStorage, no IndexedDB, no frontend defaults. Frontend calls backend for every preference and never pre-seeds defaults. Backend always returns defaults when nothing saved:
 - `GetExplorerSortPreference(path)` → `{sortBy, sortOrder}` (default: `{name, asc}`)
 - `GetSeriesSortBy/Order()` → defaults `name`/`asc`
 - `GetOneShotSortBy/Order()` → defaults `name`/`asc`

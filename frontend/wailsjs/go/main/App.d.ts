@@ -52,7 +52,7 @@ export function ColorizerStartServer():Promise<void>;
 
 export function ColorizerStopServer():Promise<void>;
 
-export function ExploreFolder(arg1:string,arg2:string):Promise<Array<explorer.ExplorerEntry>>;
+export function ExploreFolder(arg1:string,arg2:string,arg3:string):Promise<Array<explorer.ExplorerEntry>>;
 
 export function FetchMangaInfo(arg1:string):Promise<downloader.SiteInfo>;
 
