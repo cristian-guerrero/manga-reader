@@ -5,6 +5,7 @@ import (
 	"crypto/md5"
 	"fmt"
 	"manga-visor/internal/archiver"
+	"manga-visor/internal/database"
 	"manga-visor/internal/fileloader"
 	"manga-visor/internal/persistence"
 	"manga-visor/internal/services"
@@ -28,7 +29,7 @@ type ImageInfo = fileloader.ImageInfo
 // Module handles Library logic
 type Module struct {
 	ctx          context.Context
-	library      *persistence.LibraryManager
+	library      *database.LibraryRepository
 	fileLoader   FileLoaderInterface
 	urlBuilder   URLBuilderInterface
 	logger       services.LoggerInterface
@@ -39,7 +40,7 @@ type Module struct {
 
 // NewModule creates a new Library module
 // Accepts interfaces for better testability
-func NewModule(library *persistence.LibraryManager, fileLoader FileLoaderInterface, urlBuilder URLBuilderInterface, logger services.LoggerInterface) *Module {
+func NewModule(library *database.LibraryRepository, fileLoader FileLoaderInterface, urlBuilder URLBuilderInterface, logger services.LoggerInterface) *Module {
 	return &Module{
 		library:    library,
 		fileLoader: fileLoader,
@@ -343,7 +344,7 @@ func (m *Module) unwrapArchiveRoot(path string) string {
 	}
 }
 
-func (m *Module) GetImages(path string, settings *persistence.Settings, orders *persistence.OrdersManager) ([]persistence.ImageInfo, error) {
+func (m *Module) GetImages(path string, settings *persistence.Settings, orders *database.ImageOrdersRepository) ([]persistence.ImageInfo, error) {
 	folderPath := m.ResolveFolder(path)
 	images, err := m.fileLoader.GetImages(folderPath)
 	if err != nil {
@@ -412,7 +413,7 @@ func (m *Module) GetImages(path string, settings *persistence.Settings, orders *
 	return result, nil
 }
 
-func (m *Module) GetImagesShallow(path string, settings *persistence.Settings, orders *persistence.OrdersManager) ([]persistence.ImageInfo, error) {
+func (m *Module) GetImagesShallow(path string, settings *persistence.Settings, orders *database.ImageOrdersRepository) ([]persistence.ImageInfo, error) {
 	folderPath := m.ResolveFolder(path)
 	images, err := m.fileLoader.GetImagesShallow(folderPath)
 	if err != nil {

@@ -1,37 +1,38 @@
-/**
- * useTabPersistence - Hook for managing tab persistence to localStorage
- */
-
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useTabStore } from '../stores/tabStore';
 import { useSettingsStore } from '../stores/settingsStore';
-import { TabPersistenceService } from '../services/persistence';
+import { TabsAPI } from '../services/api/tabsAPI';
 
-/**
- * Hook to handle tab persistence (save/restore tabs from localStorage)
- */
 export function useTabPersistence() {
+    const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
     useEffect(() => {
         const unsubscribeTabStore = useTabStore.subscribe((state) => {
             const { restoreTabs } = useSettingsStore.getState();
-            if (!restoreTabs || !state.isReady) return; // Only save if ready
+            if (!restoreTabs || !state.isReady) return;
 
-            // Use service's debounced save
-            const tabsData = state.saveTabsForBackend();
-            TabPersistenceService.saveDebounced(tabsData);
+            if (debounceRef.current) {
+                clearTimeout(debounceRef.current);
+            }
+
+            debounceRef.current = setTimeout(() => {
+                const tabsData = state.saveTabsForBackend();
+                TabsAPI.saveTabs(tabsData).catch(err => {
+                    console.error('[useTabPersistence] Failed to save tabs:', err);
+                });
+            }, 500);
         });
 
-        // Also save on beforeunload
         const handleBeforeUnload = () => {
             const { restoreTabs } = useSettingsStore.getState();
             if (restoreTabs) {
-                TabPersistenceService.clearDebounce(); // Clear debounce and save immediately
-                const tabsData = useTabStore.getState().saveTabsForBackend();
-                try {
-                    TabPersistenceService.save(tabsData);
-                } catch (error) {
-                    console.error('[useTabPersistence] Failed to save tabs on unload:', error);
+                if (debounceRef.current) {
+                    clearTimeout(debounceRef.current);
                 }
+                const tabsData = useTabStore.getState().saveTabsForBackend();
+                TabsAPI.saveTabs(tabsData).catch(err => {
+                    console.error('[useTabPersistence] Failed to save tabs on unload:', err);
+                });
             }
         };
 
@@ -39,7 +40,9 @@ export function useTabPersistence() {
 
         return () => {
             window.removeEventListener('beforeunload', handleBeforeUnload);
-            TabPersistenceService.clearDebounce();
+            if (debounceRef.current) {
+                clearTimeout(debounceRef.current);
+            }
             unsubscribeTabStore();
         };
     }, []);

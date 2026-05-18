@@ -2,12 +2,13 @@ package services
 
 import (
 	"context"
+	"manga-visor/internal/database"
 	"manga-visor/internal/fileloader"
-	"manga-visor/internal/persistence"
 	"manga-visor/internal/thumbnails"
+	"os"
+	"path/filepath"
 )
 
-// Container holds all application services and provides dependency injection
 type Container struct {
 	// Core Services
 	FileLoader  *fileloader.FileLoader
@@ -16,112 +17,120 @@ type Container struct {
 	URLBuilder  *URLBuilder
 	Logger      *Logger
 
-	// Persistence Managers
-	Settings     *persistence.SettingsManager
-	History      *persistence.HistoryManager
-	Library      *persistence.LibraryManager
-	Series       *persistence.SeriesManager
-	Orders       *persistence.OrdersManager
-	FolderOrders   *persistence.FolderOrdersManager
-	FolderViewModes *persistence.FolderViewModeManager
-	Downloader      *persistence.DownloaderManager
-	Tabs         *persistence.TabsManager
-	ViewerStates *persistence.ViewerStatesManager
+	// Database
+	DB *database.Database
 
-	// Context (set after startup)
+	// Persistence Repositories
+	Settings        *database.SettingsRepository
+	History         *database.HistoryRepository
+	Library         *database.LibraryRepository
+	Series          *database.SeriesRepository
+	Explorer        *database.ExplorerRepository
+	Orders          *database.ImageOrdersRepository
+	FolderOrders    *database.FolderOrdersRepository
+	FolderViewModes *database.FolderViewModeRepository
+	Downloader      *database.DownloaderRepository
+	Tabs            *database.TabsRepository
+	ViewerStates    *database.ViewerStatesRepository
+	UIPreferences   *database.UIPreferencesRepository
+
 	ctx context.Context
 }
 
-// NewContainer creates a new service container with all dependencies initialized
 func NewContainer() *Container {
-	// Logger (initialize first so other services can use it)
 	logger := NewLogger(LogLevelInfo)
 
-	// Core services
-	// Create logger adapter for fileloader (to avoid import cycle)
 	loggerAdapter := &loggerAdapter{logger: logger}
 	fileLoader := fileloader.NewFileLoader(loggerAdapter)
 	thumbGen := thumbnails.NewGenerator()
-	urlBuilder := NewURLBuilder("") // Base URL will be set after ImageServer starts
+	urlBuilder := NewURLBuilder("")
 
-	// Persistence managers
-	settings := persistence.NewSettingsManager()
-	history := persistence.NewHistoryManager()
-	library := persistence.NewLibraryManager()
-	series := persistence.NewSeriesManager()
-	orders := persistence.NewOrdersManager()
-	folderOrders := persistence.NewFolderOrdersManager()
-	folderViewModes := persistence.NewFolderViewModeManager()
-	downloader := persistence.NewDownloaderManager()
-	tabs := persistence.NewTabsManager()
-	viewerStates := persistence.NewViewerStatesManager()
+	dataDir := getDataDir()
 
-	// Image server (not started yet, will be started in Initialize)
+	db, err := database.New(dataDir)
+	if err != nil {
+		logger.Errorf("Failed to initialize database: %v", err)
+	}
+
+	settings := database.NewSettingsRepository(db)
+	history := database.NewHistoryRepository(db)
+	library := database.NewLibraryRepository(db)
+	series := database.NewSeriesRepository(db)
+	explorer := database.NewExplorerRepository(db)
+	orders := database.NewImageOrdersRepository(db)
+	folderOrders := database.NewFolderOrdersRepository(db)
+	folderViewModes := database.NewFolderViewModeRepository(db)
+	downloader := database.NewDownloaderRepository(db)
+	tabs := database.NewTabsRepository(db)
+	viewerStates := database.NewViewerStatesRepository(db)
+	uiPrefs := database.NewUIPreferencesRepository(db)
+
 	imageServer := fileloader.NewImageServer(fileLoader, thumbGen, loggerAdapter, func() bool {
 		return settings.Get().GenerateThumbnails
 	})
 
 	return &Container{
-		FileLoader:   fileLoader,
-		ThumbGen:     thumbGen,
-		ImageServer:  imageServer,
-		URLBuilder:   urlBuilder,
-		Logger:       logger,
-		Settings:     settings,
-		History:      history,
-		Library:      library,
-		Series:       series,
-		Orders:       orders,
-		FolderOrders:   folderOrders,
+		FileLoader:      fileLoader,
+		ThumbGen:        thumbGen,
+		ImageServer:     imageServer,
+		URLBuilder:      urlBuilder,
+		Logger:          logger,
+		DB:              db,
+		Settings:        settings,
+		History:         history,
+		Library:         library,
+		Series:          series,
+		Explorer:        explorer,
+		Orders:          orders,
+		FolderOrders:    folderOrders,
 		FolderViewModes: folderViewModes,
 		Downloader:      downloader,
-		Tabs:         tabs,
-		ViewerStates: viewerStates,
+		Tabs:            tabs,
+		ViewerStates:    viewerStates,
+		UIPreferences:   uiPrefs,
 	}
 }
 
-// Initialize starts services that require initialization (like ImageServer)
 func (c *Container) Initialize(ctx context.Context) error {
 	c.ctx = ctx
-
 	c.Logger.Info("Initializing services...")
-
-	// Start image server
 	if err := c.ImageServer.Start(); err != nil {
 		c.Logger.Errorf("Failed to start image server: %v", err)
 		return err
 	}
-
-	// Update URL builder with the server address
 	c.URLBuilder.SetBaseURL(c.ImageServer.Addr())
 	c.Logger.Infof("Image server started on %s", c.ImageServer.Addr())
-
 	c.Logger.Info("Services initialized successfully")
 	return nil
 }
 
-// Context returns the application context
 func (c *Container) Context() context.Context {
 	return c.ctx
 }
 
-// loggerAdapter adapts services.Logger to fileloader.LoggerInterface
+func (c *Container) Shutdown() {
+	if c.DB != nil {
+		if err := c.DB.Close(); err != nil {
+			c.Logger.Errorf("Error closing database: %v", err)
+		}
+	}
+}
+
+func getDataDir() string {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return "."
+	}
+	dir := filepath.Join(homeDir, ".manga-visor")
+	os.MkdirAll(dir, 0755)
+	return dir
+}
+
 type loggerAdapter struct {
 	logger *Logger
 }
 
-func (a *loggerAdapter) Debugf(format string, args ...interface{}) {
-	a.logger.Debugf(format, args...)
-}
-
-func (a *loggerAdapter) Infof(format string, args ...interface{}) {
-	a.logger.Infof(format, args...)
-}
-
-func (a *loggerAdapter) Warnf(format string, args ...interface{}) {
-	a.logger.Warnf(format, args...)
-}
-
-func (a *loggerAdapter) Errorf(format string, args ...interface{}) {
-	a.logger.Errorf(format, args...)
-}
+func (a *loggerAdapter) Debugf(format string, args ...interface{})  { a.logger.Debugf(format, args...) }
+func (a *loggerAdapter) Infof(format string, args ...interface{})   { a.logger.Infof(format, args...) }
+func (a *loggerAdapter) Warnf(format string, args ...interface{})   { a.logger.Warnf(format, args...) }
+func (a *loggerAdapter) Errorf(format string, args ...interface{}) { a.logger.Errorf(format, args...) }

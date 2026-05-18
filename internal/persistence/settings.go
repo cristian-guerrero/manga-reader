@@ -106,7 +106,7 @@ func DefaultSettings() *Settings {
 		TabMemorySaving:      false,
 		RestoreTabs:          true,
 		SavedTabs:            "",
-		GenerateThumbnails:   false,
+		GenerateThumbnails:   true,
 	}
 }
 

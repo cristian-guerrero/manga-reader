@@ -114,6 +114,18 @@ export function GetDownloadHistory() {
   return window['go']['main']['App']['GetDownloadHistory']();
 }
 
+export function GetExplorerRootViewMode() {
+  return window['go']['main']['App']['GetExplorerRootViewMode']();
+}
+
+export function GetExplorerSortPreference(arg1) {
+  return window['go']['main']['App']['GetExplorerSortPreference'](arg1);
+}
+
+export function GetExplorerSortPreferences() {
+  return window['go']['main']['App']['GetExplorerSortPreferences']();
+}
+
 export function GetFolderAutoOrder(arg1) {
   return window['go']['main']['App']['GetFolderAutoOrder'](arg1);
 }
@@ -150,6 +162,10 @@ export function GetHistoryEntry(arg1) {
   return window['go']['main']['App']['GetHistoryEntry'](arg1);
 }
 
+export function GetHistoryViewMode() {
+  return window['go']['main']['App']['GetHistoryViewMode']();
+}
+
 export function GetImageOrder(arg1) {
   return window['go']['main']['App']['GetImageOrder'](arg1);
 }
@@ -166,12 +182,36 @@ export function GetLibrary() {
   return window['go']['main']['App']['GetLibrary']();
 }
 
+export function GetOneShotSortBy() {
+  return window['go']['main']['App']['GetOneShotSortBy']();
+}
+
+export function GetOneShotSortOrder() {
+  return window['go']['main']['App']['GetOneShotSortOrder']();
+}
+
 export function GetOriginalOrder(arg1) {
   return window['go']['main']['App']['GetOriginalOrder'](arg1);
 }
 
 export function GetSeries() {
   return window['go']['main']['App']['GetSeries']();
+}
+
+export function GetSeriesDetailsSortPreference(arg1) {
+  return window['go']['main']['App']['GetSeriesDetailsSortPreference'](arg1);
+}
+
+export function GetSeriesDetailsSortPreferences() {
+  return window['go']['main']['App']['GetSeriesDetailsSortPreferences']();
+}
+
+export function GetSeriesSortBy() {
+  return window['go']['main']['App']['GetSeriesSortBy']();
+}
+
+export function GetSeriesSortOrder() {
+  return window['go']['main']['App']['GetSeriesSortOrder']();
 }
 
 export function GetSettings() {
@@ -310,6 +350,14 @@ export function SelectFolder() {
   return window['go']['main']['App']['SelectFolder']();
 }
 
+export function SetExplorerRootViewMode(arg1) {
+  return window['go']['main']['App']['SetExplorerRootViewMode'](arg1);
+}
+
+export function SetExplorerSortPreference(arg1, arg2, arg3) {
+  return window['go']['main']['App']['SetExplorerSortPreference'](arg1, arg2, arg3);
+}
+
 export function SetFolderAutoOrder(arg1, arg2, arg3) {
   return window['go']['main']['App']['SetFolderAutoOrder'](arg1, arg2, arg3);
 }
@@ -320,6 +368,30 @@ export function SetFolderOrder(arg1, arg2, arg3) {
 
 export function SetFolderViewMode(arg1, arg2) {
   return window['go']['main']['App']['SetFolderViewMode'](arg1, arg2);
+}
+
+export function SetHistoryViewMode(arg1) {
+  return window['go']['main']['App']['SetHistoryViewMode'](arg1);
+}
+
+export function SetOneShotSortBy(arg1) {
+  return window['go']['main']['App']['SetOneShotSortBy'](arg1);
+}
+
+export function SetOneShotSortOrder(arg1) {
+  return window['go']['main']['App']['SetOneShotSortOrder'](arg1);
+}
+
+export function SetSeriesDetailsSortPreference(arg1, arg2, arg3) {
+  return window['go']['main']['App']['SetSeriesDetailsSortPreference'](arg1, arg2, arg3);
+}
+
+export function SetSeriesSortBy(arg1) {
+  return window['go']['main']['App']['SetSeriesSortBy'](arg1);
+}
+
+export function SetSeriesSortOrder(arg1) {
+  return window['go']['main']['App']['SetSeriesSortOrder'](arg1);
 }
 
 export function SetThumbnailsPaused(arg1) {

@@ -1,77 +1,58 @@
-/**
- * useExplorerSorting - Hook to handle sorting and preferences
- * Extracted from ExplorerPage to improve separation of concerns
- */
-
 import { useState, useEffect, useRef } from 'react';
 import { FolderOrderAPI } from '@services/api/folderOrderAPI';
+import { UIPreferencesAPI } from '@services/api/uiPreferencesAPI';
 
 type SortBy = 'name' | 'date' | 'custom' | 'auto';
-
-// Helper functions for sort preferences per path
-export function getSortPreferences(path: string | null) {
-    const key = path || 'root';
-    try {
-        const stored = localStorage.getItem('explorer_sortPreferences');
-        if (stored) {
-            const prefs = JSON.parse(stored);
-            return prefs[key] || { sortBy: 'name' as SortBy, sortOrder: 'asc' as const };
-        }
-    } catch (e) {
-        console.error('Failed to load sort preferences', e);
-    }
-    return { sortBy: 'name' as SortBy, sortOrder: 'asc' as const };
-};
-
-const saveSortPreferences = (path: string | null, sortBy: SortBy, sortOrder: 'asc' | 'desc') => {
-    const key = path || 'root';
-    try {
-        const stored = localStorage.getItem('explorer_sortPreferences');
-        const prefs = stored ? JSON.parse(stored) : {};
-        prefs[key] = { sortBy, sortOrder };
-        localStorage.setItem('explorer_sortPreferences', JSON.stringify(prefs));
-    } catch (e) {
-        console.error('Failed to save sort preferences', e);
-    }
-};
 
 interface UseExplorerSortingOptions {
     currentPath: string | null;
     onCustomOrderDetected?: () => void;
+    onSortReady?: (path: string | null, sortBy: string, sortOrder: string) => void;
 }
 
-export function useExplorerSorting({ currentPath, onCustomOrderDetected }: UseExplorerSortingOptions) {
-    const [sortBy, setSortBy] = useState<SortBy>(() => {
-        return getSortPreferences(null).sortBy;
-    });
-    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>(() => {
-        return getSortPreferences(null).sortOrder;
-    });
-
-    // Track if preferences have been loaded for current path
+export function useExplorerSorting({ currentPath, onCustomOrderDetected, onSortReady }: UseExplorerSortingOptions) {
+    const [sortBy, setSortBy] = useState<SortBy>('name');
+    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
     const preferencesLoadedRef = useRef(false);
 
-    // Load sort preferences when path changes, and check backend for custom order
     useEffect(() => {
-        const prefs = getSortPreferences(currentPath);
-        setSortBy(prefs.sortBy);
-        setSortOrder(prefs.sortOrder);
-        preferencesLoadedRef.current = true;
+        let cancelled = false;
+        const targetPath = currentPath;
+        preferencesLoadedRef.current = false;
 
-        // If preferences say 'custom', verify backend still has it
-        if (prefs.sortBy === 'custom' && currentPath) {
-            FolderOrderAPI.hasFolderCustomOrder(currentPath).then((hasCustom) => {
-                if (!hasCustom && prefs.sortBy === 'custom') {
-                    setSortBy('name');
+        const loadPrefs = async () => {
+            const pref = await UIPreferencesAPI.getExplorerSortPreference(targetPath || 'root');
+            if (cancelled) return;
+
+            let resolvedSortBy = pref.sortBy as SortBy;
+            let resolvedSortOrder = pref.sortOrder as 'asc' | 'desc';
+
+            if (resolvedSortBy === 'custom' && targetPath) {
+                const hasCustom = await FolderOrderAPI.hasFolderCustomOrder(targetPath);
+                if (cancelled) return;
+                if (!hasCustom) {
+                    resolvedSortBy = 'name';
                 }
-            });
-        }
+            }
+
+            if (cancelled) return;
+
+            setSortBy(resolvedSortBy);
+            setSortOrder(resolvedSortOrder);
+            preferencesLoadedRef.current = true;
+            onSortReady?.(targetPath, resolvedSortBy, resolvedSortOrder);
+        };
+
+        loadPrefs();
+
+        return () => {
+            cancelled = true;
+        };
     }, [currentPath]);
 
-    // Save sort preference when it changes (but only after initial load)
     useEffect(() => {
         if (preferencesLoadedRef.current) {
-            saveSortPreferences(currentPath, sortBy, sortOrder);
+            UIPreferencesAPI.setExplorerSortPreference(currentPath || 'root', sortBy, sortOrder).catch(() => {});
         }
     }, [sortBy, sortOrder, currentPath]);
 
@@ -82,12 +63,7 @@ export function useExplorerSorting({ currentPath, onCustomOrderDetected }: UseEx
         setSortBy(value);
     };
 
-    return {
-        sortBy,
-        setSortBy: handleSortByChange,
-        sortOrder,
-        setSortOrder,
-    };
+    return { sortBy, setSortBy: handleSortByChange, sortOrder, setSortOrder };
 }
 
 export type { SortBy };

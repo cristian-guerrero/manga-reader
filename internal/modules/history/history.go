@@ -2,6 +2,7 @@ package history
 
 import (
 	"context"
+	"manga-visor/internal/database"
 	"manga-visor/internal/persistence"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -10,12 +11,12 @@ import (
 // Module handles History logic
 type Module struct {
 	ctx      context.Context
-	history  *persistence.HistoryManager
-	settings *persistence.SettingsManager
+	history  *database.HistoryRepository
+	settings *database.SettingsRepository
 }
 
 // NewModule creates a new History module
-func NewModule(history *persistence.HistoryManager, settings *persistence.SettingsManager) *Module {
+func NewModule(history *database.HistoryRepository, settings *database.SettingsRepository) *Module {
 	return &Module{
 		history:  history,
 		settings: settings,

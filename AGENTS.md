@@ -14,22 +14,38 @@ Wails v2 (Go 1.24 backend, React 18 + TypeScript + Vite frontend). State: Zustan
 
 ## Architecture
 - **Entrypoints**: `main.go` → `app.go` (Wails app struct with bound methods)
-- **Go backend**: `internal/` with `services/` (DI container), `modules/` (colorizer, downloader, explorer, library, series, history), `persistence/` (JSON file stores), `fileloader/` (image server), `thumbnails/`, `archiver/`
+- **Go backend**: `internal/` with `services/` (DI container), `database/` (SQLite repositories), `persistence/` (shared model types only), `modules/` (colorizer, downloader, explorer, library, series, history), `fileloader/` (image server), `thumbnails/`, `archiver/`
 - **Frontend**: Vite config at `frontend/vite.config.ts` with path aliases (`@app`, `@features`, `@shared`, `@services`, `@stores`, `@hooks`, `@components`, `@types`, `@utils`, `@constants`, `@themes`, `@i18n`)
 - **API bridge**: Go methods in `app.go` exposed to frontend via Wails binding; frontend calls via `services/api/*`
 - **Colorizer**: Python/Flask server for image processing; managed by `internal/modules/colorizer/`
+- **Go is single source of truth**: No localStorage. All state lives in Go SQLite, exposed through Wails-bound methods. Frontend calls backend for every preference (sort, view mode, tabs, viewer state). Backend always returns defaults when nothing saved.
 
 ## Data Storage
-`~/.manga-visor/` (Windows: `%USERPROFILE%\.manga-visor\`). JSON files: `settings.json`, `downloader.json`, `explorer.json`, `history.json`, `library.json`, `series.json`, `tabs.json`, `orders.json`. Cache: `cache/`, downloads: `downloads/`, temp: `temp/`.
+`~/.manga-visor/` (Windows: `%USERPROFILE%\.manga-visor\`). SQLite database: `manga-visor.db`. Cache: `cache/`, downloads: `downloads/`, temp: `temp/`.
+
+### Database (`internal/database/`)
+- **Engine**: `modernc.org/sqlite` (pure Go, no CGo)
+- **Schema**: 14 tables (`settings`, `explorer_folders`, `library_entries`, `series_entries`, `series_chapters`, `history`, `download_jobs`, `tabs`, `image_orders`, `folder_orders`, `folder_view_modes`, `viewer_states`, `ui_preferences`, `schema_version`)
+- **Migration**: Auto-migrates from legacy JSON files on first startup
+- **Each entity** has a dedicated repository file (e.g., `settings_repo.go`, `history_repo.go`) with `sync.RWMutex` + in-memory cache + write-through to SQLite
+- **UIPreferencesRepository**: Central store for all UI preferences formerly in localStorage (sort modes, view modes)
 
 ### Folder Order (Custom & Auto Explorer Sorting)
-- `folder_orders.json` stores custom (`customOrder`) and auto (`autoOrder`) folder ordering for Explorer subdirectories.
-- Managed by `internal/persistence/folderorder.go` (FolderOrdersManager), same pattern as ImageOrder.
+- Stored in `folder_orders` SQLite table via `internal/database/folder_orders_repo.go`
 - Custom mode applied in `internal/modules/explorer/explorer.go` `ListDirectoryWithSort` via `applyNamedOrder()`.
 - Auto mode: folders promoted to front on click via `PromoteToFront()`, falls back to newest-first date sort.
 - Frontend: `useExplorerDragAndDrop` hook + `SortableEntryTile` + `DirectoryView` components using `@dnd-kit`.
-- Wails-bound methods for custom: `GetFolderOrder`, `SetFolderOrder`, `ResetFolderOrder`, `HasFolderCustomOrder`, `GetFolderOriginalOrder`.
-- Wails-bound methods for auto: `GetFolderAutoOrder`, `SetFolderAutoOrder`, `HasFolderAutoOrder`, `PromoteToAutoOrder`, `ResetFolderAutoOrder`.
+
+### UI Preferences (formerly localStorage)
+All moved to Go backend. Backend always returns defaults when nothing saved:
+- `GetExplorerSortPreference(path)` → `{sortBy, sortOrder}` (default: `{name, asc}`)
+- `GetSeriesSortBy/Order()` → defaults `name`/`asc`
+- `GetOneShotSortBy/Order()` → defaults `name`/`asc`
+- `GetSeriesDetailsSortPreference(path)` → defaults `{name, asc}`
+- `GetHistoryViewMode()` → default `list`
+- `GetExplorerRootViewMode()` → default `grid`
+- `GetFolderViewMode(path)` → default `grid`
+- `GetTabs()`, `SaveTabs()` — tabs persistence via backend
 
 ## Conventions
 - **Commits**: English only, conventional format (`type: description`), no Spanish characters (see `.cursorrules`)

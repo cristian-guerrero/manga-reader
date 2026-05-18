@@ -1,30 +1,28 @@
-/**
- * useSeriesSorting - Hook to manage sorting with persistence
- */
-
 import { useState, useEffect } from 'react';
-
-const SORT_BY_STORAGE_KEY = 'series_sortBy';
-const SORT_ORDER_STORAGE_KEY = 'series_sortOrder';
+import { UIPreferencesAPI } from '@services/api/uiPreferencesAPI';
 
 export function useSeriesSorting() {
-    const [sortBy, setSortBy] = useState<'name' | 'date'>(() => {
-        return (localStorage.getItem(SORT_BY_STORAGE_KEY) as 'name' | 'date') || 'name';
-    });
-    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>(() => {
-        return (localStorage.getItem(SORT_ORDER_STORAGE_KEY) as 'asc' | 'desc') || 'asc';
-    });
+    const [sortBy, setSortByState] = useState<'name' | 'date'>('name');
+    const [sortOrder, setSortOrderState] = useState<'asc' | 'desc'>('asc');
 
-    // Save sort preference
     useEffect(() => {
-        localStorage.setItem(SORT_BY_STORAGE_KEY, sortBy);
-        localStorage.setItem(SORT_ORDER_STORAGE_KEY, sortOrder);
-    }, [sortBy, sortOrder]);
+        UIPreferencesAPI.getSeriesSortBy().then((v) => {
+            setSortByState((v as 'name' | 'date') || 'name');
+        }).catch(() => {});
+        UIPreferencesAPI.getSeriesSortOrder().then((v) => {
+            setSortOrderState((v as 'asc' | 'desc') || 'asc');
+        }).catch(() => {});
+    }, []);
 
-    return {
-        sortBy,
-        sortOrder,
-        setSortBy,
-        setSortOrder,
+    const setSortBy = (value: 'name' | 'date') => {
+        setSortByState(value);
+        UIPreferencesAPI.setSeriesSortBy(value).catch(() => {});
     };
+
+    const setSortOrder = (value: 'asc' | 'desc') => {
+        setSortOrderState(value);
+        UIPreferencesAPI.setSeriesSortOrder(value).catch(() => {});
+    };
+
+    return { sortBy, sortOrder, setSortBy, setSortOrder };
 }

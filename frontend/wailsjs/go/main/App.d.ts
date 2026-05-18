@@ -5,6 +5,7 @@ import {colorizer} from '../models';
 import {explorer} from '../models';
 import {downloader} from '../models';
 import {series} from '../models';
+import {database} from '../models';
 import {main} from '../models';
 
 export function AddBaseFolder(arg1:string):Promise<void>;
@@ -63,6 +64,12 @@ export function GetChapterNavigation(arg1:string):Promise<series.ChapterNavigati
 
 export function GetDownloadHistory():Promise<Array<persistence.DownloadJob>>;
 
+export function GetExplorerRootViewMode():Promise<string>;
+
+export function GetExplorerSortPreference(arg1:string):Promise<database.ExplorerSortPref>;
+
+export function GetExplorerSortPreferences():Promise<Record<string, database.ExplorerSortPref>>;
+
 export function GetFolderAutoOrder(arg1:string):Promise<Array<string>>;
 
 export function GetFolderInfo(arg1:string):Promise<persistence.FolderInfo>;
@@ -81,6 +88,8 @@ export function GetHistory():Promise<Array<persistence.HistoryEntry>>;
 
 export function GetHistoryEntry(arg1:string):Promise<persistence.HistoryEntry>;
 
+export function GetHistoryViewMode():Promise<string>;
+
 export function GetImageOrder(arg1:string):Promise<Array<string>>;
 
 export function GetImages(arg1:string):Promise<Array<persistence.ImageInfo>>;
@@ -89,9 +98,21 @@ export function GetImagesShallow(arg1:string):Promise<Array<persistence.ImageInf
 
 export function GetLibrary():Promise<Array<persistence.FolderInfo>>;
 
+export function GetOneShotSortBy():Promise<string>;
+
+export function GetOneShotSortOrder():Promise<string>;
+
 export function GetOriginalOrder(arg1:string):Promise<Array<string>>;
 
 export function GetSeries():Promise<Array<series.SeriesEntryWithURLs>>;
+
+export function GetSeriesDetailsSortPreference(arg1:string):Promise<database.SeriesDetailsSortPref>;
+
+export function GetSeriesDetailsSortPreferences():Promise<Record<string, database.SeriesDetailsSortPref>>;
+
+export function GetSeriesSortBy():Promise<string>;
+
+export function GetSeriesSortOrder():Promise<string>;
 
 export function GetSettings():Promise<persistence.Settings>;
 
@@ -161,11 +182,27 @@ export function SaveWindowState():Promise<void>;
 
 export function SelectFolder():Promise<string>;
 
+export function SetExplorerRootViewMode(arg1:string):Promise<void>;
+
+export function SetExplorerSortPreference(arg1:string,arg2:string,arg3:string):Promise<void>;
+
 export function SetFolderAutoOrder(arg1:string,arg2:Array<string>,arg3:Array<string>):Promise<void>;
 
 export function SetFolderOrder(arg1:string,arg2:Array<string>,arg3:Array<string>):Promise<void>;
 
 export function SetFolderViewMode(arg1:string,arg2:string):Promise<void>;
+
+export function SetHistoryViewMode(arg1:string):Promise<void>;
+
+export function SetOneShotSortBy(arg1:string):Promise<void>;
+
+export function SetOneShotSortOrder(arg1:string):Promise<void>;
+
+export function SetSeriesDetailsSortPreference(arg1:string,arg2:string,arg3:string):Promise<void>;
+
+export function SetSeriesSortBy(arg1:string):Promise<void>;
+
+export function SetSeriesSortOrder(arg1:string):Promise<void>;
 
 export function SetThumbnailsPaused(arg1:boolean):Promise<void>;
 

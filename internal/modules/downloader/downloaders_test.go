@@ -1,7 +1,6 @@
 package downloader
 
 import (
-	"manga-visor/internal/persistence"
 	"strings"
 	"testing"
 )
@@ -338,11 +337,7 @@ func TestGetSiteID(t *testing.T) {
 
 // TestModule_AlgorithmSelection verifica que el módulo seleccione el algoritmo correcto
 func TestModule_AlgorithmSelection(t *testing.T) {
-	pm := persistence.NewDownloaderManager()
-	sm := persistence.NewSettingsManager()
-	logger := &mockLogger{}
-
-	module := NewModule(pm, sm, logger)
+	module := newTestModuleDownloader(t)
 
 	testCases := []struct {
 		url        string
@@ -418,13 +413,8 @@ func TestModule_AlgorithmSelection(t *testing.T) {
 	}
 }
 
-// TestModule_InvalidURL verifica que URLs inválidas retornen error apropiado
 func TestModule_InvalidURL(t *testing.T) {
-	pm := persistence.NewDownloaderManager()
-	sm := persistence.NewSettingsManager()
-	logger := &mockLogger{}
-
-	module := NewModule(pm, sm, logger)
+	module := newTestModuleDownloader(t)
 
 	invalidURLs := []string{
 		"https://unknown-site.com/page",

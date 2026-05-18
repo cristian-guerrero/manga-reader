@@ -27,6 +27,7 @@ import {
 } from "@shared/components";
 import type { ContextMenuItem } from "@types";
 import { AppAPI } from "@services/api/appAPI";
+import { FolderOrderAPI } from "@services/api/folderOrderAPI";
 import {
   useExplorerState,
   useExplorerSorting,
@@ -78,9 +79,19 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
   // Use explorer state hook
   const explorerStateHook = useExplorerState({ tabId, isActive });
 
+  // Ref to break circular dep between sorting (needs loadDirectory) and loading (needs sortBy)
+  const loadDirRef = useRef<(path: string, pushHistory?: boolean, sortMode?: string) => Promise<void>>(
+    () => Promise.resolve()
+  );
+
   // Use sorting hook
   const sorting = useExplorerSorting({
     currentPath: explorerStateHook.currentPath,
+    onSortReady: useCallback((path: string | null, sortBy: string) => {
+      if (path === explorerStateHook.currentPath && path) {
+        loadDirRef.current?.(path, false, sortBy);
+      }
+    }, [explorerStateHook.currentPath]),
   });
 
   // Title change handler
@@ -109,6 +120,7 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
     onTitleChange: handleTitleChange,
     sortBy: sorting.sortBy,
   });
+  loadDirRef.current = loading.loadDirectory;
 
   // Use search hook
   const search = useExplorerSearch({
@@ -134,7 +146,11 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
     setExplorerState,
     navigate,
     onTitleChange: handleTitleChange,
-    sortBy: sorting.sortBy,
+    onAutoPromote: (parentPath, entryName, allDirNames) => {
+      FolderOrderAPI.promoteToAutoOrder(parentPath, entryName, allDirNames).catch(err => {
+        console.error('Failed to promote to auto order:', err);
+      });
+    },
   });
 
   // Reload directory when switching to modes that require backend sorting (auto, custom)

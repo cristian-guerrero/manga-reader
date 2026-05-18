@@ -41,6 +41,39 @@ export namespace colorizer {
 
 }
 
+export namespace database {
+	
+	export class ExplorerSortPref {
+	    sortBy: string;
+	    sortOrder: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ExplorerSortPref(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.sortBy = source["sortBy"];
+	        this.sortOrder = source["sortOrder"];
+	    }
+	}
+	export class SeriesDetailsSortPref {
+	    sortBy: string;
+	    sortOrder: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new SeriesDetailsSortPref(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.sortBy = source["sortBy"];
+	        this.sortOrder = source["sortOrder"];
+	    }
+	}
+
+}
+
 export namespace downloader {
 	
 	export class ChapterInfo {

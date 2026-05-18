@@ -6,15 +6,6 @@
 import { PageType } from '../types';
 
 /**
- * Storage keys for localStorage
- */
-export const STORAGE_KEYS = {
-    TABS: 'manga-visor2-tabs',
-    VIEWER_STATES: 'manga-visor2-viewer-states',
-    EXPLORER_SORT_PREFERENCES: 'explorer_sortPreferences',
-} as const;
-
-/**
  * Debounce delays in milliseconds
  */
 export const DEBOUNCE_DELAYS = {
@@ -62,9 +53,4 @@ export const VIEWER_DEFAULTS = {
     VERTICAL_WIDTH_MAX: 100,
 } as const;
 
-/**
- * Viewer state storage limits
- */
-export const VIEWER_STATE_LIMITS = {
-    MAX_STORED_STATES: 100,
-} as const;
+

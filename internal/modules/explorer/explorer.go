@@ -2,6 +2,7 @@ package explorer
 
 import (
 	"context"
+	"manga-visor/internal/database"
 	"manga-visor/internal/persistence"
 	"manga-visor/internal/services"
 	"os"
@@ -18,9 +19,9 @@ import (
 // Module handles Explorer logic
 type Module struct {
 	ctx             context.Context
-	explorerManager *persistence.ExplorerManager
-	folderOrders    *persistence.FolderOrdersManager
-	folderViewModes *persistence.FolderViewModeManager
+	explorerManager *database.ExplorerRepository
+	folderOrders    *database.FolderOrdersRepository
+	folderViewModes *database.FolderViewModeRepository
 	fileLoader      services.FileLoaderInterface
 	urlBuilder      services.URLBuilderInterface
 	logger          services.LoggerInterface
@@ -32,10 +33,9 @@ type Module struct {
 }
 
 // NewModule creates a new Explorer module
-func NewModule(fileLoader services.FileLoaderInterface, urlBuilder services.URLBuilderInterface, logger services.LoggerInterface, folderOrders *persistence.FolderOrdersManager, folderViewModes *persistence.FolderViewModeManager) *Module {
+func NewModule(fileLoader services.FileLoaderInterface, urlBuilder services.URLBuilderInterface, logger services.LoggerInterface, explorer *database.ExplorerRepository, folderOrders *database.FolderOrdersRepository, folderViewModes *database.FolderViewModeRepository) *Module {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
-		// If file watching fails, continue without it
 		if logger != nil {
 			logger.Warnf("[Explorer] Warning: Could not create file watcher: %v", err)
 		}
@@ -43,7 +43,7 @@ func NewModule(fileLoader services.FileLoaderInterface, urlBuilder services.URLB
 	}
 
 	return &Module{
-		explorerManager: persistence.NewExplorerManager(),
+		explorerManager: explorer,
 		folderOrders:    folderOrders,
 		folderViewModes: folderViewModes,
 		fileLoader:      fileLoader,
