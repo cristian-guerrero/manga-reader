@@ -45,16 +45,16 @@ export class FolderAPI extends BaseAPI {
     /**
      * Explore a folder (get directory contents)
      */
-    static async exploreFolder(path: string, sortMode: string = ''): Promise<ExplorerEntry[]> {
+    static async exploreFolder(path: string, sortMode: string = '', sortOrder: string = 'asc'): Promise<ExplorerEntry[]> {
         return this.callOrEmpty(
             async () => {
-                const result = await AppBackend.ExploreFolder(path, sortMode);
+                const result = await AppBackend.ExploreFolder(path, sortMode, sortOrder);
                 return (result as ExplorerEntry[]) || [];
             },
             {
                 component: 'FolderAPI',
                 action: 'exploreFolder',
-                details: { path, sortMode }
+                details: { path, sortMode, sortOrder }
             }
         );
     }

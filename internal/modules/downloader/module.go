@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"manga-visor/internal/archiver"
+	"manga-visor/internal/database"
 	"manga-visor/internal/persistence"
 	"manga-visor/internal/services"
 	"net/http"
@@ -21,8 +22,8 @@ import (
 
 type Module struct {
 	ctx        context.Context
-	pm         *persistence.DownloaderManager
-	sm         *persistence.SettingsManager
+	pm         *database.DownloaderRepository
+	sm         *database.SettingsRepository
 	logger     services.LoggerInterface
 	algorithms []DownloaderInterface
 	activeJobs sync.Map // map[string]*activeJob
@@ -43,7 +44,7 @@ type queuedJob struct {
 	info *SiteInfo
 }
 
-func NewModule(pm *persistence.DownloaderManager, sm *persistence.SettingsManager, logger services.LoggerInterface) *Module {
+func NewModule(pm *database.DownloaderRepository, sm *database.SettingsRepository, logger services.LoggerInterface) *Module {
 	return &Module{
 		pm:           pm,
 		sm:           sm,

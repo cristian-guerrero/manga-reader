@@ -12,6 +12,7 @@
 export { Button, type ButtonProps } from '../../components/ui/Button';
 export { Toggle } from '../../components/ui/Toggle';
 export { Tooltip } from '../../components/ui/Tooltip';
+export { ContextMenu } from '../../components/ui/ContextMenu';
 export { LoadingSpinner } from '../../components/ui/LoadingSpinner';
 export { EmptyState } from '../../components/ui/EmptyState';
 export { ErrorDisplay } from '../../components/ui/ErrorDisplay';

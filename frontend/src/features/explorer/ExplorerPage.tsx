@@ -22,9 +22,12 @@ import {
   SearchBar,
   Breadcrumb,
   MediaTile,
+  ContextMenu,
   useToast,
 } from "@shared/components";
+import type { ContextMenuItem } from "@types";
 import { AppAPI } from "@services/api/appAPI";
+import { FolderOrderAPI } from "@services/api/folderOrderAPI";
 import {
   useExplorerState,
   useExplorerSorting,
@@ -35,7 +38,7 @@ import {
   useExplorerDragAndDrop,
   useExplorerView,
 } from "./hooks";
-import { BaseFolder } from "./types";
+import { BaseFolder, ExplorerEntry } from "./types";
 import { DirectoryView } from "./components/DirectoryView";
 import { GridIcon, ListIcon } from "./components/ExplorerIcons";
 
@@ -76,9 +79,19 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
   // Use explorer state hook
   const explorerStateHook = useExplorerState({ tabId, isActive });
 
+  // Ref to break circular dep between sorting (needs loadDirectory) and loading (needs sortBy)
+  const loadDirRef = useRef<(path: string, pushHistory?: boolean, sortMode?: string, sortOrder?: string) => Promise<void>>(
+    () => Promise.resolve()
+  );
+
   // Use sorting hook
   const sorting = useExplorerSorting({
     currentPath: explorerStateHook.currentPath,
+    onSortReady: useCallback((path: string | null, sortBy: string, sortOrder: string) => {
+      if (path === explorerStateHook.currentPath && path) {
+        loadDirRef.current?.(path, false, sortBy, sortOrder);
+      }
+    }, [explorerStateHook.currentPath]),
   });
 
   // Title change handler
@@ -106,7 +119,9 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
     onPathChange: handlePathChange,
     onTitleChange: handleTitleChange,
     sortBy: sorting.sortBy,
+    sortOrder: sorting.sortOrder,
   });
+  loadDirRef.current = loading.loadDirectory;
 
   // Use search hook
   const search = useExplorerSearch({
@@ -132,21 +147,29 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
     setExplorerState,
     navigate,
     onTitleChange: handleTitleChange,
-    sortBy: sorting.sortBy,
+    onAutoPromote: (parentPath, entryName, allDirNames) => {
+      FolderOrderAPI.promoteToAutoOrder(parentPath, entryName, allDirNames).catch(err => {
+        console.error('Failed to promote to auto order:', err);
+      });
+    },
   });
 
-  // Reload directory when switching to modes that require backend sorting (auto, custom)
-  // This handles both dropdown selection and preference restoration on nav
+  // Reload directory when sortBy or sortOrder changes in modes requiring backend sort
   const prevSortByRef = useRef(sorting.sortBy);
+  const prevSortOrderRef = useRef(sorting.sortOrder);
   useEffect(() => {
-    const prev = prevSortByRef.current;
+    const prevBy = prevSortByRef.current;
+    const prevOrder = prevSortOrderRef.current;
+    const byChanged = prevBy !== sorting.sortBy;
+    const orderChanged = prevOrder !== sorting.sortOrder;
     prevSortByRef.current = sorting.sortBy;
-    if (prev === sorting.sortBy) return;
+    prevSortOrderRef.current = sorting.sortOrder;
+    if (!byChanged && !orderChanged) return;
     const path = explorerStateHook.currentPath;
     if (path && (sorting.sortBy === 'auto' || sorting.sortBy === 'custom')) {
       loading.loadDirectory(path, false);
     }
-  }, [sorting.sortBy, explorerStateHook.currentPath, loading.loadDirectory]);
+  }, [sorting.sortBy, sorting.sortOrder, explorerStateHook.currentPath, loading.loadDirectory]);
 
   // Use view mode hook
   const { viewMode, setViewMode } = useExplorerView(explorerStateHook.currentPath);
@@ -161,6 +184,7 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
         sorting.setSortBy(mode as 'name' | 'date' | 'custom' | 'auto');
       }
     },
+    sortOrder: sorting.sortOrder,
   });
 
   // DnD sensors
@@ -174,6 +198,50 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
   );
 
   const isInCustomMode = sorting.sortBy === 'custom' && !search.searchQuery.trim();
+
+  // Context menu state
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    entry: ExplorerEntry;
+  } | null>(null);
+
+  const handleContextMenu = useCallback(
+    (e: React.MouseEvent, entry: ExplorerEntry) => {
+      if (!entry.isDirectory) return;
+      setContextMenu({ x: e.clientX, y: e.clientY, entry });
+    },
+    [],
+  );
+
+  const handleCloseContextMenu = useCallback(() => {
+    setContextMenu(null);
+  }, []);
+
+  const contextMenuItems: ContextMenuItem[] = contextMenu
+    ? [
+        ...(contextMenu.entry.isDirectory &&
+          contextMenu.entry.hasImages &&
+          contextMenu.entry.subdirectoryCount === 0
+          ? [
+              {
+                id: 'open-in-colorizer',
+                label: t('explorer.openInColorizer'),
+                onClick: () =>
+                  navigate('colorizer', {
+                    folderPath: contextMenu.entry.path,
+                  }),
+              } as ContextMenuItem,
+            ]
+          : []),
+        {
+          id: 'open-in-file-manager',
+          label: t('explorer.openInFileManager'),
+          onClick: () =>
+            AppAPI.openInFileManager(contextMenu.entry.path),
+        },
+      ]
+    : [];
 
   // Use restoration hook
   useExplorerRestoration({
@@ -243,7 +311,6 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
                 }
               }}
               onSortOrderChange={() => {
-                if (sorting.sortBy === 'custom' || sorting.sortBy === 'auto') return;
                 sorting.setSortOrder((prev) =>
                   prev === "asc" ? "desc" : "asc",
                 );
@@ -400,11 +467,9 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
             activeEntry={dnd.activeEntry}
             onItemClick={navigation.handleItemClick}
             onItemAuxClick={navigation.handleItemAuxClick}
+            onItemContextMenu={handleContextMenu}
             onLoadThumbnail={loadThumbnail}
             onOpenViewer={navigation.handleOpenInViewer}
-            onOpenColorizer={(path: string) =>
-              navigate("colorizer", { folderPath: path })
-            }
           />
         )}
 
@@ -454,6 +519,15 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
           </div>
         )}
       </div>
+
+      {/* Context Menu */}
+      {contextMenu && (
+        <ContextMenu
+          items={contextMenuItems}
+          position={{ x: contextMenu.x, y: contextMenu.y }}
+          onClose={handleCloseContextMenu}
+        />
+      )}
     </div>
   );
 }

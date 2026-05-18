@@ -1,25 +1,21 @@
-/**
- * useHistoryView - Hook to manage view mode (grid/list) preferences
- */
-
 import { useState, useEffect } from 'react';
+import { UIPreferencesAPI } from '@services/api/uiPreferencesAPI';
 import type { ViewMode } from '../types';
 
-const VIEW_MODE_STORAGE_KEY = 'history_viewMode';
-
 export function useHistoryView() {
-    const [viewMode, setViewMode] = useState<ViewMode>(() => {
-        const saved = localStorage.getItem(VIEW_MODE_STORAGE_KEY);
-        return (saved === 'grid' || saved === 'list') ? saved : 'list';
-    });
+    const [viewMode, setViewModeState] = useState<ViewMode>('list');
 
-    // Save view mode preference
     useEffect(() => {
-        localStorage.setItem(VIEW_MODE_STORAGE_KEY, viewMode);
-    }, [viewMode]);
+        UIPreferencesAPI.getHistoryViewMode().then((mode) => {
+            const valid: ViewMode = (mode === 'grid' || mode === 'list') ? mode : 'list';
+            setViewModeState(valid);
+        }).catch(() => {});
+    }, []);
 
-    return {
-        viewMode,
-        setViewMode,
+    const setViewMode = (mode: ViewMode) => {
+        setViewModeState(mode);
+        UIPreferencesAPI.setHistoryViewMode(mode).catch(() => {});
     };
+
+    return { viewMode, setViewMode };
 }

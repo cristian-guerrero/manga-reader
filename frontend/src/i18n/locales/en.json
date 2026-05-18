@@ -251,7 +251,8 @@
     "noResultsFound": "No results found",
     "tryDifferentSearch": "Try a different search term",
     "customOrder": "Custom",
-    "automaticOrder": "Automatic"
+    "automaticOrder": "Automatic",
+    "openInFileManager": "Open in File Manager"
   },
   "themes": {
     "dark": "Dark",

@@ -247,7 +247,8 @@
     "noResultsFound": "No se encontraron resultados",
     "tryDifferentSearch": "Prueba con un término de búsqueda diferente",
     "customOrder": "Personalizado",
-    "automaticOrder": "Automático"
+    "automaticOrder": "Automático",
+    "openInFileManager": "Abrir en Explorador de Archivos"
   },
   "themes": {
     "dark": "Oscuro",

@@ -75,7 +75,7 @@ export function SeriesDetailsPage({ seriesPath, tabId }: SeriesDetailsPageProps)
                 searchQuery={searchQuery}
                 onBack={goBack}
                 onSortByChange={setSortBy}
-                onSortOrderChange={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
+                onSortOrderChange={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
                 onSearchChange={setSearchQuery}
             />
 

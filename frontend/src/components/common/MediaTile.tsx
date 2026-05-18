@@ -13,6 +13,7 @@ interface MediaTileProps {
   // Actions
   onClick?: () => void;
   onAuxClick?: (e: React.MouseEvent) => void;
+  onContextMenu?: (e: React.MouseEvent) => void;
   onSecondaryAction?: (e: React.MouseEvent) => void;
   secondaryActionIcon?: ReactNode;
   secondaryActionLabel?: string;
@@ -51,6 +52,7 @@ export function MediaTile({
   onVisible,
   onClick,
   onAuxClick,
+  onContextMenu,
   onSecondaryAction,
   secondaryActionIcon,
   secondaryActionLabel,
@@ -126,6 +128,11 @@ export function MediaTile({
           e.preventDefault();
         }
         onAuxClick?.(e);
+      }}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onContextMenu?.(e);
       }}
     >
       {/* Thumbnail Area */}

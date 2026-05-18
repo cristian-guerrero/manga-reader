@@ -59,7 +59,8 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
 
     // Use custom hook for chapter navigation (series) or folder navigation (explorer)
     const chapterNav = !isExplorerMode ? useChapterNavigation(folderPath, isActive || false) : null;
-    const folderNav = isExplorerMode ? useFolderNavigation(folderPath, isActive || false) : null;
+    const navRoot = params.navRoot;
+    const folderNav = isExplorerMode ? useFolderNavigation(folderPath, isActive || false, navRoot) : null;
 
     // Callbacks
     const handleRestorationComplete = useCallback(() => {
@@ -224,16 +225,16 @@ const handleNextChapter = useCallback(async () => {
 const handlePrevFolder = useCallback(async () => {
     if (folderNav?.prevFolder) {
         await saveProgress();
-        navigate('viewer', { folder: folderNav.prevFolder.path, shallow: 'true', from: fromPage }, 'explorer');
+        navigate('viewer', { folder: folderNav.prevFolder.path, shallow: 'true', from: fromPage, navRoot: params.navRoot }, 'explorer');
     }
-}, [folderNav, navigate, saveProgress, fromPage]);
+}, [folderNav, navigate, saveProgress, fromPage, params.navRoot]);
 
 const handleNextFolder = useCallback(async () => {
     if (folderNav?.nextFolder) {
         await saveProgress();
-        navigate('viewer', { folder: folderNav.nextFolder.path, shallow: 'true', from: fromPage }, 'explorer');
+        navigate('viewer', { folder: folderNav.nextFolder.path, shallow: 'true', from: fromPage, navRoot: params.navRoot }, 'explorer');
     }
-}, [folderNav, navigate, saveProgress, fromPage]);
+}, [folderNav, navigate, saveProgress, fromPage, params.navRoot]);
 
 // Custom back handler - navigates directly to the original entry point
 const handleBack = useCallback(() => {

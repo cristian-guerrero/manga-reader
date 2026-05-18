@@ -41,6 +41,39 @@ export namespace colorizer {
 
 }
 
+export namespace database {
+	
+	export class ExplorerSortPref {
+	    sortBy: string;
+	    sortOrder: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ExplorerSortPref(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.sortBy = source["sortBy"];
+	        this.sortOrder = source["sortOrder"];
+	    }
+	}
+	export class SeriesDetailsSortPref {
+	    sortBy: string;
+	    sortOrder: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new SeriesDetailsSortPref(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.sortBy = source["sortBy"];
+	        this.sortOrder = source["sortOrder"];
+	    }
+	}
+
+}
+
 export namespace downloader {
 	
 	export class ChapterInfo {
@@ -208,6 +241,7 @@ export namespace explorer {
 	    parentPath: string;
 	    currentIndex: number;
 	    totalFolders: number;
+	    allFolders?: FolderInfo[];
 	
 	    static createFrom(source: any = {}) {
 	        return new FolderNavigation(source);
@@ -220,6 +254,7 @@ export namespace explorer {
 	        this.parentPath = source["parentPath"];
 	        this.currentIndex = source["currentIndex"];
 	        this.totalFolders = source["totalFolders"];
+	        this.allFolders = this.convertValues(source["allFolders"], FolderInfo);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

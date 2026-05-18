@@ -8,3 +8,4 @@ export { ErrorDisplay } from './ErrorDisplay';
 export { Button, type ButtonProps } from './Button';
 export { Toggle } from './Toggle';
 export { Tooltip } from './Tooltip';
+export { ContextMenu } from './ContextMenu';

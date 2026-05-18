@@ -1,25 +1,25 @@
 package history
 
 import (
+	"manga-visor/internal/database"
 	"manga-visor/internal/persistence"
 	"testing"
 )
 
-// helper: create a fresh Module pointing at temp dirs. ctx is left nil,
-// so AddHistory/ClearHistory/RemoveHistory will not reach runtime.EventsEmit.
 func newTestModule(t *testing.T) *Module {
 	t.Helper()
 
-	cleanup := persistence.SetTestDataDir(t.TempDir())
-	t.Cleanup(cleanup)
+	db, err := database.New(t.TempDir())
+	if err != nil {
+		t.Fatalf("failed to create test database: %v", err)
+	}
+	t.Cleanup(func() { db.Close() })
 
-	pm := persistence.NewHistoryManager()
-	sm := persistence.NewSettingsManager()
+	pm := database.NewHistoryRepository(db)
+	sm := database.NewSettingsRepository(db)
 
 	return NewModule(pm, sm)
 }
-
-// ---------- GetHistory ----------
 
 func TestModule_GetHistory_Empty(t *testing.T) {
 	m := newTestModule(t)
@@ -46,8 +46,6 @@ func TestModule_GetHistory_WithEntries(t *testing.T) {
 	}
 }
 
-// ---------- GetHistoryEntry ----------
-
 func TestModule_GetHistoryEntry_Found(t *testing.T) {
 	m := newTestModule(t)
 
@@ -73,8 +71,6 @@ func TestModule_GetHistoryEntry_NotFound(t *testing.T) {
 	}
 }
 
-// ---------- AddHistory (history disabled) ----------
-
 func TestModule_AddHistory_Disabled(t *testing.T) {
 	m := newTestModule(t)
 
@@ -87,14 +83,11 @@ func TestModule_AddHistory_Disabled(t *testing.T) {
 		t.Fatalf("AddHistory() error = %v", err)
 	}
 
-	// History should be empty (AddHistory returned early due to disable)
 	entries := m.GetHistory()
 	if len(entries) != 0 {
 		t.Error("expected history to remain empty when disabled")
 	}
 }
-
-// ---------- AddHistory (anonymous mode: all menu items disabled) ----------
 
 func TestModule_AddHistory_AnonymousMode(t *testing.T) {
 	m := newTestModule(t)
@@ -120,17 +113,11 @@ func TestModule_AddHistory_AnonymousMode(t *testing.T) {
 	}
 }
 
-// ---------- AddHistory (enabled) — tests persistence directly ----------
-
 func TestModule_AddHistory_Enabled_Persistence(t *testing.T) {
 	m := newTestModule(t)
 
 	m.settings.Update(map[string]interface{}{"enableHistory": true})
 
-	// We cannot call m.AddHistory() because it triggers runtime.EventsEmit
-	// which calls log.Fatalf/os.Exit with no Wails context.
-	// Instead, we test that the underlying persistence works correctly
-	// (which is what AddHistory does before the event emission).
 	m.history.Add(persistence.HistoryEntry{
 		FolderPath: "/manga/enabled", FolderName: "EnabledTest", LastImage: "page1.jpg", TotalImages: 5,
 	})
@@ -144,17 +131,11 @@ func TestModule_AddHistory_Enabled_Persistence(t *testing.T) {
 	}
 }
 
-// ---------- Validate settings flow (history enabled but called via disabled test) ----------
-
 func TestModule_AddHistory_RespectsEnableHistory(t *testing.T) {
-	// Test that when enableHistory is true, the entry is persisted
-	// (simulates what happens before runtime.EventsEmit in AddHistory)
 	m := newTestModule(t)
 
-	// History enabled (default) → entry should be added
 	_ = m.settings.Get()
 
-	// Use persistence directly to simulate AddHistory's pre-event logic
 	m.history.Add(persistence.HistoryEntry{
 		FolderPath: "/manga/test-entry", FolderName: "ShouldExist", TotalImages: 3,
 	})
@@ -163,24 +144,17 @@ func TestModule_AddHistory_RespectsEnableHistory(t *testing.T) {
 		t.Error("history entry should exist when history is enabled")
 	}
 
-	// Now disable history
 	m.settings.Update(map[string]interface{}{"enableHistory": false})
 
-	// Even if we add directly via persistence (module won't call AddHistory at all),
-	// the module's GetHistory should still reflect persistence state
 	m.history.Add(persistence.HistoryEntry{
 		FolderPath: "/manga/ghost-entry", FolderName: "Ghost", TotalImages: 1,
 	})
 
-	// Both entries should be visible because they're in persistence
-	// The module's AddHistory is the gate, not GetHistory
 	entries := m.GetHistory()
 	if len(entries) != 2 {
 		t.Errorf("expected 2 entries in persistence, got %d", len(entries))
 	}
 }
-
-// ---------- RemoveHistory (tests persistence directly) ----------
 
 func TestModule_RemoveHistory_Persistence(t *testing.T) {
 	m := newTestModule(t)
@@ -188,7 +162,6 @@ func TestModule_RemoveHistory_Persistence(t *testing.T) {
 	m.history.Add(persistence.HistoryEntry{FolderPath: "/manga/rm", FolderName: "Rm", TotalImages: 1})
 	m.history.Add(persistence.HistoryEntry{FolderPath: "/manga/keep", FolderName: "Keep", TotalImages: 1})
 
-	// Remove via persistence (simulating what RemoveHistory does)
 	m.history.Remove("/manga/rm")
 
 	if m.history.Get("/manga/rm") != nil {
@@ -202,14 +175,11 @@ func TestModule_RemoveHistory_Persistence(t *testing.T) {
 func TestModule_RemoveHistory_NotFound(t *testing.T) {
 	m := newTestModule(t)
 
-	// Remove via persistence (simulating RemoveHistory)
 	err := m.history.Remove("/nonexistent")
 	if err != nil {
 		t.Fatalf("Remove() error = %v", err)
 	}
 }
-
-// ---------- ClearHistory (tests persistence directly) ----------
 
 func TestModule_ClearHistory_Persistence(t *testing.T) {
 	m := newTestModule(t)

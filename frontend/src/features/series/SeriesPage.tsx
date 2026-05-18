@@ -64,7 +64,7 @@ export function SeriesPage() {
                 sortOrder={sortOrder}
                 searchQuery={searchQuery}
                 onSortByChange={setSortBy}
-                onSortOrderChange={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
+                onSortOrderChange={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
                 onSearchChange={setSearchQuery}
                 onSelectFolder={handleSelectFolder}
                 onClearAll={handleClearAll}

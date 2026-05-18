@@ -13,6 +13,7 @@ import (
 	"manga-visor/internal/modules/history"
 	"manga-visor/internal/modules/library"
 	"manga-visor/internal/modules/series"
+	"manga-visor/internal/database"
 	"manga-visor/internal/persistence"
 	"manga-visor/internal/services"
 	"manga-visor/internal/thumbnails"
@@ -43,11 +44,11 @@ type App struct {
 }
 
 // Convenience getters for backward compatibility
-func (a *App) settings() *persistence.SettingsManager {
+func (a *App) settings() *database.SettingsRepository {
 	return a.services.Settings
 }
 
-func (a *App) orders() *persistence.OrdersManager {
+func (a *App) orders() *database.ImageOrdersRepository {
 	return a.services.Orders
 }
 
@@ -63,12 +64,16 @@ func (a *App) imgServer() *fileloader.ImageServer {
 	return a.services.ImageServer
 }
 
-func (a *App) tabsManager() *persistence.TabsManager {
+func (a *App) tabsManager() *database.TabsRepository {
 	return a.services.Tabs
 }
 
-func (a *App) viewerStatesManager() *persistence.ViewerStatesManager {
+func (a *App) viewerStatesManager() *database.ViewerStatesRepository {
 	return a.services.ViewerStates
+}
+
+func (a *App) uiPrefs() *database.UIPreferencesRepository {
+	return a.services.UIPreferences
 }
 
 // NewApp creates a new App application struct
@@ -81,7 +86,7 @@ func NewApp() *App {
 	lMod := library.NewModule(container.Library, container.FileLoader, container.URLBuilder, container.Logger)
 	sMod := series.NewModule(container.Series, container.FileLoader, container.URLBuilder, container.Logger)
 	hMod := history.NewModule(container.History, container.Settings)
-	eMod := explorer.NewModule(container.FileLoader, container.URLBuilder, container.Logger, container.FolderOrders, container.FolderViewModes)
+	eMod := explorer.NewModule(container.FileLoader, container.URLBuilder, container.Logger, container.Explorer, container.FolderOrders, container.FolderViewModes)
 	dMod := downloader.NewModule(container.Downloader, container.Settings, container.Logger)
 
 	// Dependency injection (Circular dependency resolution)
@@ -209,7 +214,7 @@ func (a *App) domReady(ctx context.Context) {
 
 // shutdown is called when the app is closing
 func (a *App) shutdown(ctx context.Context) {
-	a.services.Logger.Info("Flushing settings to disk...")
+	a.services.Logger.Info("Flushing settings...")
 	a.settings().Flush()
 
 	// Stop colorizer server if running
@@ -219,6 +224,9 @@ func (a *App) shutdown(ctx context.Context) {
 
 	// Kill any orphaned python.exe processes
 	colorizer.CleanupOrphanedPython()
+
+	// Close database
+	a.services.Shutdown()
 }
 
 // SaveWindowState captures and saves the current window dimensions and position
@@ -586,8 +594,8 @@ func (a *App) RemoveBaseFolder(path string) error {
 	return a.explorerMod.RemoveBaseFolder(path)
 }
 
-func (a *App) ExploreFolder(path string, sortMode string) ([]explorer.ExplorerEntry, error) {
-	return a.explorerMod.ListDirectoryWithSort(path, sortMode)
+func (a *App) ExploreFolder(path string, sortMode string, sortOrder string) ([]explorer.ExplorerEntry, error) {
+	return a.explorerMod.ListDirectoryWithSort(path, sortMode, sortOrder)
 }
 
 // GetFolderNavigation returns prev/next folder navigation for explorer
@@ -781,6 +789,82 @@ func (a *App) ClearAllData() error {
 // Implementation is in app_windows.go for Windows, and app_other.go for other platforms
 func (a *App) UpdateTaskbarIcon(base64Data string) {
 	updateTaskbarIconImpl(a, base64Data)
+}
+
+// =============================================================================
+// UI Preferences Methods (Replaces localStorage)
+// =============================================================================
+
+func (a *App) GetExplorerSortPreferences() map[string]database.ExplorerSortPref {
+	return a.uiPrefs().GetExplorerSortPreferences()
+}
+
+func (a *App) GetExplorerSortPreference(path string) database.ExplorerSortPref {
+	return a.uiPrefs().GetExplorerSortPreference(path)
+}
+
+func (a *App) SetExplorerSortPreference(path, sortBy, sortOrder string) error {
+	return a.uiPrefs().SetExplorerSortPreference(path, sortBy, sortOrder)
+}
+
+func (a *App) GetSeriesSortBy() string {
+	return a.uiPrefs().GetSeriesSortBy()
+}
+
+func (a *App) SetSeriesSortBy(value string) error {
+	return a.uiPrefs().SetSeriesSortBy(value)
+}
+
+func (a *App) GetSeriesSortOrder() string {
+	return a.uiPrefs().GetSeriesSortOrder()
+}
+
+func (a *App) SetSeriesSortOrder(value string) error {
+	return a.uiPrefs().SetSeriesSortOrder(value)
+}
+
+func (a *App) GetOneShotSortBy() string {
+	return a.uiPrefs().GetOneShotSortBy()
+}
+
+func (a *App) SetOneShotSortBy(value string) error {
+	return a.uiPrefs().SetOneShotSortBy(value)
+}
+
+func (a *App) GetOneShotSortOrder() string {
+	return a.uiPrefs().GetOneShotSortOrder()
+}
+
+func (a *App) SetOneShotSortOrder(value string) error {
+	return a.uiPrefs().SetOneShotSortOrder(value)
+}
+
+func (a *App) GetSeriesDetailsSortPreferences() map[string]database.SeriesDetailsSortPref {
+	return a.uiPrefs().GetSeriesDetailsSortPreferences()
+}
+
+func (a *App) GetSeriesDetailsSortPreference(seriesPath string) database.SeriesDetailsSortPref {
+	return a.uiPrefs().GetSeriesDetailsSortPreference(seriesPath)
+}
+
+func (a *App) SetSeriesDetailsSortPreference(seriesPath, sortBy, sortOrder string) error {
+	return a.uiPrefs().SetSeriesDetailsSortPreference(seriesPath, sortBy, sortOrder)
+}
+
+func (a *App) GetExplorerRootViewMode() string {
+	return a.uiPrefs().GetExplorerRootViewMode()
+}
+
+func (a *App) SetExplorerRootViewMode(value string) error {
+	return a.uiPrefs().SetExplorerRootViewMode(value)
+}
+
+func (a *App) GetHistoryViewMode() string {
+	return a.uiPrefs().GetHistoryViewMode()
+}
+
+func (a *App) SetHistoryViewMode(value string) error {
+	return a.uiPrefs().SetHistoryViewMode(value)
 }
 
 // =============================================================================

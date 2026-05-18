@@ -212,7 +212,7 @@ wails build -platform windows/amd64 -name manga-visor2
 ## 🛠️ Tech Stack
 
 - **Framework**: [Wails v2](https://wails.io/) (Go + Webview)
-- **Backend**: Go 1.24 (High performance logic and file handling)
+- **Backend**: Go 1.24 (High performance logic and file handling, SQLite via modernc.org/sqlite)
 - **Frontend**: React 18 + TypeScript + Vite
 - **Styling**: Tailwind CSS (Premium, custom-crafted designs)
 - **State Management**: Zustand
@@ -229,27 +229,22 @@ Data is stored locally in the user's home directory under `~/.manga-visor/` (on 
 - **`downloads/`** - Default location for all downloaded manga chapters.
 - **`temp/`** - Temporary workspace for extracting archives (ZIP, RAR, etc.) and processing transient data.
 
-### Configuration Files
-- **`downloader.json`** - Manages the state of the download queue, including pending, running, and completed jobs.
-- **`explorer.json`** - Stores user-defined base folders, pinned locations, and explorer view preferences.
-- **`folder_orders.json`** - Stores custom and automatic folder ordering for Explorer subdirectories.
-- **`history.json`** - Detailed record of your reading progress (last page, completion status, scroll position).
-- **`library.json`** - Metadata and organization info for folders managed within the One Shot Library.
-- **`orders.json`** - Stores custom manual sorting and reordering of images within specific folders.
-- **`tabs.json`** - Persists the state, order, and history of all open tabs for session restoration.
-- **`series.json`** - Metadata and grouping information for manga series and their chapters.
-- **`settings.json`** - Application-wide preferences including:
-  - Theme and accent colors
-  - Language preference
-  - Viewer modes (vertical/lateral, single/double page)
-  - Vertical width and auto-scroll speed
-  - Reading direction (LTR/RTL)
-  - Image preloading settings
-  - History enable/disable
-  - Minimum image size filter
-  - Panic key customization
-  - Tab behavior (Memory saving, Restore on start)
-  - Menu item visibility
+### Database
+All application state is stored in a single **SQLite database** (`manga-visor.db`) using `modernc.org/sqlite` (pure Go, no CGo). Backend is the single source of truth — no frontend localStorage is used. On first startup, legacy JSON files are automatically migrated to the database.
+
+**Tables:**
+- **`settings`** - Application-wide preferences (theme, language, viewer modes, reading direction, preloading, panic key, tab behavior, menu visibility, etc.)
+- **`explorer_folders`** - User-defined base folders for the Explorer
+- **`library_entries`** - One Shot Library entries (folder paths, image counts)
+- **`series_entries`** / **`series_chapters`** - Series metadata and chapter grouping
+- **`history`** - Reading progress (last page, scroll position, completion status)
+- **`download_jobs`** - Download queue state (pending, running, completed, failed)
+- **`tabs`** - Open tab state for session restoration
+- **`image_orders`** - Custom manual sorting of images within folders
+- **`folder_orders`** - Custom and automatic folder ordering for Explorer subdirectories
+- **`folder_view_modes`** - Per-directory grid/list view mode preferences
+- **`viewer_states`** - Viewer scroll position and page index per folder
+- **`ui_preferences`** - Sort modes, sort orders, and view mode preferences (formerly in localStorage)
 
 ## 📝 License
 MIT License - See [LICENSE](LICENSE) for details.

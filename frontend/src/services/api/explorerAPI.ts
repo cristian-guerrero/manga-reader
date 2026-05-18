@@ -14,6 +14,7 @@ export interface FolderNavigation {
     parentPath: string;
     currentIndex: number;
     totalFolders: number;
+    allFolders?: Array<{ path: string; name: string }>;
 }
 
 export class ExplorerAPI extends BaseAPI {
@@ -36,7 +37,11 @@ export class ExplorerAPI extends BaseAPI {
                     } : undefined,
                     parentPath: result.parentPath,
                     currentIndex: result.currentIndex,
-                    totalFolders: result.totalFolders
+                    totalFolders: result.totalFolders,
+                    allFolders: result.allFolders ? result.allFolders.map((f: { path: string; name: string }) => ({
+                        path: f.path,
+                        name: f.name
+                    })) : undefined
                 };
             },
             {

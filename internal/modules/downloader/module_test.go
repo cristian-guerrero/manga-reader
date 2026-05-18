@@ -1,18 +1,27 @@
 package downloader
 
 import (
+	"manga-visor/internal/database"
 	"manga-visor/internal/persistence"
 	"os"
 	"path/filepath"
 	"testing"
 )
 
-func TestModule_FetchMangaInfo_InvalidURL(t *testing.T) {
-	pm := persistence.NewDownloaderManager()
-	sm := persistence.NewSettingsManager()
-	logger := &mockLogger{}
+func newTestModuleDownloader(t *testing.T) *Module {
+	t.Helper()
+	db, err := database.New(t.TempDir())
+	if err != nil {
+		t.Fatalf("failed to create test database: %v", err)
+	}
+	t.Cleanup(func() { db.Close() })
+	pm := database.NewDownloaderRepository(db)
+	sm := database.NewSettingsRepository(db)
+	return NewModule(pm, sm, &mockLogger{})
+}
 
-	module := NewModule(pm, sm, logger)
+func TestModule_FetchMangaInfo_InvalidURL(t *testing.T) {
+	module := newTestModuleDownloader(t)
 
 	// Test con URL inválida
 	_, err := module.FetchMangaInfo("https://invalid-site.com/page")
@@ -22,11 +31,7 @@ func TestModule_FetchMangaInfo_InvalidURL(t *testing.T) {
 }
 
 func TestModule_FetchMangaInfo_ValidURLs(t *testing.T) {
-	pm := persistence.NewDownloaderManager()
-	sm := persistence.NewSettingsManager()
-	logger := &mockLogger{}
-
-	module := NewModule(pm, sm, logger)
+	module := newTestModuleDownloader(t)
 
 	// URLs de ejemplo de los comentarios en el código
 	testCases := []struct {
@@ -175,11 +180,8 @@ func TestSanitizeFilename(t *testing.T) {
 }
 
 func TestModule_GetHistory(t *testing.T) {
-	pm := persistence.NewDownloaderManager()
-	sm := persistence.NewSettingsManager()
-	logger := &mockLogger{}
-
-	module := NewModule(pm, sm, logger)
+	module := newTestModuleDownloader(t)
+	pm := module.pm
 
 	// Limpiar historial primero para tener un estado limpio
 	module.ClearHistory()
@@ -218,13 +220,9 @@ func TestModule_GetHistory(t *testing.T) {
 }
 
 func TestModule_ClearHistory(t *testing.T) {
-	pm := persistence.NewDownloaderManager()
-	sm := persistence.NewSettingsManager()
-	logger := &mockLogger{}
+	module := newTestModuleDownloader(t)
+	pm := module.pm
 
-	module := NewModule(pm, sm, logger)
-
-	// Agregar algunos jobs
 	pm.AddJob(persistence.DownloadJob{ID: "1", URL: "https://example.com/1"})
 	pm.AddJob(persistence.DownloadJob{ID: "2", URL: "https://example.com/2"})
 
@@ -237,11 +235,9 @@ func TestModule_ClearHistory(t *testing.T) {
 }
 
 func TestModule_RemoveJob(t *testing.T) {
-	pm := persistence.NewDownloaderManager()
-	sm := persistence.NewSettingsManager()
-	logger := &mockLogger{}
+	module := newTestModuleDownloader(t)
 
-	module := NewModule(pm, sm, logger)
+	pm := module.pm
 
 	// Agregar un job
 	job := persistence.DownloadJob{
@@ -260,22 +256,14 @@ func TestModule_RemoveJob(t *testing.T) {
 }
 
 func TestModule_ClearDownloadsData(t *testing.T) {
-	cleanup := persistence.SetTestDataDir(t.TempDir())
-	defer cleanup()
+	module := newTestModuleDownloader(t)
+	sm := module.sm
 
-	pm := persistence.NewDownloaderManager()
-	sm := persistence.NewSettingsManager()
-	logger := &mockLogger{}
-
-	// Crear un directorio temporal para pruebas
 	tmpDir := filepath.Join(t.TempDir(), "downloads")
 
-	// Configurar el path de descarga en settings
 	settings := sm.Get()
 	settings.DownloadPath = tmpDir
 	sm.Save(settings)
-
-	module := NewModule(pm, sm, logger)
 
 	// Crear algunos archivos de prueba
 	testFile := filepath.Join(tmpDir, "test.txt")

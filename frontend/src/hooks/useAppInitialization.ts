@@ -1,19 +1,11 @@
-/**
- * useAppInitialization - Hook for initializing the application
- * Handles settings loading, tab restoration, and last page restoration
- */
-
 import { useEffect } from 'react';
 import { EventsOn } from '../../wailsjs/runtime';
 import { useSettingsStore } from '../stores/settingsStore';
 import { useTabStore } from '../stores/tabStore';
 import { useNavigation } from './useNavigation';
-import { TabPersistenceService } from '../services/persistence';
+import { TabsAPI } from '../services/api/tabsAPI';
 import { MAIN_PAGES_TO_SAVE } from '../constants';
 
-/**
- * Hook to initialize the application on mount
- */
 export function useAppInitialization() {
     const { loadSettings } = useSettingsStore();
 
@@ -24,47 +16,37 @@ export function useAppInitialization() {
             try {
                 await loadSettings();
 
-                // Restore tabs if enabled (using localStorage)
                 const { restoreTabs } = useSettingsStore.getState();
                 if (restoreTabs) {
                     try {
-                        const tabsData = TabPersistenceService.load();
+                        const tabsData = await TabsAPI.getTabs();
                         if (tabsData && tabsData.tabs && tabsData.tabs.length > 0) {
-                            // Convert localStorage format to tabStore format
                             useTabStore.getState().restoreTabsFromBackend({
                                 activeTabId: tabsData.activeTabId || tabsData.tabs[0]?.id || '',
                                 tabs: tabsData.tabs.map(tab => ({
                                     ...tab,
-                                    fromPage: tab.fromPage as any // Cast to PageType | null | undefined
+                                    fromPage: tab.fromPage as any
                                 }))
                             });
                         }
                     } catch (error) {
                         console.error('[useAppInitialization] Failed to restore tabs:', error);
                     } finally {
-                        // Mark as ready after restoration attempt (success or failure)
                         useTabStore.getState().setReady(true);
                     }
                 } else {
-                    // Not restoring, mark as ready immediately
                     useTabStore.getState().setReady(true);
                 }
 
-                // Restore last page after settings load (only if tabs weren't restored)
                 const lastPage = useSettingsStore.getState().lastPage;
                 if (!restoreTabs && lastPage && lastPage !== 'home') {
-                    // Only restore main pages, not viewer or other temporary pages
                     if (MAIN_PAGES_TO_SAVE.includes(lastPage as any)) {
-                        // Use hook at component level, not here
-                        // This will be handled by the component that uses this hook
                         console.log('[useAppInitialization] Last page restoration should be handled by component');
                     }
                 }
             } catch (error) {
                 console.error('[useAppInitialization] Failed to initialize app:', error);
-                // App can continue with defaults even if settings load fails
 
-                // Try again when app_ready event fires as backup
                 unsubscribeAppReady = EventsOn('app_ready', async () => {
                     console.log('[useAppInitialization] Received app_ready event, retrying settings load');
                     try {

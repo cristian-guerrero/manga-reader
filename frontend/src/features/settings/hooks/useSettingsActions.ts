@@ -1,12 +1,9 @@
-/**
- * useSettingsActions - Hook to handle settings actions (reset, clear cache)
- */
-
 import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '@shared/components';
 import { useSettingsStore, useTabStore } from '@stores';
 import { AppAPI } from '@services/api/appAPI';
+import { TabsAPI } from '@services/api/tabsAPI';
 import { changeLanguage } from '@i18n';
 
 export function useSettingsActions() {
@@ -26,15 +23,8 @@ export function useSettingsActions() {
 
     const handleClearCache = useCallback(async () => {
         try {
-            // Clear backend data (history, library, series, thumbnails, downloads)
-            // @ts-ignore
             await AppAPI.clearAllData();
 
-            // Clear localStorage data (tabs and viewer states)
-            const { clearAllStorage } = await import('@utils/storage');
-            clearAllStorage();
-
-            // Reset tabs to initial state (single home tab)
             const homeTabId = Math.random().toString(36).substring(2, 9);
             useTabStore.setState({
                 tabs: [{
@@ -51,6 +41,12 @@ export function useSettingsActions() {
                 }],
                 activeTabId: homeTabId,
             });
+
+            try {
+                const tabsData = useTabStore.getState().saveTabsForBackend();
+                await TabsAPI.saveTabs(tabsData);
+            } catch {
+            }
 
             showToast(t('settings.clearCacheSuccess') || 'Cache cleared successfully', 'success');
         } catch (error) {
