@@ -210,14 +210,13 @@ export function useExplorerNavigation({
 
         const entry = entries.find(ent => ent.path === path);
         const isDirectory = entry?.isDirectory ?? false;
-        const hasOtherFolders = entries.some(ent =>
-            ent.isDirectory && ent.path !== path
-        );
-        const useShallow = isDirectory && hasOtherFolders;
+        const hasSubfolders = (entry?.subdirectoryCount ?? 0) > 0;
+        const useShallow = isDirectory && hasSubfolders;
 
         navigate('viewer', {
             folder: path,
-            shallow: useShallow ? 'true' : 'false'
+            shallow: useShallow ? 'true' : 'false',
+            ...(hasSubfolders ? { navRoot: path } : {})
         }, 'explorer' as PageType);
     }, [currentPath, pathHistory, entries, setExplorerState, navigate]);
 
@@ -260,7 +259,8 @@ export function useExplorerNavigation({
                         folder: currentPath,
                         shallow: hasSubdirs ? 'true' : 'false',
                         startIndex: clickedIndex >= 0 ? String(clickedIndex) : '0',
-                        targetPath: e.path
+                        targetPath: e.path,
+                        ...(hasSubdirs ? { navRoot: currentPath } : {})
                     }, 'explorer' as PageType);
                 }
             }
@@ -302,7 +302,8 @@ export function useExplorerNavigation({
                             folder: currentPath,
                             shallow: hasSubdirs ? 'true' : 'false',
                             startIndex: clickedIndex >= 0 ? String(clickedIndex) : '0',
-                            targetPath: ent.path
+                            targetPath: ent.path,
+                            ...(hasSubdirs ? { navRoot: currentPath } : {})
                         }, ent.name, {}, false);
                     }
                 }

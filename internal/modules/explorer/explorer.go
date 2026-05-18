@@ -362,11 +362,12 @@ type ExplorerEntry struct {
 
 // FolderNavigation represents previous/next folder navigation for explorer
 type FolderNavigation struct {
-	PrevFolder   *FolderInfo `json:"prevFolder,omitempty"`
-	NextFolder   *FolderInfo `json:"nextFolder,omitempty"`
-	ParentPath   string      `json:"parentPath"`
-	CurrentIndex int         `json:"currentIndex"`
-	TotalFolders int         `json:"totalFolders"`
+	PrevFolder   *FolderInfo  `json:"prevFolder,omitempty"`
+	NextFolder   *FolderInfo  `json:"nextFolder,omitempty"`
+	ParentPath   string       `json:"parentPath"`
+	CurrentIndex int          `json:"currentIndex"`
+	TotalFolders int          `json:"totalFolders"`
+	AllFolders   []FolderInfo `json:"allFolders,omitempty"`
 }
 
 // FolderInfo represents a folder with basic info for navigation
@@ -510,48 +511,85 @@ func applyNamedOrder(order []string, nameA, nameB string) bool {
 	return nameA < nameB
 }
 
-// GetFolderNavigation returns prev/next folder for a given folder path within its parent directory
-func (m *Module) GetFolderNavigation(folderPath string) *FolderNavigation {
-	// Get parent directory
-	parentPath := filepath.Dir(folderPath)
-
-	// List parent directory contents
-	entries, err := os.ReadDir(parentPath)
+// getEnabledSubdirs returns subdirectories of dirPath that have images (shallow check), sorted alphabetically
+func (m *Module) getEnabledSubdirs(dirPath string) []FolderInfo {
+	entries, err := os.ReadDir(dirPath)
 	if err != nil {
 		return nil
 	}
 
-	// Find subdirectories that have images (same filter as ListDirectory)
-	var siblingFolders []FolderInfo
+	var folders []FolderInfo
 	for _, entry := range entries {
 		if !entry.IsDir() {
 			continue
 		}
 
-		subdirPath := filepath.Join(parentPath, entry.Name())
+		subdirPath := filepath.Join(dirPath, entry.Name())
 
-		// Check if this subdirectory has images in its immediate directory (shallow check)
-		// The viewer uses GetImagesShallow, so only folders with immediate images should be navigable
 		shallowImageCount := m.fileLoader.GetShallowImageCount(subdirPath)
 		if shallowImageCount == 0 {
 			continue
 		}
 
-		siblingFolders = append(siblingFolders, FolderInfo{
+		folders = append(folders, FolderInfo{
 			Path: subdirPath,
 			Name: entry.Name(),
 		})
 	}
 
-	// Sort folders alphabetically (same as ListDirectory)
-	sort.Slice(siblingFolders, func(i, j int) bool {
-		return strings.ToLower(siblingFolders[i].Name) < strings.ToLower(siblingFolders[j].Name)
+	sort.Slice(folders, func(i, j int) bool {
+		return strings.ToLower(folders[i].Name) < strings.ToLower(folders[j].Name)
 	})
 
-	// Find current folder index
+	return folders
+}
+
+// GetFolderNavigation returns prev/next folder for a given folder path.
+// When the folder has children (subdirs with images), navigation walks root → children (flat, include root).
+// When the folder has no children, falls back to sibling folders in the parent directory.
+func (m *Module) GetFolderNavigation(folderPath string) *FolderNavigation {
+	// Strategy 1: folder has children → flat children nav (include self as first item)
+	children := m.getEnabledSubdirs(folderPath)
+	if len(children) > 0 {
+		folderName := filepath.Base(folderPath)
+		all := make([]FolderInfo, 0, len(children)+1)
+		all = append(all, FolderInfo{Path: folderPath, Name: folderName})
+		all = append(all, children...)
+
+		if len(all) <= 1 {
+			return nil
+		}
+
+		allCopy := make([]FolderInfo, len(all))
+		copy(allCopy, all)
+
+		nav := &FolderNavigation{
+			ParentPath:   folderPath,
+			CurrentIndex: 0,
+			TotalFolders: len(all),
+			AllFolders:   allCopy,
+		}
+
+		if len(all) > 1 {
+			next := all[1]
+			nav.NextFolder = &next
+		}
+
+		return nav
+	}
+
+	// Strategy 2: no children → navigate through siblings in parent directory
+	parentPath := filepath.Dir(folderPath)
+	siblingFolders := m.getEnabledSubdirs(parentPath)
+
+	if len(siblingFolders) == 0 {
+		return nil
+	}
+
+	// Find current folder among siblings
 	currentIndex := -1
-	for i, folder := range siblingFolders {
-		if folder.Path == folderPath {
+	for i, f := range siblingFolders {
+		if f.Path == folderPath {
 			currentIndex = i
 			break
 		}

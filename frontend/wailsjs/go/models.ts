@@ -208,6 +208,7 @@ export namespace explorer {
 	    parentPath: string;
 	    currentIndex: number;
 	    totalFolders: number;
+	    allFolders?: FolderInfo[];
 	
 	    static createFrom(source: any = {}) {
 	        return new FolderNavigation(source);
@@ -220,6 +221,7 @@ export namespace explorer {
 	        this.parentPath = source["parentPath"];
 	        this.currentIndex = source["currentIndex"];
 	        this.totalFolders = source["totalFolders"];
+	        this.allFolders = this.convertValues(source["allFolders"], FolderInfo);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
