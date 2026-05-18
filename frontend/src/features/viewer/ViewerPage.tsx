@@ -57,10 +57,14 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
     // Session flag state
     const [isNoHistorySession, setIsNoHistorySession] = useState(params.noHistory === 'true');
 
+    // Sort preferences from navigation params (when opened from Explorer)
+    const sortBy = params.sortBy;
+    const sortOrder = params.sortOrder;
+
     // Use custom hook for chapter navigation (series) or folder navigation (explorer)
     const chapterNav = !isExplorerMode ? useChapterNavigation(folderPath, isActive || false) : null;
     const navRoot = params.navRoot;
-    const folderNav = isExplorerMode ? useFolderNavigation(folderPath, isActive || false, navRoot) : null;
+    const folderNav = isExplorerMode ? useFolderNavigation(folderPath, isActive || false, navRoot, sortBy, sortOrder) : null;
 
     // Callbacks
     const handleRestorationComplete = useCallback(() => {
@@ -132,6 +136,8 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
         updateTabState: viewerState.updateTabState,
         onRestorationComplete: handleRestorationComplete,
         saveProgress,
+        sortBy,
+        sortOrder,
     });
 
     // Use tab sync hook
@@ -225,16 +231,16 @@ const handleNextChapter = useCallback(async () => {
 const handlePrevFolder = useCallback(async () => {
     if (folderNav?.prevFolder) {
         await saveProgress();
-        navigate('viewer', { folder: folderNav.prevFolder.path, shallow: 'true', from: fromPage, navRoot: params.navRoot }, 'explorer');
+        navigate('viewer', { folder: folderNav.prevFolder.path, shallow: 'true', from: fromPage, navRoot: params.navRoot, sortBy, sortOrder }, 'explorer');
     }
-}, [folderNav, navigate, saveProgress, fromPage, params.navRoot]);
+}, [folderNav, navigate, saveProgress, fromPage, params.navRoot, sortBy, sortOrder]);
 
 const handleNextFolder = useCallback(async () => {
     if (folderNav?.nextFolder) {
         await saveProgress();
-        navigate('viewer', { folder: folderNav.nextFolder.path, shallow: 'true', from: fromPage, navRoot: params.navRoot }, 'explorer');
+        navigate('viewer', { folder: folderNav.nextFolder.path, shallow: 'true', from: fromPage, navRoot: params.navRoot, sortBy, sortOrder }, 'explorer');
     }
-}, [folderNav, navigate, saveProgress, fromPage, params.navRoot]);
+}, [folderNav, navigate, saveProgress, fromPage, params.navRoot, sortBy, sortOrder]);
 
 // Custom back handler - navigates directly to the original entry point
 const handleBack = useCallback(() => {

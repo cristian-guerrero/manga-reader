@@ -7,6 +7,7 @@ import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useTabStore } from '@stores';
 import { AppAPI } from '@services/api/appAPI';
+import { UIPreferencesAPI } from '@services/api/uiPreferencesAPI';
 import { ExplorerEntry, BaseFolder } from '../types';
 import type { PageType } from '@types';
 
@@ -199,7 +200,7 @@ export function useExplorerNavigation({
         }
     }, [setCurrentPath, setPathHistory, setEntries, loadBaseFolders]);
 
-    const handleOpenInViewer = useCallback((path: string, e: React.MouseEvent) => {
+    const handleOpenInViewer = useCallback(async (path: string, e: React.MouseEvent) => {
         e.stopPropagation();
         setExplorerState({
             currentPath,
@@ -211,14 +212,21 @@ export function useExplorerNavigation({
         const hasSubfolders = (entry?.subdirectoryCount ?? 0) > 0;
         const useShallow = isDirectory && hasSubfolders;
 
+        // Fetch current sort preferences from backend (always up-to-date)
+        const pref = await UIPreferencesAPI.getExplorerSortPreference(path);
+        const resolvedSortBy = pref.sortBy || 'name';
+        const resolvedSortOrder = pref.sortOrder || 'asc';
+
         navigate('viewer', {
             folder: path,
             shallow: useShallow ? 'true' : 'false',
+            sortBy: resolvedSortBy,
+            sortOrder: resolvedSortOrder,
             ...(hasSubfolders ? { navRoot: path } : {})
         }, 'explorer' as PageType);
     }, [currentPath, pathHistory, entries, setExplorerState, navigate]);
 
-    const handleItemClick = useCallback((entry: ExplorerEntry | BaseFolder) => {
+    const handleItemClick = useCallback(async (entry: ExplorerEntry | BaseFolder) => {
         if ('addedAt' in entry) {
             setPathHistory([]);
             setCurrentPath(entry.path);
@@ -247,11 +255,18 @@ export function useExplorerNavigation({
 
                     const hasSubdirs = entries.some(ent => ent.isDirectory);
 
+                    // Fetch current sort preferences from backend (always up-to-date)
+                    const pref = await UIPreferencesAPI.getExplorerSortPreference(currentPath);
+                    const resolvedSortBy = pref.sortBy || 'name';
+                    const resolvedSortOrder = pref.sortOrder || 'asc';
+
                     navigate('viewer', {
                         folder: currentPath,
                         shallow: hasSubdirs ? 'true' : 'false',
                         startIndex: clickedIndex >= 0 ? String(clickedIndex) : '0',
                         targetPath: e.path,
+                        sortBy: resolvedSortBy,
+                        sortOrder: resolvedSortOrder,
                         ...(hasSubdirs ? { navRoot: currentPath } : {})
                     }, 'explorer' as PageType);
                 }
@@ -259,7 +274,7 @@ export function useExplorerNavigation({
         }
     }, [currentPath, pathHistory, entries, sortedEntries, setPathHistory, setExplorerState, navigate]);
 
-    const handleItemAuxClick = useCallback((e: React.MouseEvent, entry: ExplorerEntry | BaseFolder) => {
+    const handleItemAuxClick = useCallback(async (e: React.MouseEvent, entry: ExplorerEntry | BaseFolder) => {
         if (e.button === 1) { // Middle click
             e.preventDefault();
             e.stopPropagation();
@@ -290,11 +305,18 @@ export function useExplorerNavigation({
                         const clickedIndex = imageEntries.findIndex(img => img.path === ent.path);
                         const hasSubdirs = entries.some(e => e.isDirectory);
 
+                        // Fetch current sort preferences from backend (always up-to-date)
+                        const pref = await UIPreferencesAPI.getExplorerSortPreference(currentPath);
+                        const resolvedSortBy = pref.sortBy || 'name';
+                        const resolvedSortOrder = pref.sortOrder || 'asc';
+
                         addTab('viewer', {
                             folder: currentPath,
                             shallow: hasSubdirs ? 'true' : 'false',
                             startIndex: clickedIndex >= 0 ? String(clickedIndex) : '0',
                             targetPath: ent.path,
+                            sortBy: resolvedSortBy,
+                            sortOrder: resolvedSortOrder,
                             ...(hasSubdirs ? { navRoot: currentPath } : {})
                         }, ent.name, {}, false);
                     }

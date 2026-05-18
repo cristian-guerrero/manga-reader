@@ -2,7 +2,7 @@
  * Folder API Service - Operations related to folders
  */
 
-import { FolderInfo } from '../../types';
+import { FolderInfo, ImageInfo } from '../../types';
 import * as AppBackend from '../../../wailsjs/go/main/App';
 import { BaseFolder, ExplorerEntry } from './appAPI';
 import { BaseAPI } from './baseAPI';
@@ -38,6 +38,40 @@ export class FolderAPI extends BaseAPI {
                 component: 'FolderAPI',
                 action: 'getFolderInfoShallow',
                 details: { path }
+            }
+        );
+    }
+
+    /**
+     * Get images from a folder, sorted by Explorer sort preference
+     */
+    static async getImagesWithSort(path: string, sortMode: string, sortOrder: string): Promise<ImageInfo[]> {
+        return this.callOrEmpty(
+            async () => {
+                const result = await AppBackend.GetImagesWithSort(path, sortMode, sortOrder);
+                return (result as ImageInfo[]) || [];
+            },
+            {
+                component: 'FolderAPI',
+                action: 'getImagesWithSort',
+                details: { path, sortMode, sortOrder }
+            }
+        );
+    }
+
+    /**
+     * Get images shallow from a folder, sorted by Explorer sort preference
+     */
+    static async getImagesShallowWithSort(path: string, sortMode: string, sortOrder: string): Promise<ImageInfo[]> {
+        return this.callOrEmpty(
+            async () => {
+                const result = await AppBackend.GetImagesShallowWithSort(path, sortMode, sortOrder);
+                return (result as ImageInfo[]) || [];
+            },
+            {
+                component: 'FolderAPI',
+                action: 'getImagesShallowWithSort',
+                details: { path, sortMode, sortOrder }
             }
         );
     }

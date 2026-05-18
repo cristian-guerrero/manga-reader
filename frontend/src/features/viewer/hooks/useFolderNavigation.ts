@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
-import { FolderNavigation } from '@services/api/explorerAPI';
-import { AppAPI } from '@services/api/appAPI';
+import { FolderNavigation, ExplorerAPI } from '@services/api/explorerAPI';
 
-export function useFolderNavigation(folderPath: string | undefined, isActive: boolean, navRoot?: string) {
+export function useFolderNavigation(folderPath: string | undefined, isActive: boolean, navRoot?: string, sortBy?: string, sortOrder?: string) {
     const [folderNav, setFolderNav] = useState<FolderNavigation | null>(null);
 
     useEffect(() => {
@@ -15,10 +14,11 @@ export function useFolderNavigation(folderPath: string | undefined, isActive: bo
 
         const loadFolderNav = async () => {
             try {
-                // When navRoot is set, use it to get the flat children list
-                // and determine the current folder's position within it
                 const effectiveRoot = navRoot || folderPath;
-                const navInfo = await AppAPI.getFolderNavigation(effectiveRoot);
+                const hasSortPrefs = sortBy !== undefined && (sortBy !== 'name' || sortOrder === 'desc');
+                const navInfo = hasSortPrefs
+                    ? await ExplorerAPI.getFolderNavigationWithSort(effectiveRoot, sortBy ?? 'name', sortOrder ?? 'asc')
+                    : await ExplorerAPI.getFolderNavigation(effectiveRoot);
                 if (cancelled) return;
 
                 if (!navInfo) {
@@ -26,8 +26,6 @@ export function useFolderNavigation(folderPath: string | undefined, isActive: bo
                     return;
                 }
 
-                // If we have a flat folder list and the current folder differs from the root,
-                // find the current position in the flat list
                 if (navRoot && navInfo.allFolders && navRoot !== folderPath) {
                     const index = navInfo.allFolders.findIndex(f => f.path === folderPath);
                     if (index >= 0) {
@@ -48,7 +46,6 @@ export function useFolderNavigation(folderPath: string | undefined, isActive: bo
                     }
                 }
 
-                // Otherwise use the response as-is
                 setFolderNav(navInfo);
             } catch (error) {
                 console.error('[useFolderNavigation] Failed to load folder navigation:', error);
@@ -63,7 +60,7 @@ export function useFolderNavigation(folderPath: string | undefined, isActive: bo
         return () => {
             cancelled = true;
         };
-    }, [folderPath, isActive, navRoot]);
+    }, [folderPath, isActive, navRoot, sortBy, sortOrder]);
 
     return folderNav;
 }

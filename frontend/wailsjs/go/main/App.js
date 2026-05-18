@@ -142,6 +142,10 @@ export function GetFolderNavigation(arg1) {
   return window['go']['main']['App']['GetFolderNavigation'](arg1);
 }
 
+export function GetFolderNavigationWithSort(arg1, arg2, arg3) {
+  return window['go']['main']['App']['GetFolderNavigationWithSort'](arg1, arg2, arg3);
+}
+
 export function GetFolderOrder(arg1) {
   return window['go']['main']['App']['GetFolderOrder'](arg1);
 }
@@ -176,6 +180,14 @@ export function GetImages(arg1) {
 
 export function GetImagesShallow(arg1) {
   return window['go']['main']['App']['GetImagesShallow'](arg1);
+}
+
+export function GetImagesShallowWithSort(arg1, arg2, arg3) {
+  return window['go']['main']['App']['GetImagesShallowWithSort'](arg1, arg2, arg3);
+}
+
+export function GetImagesWithSort(arg1, arg2, arg3) {
+  return window['go']['main']['App']['GetImagesWithSort'](arg1, arg2, arg3);
 }
 
 export function GetLibrary() {

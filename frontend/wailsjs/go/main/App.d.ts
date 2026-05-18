@@ -78,6 +78,8 @@ export function GetFolderInfoShallow(arg1:string):Promise<persistence.FolderInfo
 
 export function GetFolderNavigation(arg1:string):Promise<explorer.FolderNavigation>;
 
+export function GetFolderNavigationWithSort(arg1:string,arg2:string,arg3:string):Promise<explorer.FolderNavigation>;
+
 export function GetFolderOrder(arg1:string):Promise<Array<string>>;
 
 export function GetFolderOriginalOrder(arg1:string):Promise<Array<string>>;
@@ -95,6 +97,10 @@ export function GetImageOrder(arg1:string):Promise<Array<string>>;
 export function GetImages(arg1:string):Promise<Array<persistence.ImageInfo>>;
 
 export function GetImagesShallow(arg1:string):Promise<Array<persistence.ImageInfo>>;
+
+export function GetImagesShallowWithSort(arg1:string,arg2:string,arg3:string):Promise<Array<persistence.ImageInfo>>;
+
+export function GetImagesWithSort(arg1:string,arg2:string,arg3:string):Promise<Array<persistence.ImageInfo>>;
 
 export function GetLibrary():Promise<Array<persistence.FolderInfo>>;
 
