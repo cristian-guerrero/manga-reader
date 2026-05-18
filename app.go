@@ -482,13 +482,6 @@ func (a *App) SelectFolder() (string, error) {
 // My `library.go` calls `fileloader.GetImages` but doesn't expose `GetImages`!
 // `App.GetImages` is used by the frontend viewer!
 // I MUST expose `GetImages` via `App` but logic should probably be in `Library` or `Explorer`?
-// Actually `GetImages` is a generic file operation.
-// I should probably keep `GetImages` in `App` or move it to `Library` module and delegate.
-// Since `App` is the API surface, I can keep using `fileloader` here or delegate to `libraryMod`.
-// Given `Library` module has `GetFolderInfo`, it likely needs `GetImages`.
-// I should define `GetImages` in `App` that delegates or uses `fileloader` directly + generates URLs.
-// This logic was in `app.go` before.
-
 func (a *App) GetImages(path string) ([]persistence.ImageInfo, error) {
 	images, err := a.libraryMod.GetImages(path, a.settings().Get(), a.orders())
 	if err == nil && len(images) > 0 && stdruntime.GOOS == "linux" {
@@ -499,6 +492,23 @@ func (a *App) GetImages(path string) ([]persistence.ImageInfo, error) {
 		a.imgServer().PreloadConverted(paths)
 	}
 	return images, err
+}
+
+// GetImagesWithSort returns images sorted by Explorer sort preferences.
+func (a *App) GetImagesWithSort(path string, sortMode string, sortOrder string) ([]persistence.ImageInfo, error) {
+	images, err := a.libraryMod.GetImages(path, a.settings().Get(), a.orders())
+	if err != nil {
+		return nil, err
+	}
+	explorer.SortImagesByExplorerPreference(images, path, sortMode, sortOrder, a.explorerMod.GetFolderOrdersRepo())
+	if err == nil && len(images) > 0 && stdruntime.GOOS == "linux" {
+		var paths []string
+		for _, img := range images {
+			paths = append(paths, img.Path)
+		}
+		a.imgServer().PreloadConverted(paths)
+	}
+	return images, nil
 }
 
 // GetImagesShallow returns a list of images in the specified folder (non-recursive, only immediate directory)
@@ -512,6 +522,23 @@ func (a *App) GetImagesShallow(path string) ([]persistence.ImageInfo, error) {
 		a.imgServer().PreloadConverted(paths)
 	}
 	return images, err
+}
+
+// GetImagesShallowWithSort returns shallow images sorted by Explorer sort preferences.
+func (a *App) GetImagesShallowWithSort(path string, sortMode string, sortOrder string) ([]persistence.ImageInfo, error) {
+	images, err := a.libraryMod.GetImagesShallow(path, a.settings().Get(), a.orders())
+	if err != nil {
+		return nil, err
+	}
+	explorer.SortImagesByExplorerPreference(images, path, sortMode, sortOrder, a.explorerMod.GetFolderOrdersRepo())
+	if err == nil && len(images) > 0 && stdruntime.GOOS == "linux" {
+		var paths []string
+		for _, img := range images {
+			paths = append(paths, img.Path)
+		}
+		a.imgServer().PreloadConverted(paths)
+	}
+	return images, nil
 }
 
 // GetFolderInfo delegates to Library module
@@ -601,6 +628,11 @@ func (a *App) ExploreFolder(path string, sortMode string, sortOrder string) ([]e
 // GetFolderNavigation returns prev/next folder navigation for explorer
 func (a *App) GetFolderNavigation(folderPath string) *explorer.FolderNavigation {
 	return a.explorerMod.GetFolderNavigation(folderPath)
+}
+
+// GetFolderNavigationWithSort returns prev/next folder navigation respecting Explorer sort preferences.
+func (a *App) GetFolderNavigationWithSort(folderPath string, sortMode string, sortOrder string) *explorer.FolderNavigation {
+	return a.explorerMod.GetFolderNavigationWithSort(folderPath, sortMode, sortOrder)
 }
 
 // =============================================================================

@@ -1,107 +1,66 @@
 # Manga Visor 📖
 
-A premium desktop manga viewer and downloader application built with Wails, React, and Go. High performance, beautiful aesthetics, and smooth experience.
+A premium desktop manga viewer and downloader. Beautiful, fast, and built for an uninterrupted reading experience.
 
 ![Manga Visor](https://img.shields.io/badge/version-1.0.5-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 
-## ✨ Features
+---
 
-### 📥 Downloader
-- **High-speed Downloader** - Multi-threaded image downloading.
-- **Supported Sites** - Integrated support for 22 sites:
-  - **Hitomi.la**
-  - **MangaDex.org**
-  - **nHentai.net**
-  - **nHentai.xxx**
-  - **nHentai.com**
-  - **nHentai.website**
-  - **ManhwaWeb.com**
-  - **ZonaTMO.com**
-  - **Hentaiera.com**
-  - **HentaiRead.io**
-  - **Hentai2Read.com**
-  - **IMHentai.xxx**
-  - **IMHentai.to**
-  - **Hentaivox.com**
-  - **Manga18.club**
-  - **Comics18.org**
-  - **Hentaifc.com**
-  - **ComicPorn.xxx**
-  - **E-Hentai.org**
-  - **Submanhwa.com**
-  - **Hentaiforce.net**
-  - **lhentai.com**
-  - **Hentaifox.com**
-- **Smart Monitoring** - Automatic clipboard monitoring for instant downloads.
-- **Queue Management** - Sequential download queue with pause/resume support.
-- **Auto-resume** - Automatically resume incomplete downloads on app restart.
-- **Auto-organization** - Downloads are automatically structured into folders for the Library.
-- **Series Support** - Automatic detection and chapter selection for multi-chapter series.
-- **Advanced Tab System** - Browser-like multi-tab experience.
-  - **Intuitive Navigation** - Open multiple folders or series in independent tabs.
-  - **Drag & Drop Reordering** - Organically organize your workspace by dragging tabs.
-  - **Middle-click Actions** - Quickly close tabs or open folders/series in new tabs via middle-click.
-  - **Smart Compression** - Tabs dynamically resize to fit any window width.
+## 🚀 What is Manga Visor?
 
-### 🎨 Manga Colorizer
-- **AI-Powered Colorization** - Transform black and white manga into vibrant color using advanced AI models.
-- **Image Enhancement**:
-  - **Colorization** - Automatically add color to grayscale manga pages.
-  - **Upscaling** - Enhance image resolution with adjustable upscale factor.
-  - **Denoising** - Remove noise and artifacts with configurable denoise strength.
-- **Batch Processing** - Drag & drop multiple images or entire folders for bulk colorization.
-- **Flexible Workflow**:
-  - **Single Image Mode** - Process and preview one image at a time.
-  - **Batch Mode** - Colorize all images in a folder with progress tracking.
-- **Easy Export** - Download individual colorized images or batch download all results.
-- **Self-Contained Setup** - Automatic installation of Python runtime and colorizer backend on first use.
+Manga Visor is a desktop app that lets you browse, read, and download manga from multiple sources. It organizes everything in one place with a modern interface, keyboard shortcuts, and a smooth reading experience.
 
-### 🖼️ Viewing Modes
-- **Vertical Scroll** - Infinite scroll with configurable width (30-100%).
-  - **Auto-scroll** - Automatic scrolling with adjustable speed (0-100) for hands-free reading.
-  - **Play/Pause Controls** - Easy toggle for auto-scroll with speed slider.
-  - **Smart Detection** - Automatically pauses when user manually scrolls.
-- **Lateral Pages** - Single or double page view with smooth CSS transitions.
-  - **Reading Direction** - Left-to-right (LTR) or right-to-left (RTL) support.
-- **Zoom & Pan** - Advanced controls for detailed viewing with smooth responsiveness.
-- **Thumbnails View** - Grid overview for quick navigation and selection.
-  - **Image Reordering** - Drag & drop to manually reorder images within folders.
-  - **Reset Order** - Restore original image order at any time.
+**Quick start:** Browse your local folders in the Explorer, add manga to your Library, or paste a URL to download directly.
 
-### 📂 Organization
-- **Explorer** - Recursive folder browsing with base folder management.
-  - **Recursive Search** - Automatically scans subdirectories for manga folders.
-  - **Quick Access** - Pin frequently accessed base folders.
-  - **Sort Modes** - Sort folders by name, date, or use Automatic mode where folders move to top when opened.
-  - **Auto Sort** - Automatically promotes accessed folders to position 1, persisted per directory.
-  - **Drag & Drop** - Manually reorder subfolders with Custom sort mode.
-- **Library Management**:
-  - **One Shot Library** - Organize standalone manga chapters and one-shots.
-  - **Series Library** - Group chapters into series with automatic chapter detection.
-  - **Chapter Navigation** - Seamless navigation between chapters within series.
-- **Reading History** - Track your progress with visual indicators and resume functionality.
-  - **Progress Tracking** - Visual progress bars and "continue reading" shortcuts.
-  - **List & Grid Views** - Switch between detailed list and visual grid layouts.
-  - **Optional History** - Enable/disable history tracking in settings.
-- **Archive Support** - Read directly from ZIP, RAR, CBZ, and CBR archives with automatic cleanup.
-- **Folder Thumbnails** - Visual previews for all your series and chapters.
+### Key Features
 
-### 🎨 Experience
-- **9 Premium Themes** - Dark, Light, Midnight Blue, Sakura, AMOLED Black, Lavender Dream, Mint Fresh, Peach Blossom, and Ichigo.
-  - **Custom Accent Colors** - Personalize each theme with custom accent colors.
-- **Multi-language** - Full support for English and Spanish.
-- **Performance Optimized** - Virtualized lists and intelligent caching for smooth handling of thousands of images.
-  - **Image Preloading** - Configurable preloading of adjacent images (1-10 images).
-  - **Smart Filtering** - Filter out small images (covers/logos) by minimum size threshold.
-- **Panic Button** - Customizable panic key (default: `ESC`) to instantly return to home screen.
-- **Tab Management Styles**:
-  - **Memory Saving Mode** - Automatically unmount inactive tabs to keep resource usage minimal.
-  - **Session Restoration** - "Continue where you left off" - optionally restore all open tabs on application restart.
-- **Responsive Navigation** - Optimized for both mouse and keyboard.
-- **Customizable Menu** - Show/hide sidebar navigation items to your preference.
-- **Auto-hide Controls** - Viewer controls automatically hide for immersive reading.
+- **📥 Downloader** — Paste a URL and download automatically. Supports 22 sites (see list below).
+- **🖼️ Viewer** — Vertical scroll or lateral pages, auto-scroll, zoom & pan, thumbnails view.
+- **📂 Explorer** — Browse folders recursively, sort by name/date, drag & drop to reorder.
+- **🏛️ Library** — Organize one-shots and series with automatic chapter detection.
+- **🎨 Colorizer** — AI-powered colorization for black & white manga (requires Python).
+- **📖 Reading History** — Auto-resume where you left off, progress indicators.
+- **🎭 9 Themes** — Dark, Light, AMOLED Black, Sakura, and more.
+- **🌐 Multi-language** — English and Spanish supported.
+
+<details>
+<summary><strong>🌐 Supported Download Sites</strong> (click to expand)</summary>
+
+- Hitomi.la
+- MangaDex.org
+- nHentai.net · nHentai.xxx · nHentai.com · nHentai.website
+- ManhwaWeb.com
+- ZonaTMO.com
+- Hentaiera.com
+- HentaiRead.io
+- Hentai2Read.com
+- IMHentai.xxx · IMHentai.to
+- Hentaivox.com
+- Manga18.club
+- Comics18.org
+- Hentaifc.com
+- ComicPorn.xxx
+- E-Hentai.org
+- Submanhwa.com
+- Hentaiforce.net
+- lhentai.com
+- Hentaifox.com
+
+</details>
+
+---
+
+## 🛠️ Tech Stack
+
+- **Framework**: [Wails v2](https://wails.io/) (Go + Webview)
+- **Backend**: Go 1.24 — SQLite via modernc.org/sqlite (pure Go, no CGo)
+- **Frontend**: React 18 + TypeScript + Vite
+- **Styling**: Tailwind CSS
+- **State Management**: Zustand
+- **Drag & Drop**: @dnd-kit
+- **i18n**: react-i18next
 
 ## 🖼️ Native Image Decoding (AVIF & WebP)
 
@@ -209,42 +168,30 @@ wails build -platform windows/amd64 -name manga-visor2
 |-----|--------|
 | `ESC` | Panic button (customizable in settings) |
 
-## 🛠️ Tech Stack
-
-- **Framework**: [Wails v2](https://wails.io/) (Go + Webview)
-- **Backend**: Go 1.24 (High performance logic and file handling, SQLite via modernc.org/sqlite)
-- **Frontend**: React 18 + TypeScript + Vite
-- **Styling**: Tailwind CSS (Premium, custom-crafted designs)
-- **State Management**: Zustand
-- **Drag & Drop**: @dnd-kit
-- **i18n**: react-i18next
-
 ## 📊 Data Storage
-Data is stored locally in the user's home directory under `~/.manga-visor/` (on Windows: `%APPDATA%/manga-visor/`).
+
+All application state is stored locally in a single **SQLite database** (`manga-visor.db`) at `~/.manga-visor/` (Windows: `%USERPROFILE%\.manga-visor\`). Backend is the single source of truth — no frontend localStorage is used.
 
 ### Folders
-- **`avif-bin/`** - Cached native AVIF libraries (libavif.dll / libavif.so + runtime deps) auto-downloaded from GitHub Releases.
-- **`webp-bin/`** - Cached native WebP libraries (libwebp.dll / libwebp.so + libwebpdemux) auto-downloaded from GitHub Releases.
-- **`cache/`** - Persistent storage for high-quality thumbnails generated for the Explorer and Library.
-- **`downloads/`** - Default location for all downloaded manga chapters.
-- **`temp/`** - Temporary workspace for extracting archives (ZIP, RAR, etc.) and processing transient data.
+- **`avif-bin/`** — Cached native AVIF libraries auto-downloaded from GitHub Releases.
+- **`webp-bin/`** — Cached native WebP libraries auto-downloaded from GitHub Releases.
+- **`cache/`** — Persistent thumbnail cache.
+- **`downloads/`** — Default download location.
+- **`temp/`** — Temporary workspace for archive extraction.
 
-### Database
-All application state is stored in a single **SQLite database** (`manga-visor.db`) using `modernc.org/sqlite` (pure Go, no CGo). Backend is the single source of truth — no frontend localStorage is used. On first startup, legacy JSON files are automatically migrated to the database.
-
-**Tables:**
-- **`settings`** - Application-wide preferences (theme, language, viewer modes, reading direction, preloading, panic key, tab behavior, menu visibility, etc.)
-- **`explorer_folders`** - User-defined base folders for the Explorer
-- **`library_entries`** - One Shot Library entries (folder paths, image counts)
-- **`series_entries`** / **`series_chapters`** - Series metadata and chapter grouping
-- **`history`** - Reading progress (last page, scroll position, completion status)
-- **`download_jobs`** - Download queue state (pending, running, completed, failed)
-- **`tabs`** - Open tab state for session restoration
-- **`image_orders`** - Custom manual sorting of images within folders
-- **`folder_orders`** - Custom and automatic folder ordering for Explorer subdirectories
-- **`folder_view_modes`** - Per-directory grid/list view mode preferences
-- **`viewer_states`** - Viewer scroll position and page index per folder
-- **`ui_preferences`** - Sort modes, sort orders, and view mode preferences (formerly in localStorage)
+### Database Tables
+- **`settings`** — Application preferences (theme, language, viewer modes, reading direction, etc.)
+- **`explorer_folders`** — User-defined base folders
+- **`library_entries`** — One Shot Library entries
+- **`series_entries`** / **`series_chapters`** — Series metadata and chapters
+- **`history`** — Reading progress
+- **`download_jobs`** — Download queue state
+- **`tabs`** — Open tab state for session restoration
+- **`image_orders`** — Custom image ordering
+- **`folder_orders`** — Custom and automatic folder ordering
+- **`folder_view_modes`** — Per-directory grid/list preferences
+- **`viewer_states`** — Viewer scroll position and page index
+- **`ui_preferences`** — Sort modes, sort orders, and view mode preferences
 
 ## 📝 License
 MIT License - See [LICENSE](LICENSE) for details.

@@ -6,6 +6,7 @@
 import { useEffect, useState } from 'react';
 import { useTabStore } from '@stores';
 import { AppAPI } from '@services/api/appAPI';
+import { FolderAPI } from '@services/api/folderAPI';
 import { FolderInfo, ImageInfo } from '@types';
 
 interface UseViewerFolderLoadingOptions {
@@ -24,6 +25,8 @@ interface UseViewerFolderLoadingOptions {
     updateTabState: (updates: any) => void;
     onRestorationComplete: () => void;
     saveProgress: () => Promise<void>;
+    sortBy?: string;
+    sortOrder?: string;
 }
 
 export function useViewerFolderLoading({
@@ -42,6 +45,8 @@ export function useViewerFolderLoading({
     updateTabState,
     onRestorationComplete,
     saveProgress,
+    sortBy,
+    sortOrder,
 }: UseViewerFolderLoadingOptions) {
     const [isLoading, setIsLoading] = useState(false);
 
@@ -80,9 +85,14 @@ export function useViewerFolderLoading({
 
                 if (cancelled) return;
 
+                const hasSortPrefs = sortBy !== undefined && (sortBy !== 'name' || sortOrder === 'desc');
                 const imageList = useShallow
-                    ? await AppAPI.getImagesShallow(folderPath)
-                    : await AppAPI.getImages(folderPath);
+                    ? (hasSortPrefs
+                        ? await FolderAPI.getImagesShallowWithSort(folderPath, sortBy, sortOrder || 'asc')
+                        : await AppAPI.getImagesShallow(folderPath))
+                    : (hasSortPrefs
+                        ? await FolderAPI.getImagesWithSort(folderPath, sortBy, sortOrder || 'asc')
+                        : await AppAPI.getImages(folderPath));
 
                 if (cancelled) return;
 
