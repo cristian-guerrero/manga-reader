@@ -26,9 +26,9 @@ interface DirectoryViewProps {
     activeEntry: ExplorerEntry | null;
     onItemClick: (entry: ExplorerEntry) => void;
     onItemAuxClick: (e: React.MouseEvent, entry: ExplorerEntry) => void;
+    onItemContextMenu: (e: React.MouseEvent, entry: ExplorerEntry) => void;
     onLoadThumbnail: (path: string, coverImage: string) => Promise<void>;
     onOpenViewer: (path: string, e: React.MouseEvent) => void;
-    onOpenColorizer: (path: string) => void;
     viewMode: ViewMode;
 }
 
@@ -46,39 +46,9 @@ function renderFooterLeft(entry: ExplorerEntry, t: (key: string) => string) {
     );
 }
 
-function renderFooterRight(entry: ExplorerEntry, onOpenViewer: (path: string, e: React.MouseEvent) => void, onOpenColorizer: (path: string) => void, t: (key: string) => string) {
+function renderFooterRight(entry: ExplorerEntry, onOpenViewer: (path: string, e: React.MouseEvent) => void, t: (key: string) => string) {
     return (
         <div className="flex items-center gap-1">
-            {entry.isDirectory &&
-                entry.hasImages &&
-                entry.subdirectoryCount === 0 && (
-                    <Tooltip
-                        content={t("explorer.openInColorizer")}
-                        placement="left"
-                    >
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                onOpenColorizer(entry.path);
-                            }}
-                            className="p-1.5 rounded-full bg-purple-500 text-white hover:bg-purple-600 transform hover:scale-110 transition-all opacity-0 group-hover/tile:opacity-100"
-                            aria-label={t("explorer.openInColorizer")}
-                        >
-                            <svg
-                                width="16"
-                                height="16"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                            >
-                                <circle cx="12" cy="12" r="10" />
-                                <path d="M12 2a10 10 0 0 1 0 20 10 10 0 0 1 0-20" />
-                                <circle cx="12" cy="12" r="4" />
-                            </svg>
-                        </button>
-                    </Tooltip>
-                )}
             {entry.hasImages && (
                 <Tooltip
                     content={t("explorer.openInViewer")}
@@ -127,9 +97,9 @@ export function DirectoryView({
     activeEntry,
     onItemClick,
     onItemAuxClick,
+    onItemContextMenu,
     onLoadThumbnail,
     onOpenViewer,
-    onOpenColorizer,
     viewMode,
 }: DirectoryViewProps) {
     const { t } = useTranslation();
@@ -144,12 +114,13 @@ export function DirectoryView({
             thumbnail: thumb,
             onClick: () => onItemClick(entry),
             onAuxClick: (e: React.MouseEvent) => onItemAuxClick(e, entry),
+            onContextMenu: (e: React.MouseEvent) => onItemContextMenu(e, entry),
             onVisible: async () => {
                 if (!entry.coverImage || thumb) return;
                 await onLoadThumbnail(entry.path, entry.coverImage);
             },
             footerLeft: renderFooterLeft(entry, t),
-            footerRight: renderFooterRight(entry, onOpenViewer, onOpenColorizer, t),
+            footerRight: renderFooterRight(entry, onOpenViewer, t),
             fallbackIcon,
         };
 
@@ -161,12 +132,13 @@ export function DirectoryView({
                         thumbnail={thumb}
                         onClick={() => onItemClick(entry)}
                         onAuxClick={(e: React.MouseEvent) => onItemAuxClick(e, entry)}
+                        onContextMenu={(e: React.MouseEvent) => onItemContextMenu(e, entry)}
                         onVisible={async () => {
                             if (!entry.coverImage || thumb) return;
                             await onLoadThumbnail(entry.path, entry.coverImage);
                         }}
                         footerLeft={renderFooterLeft(entry, t)}
-                        footerRight={renderFooterRight(entry, onOpenViewer, onOpenColorizer, t)}
+                        footerRight={renderFooterRight(entry, onOpenViewer, t)}
                         fallbackIcon={fallbackIcon}
                     />
                 </GridItem>
@@ -178,7 +150,7 @@ export function DirectoryView({
                 <MediaTile {...commonProps} />
             </GridItem>
         );
-    }, [entries, thumbnails, isCustomMode, onItemClick, onItemAuxClick, onLoadThumbnail, onOpenViewer, onOpenColorizer, t]);
+    }, [entries, thumbnails, isCustomMode, onItemClick, onItemAuxClick, onItemContextMenu, onLoadThumbnail, onOpenViewer, t]);
 
     const renderListEntry = useCallback((entry: ExplorerEntry) => {
         const thumb = entry.thumbnailUrl || thumbnails[entry.path];
@@ -189,11 +161,11 @@ export function DirectoryView({
                 thumbnail={thumb}
                 onClick={() => onItemClick(entry)}
                 onAuxClick={(e: React.MouseEvent) => onItemAuxClick(e, entry)}
+                onContextMenu={(e: React.MouseEvent) => onItemContextMenu(e, entry)}
                 onOpenViewer={onOpenViewer}
-                onOpenColorizer={onOpenColorizer}
             />
         );
-    }, [entries, thumbnails, onItemClick, onItemAuxClick, onOpenViewer, onOpenColorizer]);
+    }, [entries, thumbnails, onItemClick, onItemAuxClick, onItemContextMenu, onOpenViewer]);
 
     if (viewMode === 'list') {
         return (

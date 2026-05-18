@@ -22,8 +22,10 @@ import {
   SearchBar,
   Breadcrumb,
   MediaTile,
+  ContextMenu,
   useToast,
 } from "@shared/components";
+import type { ContextMenuItem } from "@types";
 import { AppAPI } from "@services/api/appAPI";
 import {
   useExplorerState,
@@ -35,7 +37,7 @@ import {
   useExplorerDragAndDrop,
   useExplorerView,
 } from "./hooks";
-import { BaseFolder } from "./types";
+import { BaseFolder, ExplorerEntry } from "./types";
 import { DirectoryView } from "./components/DirectoryView";
 import { GridIcon, ListIcon } from "./components/ExplorerIcons";
 
@@ -174,6 +176,50 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
   );
 
   const isInCustomMode = sorting.sortBy === 'custom' && !search.searchQuery.trim();
+
+  // Context menu state
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    entry: ExplorerEntry;
+  } | null>(null);
+
+  const handleContextMenu = useCallback(
+    (e: React.MouseEvent, entry: ExplorerEntry) => {
+      if (!entry.isDirectory) return;
+      setContextMenu({ x: e.clientX, y: e.clientY, entry });
+    },
+    [],
+  );
+
+  const handleCloseContextMenu = useCallback(() => {
+    setContextMenu(null);
+  }, []);
+
+  const contextMenuItems: ContextMenuItem[] = contextMenu
+    ? [
+        ...(contextMenu.entry.isDirectory &&
+          contextMenu.entry.hasImages &&
+          contextMenu.entry.subdirectoryCount === 0
+          ? [
+              {
+                id: 'open-in-colorizer',
+                label: t('explorer.openInColorizer'),
+                onClick: () =>
+                  navigate('colorizer', {
+                    folderPath: contextMenu.entry.path,
+                  }),
+              } as ContextMenuItem,
+            ]
+          : []),
+        {
+          id: 'open-in-file-manager',
+          label: t('explorer.openInFileManager'),
+          onClick: () =>
+            AppAPI.openInFileManager(contextMenu.entry.path),
+        },
+      ]
+    : [];
 
   // Use restoration hook
   useExplorerRestoration({
@@ -400,11 +446,9 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
             activeEntry={dnd.activeEntry}
             onItemClick={navigation.handleItemClick}
             onItemAuxClick={navigation.handleItemAuxClick}
+            onItemContextMenu={handleContextMenu}
             onLoadThumbnail={loadThumbnail}
             onOpenViewer={navigation.handleOpenInViewer}
-            onOpenColorizer={(path: string) =>
-              navigate("colorizer", { folderPath: path })
-            }
           />
         )}
 
@@ -454,6 +498,15 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
           </div>
         )}
       </div>
+
+      {/* Context Menu */}
+      {contextMenu && (
+        <ContextMenu
+          items={contextMenuItems}
+          position={{ x: contextMenu.x, y: contextMenu.y }}
+          onClose={handleCloseContextMenu}
+        />
+      )}
     </div>
   );
 }

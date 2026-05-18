@@ -7,8 +7,8 @@ interface ExplorerListItemProps {
     thumbnail?: string;
     onClick?: () => void;
     onAuxClick?: (e: React.MouseEvent) => void;
+    onContextMenu?: (e: React.MouseEvent) => void;
     onOpenViewer?: (path: string, e: React.MouseEvent) => void;
-    onOpenColorizer?: (path: string) => void;
 }
 
 function formatFileSize(bytes: number): string {
@@ -24,8 +24,8 @@ export function ExplorerListItem({
     thumbnail,
     onClick,
     onAuxClick,
+    onContextMenu,
     onOpenViewer,
-    onOpenColorizer,
 }: ExplorerListItemProps) {
     const { t } = useTranslation();
 
@@ -44,6 +44,11 @@ export function ExplorerListItem({
                 if (e.button === 1) e.preventDefault();
             }}
             onAuxClick={(e) => onAuxClick?.(e)}
+            onContextMenu={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onContextMenu?.(e);
+            }}
             className="group flex items-center gap-3 p-2.5 rounded-xl cursor-pointer transition-all hover:border-accent hover-lift"
             style={{
                 backgroundColor: "var(--color-surface-secondary)",
@@ -120,35 +125,6 @@ export function ExplorerListItem({
 
             {/* Actions */}
             <div className="flex items-center gap-1 flex-shrink-0">
-                {entry.isDirectory && entry.hasImages && entry.subdirectoryCount === 0 && onOpenColorizer && (
-                    <Tooltip content={t("explorer.openInColorizer")} placement="left">
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                onOpenColorizer(entry.path);
-                            }}
-                            className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all hover:bg-purple-500/10 active:scale-90"
-                            style={{
-                                backgroundColor: "var(--color-surface-tertiary)",
-                                color: "#a855f7",
-                            }}
-                            aria-label={t("explorer.openInColorizer")}
-                        >
-                            <svg
-                                width="14"
-                                height="14"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                            >
-                                <circle cx="12" cy="12" r="10" />
-                                <path d="M12 2a10 10 0 0 1 0 20 10 10 0 0 1 0-20" />
-                                <circle cx="12" cy="12" r="4" />
-                            </svg>
-                        </button>
-                    </Tooltip>
-                )}
                 {entry.hasImages && onOpenViewer && (
                     <Tooltip content={t("explorer.openInViewer")} placement="left">
                         <button

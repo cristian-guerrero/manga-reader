@@ -9,6 +9,7 @@ interface SortableEntryTileProps {
     thumbnail?: string;
     onClick?: () => void;
     onAuxClick?: (e: React.MouseEvent) => void;
+    onContextMenu?: (e: React.MouseEvent) => void;
     onVisible?: () => void;
     footerLeft?: React.ReactNode;
     footerRight?: React.ReactNode;
@@ -20,6 +21,7 @@ export function SortableEntryTile({
     thumbnail,
     onClick,
     onAuxClick,
+    onContextMenu,
     onVisible,
     footerLeft,
     footerRight,
@@ -41,19 +43,20 @@ export function SortableEntryTile({
 
     return (
         <div ref={setNodeRef} style={style}>
-            <MediaTile
-                id={entry.path}
-                name={entry.name}
-                thumbnail={thumbnail}
-                onClick={onClick}
-                onAuxClick={onAuxClick}
-                onVisible={onVisible}
-                footerLeft={footerLeft}
-                footerRight={footerRight}
-                fallbackIcon={fallbackIcon}
-                isDragging={isDragging}
-                dragHandleProps={{ ...attributes, ...listeners }}
-            />
+                <MediaTile
+                    id={entry.path}
+                    name={entry.name}
+                    thumbnail={thumbnail}
+                    onClick={onClick}
+                    onAuxClick={onAuxClick}
+                    onContextMenu={onContextMenu}
+                    onVisible={onVisible}
+                    footerLeft={footerLeft}
+                    footerRight={footerRight}
+                    fallbackIcon={fallbackIcon}
+                    isDragging={isDragging}
+                    dragHandleProps={{ ...attributes, ...listeners }}
+                />
         </div>
     );
 }
