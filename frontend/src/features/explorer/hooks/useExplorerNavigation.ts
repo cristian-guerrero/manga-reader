@@ -27,6 +27,7 @@ interface UseExplorerNavigationOptions {
     navigate: (page: PageType, params?: Record<string, string>, activeMenuPageOverride?: PageType) => void;
     onTitleChange: (title: string) => void;
     onAutoPromote?: (parentPath: string, entryName: string, allDirNames: string[]) => void;
+    onSearchClear?: () => void;
 }
 
 export function useExplorerNavigation({
@@ -45,11 +46,13 @@ export function useExplorerNavigation({
     navigate,
     onTitleChange,
     onAutoPromote,
+    onSearchClear,
 }: UseExplorerNavigationOptions) {
     const { t } = useTranslation();
     const addTab = useTabStore((state) => state.addTab);
 
     const handleBack = useCallback(() => {
+        onSearchClear?.();
         if (pathHistory.length > 0) {
             const previous = pathHistory[pathHistory.length - 1];
             setPathHistory(prev => prev.slice(0, -1));
@@ -66,9 +69,10 @@ export function useExplorerNavigation({
                 useTabStore.getState().updateActiveTab({ title: t('explorer.title') || 'Explorer' });
             }
         }
-    }, [pathHistory, setPathHistory, setCurrentPath, setEntries, tabId, onTitleChange, t]);
+    }, [pathHistory, setPathHistory, setCurrentPath, setEntries, tabId, onTitleChange, t, onSearchClear]);
 
     const handleBreadcrumbClick = useCallback((path: string | null) => {
+        onSearchClear?.();
         if (path === null) {
             setCurrentPath(null);
             setPathHistory([]);
@@ -146,7 +150,7 @@ export function useExplorerNavigation({
             setCurrentPath(path);
             setEntries([]);
         }
-    }, [currentPath, baseFolders, setCurrentPath, setPathHistory, setEntries, tabId, onTitleChange, t]);
+    }, [currentPath, baseFolders, setCurrentPath, setPathHistory, setEntries, tabId, onTitleChange, t, onSearchClear]);
 
     const handleBreadcrumbAuxClick = useCallback((e: React.MouseEvent, path: string | null, name: string) => {
         if (e.button === 1) { // Middle click
@@ -189,6 +193,7 @@ export function useExplorerNavigation({
 
     const handleRemoveBaseFolder = useCallback(async (path: string, e: React.MouseEvent) => {
         e.stopPropagation();
+        onSearchClear?.();
         try {
             await AppAPI.removeBaseFolder(path);
             setCurrentPath(null);
@@ -198,7 +203,7 @@ export function useExplorerNavigation({
         } catch (error) {
             console.error("Failed to remove base folder", error);
         }
-    }, [setCurrentPath, setPathHistory, setEntries, loadBaseFolders]);
+    }, [setCurrentPath, setPathHistory, setEntries, loadBaseFolders, onSearchClear]);
 
     const handleOpenInViewer = useCallback(async (path: string, e: React.MouseEvent) => {
         e.stopPropagation();
@@ -228,12 +233,14 @@ export function useExplorerNavigation({
 
     const handleItemClick = useCallback(async (entry: ExplorerEntry | BaseFolder) => {
         if ('addedAt' in entry) {
+            onSearchClear?.();
             setPathHistory([]);
             setCurrentPath(entry.path);
             setEntries([]);
         } else {
             const e = entry as ExplorerEntry;
             if (e.isDirectory) {
+                onSearchClear?.();
                 if (currentPath) {
                     setPathHistory(prev => [...prev, currentPath]);
                     if (onAutoPromote) {
@@ -272,7 +279,7 @@ export function useExplorerNavigation({
                 }
             }
         }
-    }, [currentPath, pathHistory, entries, sortedEntries, setPathHistory, setExplorerState, navigate]);
+    }, [currentPath, pathHistory, entries, sortedEntries, setPathHistory, setExplorerState, navigate, onSearchClear]);
 
     const handleItemAuxClick = useCallback(async (e: React.MouseEvent, entry: ExplorerEntry | BaseFolder) => {
         if (e.button === 1) { // Middle click
