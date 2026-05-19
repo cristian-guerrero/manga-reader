@@ -91,6 +91,8 @@ func (r *SettingsRepository) Update(updates map[string]interface{}) error {
 			setStringField(r.settings, key, v)
 		case float64:
 			setNumericField(r.settings, key, v)
+		case int:
+			setNumericField(r.settings, key, float64(v))
 		case bool:
 			setBoolField(r.settings, key, v)
 		case map[string]interface{}:
