@@ -147,6 +147,7 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
     setExplorerState,
     navigate,
     onTitleChange: handleTitleChange,
+    onSearchClear: () => search.setSearchQuery(''),
     onAutoPromote: (parentPath, entryName, allDirNames) => {
       FolderOrderAPI.promoteToAutoOrder(parentPath, entryName, allDirNames).catch(err => {
         console.error('Failed to promote to auto order:', err);
