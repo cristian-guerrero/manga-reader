@@ -8,6 +8,12 @@ import (
 
 const settingsFile = "settings.json"
 
+// AlgorithmDownloadConfig represents per-algorithm download concurrency settings
+type AlgorithmDownloadConfig struct {
+	MaxParallelChapters int `json:"maxParallelChapters"`
+	MaxParallelImages   int `json:"maxParallelImages"`
+}
+
 // Settings represents the application settings
 type Settings struct {
 	// Language code (en, es, etc.)
@@ -64,6 +70,8 @@ type Settings struct {
 	SavedTabs string `json:"savedTabs"`
 	// Generate thumbnails for images
 	GenerateThumbnails bool `json:"generateThumbnails"`
+	// Per-algorithm download concurrency config
+	DownloadAlgorithmConfig map[string]AlgorithmDownloadConfig `json:"downloadAlgorithmConfig"`
 }
 
 // DefaultSettings returns the default settings
@@ -107,6 +115,30 @@ func DefaultSettings() *Settings {
 		RestoreTabs:          true,
 		SavedTabs:            "",
 		GenerateThumbnails:   true,
+		DownloadAlgorithmConfig: map[string]AlgorithmDownloadConfig{
+			"hitomi.la":        {MaxParallelChapters: 2, MaxParallelImages: 1},
+			"zonatmo":          {MaxParallelChapters: 3, MaxParallelImages: 1},
+			"mangadex.org":     {MaxParallelChapters: 3, MaxParallelImages: 1},
+			"nhentai.net":      {MaxParallelChapters: 2, MaxParallelImages: 1},
+			"nhentai.xxx":      {MaxParallelChapters: 2, MaxParallelImages: 1},
+			"nhentai.com":      {MaxParallelChapters: 2, MaxParallelImages: 1},
+			"e-hentai.org":     {MaxParallelChapters: 3, MaxParallelImages: 1},
+			"mangatoon.mobi":   {MaxParallelChapters: 3, MaxParallelImages: 1},
+			"imhentai.xxx":     {MaxParallelChapters: 2, MaxParallelImages: 1},
+			"imhentai.to":      {MaxParallelChapters: 2, MaxParallelImages: 1},
+			"manga18.club":     {MaxParallelChapters: 4, MaxParallelImages: 1},
+			"submanhwa.com":    {MaxParallelChapters: 3, MaxParallelImages: 1},
+			"hentaiforce.net":  {MaxParallelChapters: 2, MaxParallelImages: 1},
+			"hentaivox.com":    {MaxParallelChapters: 2, MaxParallelImages: 1},
+			"hentai2read.com":  {MaxParallelChapters: 4, MaxParallelImages: 1},
+			"lhentai.com":      {MaxParallelChapters: 2, MaxParallelImages: 1},
+			"nhentai.website":  {MaxParallelChapters: 2, MaxParallelImages: 1},
+			"hentairead.io":    {MaxParallelChapters: 2, MaxParallelImages: 1},
+			"3hentai.net":      {MaxParallelChapters: 1, MaxParallelImages: 1},
+			"lectorhentai.com": {MaxParallelChapters: 3, MaxParallelImages: 1},
+			"hentaifox.com":    {MaxParallelChapters: 2, MaxParallelImages: 1},
+			"nhentai.to":       {MaxParallelChapters: 2, MaxParallelImages: 1},
+		},
 	}
 }
 

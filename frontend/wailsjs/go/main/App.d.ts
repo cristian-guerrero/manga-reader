@@ -62,6 +62,8 @@ export function GetBaseFolders():Promise<Array<explorer.BaseFolderEntry>>;
 
 export function GetChapterNavigation(arg1:string):Promise<series.ChapterNavigation>;
 
+export function GetDownloadAlgorithmConfig():Promise<Record<string, persistence.AlgorithmDownloadConfig>>;
+
 export function GetDownloadHistory():Promise<Array<persistence.DownloadJob>>;
 
 export function GetExplorerRootViewMode():Promise<string>;
@@ -171,6 +173,8 @@ export function ResumeIncompleteDownloads(arg1:boolean):Promise<void>;
 export function SaveColorizedImage(arg1:string,arg2:string):Promise<string>;
 
 export function SaveColorizedImageAuto(arg1:string,arg2:string,arg3:string):Promise<string>;
+
+export function SaveDownloadAlgorithmConfig(arg1:Record<string, persistence.AlgorithmDownloadConfig>):Promise<void>;
 
 export function SaveImageOrder(arg1:string,arg2:Array<string>,arg3:Array<string>):Promise<void>;
 

@@ -178,6 +178,14 @@
       "clipboard": "Clipboard Monitor",
       "clipboardDesc": "Enable 'Auto Clipboard Monitoring' to automatically detect copied URLs from supported sites. Single chapters will auto-download from any page. Series require going to Downloads page to select chapters.",
       "supportedList": "Hitomi.la, Nhentai.net, Nhentai.xxx, ManhwaWeb, ZonaTMO, MangaDex, Hentaiera.com, IMHentai.xxx, Hentaivox.com, Manga18.club, Comics18.org, Hentaifc.com, ComicPorn.xxx, E-Hentai.org, Submanhwa.com, Hentaiforce.net"
+    },
+    "settings": {
+      "title": "Download Settings",
+      "parallelChapters": "Parallel Chapters",
+      "parallelImages": "Parallel Images per Chapter",
+      "save": "Save",
+      "cancel": "Cancel",
+      "saved": "Download settings saved"
     }
   },
   "settings": {

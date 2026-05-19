@@ -14,6 +14,7 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 	"unicode/utf8"
 
@@ -29,10 +30,11 @@ type Module struct {
 	activeJobs sync.Map // map[string]*activeJob
 
 	// Queue management
-	queueLock      sync.Mutex
-	queues         map[string][]*queuedJob // map[siteID]queue
-	activeCounts   map[string]int          // map[siteID]count
-	maxConcurrency map[string]int          // map[siteID]limit (0 = unlimited)
+	queueLock        sync.Mutex
+	queues           map[string][]*queuedJob // map[siteID]queue
+	activeCounts     map[string]int          // map[siteID]count
+	maxConcurrency   map[string]int          // map[siteID]limit for parallel chapters (0 = unlimited)
+	maxParallelImages map[string]int          // map[siteID]limit for parallel images per chapter
 }
 
 type activeJob struct {
@@ -45,36 +47,31 @@ type queuedJob struct {
 }
 
 func NewModule(pm *database.DownloaderRepository, sm *database.SettingsRepository, logger services.LoggerInterface) *Module {
+	settings := sm.Get()
+	algoConfig := settings.DownloadAlgorithmConfig
+	if algoConfig == nil {
+		algoConfig = persistence.DefaultSettings().DownloadAlgorithmConfig
+	}
+
+	maxConcurrency := make(map[string]int, len(algoConfig))
+	maxParallelImages := make(map[string]int, len(algoConfig))
+	for siteID, cfg := range algoConfig {
+		if cfg.MaxParallelChapters > 0 {
+			maxConcurrency[siteID] = cfg.MaxParallelChapters
+		}
+		if cfg.MaxParallelImages > 0 {
+			maxParallelImages[siteID] = cfg.MaxParallelImages
+		}
+	}
+
 	return &Module{
-		pm:           pm,
-		sm:           sm,
-		logger:       logger,
-		queues:       make(map[string][]*queuedJob),
-		activeCounts: make(map[string]int),
-		maxConcurrency: map[string]int{
-			"hitomi.la":        2,
-			"zonatmo":          3,
-			"mangadex.org":     3,
-			"nhentai.net":      2,
-			"nhentai.xxx":      2,
-			"nhentai.com":      2,
-			"e-hentai.org":     3,
-			"mangatoon.mobi":   3,
-			"imhentai.xxx":     2,
-			"imhentai.to":      2,
-			"manga18.club":     4,
-			"submanhwa.com":    3,
-			"hentaiforce.net":  2,
-			"hentaivox.com":    2,
-			"hentai2read.com":  4,
-			"lhentai.com":      2,
-			"nhentai.website":  2,
-			"hentairead.io":    2,
-			"3hentai.net":      1,
-			"lectorhentai.com": 3,
-			"hentaifox.com":   2,
-			"nhentai.to":      2,
-		},
+		pm:                pm,
+		sm:                sm,
+		logger:            logger,
+		queues:            make(map[string][]*queuedJob),
+		activeCounts:      make(map[string]int),
+		maxConcurrency:    maxConcurrency,
+		maxParallelImages: maxParallelImages,
 		algorithms: []DownloaderInterface{
 			&HitomiDownloader{},
 			&ManhwaWebDownloader{},
@@ -357,7 +354,6 @@ func (m *Module) StartDownload(url string, overrideSeries string, overrideChapte
 }
 
 func (m *Module) runDownload(job persistence.DownloadJob, info *SiteInfo) {
-	// Ensure we decrease active count and process next in queue when done
 	defer m.finalizeJob(job.Site)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -370,12 +366,10 @@ func (m *Module) runDownload(job persistence.DownloadJob, info *SiteInfo) {
 	settings := m.sm.Get()
 	basePath := settings.DownloadPath
 	if basePath == "" {
-		// Use app data dir / downloads
 		homeDir, _ := os.UserHomeDir()
 		basePath = filepath.Join(homeDir, ".manga-visor", "downloads")
 	}
 
-	// Folder structure: Site / Series / Chapter
 	safeSeries := sanitizeFilename(stripLeadingBrackets(info.SeriesName))
 	safeChapter := sanitizeFilename(stripLeadingBrackets(info.ChapterName))
 	downloadDir := filepath.Join(basePath, info.SiteID, safeSeries, safeChapter)
@@ -387,69 +381,110 @@ func (m *Module) runDownload(job persistence.DownloadJob, info *SiteInfo) {
 
 	m.pm.UpdateJob(job.ID, map[string]interface{}{"path": downloadDir})
 
+	maxParallel := m.maxParallelImages[job.Site]
+	if maxParallel < 1 {
+		maxParallel = 1
+	}
+
+	sem := make(chan struct{}, maxParallel)
+	var wg sync.WaitGroup
+	var completedPages int32
+	var hasFailed atomic.Bool
+	var mdRefreshed atomic.Bool
+
 	for i, img := range info.Images {
 		select {
 		case <-ctx.Done():
+			wg.Wait()
 			m.pm.UpdateJob(job.ID, map[string]interface{}{"status": persistence.StatusCancelled})
 			m.notifyUpdate()
 			return
 		default:
-			// Check if file already exists (Resume capability)
-			destFilename := sanitizeFilename(img.Filename)
-			if destFilename == "" {
-				destFilename = fmt.Sprintf("page_%04d", i+1)
-			}
-			destPath := filepath.Join(downloadDir, destFilename)
-			if fInfo, err := os.Stat(destPath); err == nil && fInfo.Size() > 0 {
-				if m.logger != nil {
-					m.logger.Debugf("[Downloader] Skipping existing file: %s", img.Filename)
-				}
-				m.pm.UpdateJob(job.ID, map[string]interface{}{"progress": i + 1})
-				m.notifyUpdate()
-				continue
-			}
+		}
 
-			// Add a small delay between requests to avoid rate limiting
-			if i > 0 && info.DownloadDelay > 0 {
-				select {
-				case <-ctx.Done():
-					m.pm.UpdateJob(job.ID, map[string]interface{}{"status": persistence.StatusCancelled})
-					m.notifyUpdate()
-					return
-				case <-time.After(info.DownloadDelay):
-					// Delay completed, continue
-				}
-			}
+		if hasFailed.Load() {
+			break
+		}
 
-			err := downloadFileWithContext(ctx, img.URL, destPath, img.Headers, img.SkipHeaders)
-			if err != nil {
-				// Check if it's a context cancellation
-				if err == context.Canceled || err == context.DeadlineExceeded {
-					m.pm.UpdateJob(job.ID, map[string]interface{}{"status": persistence.StatusCancelled})
-					m.notifyUpdate()
-					return
-				}
-				// For MangaDex, try refreshing the at-home server URLs on failure
-				if job.Site == "mangadex.org" && info.Extra != nil && info.Extra["chapterId"] != "" {
-					if refreshed := m.refreshMangaDexUrls(info); refreshed {
-						// Retry with fresh URLs
-						img = info.Images[i]
-						imageURL := img.URL
-						err = downloadFileWithContext(ctx, imageURL, destPath, img.Headers, img.SkipHeaders)
-						if err == nil {
-							m.pm.UpdateJob(job.ID, map[string]interface{}{"progress": i + 1})
-							m.notifyUpdate()
-							continue
-						}
-					}
-				}
-				// Retry is handled inside downloadFile, if it still fails, we fail the job
-				m.failJob(job.ID, fmt.Sprintf("Failed to download page %d: %v", i+1, err))
+		sem <- struct{}{}
+		wg.Add(1)
+
+		go func(idx int, imgData ImageDownload) {
+			defer wg.Done()
+			defer func() { <-sem }()
+
+			if hasFailed.Load() {
 				return
 			}
-			m.pm.UpdateJob(job.ID, map[string]interface{}{"progress": i + 1})
+
+			destFilename := sanitizeFilename(imgData.Filename)
+			if destFilename == "" {
+				destFilename = fmt.Sprintf("page_%04d", idx+1)
+			}
+			destPath := filepath.Join(downloadDir, destFilename)
+
+			if fInfo, err := os.Stat(destPath); err == nil && fInfo.Size() > 0 {
+				if m.logger != nil {
+					m.logger.Debugf("[Downloader] Skipping existing file: %s", imgData.Filename)
+				}
+				atomic.AddInt32(&completedPages, 1)
+				newProgress := int(atomic.LoadInt32(&completedPages))
+				m.pm.UpdateJob(job.ID, map[string]interface{}{"progress": newProgress})
+				m.notifyUpdate()
+				return
+			}
+
+			if info.DownloadDelay > 0 {
+				select {
+				case <-ctx.Done():
+					return
+				case <-time.After(info.DownloadDelay):
+				}
+			}
+
+			err := downloadFileWithContext(ctx, imgData.URL, destPath, imgData.Headers, imgData.SkipHeaders)
+			if err != nil {
+				if err == context.Canceled || err == context.DeadlineExceeded {
+					return
+				}
+				// For MangaDex, try refreshing the at-home server URLs once
+				if job.Site == "mangadex.org" && info.Extra != nil && info.Extra["chapterId"] != "" {
+					if !mdRefreshed.Load() {
+						mdRefreshed.Store(true)
+						m.refreshMangaDexUrls(info)
+					}
+					if mdRefreshed.Load() {
+						freshImg := info.Images[idx]
+						err = downloadFileWithContext(ctx, freshImg.URL, destPath, freshImg.Headers, freshImg.SkipHeaders)
+					}
+				}
+				if err != nil {
+					hasFailed.Store(true)
+					cancel()
+					m.failJob(job.ID, fmt.Sprintf("Failed to download page %d: %v", idx+1, err))
+					return
+				}
+			}
+
+			atomic.AddInt32(&completedPages, 1)
+			newProgress := int(atomic.LoadInt32(&completedPages))
+			m.pm.UpdateJob(job.ID, map[string]interface{}{"progress": newProgress})
 			m.notifyUpdate()
-		}
+		}(i, img)
+	}
+
+	wg.Wait()
+
+	if hasFailed.Load() {
+		return
+	}
+
+	select {
+	case <-ctx.Done():
+		m.pm.UpdateJob(job.ID, map[string]interface{}{"status": persistence.StatusCancelled})
+		m.notifyUpdate()
+		return
+	default:
 	}
 
 	// After download, check if we need to extract any archives
@@ -465,7 +500,6 @@ func (m *Module) runDownload(job persistence.DownloadJob, info *SiteInfo) {
 					m.logger.Errorf("[Downloader] Extraction failed: %v", err)
 				}
 			} else {
-				// Optionally delete the archive after extraction
 				os.Remove(archivePath)
 			}
 		}
@@ -782,6 +816,70 @@ func downloadFileWithContext(ctx context.Context, url string, path string, heade
 // downloadFile is kept for backward compatibility but now uses background context
 func downloadFile(url string, path string, headers map[string]string) error {
 	return downloadFileWithContext(context.Background(), url, path, headers, false)
+}
+
+// GetAlgorithmConfig returns the current per-algorithm download concurrency config
+func (m *Module) GetAlgorithmConfig() map[string]persistence.AlgorithmDownloadConfig {
+	m.queueLock.Lock()
+	defer m.queueLock.Unlock()
+
+	config := make(map[string]persistence.AlgorithmDownloadConfig)
+	for siteID := range m.maxConcurrency {
+		chapters := m.maxConcurrency[siteID]
+		images := m.maxParallelImages[siteID]
+		if chapters < 1 {
+			chapters = 1
+		}
+		if images < 1 {
+			images = 1
+		}
+		config[siteID] = persistence.AlgorithmDownloadConfig{
+			MaxParallelChapters: chapters,
+			MaxParallelImages:   images,
+		}
+	}
+	// Also include sites from maxParallelImages that might not be in maxConcurrency
+	for siteID := range m.maxParallelImages {
+		if _, ok := config[siteID]; !ok {
+			chapters := m.maxConcurrency[siteID]
+			images := m.maxParallelImages[siteID]
+			if chapters < 1 {
+				chapters = 1
+			}
+			if images < 1 {
+				images = 1
+			}
+			config[siteID] = persistence.AlgorithmDownloadConfig{
+				MaxParallelChapters: chapters,
+				MaxParallelImages:   images,
+			}
+		}
+	}
+	return config
+}
+
+// SaveAlgorithmConfig persists the per-algorithm download concurrency config
+// and applies it to the running module
+func (m *Module) SaveAlgorithmConfig(config map[string]persistence.AlgorithmDownloadConfig) error {
+	m.queueLock.Lock()
+	defer m.queueLock.Unlock()
+
+	for siteID, cfg := range config {
+		if cfg.MaxParallelChapters > 0 {
+			m.maxConcurrency[siteID] = cfg.MaxParallelChapters
+		} else {
+			delete(m.maxConcurrency, siteID)
+		}
+		if cfg.MaxParallelImages > 0 {
+			m.maxParallelImages[siteID] = cfg.MaxParallelImages
+		} else {
+			delete(m.maxParallelImages, siteID)
+		}
+	}
+
+	settings := m.sm.Get()
+	settings.DownloadAlgorithmConfig = config
+	return m.sm.Save(settings)
 }
 
 // refreshMangaDexUrls refreshes the at-home server URLs for a MangaDex download
