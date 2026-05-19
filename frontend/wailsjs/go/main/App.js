@@ -110,6 +110,10 @@ export function GetChapterNavigation(arg1) {
   return window['go']['main']['App']['GetChapterNavigation'](arg1);
 }
 
+export function GetDownloadAlgorithmConfig() {
+  return window['go']['main']['App']['GetDownloadAlgorithmConfig']();
+}
+
 export function GetDownloadHistory() {
   return window['go']['main']['App']['GetDownloadHistory']();
 }
@@ -328,6 +332,10 @@ export function SaveColorizedImage(arg1, arg2) {
 
 export function SaveColorizedImageAuto(arg1, arg2, arg3) {
   return window['go']['main']['App']['SaveColorizedImageAuto'](arg1, arg2, arg3);
+}
+
+export function SaveDownloadAlgorithmConfig(arg1) {
+  return window['go']['main']['App']['SaveDownloadAlgorithmConfig'](arg1);
 }
 
 export function SaveImageOrder(arg1, arg2, arg3) {

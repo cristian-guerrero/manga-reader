@@ -181,4 +181,36 @@ export class DownloadAPI extends BaseAPI {
             // Silently fail - file manager opening failure shouldn't break the app
         });
     }
+
+    /**
+     * Get download algorithm concurrency config
+     */
+    static async getDownloadAlgorithmConfig(): Promise<Record<string, { maxParallelChapters: number; maxParallelImages: number }>> {
+        return this.call(
+            async () => {
+                const result = await (AppBackend as any).GetDownloadAlgorithmConfig();
+                return (result as Record<string, { maxParallelChapters: number; maxParallelImages: number }>) || {};
+            },
+            {
+                component: 'DownloadAPI',
+                action: 'getDownloadAlgorithmConfig',
+                defaultValue: {}
+            }
+        );
+    }
+
+    /**
+     * Save download algorithm concurrency config
+     */
+    static async saveDownloadAlgorithmConfig(config: Record<string, { maxParallelChapters: number; maxParallelImages: number }>): Promise<void> {
+        return this.callVoid(
+            async () => {
+                await (AppBackend as any).SaveDownloadAlgorithmConfig(config);
+            },
+            {
+                component: 'DownloadAPI',
+                action: 'saveDownloadAlgorithmConfig'
+            }
+        );
+    }
 }

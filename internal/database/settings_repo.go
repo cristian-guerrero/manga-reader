@@ -105,6 +105,22 @@ func (r *SettingsRepository) Update(updates map[string]interface{}) error {
 				}
 				r.settings.EnabledMenuItems = menuMap
 			}
+			if key == "downloadAlgorithmConfig" {
+				cfg := make(map[string]persistence.AlgorithmDownloadConfig)
+				for siteID, cv := range v {
+					if cvMap, ok := cv.(map[string]interface{}); ok {
+						ac := persistence.AlgorithmDownloadConfig{}
+						if ch, ok := cvMap["maxParallelChapters"].(float64); ok {
+							ac.MaxParallelChapters = int(ch)
+						}
+						if img, ok := cvMap["maxParallelImages"].(float64); ok {
+							ac.MaxParallelImages = int(img)
+						}
+						cfg[siteID] = ac
+					}
+				}
+				r.settings.DownloadAlgorithmConfig = cfg
+			}
 		}
 	}
 
@@ -148,6 +164,11 @@ func (r *SettingsRepository) saveNow() error {
 	if r.settings.EnabledMenuItems != nil {
 		b, _ := json.Marshal(r.settings.EnabledMenuItems)
 		data["enabledMenuItems"] = string(b)
+	}
+
+	if len(r.settings.DownloadAlgorithmConfig) > 0 {
+		b, _ := json.Marshal(r.settings.DownloadAlgorithmConfig)
+		data["downloadAlgorithmConfig"] = string(b)
 	}
 
 	tx, err := r.db.db.Begin()
@@ -247,6 +268,8 @@ func setField(s *persistence.Settings, key, value string) {
 		s.GenerateThumbnails = value == "true"
 	case "enabledMenuItems":
 		json.Unmarshal([]byte(value), &s.EnabledMenuItems)
+	case "downloadAlgorithmConfig":
+		json.Unmarshal([]byte(value), &s.DownloadAlgorithmConfig)
 	}
 }
 

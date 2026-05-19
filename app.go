@@ -687,6 +687,14 @@ func (a *App) ResumeIncompleteDownloads(autoResume bool) error {
 	return a.downloaderMod.ResumeIncompleteDownloads(autoResume)
 }
 
+func (a *App) GetDownloadAlgorithmConfig() map[string]persistence.AlgorithmDownloadConfig {
+	return a.downloaderMod.GetAlgorithmConfig()
+}
+
+func (a *App) SaveDownloadAlgorithmConfig(config map[string]persistence.AlgorithmDownloadConfig) error {
+	return a.downloaderMod.SaveAlgorithmConfig(config)
+}
+
 // OpenInFileManager opens a path in the system's file manager
 func (a *App) OpenInFileManager(path string) error {
 	var cmd *exec.Cmd

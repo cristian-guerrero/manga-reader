@@ -59,7 +59,7 @@ Wails v2 (Go 1.24 backend, React 18 + TypeScript + Vite frontend). State: Zustan
 - **ContextMenu**: Reusable right-click menu at `components/ui/ContextMenu.tsx` using `ContextMenuItem` type from `@types`. Used in Explorer for folder actions (Open in Colorizer, Open in File Manager). Theming via CSS variables.
 
 ## Downloader Module
-- 22 supported sites with site-specific concurrency limits in `internal/modules/downloader/module.go:53-70`
+- 22 supported sites with per-algorithm concurrency config (parallel chapters + parallel images per chapter) stored in SQLite settings and editable via settings dialog in download page (gear icon)
 - Clipboard monitoring triggers auto-detection (`internal/modules/downloader/clipboard.go`)
 - Sites detected by URL patterns, each with dedicated `internal/modules/downloader/*.go` file
 
