@@ -258,7 +258,8 @@
     "automaticOrder": "Automático",
     "openInFileManager": "Abrir en Explorador de Archivos",
     "sendToOneShot": "Abrir en One Shot",
-    "sendToSeries": "Abrir en Series"
+    "sendToSeries": "Abrir en Series",
+    "gridItemSize": "Tamaño de Ítem"
   },
   "themes": {
     "dark": "Oscuro",

@@ -86,7 +86,7 @@ func NewApp() *App {
 	lMod := library.NewModule(container.Library, container.FileLoader, container.URLBuilder, container.Logger)
 	sMod := series.NewModule(container.Series, container.FileLoader, container.URLBuilder, container.Logger)
 	hMod := history.NewModule(container.History, container.Settings)
-	eMod := explorer.NewModule(container.FileLoader, container.URLBuilder, container.Logger, container.Explorer, container.FolderOrders, container.FolderViewModes)
+	eMod := explorer.NewModule(container.FileLoader, container.URLBuilder, container.Logger, container.Explorer, container.FolderOrders, container.FolderViewModes, container.FolderGridSizes)
 	dMod := downloader.NewModule(container.Downloader, container.Settings, container.Logger)
 
 	// Dependency injection (Circular dependency resolution)
@@ -450,6 +450,14 @@ func (a *App) GetFolderViewMode(parentPath string) string {
 
 func (a *App) SetFolderViewMode(parentPath string, viewMode string) error {
 	return a.explorerMod.SetFolderViewMode(parentPath, viewMode)
+}
+
+func (a *App) GetFolderGridSize(parentPath string) int {
+	return a.explorerMod.GetFolderGridSize(parentPath)
+}
+
+func (a *App) SetFolderGridSize(parentPath string, gridSize int) error {
+	return a.explorerMod.SetFolderGridSize(parentPath, gridSize)
 }
 
 // =============================================================================

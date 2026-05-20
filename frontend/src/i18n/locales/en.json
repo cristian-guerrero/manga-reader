@@ -262,7 +262,8 @@
     "automaticOrder": "Automatic",
     "openInFileManager": "Open in File Manager",
     "sendToOneShot": "Open in One Shot",
-    "sendToSeries": "Open in Series"
+    "sendToSeries": "Open in Series",
+    "gridItemSize": "Item Size"
   },
   "themes": {
     "dark": "Dark",

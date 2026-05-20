@@ -74,6 +74,8 @@ export function GetExplorerSortPreferences():Promise<Record<string, database.Exp
 
 export function GetFolderAutoOrder(arg1:string):Promise<Array<string>>;
 
+export function GetFolderGridSize(arg1:string):Promise<number>;
+
 export function GetFolderInfo(arg1:string):Promise<persistence.FolderInfo>;
 
 export function GetFolderInfoShallow(arg1:string):Promise<persistence.FolderInfo>;
@@ -199,6 +201,8 @@ export function SetExplorerRootViewMode(arg1:string):Promise<void>;
 export function SetExplorerSortPreference(arg1:string,arg2:string,arg3:string):Promise<void>;
 
 export function SetFolderAutoOrder(arg1:string,arg2:Array<string>,arg3:Array<string>):Promise<void>;
+
+export function SetFolderGridSize(arg1:string,arg2:number):Promise<void>;
 
 export function SetFolderOrder(arg1:string,arg2:Array<string>,arg3:Array<string>):Promise<void>;
 

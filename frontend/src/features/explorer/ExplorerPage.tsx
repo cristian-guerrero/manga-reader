@@ -172,8 +172,8 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
     }
   }, [sorting.sortBy, sorting.sortOrder, explorerStateHook.currentPath, loading.loadDirectory]);
 
-  // Use view mode hook
-  const { viewMode, setViewMode } = useExplorerView(explorerStateHook.currentPath);
+  // Use view mode hook (includes grid item size)
+  const { viewMode, setViewMode, gridItemSize, setGridItemSize } = useExplorerView(explorerStateHook.currentPath);
 
   // Use drag-and-drop hook (for custom folder ordering)
   const dnd = useExplorerDragAndDrop({
@@ -404,15 +404,35 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
         )}
       </div>
 
-      {/* Search Bar */}
+      {/* Search Bar & Grid Size Slider */}
       {((!explorerStateHook.currentPath && loading.baseFolders.length > 0) ||
         (explorerStateHook.currentPath && loading.entries.length > 0)) && (
-        <div className="mb-4">
+        <div className="mb-4 flex items-center gap-4">
           <SearchBar
             placeholder={t("explorer.searchPlaceholder") || "Search by name..."}
             onSearch={search.setSearchQuery}
             className="max-w-md"
           />
+          {viewMode === 'grid' && explorerStateHook.currentPath && (
+            <div className="flex items-center gap-2 ml-auto">
+              <span className="text-xs text-text-secondary whitespace-nowrap">
+                {t('explorer.gridItemSize')}
+              </span>
+              <input
+                type="range"
+                min={120}
+                max={400}
+                step={10}
+                value={gridItemSize}
+                onChange={(e) => setGridItemSize(Number(e.target.value))}
+                onDoubleClick={() => setGridItemSize(200)}
+                className="w-24 h-1.5 bg-surface-tertiary rounded-full appearance-none cursor-pointer accent-accent [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-accent [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:cursor-pointer"
+              />
+              <span className="text-xs text-text-secondary w-8 text-right tabular-nums">
+                {gridItemSize}px
+              </span>
+            </div>
+          )}
         </div>
       )}
 
@@ -495,6 +515,7 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
             directoryEntries={dnd.directoryEntries}
             sensors={sensors}
             viewMode={viewMode}
+            gridItemSize={gridItemSize}
             onDragStart={dnd.handleDragStart}
             onDragEnd={dnd.handleDragEnd}
             activeEntry={dnd.activeEntry}

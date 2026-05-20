@@ -134,6 +134,10 @@ export function GetFolderAutoOrder(arg1) {
   return window['go']['main']['App']['GetFolderAutoOrder'](arg1);
 }
 
+export function GetFolderGridSize(arg1) {
+  return window['go']['main']['App']['GetFolderGridSize'](arg1);
+}
+
 export function GetFolderInfo(arg1) {
   return window['go']['main']['App']['GetFolderInfo'](arg1);
 }
@@ -384,6 +388,10 @@ export function SetExplorerSortPreference(arg1, arg2, arg3) {
 
 export function SetFolderAutoOrder(arg1, arg2, arg3) {
   return window['go']['main']['App']['SetFolderAutoOrder'](arg1, arg2, arg3);
+}
+
+export function SetFolderGridSize(arg1, arg2) {
+  return window['go']['main']['App']['SetFolderGridSize'](arg1, arg2);
 }
 
 export function SetFolderOrder(arg1, arg2, arg3) {
