@@ -101,19 +101,6 @@ jobs:
       - name: Checkout del código
         uses: actions/checkout@v4
 
-      - name: Determinar tag del release
-        id: set-tag
-        shell: bash
-        run: |
-          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
-            echo "release_tag=${{ github.ref_name }}" >> $GITHUB_OUTPUT
-            echo "release_title=${{ github.ref_name }}" >> $GITHUB_OUTPUT
-          else
-            SHORT_SHA="${GITHUB_SHA::7}"
-            echo "release_tag=latest-${SHORT_SHA}" >> $GITHUB_OUTPUT
-            echo "release_title=Latest-${SHORT_SHA}" >> $GITHUB_OUTPUT
-          fi
-
       - name: Descargar artifacts
         uses: actions/download-artifact@v4
         with:
@@ -128,19 +115,35 @@ jobs:
       - name: Listar archivos
         run: ls -la dist/
 
-      - name: Crear Release
+      - name: Publicar Release
         shell: bash
         run: |
-          RELEASE_TAG="${{ steps.set-tag.outputs.release_tag }}"
-          RELEASE_TITLE="${{ steps.set-tag.outputs.release_title }}"
-
-          # Usar el mensaje del commit como notas
           git log -1 --format="%s" > /tmp/release-notes.txt
 
-          echo "Creando release: $RELEASE_TAG"
-          gh release create "$RELEASE_TAG" \
-            --title "$RELEASE_TITLE" \
-            --notes-file /tmp/release-notes.txt \
-            dist/*
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            # Release versionado: crear SIN assets (1 paso, como llama.cpp)
+            TAG="${{ github.ref_name }}"
+            echo "Creando release: $TAG"
+            gh release create "$TAG" \
+              --title "$TAG" \
+              --notes-file /tmp/release-notes.txt
+            gh release upload "$TAG" dist/* --clobber
+          else
+            # Nightly build — un solo release actualizado in-place
+            echo "Actualizando nightly build..."
+
+            if gh release view nightly >/dev/null 2>&1; then
+              gh release upload nightly dist/* --clobber
+              gh release edit nightly --title "Nightly Build" --notes-file /tmp/release-notes.txt
+              git tag -f nightly
+              git push -f origin nightly
+            else
+              # Crear SIN assets primero (1 paso, evita draft→publish)
+              gh release create nightly \
+                --title "Nightly Build" \
+                --notes-file /tmp/release-notes.txt
+              gh release upload nightly dist/* --clobber
+            fi
+          fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
