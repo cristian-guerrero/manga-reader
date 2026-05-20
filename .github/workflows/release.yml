@@ -126,14 +126,6 @@ jobs:
           
           echo "Compilación completada exitosamente"
           
-          # Generate checksums
-          cd build/bin
-          if [ "${{ matrix.os }}" == "macos-latest" ]; then
-            sha256sum *.zip > checksums.txt 2>/dev/null || true
-          else
-            sha256sum * > checksums.txt 2>/dev/null || true
-          fi
-          cd ../../
           if [ "${{ matrix.os }}" == "macos-latest" ]; then
             echo "Procesando archivo .app para macOS..."
             cd build/bin
@@ -152,16 +144,25 @@ jobs:
           echo "Buscando .app:"
           find build/bin -maxdepth 1 -name "*.app" -type d
 
+      - name: Generar checksums
+        shell: bash
+        run: |
+          cd build/bin
+          SHASUM=$(command -v sha256sum || command -v shasum || echo "")
+          if [ -n "$SHASUM" ]; then
+            if [ "${{ matrix.os }}" == "macos-latest" ]; then
+              $SHASUM -a 256 *.zip > checksums.txt 2>/dev/null || true
+            else
+              $SHASUM * > checksums.txt 2>/dev/null || true
+            fi
+          fi
+          cd ../../
+
       - name: Subir archivos al Release
         shell: bash
         run: |
           RELEASE_TAG="${{ needs.create-release.outputs.release_tag }}"
           echo "Subiendo archivos al release: $RELEASE_TAG"
-          
-          # Subir checksums
-          if [ -f "build/bin/checksums.txt" ]; then
-            gh release upload "$RELEASE_TAG" build/bin/checksums.txt --clobber
-          fi
           
           # Subir archivos según la plataforma
           if [ "${{ matrix.os }}" == "macos-latest" ]; then
