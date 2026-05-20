@@ -150,6 +150,16 @@ func (s *Service) DownloadUpdate(info *UpdateInfo) error {
 	return nil
 }
 
+func (s *Service) WasJustUpdated() bool {
+	markerPath := filepath.Join(s.dataDir, ".updated-marker")
+	data, err := os.ReadFile(markerPath)
+	if err != nil {
+		return false
+	}
+	os.Remove(markerPath)
+	return strings.TrimSpace(string(data)) == version.Version
+}
+
 func (s *Service) ApplyUpdate() error {
 	exe, err := os.Executable()
 	if err != nil {
@@ -173,6 +183,10 @@ func (s *Service) ApplyUpdate() error {
 		return fmt.Errorf("no downloaded binary found")
 	}
 
+	if runtime.GOOS == "windows" {
+		return s.applyUpdateWindows(exe, newBinary)
+	}
+
 	oldBinary := exe + ".old"
 	if err := os.Rename(exe, oldBinary); err != nil {
 		return fmt.Errorf("rename current -> old: %w", err)
@@ -193,6 +207,10 @@ func (s *Service) ApplyUpdate() error {
 	os.RemoveAll(tmpDir)
 
 	s.logUpdate()
+	if s.pendingVersion != "" {
+		markerPath := filepath.Join(s.dataDir, ".updated-marker")
+		os.WriteFile(markerPath, []byte(s.pendingVersion), 0644)
+	}
 
 	return nil
 }

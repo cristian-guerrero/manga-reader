@@ -61,4 +61,13 @@ export class UpdaterAPI extends BaseAPI {
       { component: 'UpdaterAPI', action: 'isUpdatePending' }
     );
   }
+
+  static async wasJustUpdated(): Promise<boolean> {
+    return this.callOrFalse(
+      async () => {
+        return await AppBackend.WasJustUpdated();
+      },
+      { component: 'UpdaterAPI', action: 'wasJustUpdated' }
+    );
+  }
 }

@@ -1378,3 +1378,7 @@ func (a *App) GetCurrentVersion() string {
 func (a *App) IsUpdatePending() bool {
 	return false
 }
+
+func (a *App) WasJustUpdated() bool {
+	return a.updaterSvc.WasJustUpdated()
+}

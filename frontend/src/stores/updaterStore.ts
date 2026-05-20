@@ -26,9 +26,10 @@ export const useUpdaterStore = create<UpdaterStoreState>((set, get) => ({
   updatedRecently: false,
 
   init: async () => {
-    const [version, state] = await Promise.all([
+    const [version, state, justUpdated] = await Promise.all([
       UpdaterAPI.getCurrentVersion(),
       UpdaterAPI.getUpdateState(),
+      UpdaterAPI.wasJustUpdated(),
     ]);
 
     set({
@@ -36,7 +37,7 @@ export const useUpdaterStore = create<UpdaterStoreState>((set, get) => ({
       updateState: state || { pending: false, pendingVersion: '', downloadedAt: '' },
     });
 
-    if (version && version !== 'dev') {
+    if (justUpdated) {
       set({ updatedRecently: true });
       setTimeout(() => set({ updatedRecently: false }), 5000);
     }
