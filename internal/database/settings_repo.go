@@ -16,6 +16,12 @@ type SettingsRepository struct {
 	tmMu      sync.Mutex
 }
 
+func (r *SettingsRepository) SetDB(db *Database) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.db = db
+}
+
 func NewSettingsRepository(db *Database) *SettingsRepository {
 	r := &SettingsRepository{
 		db:       db,
@@ -171,6 +177,7 @@ func (r *SettingsRepository) saveNow() error {
 		"autoUpdate":            fmt.Sprintf("%t", r.settings.AutoUpdate),
 		"updateChannel":         r.settings.UpdateChannel,
 		"savedTabs":             r.settings.SavedTabs,
+		"activeLibraryId":       r.settings.ActiveLibraryID,
 	}
 
 	if len(r.settings.ThemeAccents) > 0 {
@@ -289,6 +296,8 @@ func setField(s *persistence.Settings, key, value string) {
 		s.AutoUpdate = value == "true"
 	case "updateChannel":
 		s.UpdateChannel = value
+	case "activeLibraryId":
+		s.ActiveLibraryID = value
 	case "enabledMenuItems":
 		json.Unmarshal([]byte(value), &s.EnabledMenuItems)
 	case "themeAccents":

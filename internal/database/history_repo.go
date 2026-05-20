@@ -105,6 +105,12 @@ func (r *HistoryRepository) Clear() error {
 	return err
 }
 
+func (r *HistoryRepository) SetDB(db *Database) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.db = db
+}
+
 func (r *HistoryRepository) Load() error {
 	r.mu.Lock()
 	defer r.mu.Unlock()

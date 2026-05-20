@@ -5,7 +5,7 @@ import { Tooltip } from '../ui/Tooltip';
 
 // Icons
 interface NavItem {
-    id: 'home' | 'explorer' | 'history' | 'oneShot' | 'series' | 'download' | 'colorizer' | 'settings';
+    id: 'home' | 'explorer' | 'history' | 'oneShot' | 'series' | 'download' | 'colorizer' | 'settings' | 'library-manager';
     icon: JSX.Element;
     labelKey: string;
 }
@@ -78,6 +78,14 @@ const ColorizerIcon = () => (
         <path d="M8 12h8" />
     </svg>
 );
+const LibrariesIcon = () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+        <path d="M12 6v7" />
+        <path d="M9 9h6" />
+    </svg>
+);
 
 const navItems: NavItem[] = [
     { id: 'home', icon: <HomeIcon />, labelKey: 'navigation.home' },
@@ -87,6 +95,7 @@ const navItems: NavItem[] = [
     { id: 'series', icon: <SeriesIcon />, labelKey: 'navigation.series' },
     { id: 'download', icon: <DownloadIcon />, labelKey: 'navigation.download' },
     { id: 'colorizer', icon: <ColorizerIcon />, labelKey: 'navigation.colorizer' },
+    { id: 'library-manager', icon: <LibrariesIcon />, labelKey: 'navigation.libraryManager' },
     { id: 'settings', icon: <SettingsIcon />, labelKey: 'navigation.settings' },
 ];
 

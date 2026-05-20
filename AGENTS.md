@@ -21,14 +21,34 @@ Wails v2 (Go 1.24 backend, React 18 + TypeScript + Vite frontend). State: Zustan
 - **Go is single source of truth**: No localStorage, no IndexedDB, no frontend defaults. All state lives in Go SQLite, exposed through Wails-bound methods. Frontend calls backend for **every** preference (sort, view mode, tabs, viewer state). Backend always returns defaults when nothing saved. Frontend Zustand stores are ephemeral UI state only — never pre-seed defaults, never persist to IndexedDB/localStorage. If a value needs to survive restart, add a backend repository method.
 
 ## Data Storage
-`~/.manga-visor/` (Windows: `%USERPROFILE%\.manga-visor\`). SQLite database: `manga-visor.db`. Cache: `cache/`, downloads: `downloads/`, temp: `temp/`.
+`~/.manga-visor/` (Windows: `%USERPROFILE%\.manga-visor\`). Each library is a fully self-contained SQLite database. A JSON file (`libraries.json`) serves as the library registry.
+
+```
+~/.manga-visor/
+├── libraries.json          ← Registry: list of libraries + active library ID
+├── manga-visor.db          ← Default library
+├── library__<name>.db      ← Additional libraries
+├── cache/
+├── downloads/
+└── temp/
+```
 
 ### Database (`internal/database/`)
 - **Engine**: `modernc.org/sqlite` (pure Go, no CGo)
-- **Schema**: 14 tables (`settings`, `explorer_folders`, `library_entries`, `series_entries`, `series_chapters`, `history`, `download_jobs`, `tabs`, `image_orders`, `folder_orders`, `folder_view_modes`, `viewer_states`, `ui_preferences`, `schema_version`)
-- **Migration**: Auto-migrates from legacy JSON files on first startup
+- **Each `.db`** has a `fullSchema` with all tables: `settings`, `ui_preferences`, `explorer_folders`, `library_entries`, `series_entries`, `series_chapters`, `history`, `download_jobs`, `tabs`, `image_orders`, `folder_orders`, `folder_view_modes`, `folder_grid_sizes`, `viewer_states`, `schema_version`
+- **Migration**: Auto-migrates from legacy JSON files on first startup (only in default library)
 - **Each entity** has a dedicated repository file (e.g., `settings_repo.go`, `history_repo.go`) with `sync.RWMutex` + in-memory cache + write-through to SQLite
-- **UIPreferencesRepository**: Central store for all UI preferences formerly in localStorage (sort modes, view modes)
+- **All repos have `SetDB()`** — when switching libraries, the container calls `SetDB()` + `Load()` on every repository to point to the new library's database
+- **Settings and UI prefs are per-library**, so each library can have its own theme, sidebar visibility, viewer mode, etc.
+- **Library registry** (`internal/modules/librarymanager/`) manages `libraries.json` — no `libraries` SQLite table
+
+### Library Manager (`internal/modules/librarymanager/`)
+- Manages `libraries.json` with the list of registered libraries and the active library ID
+- `EnsureDefault()` — creates default entry if JSON doesn't exist (uses legacy `manga-visor.db` if found)
+- `Create(name, currentDB)` — creates a new `.db`, copies settings/ui_preferences from current DB
+- `Delete(id)` — removes from JSON registry only (`.db` file preserved)
+- `OpenLibrary(path)` — copies an external `.db` into the data directory and registers it
+- `GetActiveID()` / `SetActiveID()` — get/set the active library ID in JSON
 
 ### Folder Order (Custom & Auto Explorer Sorting)
 - Stored in `folder_orders` SQLite table via `internal/database/folder_orders_repo.go`
@@ -45,7 +65,8 @@ Wails v2 (Go 1.24 backend, React 18 + TypeScript + Vite frontend). State: Zustan
 - `GetHistoryViewMode()` → default `list`
 - `GetExplorerRootViewMode()` → default `grid`
 - `GetFolderViewMode(path)` → default `grid`
-- `GetTabs()`, `SaveTabs()` — tabs persistence via backend
+- `GetTabs()`, `SaveTabs()` — tabs persistence via backend (per-library)
+- **Library switching** — frontend listens to `library_switched` event via Wails runtime and re-fetches settings + tabs from the new library's database
 
 ## Conventions
 - **Commits**: English only, conventional format (`type: description`), no Spanish characters (see `.cursorrules`)

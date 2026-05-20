@@ -17,7 +17,7 @@ export function GridContainer({ children, className = '', gap = 'md', variant = 
 
     const gridStyle: React.CSSProperties = {
         gridTemplateColumns: `repeat(auto-fill, ${itemWidth}px)`,
-        justifyContent: 'start',
+        justifyContent: 'center',
     };
 
     const mobileClass = variant === 'thumbnails' ? 'grid-cols-2' : 'grid-cols-1';

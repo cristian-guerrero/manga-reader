@@ -15,6 +15,12 @@ type FolderOrdersRepository struct {
 	mu     sync.RWMutex
 }
 
+func (r *FolderOrdersRepository) SetDB(db *Database) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.db = db
+}
+
 func NewFolderOrdersRepository(db *Database) *FolderOrdersRepository {
 	r := &FolderOrdersRepository{db: db, orders: make(map[string]persistence.FolderOrder)}
 	if err := r.Load(); err != nil {

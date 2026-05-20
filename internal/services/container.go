@@ -2,8 +2,10 @@ package services
 
 import (
 	"context"
+	"fmt"
 	"manga-visor/internal/database"
 	"manga-visor/internal/fileloader"
+	"manga-visor/internal/modules/librarymanager"
 	"manga-visor/internal/thumbnails"
 	"os"
 	"path/filepath"
@@ -11,19 +13,21 @@ import (
 
 type Container struct {
 	// Core Services
-	FileLoader  *fileloader.FileLoader
-	ThumbGen    *thumbnails.Generator
-	ImageServer *fileloader.ImageServer
-	URLBuilder  *URLBuilder
-	Logger      *Logger
+	FileLoader     *fileloader.FileLoader
+	ThumbGen       *thumbnails.Generator
+	ImageServer    *fileloader.ImageServer
+	URLBuilder     *URLBuilder
+	Logger         *Logger
+	LibraryManager *librarymanager.Module
 
-	// Database
+	// Active Database (the currently open library DB containing ALL data)
 	DB *database.Database
 
-	// Persistence Repositories
+	// All Repositories (point to the active DB, switched together)
 	Settings        *database.SettingsRepository
-	History         *database.HistoryRepository
+	UIPreferences   *database.UIPreferencesRepository
 	Library         *database.LibraryRepository
+	History         *database.HistoryRepository
 	Series          *database.SeriesRepository
 	Explorer        *database.ExplorerRepository
 	Orders          *database.ImageOrdersRepository
@@ -33,7 +37,6 @@ type Container struct {
 	Downloader      *database.DownloaderRepository
 	Tabs            *database.TabsRepository
 	ViewerStates    *database.ViewerStatesRepository
-	UIPreferences   *database.UIPreferencesRepository
 
 	ctx context.Context
 }
@@ -48,14 +51,29 @@ func NewContainer() *Container {
 
 	dataDir := getDataDir()
 
-	db, err := database.New(dataDir)
-	if err != nil {
-		logger.Errorf("Failed to initialize database: %v", err)
+	// Initialize the library registry (JSON file)
+	libManager := librarymanager.NewModule(dataDir)
+
+	// Ensure default library entry exists in the registry
+	if err := libManager.EnsureDefault(); err != nil {
+		logger.Errorf("Failed to ensure default library: %v", err)
 	}
 
+	// Open the active library database
+	activeLib := libManager.Get(libManager.GetActiveID())
+	if activeLib == nil {
+		activeLib = libManager.GetDefault()
+	}
+	db, err := database.NewLibraryDB(dataDir, activeLib.Filename)
+	if err != nil {
+		logger.Errorf("Failed to open library database: %v", err)
+	}
+
+	// Create ALL repos pointing to the one active DB
 	settings := database.NewSettingsRepository(db)
-	history := database.NewHistoryRepository(db)
+	uiPrefs := database.NewUIPreferencesRepository(db)
 	library := database.NewLibraryRepository(db)
+	history := database.NewHistoryRepository(db)
 	series := database.NewSeriesRepository(db)
 	explorer := database.NewExplorerRepository(db)
 	orders := database.NewImageOrdersRepository(db)
@@ -65,7 +83,6 @@ func NewContainer() *Container {
 	downloader := database.NewDownloaderRepository(db)
 	tabs := database.NewTabsRepository(db)
 	viewerStates := database.NewViewerStatesRepository(db)
-	uiPrefs := database.NewUIPreferencesRepository(db)
 
 	imageServer := fileloader.NewImageServer(fileLoader, thumbGen, loggerAdapter, func() bool {
 		return settings.Get().GenerateThumbnails
@@ -77,10 +94,12 @@ func NewContainer() *Container {
 		ImageServer:     imageServer,
 		URLBuilder:      urlBuilder,
 		Logger:          logger,
+		LibraryManager:  libManager,
 		DB:              db,
 		Settings:        settings,
-		History:         history,
+		UIPreferences:   uiPrefs,
 		Library:         library,
+		History:         history,
 		Series:          series,
 		Explorer:        explorer,
 		Orders:          orders,
@@ -90,7 +109,6 @@ func NewContainer() *Container {
 		Downloader:      downloader,
 		Tabs:            tabs,
 		ViewerStates:    viewerStates,
-		UIPreferences:   uiPrefs,
 	}
 }
 
@@ -117,6 +135,75 @@ func (c *Container) Shutdown() {
 			c.Logger.Errorf("Error closing database: %v", err)
 		}
 	}
+}
+
+// SwitchLibrary switches to a different library database
+func (c *Container) SwitchLibrary(libID string) error {
+	lib := c.LibraryManager.Get(libID)
+	if lib == nil {
+		return fmt.Errorf("library not found: %s", libID)
+	}
+
+	newDB, err := database.NewLibraryDB(c.DB.DataDir(), lib.Filename)
+	if err != nil {
+		return fmt.Errorf("open library database: %w", err)
+	}
+
+	// Close previous DB
+	oldDB := c.DB
+	c.DB = newDB
+
+	// Switch ALL repos to new DB
+	c.Settings.SetDB(newDB)
+	c.UIPreferences.SetDB(newDB)
+	c.Library.SetDB(newDB)
+	c.History.SetDB(newDB)
+	c.Series.SetDB(newDB)
+	c.Explorer.SetDB(newDB)
+	c.Orders.SetDB(newDB)
+	c.FolderOrders.SetDB(newDB)
+	c.FolderViewModes.SetDB(newDB)
+	c.FolderGridSizes.SetDB(newDB)
+	c.Downloader.SetDB(newDB)
+	c.Tabs.SetDB(newDB)
+	c.ViewerStates.SetDB(newDB)
+
+	// Reload all repos from new DB
+	repos := []struct {
+		name string
+		load func() error
+	}{
+		{"settings", c.Settings.Load},
+		{"library", c.Library.Load},
+		{"history", c.History.Load},
+		{"series", c.Series.Load},
+		{"explorer", c.Explorer.Load},
+		{"orders", c.Orders.Load},
+		{"folder_orders", c.FolderOrders.Load},
+		{"folder_view_modes", c.FolderViewModes.Load},
+		{"folder_grid_sizes", c.FolderGridSizes.Load},
+		{"downloader", c.Downloader.Load},
+		{"tabs", c.Tabs.Load},
+		{"viewer_states", c.ViewerStates.Load},
+	}
+	for _, r := range repos {
+		if err := r.load(); err != nil {
+			c.Logger.Warnf("Failed to reload %s: %v", r.name, err)
+		}
+	}
+
+	// Save active library to JSON registry
+	if err := c.LibraryManager.SetActiveID(libID); err != nil {
+		c.Logger.Warnf("Failed to save active library: %v", err)
+	}
+
+	// Close previous DB
+	if oldDB != nil && oldDB != newDB {
+		oldDB.Close()
+	}
+
+	c.Logger.Infof("Switched to library: %s", lib.Name)
+	return nil
 }
 
 func getDataDir() string {

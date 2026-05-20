@@ -13,6 +13,12 @@ type TabsRepository struct {
 	mu   sync.RWMutex
 }
 
+func (r *TabsRepository) SetDB(db *Database) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.db = db
+}
+
 func NewTabsRepository(db *Database) *TabsRepository {
 	r := &TabsRepository{db: db}
 	if err := r.Load(); err != nil {
@@ -49,7 +55,8 @@ func (r *TabsRepository) Load() error {
 	row := r.db.db.QueryRow("SELECT id, active_tab_id, data FROM tabs LIMIT 1")
 	var id, activeTabID, dataStr string
 	if err := row.Scan(&id, &activeTabID, &dataStr); err != nil {
-		return err
+		r.data = &persistence.TabsData{Tabs: []persistence.Tab{}}
+		return nil
 	}
 
 	data := &persistence.TabsData{

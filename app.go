@@ -13,6 +13,7 @@ import (
 	"manga-visor/internal/modules/explorer"
 	"manga-visor/internal/modules/history"
 	"manga-visor/internal/modules/library"
+	"manga-visor/internal/modules/librarymanager"
 	"manga-visor/internal/modules/series"
 	"manga-visor/internal/database"
 	"manga-visor/internal/persistence"
@@ -36,13 +37,14 @@ type App struct {
 	services *services.Container
 
 	// Modules
-	libraryMod    *library.Module
-	seriesMod     *series.Module
-	historyMod    *history.Module
-	explorerMod   *explorer.Module
-	downloaderMod *downloader.Module
-	colorizerMod  *colorizer.Manager
-	updaterSvc    *updater.Service
+	libraryMod       *library.Module
+	seriesMod        *series.Module
+	historyMod       *history.Module
+	explorerMod      *explorer.Module
+	downloaderMod    *downloader.Module
+	colorizerMod     *colorizer.Manager
+	updaterSvc       *updater.Service
+	libraryManagerMod *librarymanager.Module
 }
 
 // Convenience getters for backward compatibility
@@ -102,14 +104,15 @@ func NewApp() *App {
 	uSvc := updater.NewService(dataDir)
 
 	return &App{
-		services:      container,
-		libraryMod:    lMod,
-		seriesMod:     sMod,
-		historyMod:    hMod,
-		explorerMod:   eMod,
-		downloaderMod: dMod,
-		colorizerMod:  cMod,
-		updaterSvc:    uSvc,
+		services:          container,
+		libraryMod:        lMod,
+		seriesMod:         sMod,
+		historyMod:        hMod,
+		explorerMod:       eMod,
+		downloaderMod:     dMod,
+		colorizerMod:      cMod,
+		updaterSvc:        uSvc,
+		libraryManagerMod: container.LibraryManager,
 	}
 }
 
@@ -498,6 +501,22 @@ func (a *App) SelectFolder() (string, error) {
 	})
 }
 
+func (a *App) SelectLibraryFile() (string, error) {
+	return runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
+		Title: "Select Library Database File",
+		Filters: []runtime.FileFilter{
+			{
+				DisplayName: "Database Files (*.db)",
+				Pattern:     "*.db",
+			},
+			{
+				DisplayName: "All Files (*.*)",
+				Pattern:     "*.*",
+			},
+		},
+	})
+}
+
 // ImageInfo and FolderInfo need to be shared or accessible.
 // They are now in `persistence` or `fileloader`?
 // In the original code, `ImageInfo` was defined in `app.go`.
@@ -612,6 +631,49 @@ func (a *App) RemoveLibraryEntry(folderPath string) error {
 
 func (a *App) ClearLibrary() error {
 	return a.libraryMod.ClearLibrary()
+}
+
+// =============================================================================
+// Library Management Methods
+// =============================================================================
+
+func (a *App) GetLibraries() []persistence.LibraryInfo {
+	return a.libraryManagerMod.List()
+}
+
+func (a *App) GetLibraryByID(id string) *persistence.LibraryInfo {
+	return a.libraryManagerMod.Get(id)
+}
+
+func (a *App) GetDefaultLibrary() *persistence.LibraryInfo {
+	return a.libraryManagerMod.GetDefault()
+}
+
+func (a *App) GetActiveLibraryID() string {
+	return a.libraryManagerMod.GetActiveID()
+}
+
+func (a *App) CreateLibrary(name string) (*persistence.LibraryInfo, error) {
+	return a.libraryManagerMod.Create(name, a.services.DB)
+}
+
+func (a *App) DeleteLibrary(id string) error {
+	return a.libraryManagerMod.Delete(id)
+}
+
+func (a *App) OpenLibraryFile(filePath string) (*persistence.LibraryInfo, error) {
+	return a.libraryManagerMod.OpenLibrary(filePath)
+}
+
+func (a *App) SwitchLibrary(id string) error {
+	err := a.services.SwitchLibrary(id)
+	if err == nil && a.ctx != nil {
+		runtime.EventsEmit(a.ctx, "library_switched", id)
+		runtime.EventsEmit(a.ctx, "library_updated")
+		runtime.EventsEmit(a.ctx, "series_updated")
+		runtime.EventsEmit(a.ctx, "history_updated")
+	}
+	return err
 }
 
 // =============================================================================

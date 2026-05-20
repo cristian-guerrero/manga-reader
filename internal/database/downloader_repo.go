@@ -14,6 +14,12 @@ type DownloaderRepository struct {
 	mu   sync.RWMutex
 }
 
+func (r *DownloaderRepository) SetDB(db *Database) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.db = db
+}
+
 func NewDownloaderRepository(db *Database) *DownloaderRepository {
 	r := &DownloaderRepository{db: db}
 	if err := r.Load(); err != nil {

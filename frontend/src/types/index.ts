@@ -190,7 +190,8 @@ export type PageType =
   | 'explorer'
   | 'download'
   | 'colorizer'
-  | 'settings';
+  | 'settings'
+  | 'library-manager';
 
 export interface NavigationState {
   currentPage: PageType;

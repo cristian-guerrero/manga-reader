@@ -74,16 +74,8 @@ func (d *Database) migrate() error {
 	}
 	defer tx.Rollback()
 
-	if _, err := tx.Exec(schemaV1); err != nil {
+	if _, err := tx.Exec(fullSchema); err != nil {
 		return fmt.Errorf("create schema: %w", err)
-	}
-
-	if _, err := tx.Exec(schemaV2); err != nil {
-		return fmt.Errorf("create schema v2: %w", err)
-	}
-
-	if _, err := tx.Exec(schemaV3); err != nil {
-		return fmt.Errorf("create schema v3: %w", err)
 	}
 
 	if err := tx.Commit(); err != nil {
@@ -490,13 +482,19 @@ func (d *Database) migrateViewerStatesJSON(data []byte) error {
 	return tx.Commit()
 }
 
-var schemaV1 = `
+// fullSchema creates ALL tables for a library database (including settings and ui_preferences)
+var fullSchema = `
 CREATE TABLE IF NOT EXISTS schema_version (
     version INTEGER PRIMARY KEY,
     applied_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 CREATE TABLE IF NOT EXISTS settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS ui_preferences (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL
 );
@@ -597,19 +595,54 @@ CREATE TABLE IF NOT EXISTS viewer_states (
     vertical_width INTEGER NOT NULL DEFAULT 0,
     scroll_position REAL NOT NULL DEFAULT 0
 );
-`
 
-var schemaV2 = `
-CREATE TABLE IF NOT EXISTS ui_preferences (
-    key TEXT PRIMARY KEY,
-    value TEXT NOT NULL
-);
-`
-
-var schemaV3 = `
 CREATE TABLE IF NOT EXISTS folder_grid_sizes (
     parent_path TEXT PRIMARY KEY,
     grid_size INTEGER NOT NULL DEFAULT 200,
     modified_at TEXT NOT NULL DEFAULT ''
 );
 `
+
+// NewLibraryDB creates or opens a library-specific database with ALL tables
+func NewLibraryDB(dataDir, filename string) (*Database, error) {
+	if err := os.MkdirAll(dataDir, 0755); err != nil {
+		return nil, fmt.Errorf("create data dir: %w", err)
+	}
+
+	dbPath := filepath.Join(dataDir, filename)
+	sqlDB, err := sql.Open("sqlite", dbPath+"?_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)&_pragma=foreign_keys(ON)")
+	if err != nil {
+		return nil, fmt.Errorf("open library database: %w", err)
+	}
+
+	sqlDB.SetMaxOpenConns(1)
+
+	d := &Database{
+		db:      sqlDB,
+		dataDir: dataDir,
+	}
+
+	if err := d.migrateLibrarySchema(); err != nil {
+		sqlDB.Close()
+		return nil, fmt.Errorf("migrate library schema: %w", err)
+	}
+
+	return d, nil
+}
+
+func (d *Database) migrateLibrarySchema() error {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	tx, err := d.db.Begin()
+	if err != nil {
+		return fmt.Errorf("begin library migration tx: %w", err)
+	}
+	defer tx.Rollback()
+
+	if _, err := tx.Exec(fullSchema); err != nil {
+		return fmt.Errorf("create library schema: %w", err)
+	}
+
+	return tx.Commit()
+}

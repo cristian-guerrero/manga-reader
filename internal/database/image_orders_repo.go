@@ -15,6 +15,12 @@ type ImageOrdersRepository struct {
 	mu     sync.RWMutex
 }
 
+func (r *ImageOrdersRepository) SetDB(db *Database) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.db = db
+}
+
 func NewImageOrdersRepository(db *Database) *ImageOrdersRepository {
 	r := &ImageOrdersRepository{db: db, orders: make(map[string]persistence.ImageOrder)}
 	if err := r.Load(); err != nil {

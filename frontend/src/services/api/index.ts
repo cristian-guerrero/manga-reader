@@ -18,3 +18,4 @@ export * from './viewerStateAPI';
 export * from './folderOrderAPI';
 export * from './folderViewModeAPI';
 export * from './explorerAPI';
+export * from './libraryManagerAPI';

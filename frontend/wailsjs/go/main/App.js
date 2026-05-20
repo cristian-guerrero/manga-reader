@@ -94,6 +94,14 @@ export function ColorizerStopServer() {
   return window['go']['main']['App']['ColorizerStopServer']();
 }
 
+export function CreateLibrary(arg1) {
+  return window['go']['main']['App']['CreateLibrary'](arg1);
+}
+
+export function DeleteLibrary(arg1) {
+  return window['go']['main']['App']['DeleteLibrary'](arg1);
+}
+
 export function DownloadUpdate(arg1) {
   return window['go']['main']['App']['DownloadUpdate'](arg1);
 }
@@ -110,6 +118,10 @@ export function GetAVIFStatus() {
   return window['go']['main']['App']['GetAVIFStatus']();
 }
 
+export function GetActiveLibraryID() {
+  return window['go']['main']['App']['GetActiveLibraryID']();
+}
+
 export function GetBaseFolders() {
   return window['go']['main']['App']['GetBaseFolders']();
 }
@@ -120,6 +132,10 @@ export function GetChapterNavigation(arg1) {
 
 export function GetCurrentVersion() {
   return window['go']['main']['App']['GetCurrentVersion']();
+}
+
+export function GetDefaultLibrary() {
+  return window['go']['main']['App']['GetDefaultLibrary']();
 }
 
 export function GetDownloadAlgorithmConfig() {
@@ -210,8 +226,16 @@ export function GetImagesWithSort(arg1, arg2, arg3) {
   return window['go']['main']['App']['GetImagesWithSort'](arg1, arg2, arg3);
 }
 
+export function GetLibraries() {
+  return window['go']['main']['App']['GetLibraries']();
+}
+
 export function GetLibrary() {
   return window['go']['main']['App']['GetLibrary']();
+}
+
+export function GetLibraryByID(arg1) {
+  return window['go']['main']['App']['GetLibraryByID'](arg1);
 }
 
 export function GetOneShotSortBy() {
@@ -300,6 +324,10 @@ export function LoadImageAsBase64(arg1) {
 
 export function OpenInFileManager(arg1) {
   return window['go']['main']['App']['OpenInFileManager'](arg1);
+}
+
+export function OpenLibraryFile(arg1) {
+  return window['go']['main']['App']['OpenLibraryFile'](arg1);
 }
 
 export function PreloadThumbnails(arg1) {
@@ -398,6 +426,10 @@ export function SelectFolder() {
   return window['go']['main']['App']['SelectFolder']();
 }
 
+export function SelectLibraryFile() {
+  return window['go']['main']['App']['SelectLibraryFile']();
+}
+
 export function SetExplorerRootViewMode(arg1) {
   return window['go']['main']['App']['SetExplorerRootViewMode'](arg1);
 }
@@ -452,6 +484,10 @@ export function SetThumbnailsPaused(arg1) {
 
 export function StartDownload(arg1, arg2, arg3) {
   return window['go']['main']['App']['StartDownload'](arg1, arg2, arg3);
+}
+
+export function SwitchLibrary(arg1) {
+  return window['go']['main']['App']['SwitchLibrary'](arg1);
 }
 
 export function UpdateSettings(arg1) {

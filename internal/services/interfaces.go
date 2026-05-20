@@ -2,9 +2,26 @@ package services
 
 import (
 	"context"
+	"manga-visor/internal/database"
 	"manga-visor/internal/fileloader"
 	"manga-visor/internal/persistence"
 )
+
+// LibraryRegistryInterface defines the interface for library registry operations
+type LibraryRegistryInterface interface {
+	GetAll() []persistence.LibraryInfo
+	Get(id string) *persistence.LibraryInfo
+	GetDefault() *persistence.LibraryInfo
+	Add(lib persistence.LibraryInfo) error
+	Remove(id string) error
+	Load() error
+}
+
+// LibraryRepoInterface defines the interface for library repository (setdb)
+type LibraryRepoInterface interface {
+	SetDB(db *database.Database)
+	Load() error
+}
 
 // ImageServerInterface defines the interface for image server operations
 type ImageServerInterface interface {

@@ -21,6 +21,12 @@ type UIPreferencesRepository struct {
 	mu sync.RWMutex
 }
 
+func (r *UIPreferencesRepository) SetDB(db *Database) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.db = db
+}
+
 func NewUIPreferencesRepository(db *Database) *UIPreferencesRepository {
 	return &UIPreferencesRepository{db: db}
 }

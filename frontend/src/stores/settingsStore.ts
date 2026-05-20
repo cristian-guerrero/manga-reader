@@ -39,7 +39,8 @@ const INITIAL_STATE: Settings = {
     'explorer': true,
     'download': true,
     'colorizer': true,
-    'settings': true
+    'settings': true,
+    'library-manager': true
   },
   downloadPath: '',
   clipboardAutoMonitor: true,

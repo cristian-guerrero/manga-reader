@@ -28,7 +28,9 @@
     "name": "Nombre",
     "date": "Fecha",
     "pages": "páginas",
-    "noFolderSelected": "No hay carpeta seleccionada"
+    "noFolderSelected": "No hay carpeta seleccionada",
+    "create": "Crear",
+    "alwaysOn": "Siempre activo"
   },
   "navigation": {
     "home": "Inicio",
@@ -39,7 +41,8 @@
     "colorizer": "Colorizador",
     "settings": "Configuración",
     "viewer": "Visor",
-    "explorer": "Explorador"
+    "explorer": "Explorador",
+    "libraryManager": "Bibliotecas"
   },
   "home": {
     "welcome": "Bienvenido a Manga Visor",
@@ -383,6 +386,21 @@
       "installingDeps": "Instalando dependencias...",
       "complete": "¡Instalación completa!",
       "error": "Instalación fallida"
+    }
+  },
+  "libraryManager": {
+    "title": "Gestor de Bibliotecas",
+    "create": "Nueva Biblioteca",
+    "open": "Abrir Biblioteca",
+    "activate": "Activar",
+    "active": "Activa",
+    "default": "Por defecto",
+    "noLibraries": "No hay bibliotecas registradas",
+    "createDialog": {
+      "title": "Crear Nueva Biblioteca",
+      "nameLabel": "Nombre de la Biblioteca",
+      "displayNameLabel": "Nombre a mostrar (opcional)",
+      "displayNamePlaceholder": "Mis Cómics"
     }
   }
 }

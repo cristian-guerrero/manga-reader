@@ -28,6 +28,7 @@ export const MAIN_PAGES: PageType[] = [
     'download',
     'colorizer',
     'settings',
+    'library-manager',
 ] as const;
 
 /**
@@ -40,6 +41,7 @@ export const MAIN_PAGES_TO_SAVE: PageType[] = [
     'history',
     'download',
     'settings',
+    'library-manager',
 ] as const;
 
 /**
