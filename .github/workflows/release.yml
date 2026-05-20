@@ -134,11 +134,13 @@ jobs:
           RELEASE_TAG="${{ steps.set-tag.outputs.release_tag }}"
           RELEASE_TITLE="${{ steps.set-tag.outputs.release_title }}"
 
+          # Usar el mensaje del commit como notas
+          git log -1 --format="%s" > /tmp/release-notes.txt
+
           echo "Creando release: $RELEASE_TAG"
           gh release create "$RELEASE_TAG" \
             --title "$RELEASE_TITLE" \
-            --notes "Build automático de la rama main" \
-            --latest=false \
+            --notes-file /tmp/release-notes.txt \
             dist/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

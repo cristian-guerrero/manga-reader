@@ -37,38 +37,7 @@ func (g *GitHubAPI) getLatestRelease(channel Channel) (*Release, error) {
 	}
 }
 
-func (g *GitHubAPI) getStableRelease() (*Release, error) {
-	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/releases/latest", g.owner, g.repo)
-
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return nil, fmt.Errorf("create request: %w", err)
-	}
-	req.Header.Set("Accept", "application/vnd.github.v3+json")
-
-	resp, err := g.client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("http request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == http.StatusNotFound {
-		return nil, nil
-	}
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(io.LimitReader(resp.Body, 256))
-		return nil, fmt.Errorf("GitHub API %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
-	}
-
-	var release Release
-	if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
-		return nil, fmt.Errorf("decode release: %w", err)
-	}
-
-	return &release, nil
-}
-
-func (g *GitHubAPI) getDevRelease() (*Release, error) {
+func (g *GitHubAPI) listReleases() ([]Release, error) {
 	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/releases?per_page=30", g.owner, g.repo)
 
 	req, err := http.NewRequest("GET", url, nil)
@@ -91,6 +60,34 @@ func (g *GitHubAPI) getDevRelease() (*Release, error) {
 	var releases []Release
 	if err := json.NewDecoder(resp.Body).Decode(&releases); err != nil {
 		return nil, fmt.Errorf("decode releases: %w", err)
+	}
+
+	return releases, nil
+}
+
+func (g *GitHubAPI) getStableRelease() (*Release, error) {
+	releases, err := g.listReleases()
+	if err != nil {
+		return nil, err
+	}
+
+	var latest *Release
+	for i := range releases {
+		if !strings.HasPrefix(releases[i].TagName, "v") {
+			continue
+		}
+		if latest == nil || releases[i].CreatedAt.After(latest.CreatedAt) {
+			latest = &releases[i]
+		}
+	}
+
+	return latest, nil
+}
+
+func (g *GitHubAPI) getDevRelease() (*Release, error) {
+	releases, err := g.listReleases()
+	if err != nil {
+		return nil, err
 	}
 
 	var latest *Release

@@ -498,6 +498,10 @@ export function UpdateTaskbarIcon(arg1) {
   return window['go']['main']['App']['UpdateTaskbarIcon'](arg1);
 }
 
+export function WasJustUpdated() {
+  return window['go']['main']['App']['WasJustUpdated']();
+}
+
 export function WindowIsMaximised() {
   return window['go']['main']['App']['WindowIsMaximised']();
 }

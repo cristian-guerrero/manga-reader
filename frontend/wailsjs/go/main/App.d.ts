@@ -257,6 +257,8 @@ export function UpdateSettings(arg1:Record<string, any>):Promise<void>;
 
 export function UpdateTaskbarIcon(arg1:string):Promise<void>;
 
+export function WasJustUpdated():Promise<boolean>;
+
 export function WindowIsMaximised():Promise<boolean>;
 
 export function WindowMaximise():Promise<void>;
