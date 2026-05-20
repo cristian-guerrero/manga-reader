@@ -56,4 +56,19 @@ export class SettingsAPI extends BaseAPI {
             }
         );
     }
+
+    /**
+     * Reset settings to backend defaults
+     */
+    static async resetSettings(): Promise<void> {
+        return this.callVoid(
+            async () => {
+                await AppBackend.ResetSettings();
+            },
+            {
+                component: 'SettingsAPI',
+                action: 'resetSettings'
+            }
+        );
+    }
 }

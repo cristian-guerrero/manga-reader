@@ -2,17 +2,16 @@ import * as AppBackend from '../../../wailsjs/go/main/App';
 import { BaseAPI } from './baseAPI';
 
 export class FolderViewModeAPI extends BaseAPI {
-    static async getFolderViewMode(parentPath: string): Promise<string> {
-        return this.call(
+    static async getFolderViewMode(parentPath: string): Promise<string | null> {
+        return this.callOrNull(
             async () => {
                 const result = await AppBackend.GetFolderViewMode(parentPath);
-                return (result as string) || 'grid';
+                return result as string | null;
             },
             {
                 component: 'FolderViewModeAPI',
                 action: 'getFolderViewMode',
                 details: { parentPath },
-                defaultValue: 'grid',
             }
         );
     }

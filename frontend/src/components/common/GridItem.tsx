@@ -5,21 +5,21 @@ interface GridItemProps {
     onClick?: () => void;
     className?: string;
     style?: React.CSSProperties;
+    width?: number;
 }
 
-/**
- * GridItem - Common wrapper component for grid items
- * Limits the maximum width of items to prevent them from growing too large on wide screens
- */
-export function GridItem({ children, onClick, className = '', style }: GridItemProps) {
+export function GridItem({ children, onClick, className = '', style, width = 200 }: GridItemProps) {
     return (
         <div
-            className={`w-[200px] ${className}`}
+            className={`flex-shrink-0 ${className}`}
             onClick={onClick}
-            style={style}
+            style={{
+                width: `${width}px`,
+                transition: 'width 0.2s ease',
+                ...style,
+            }}
         >
             {children}
         </div>
     );
 }
-

@@ -234,6 +234,22 @@
     "avifWasm": "WASM (Normal)",
     "webpStatus": "Decodificación WebP"
   },
+  "updater": {
+    "title": "Actualizaciones",
+    "currentVersion": "Versión Actual",
+    "autoUpdate": "Actualización Automática",
+    "autoUpdateDesc": "Buscar y descargar actualizaciones automáticamente en segundo plano",
+    "channel": "Canal de Actualización",
+    "stable": "Estable",
+    "dev": "Latest",
+    "status": "Estado",
+    "upToDate": "Actualizada",
+    "available": "{{version}} disponible",
+    "downloaded": "Actualización lista — se instalará al reiniciar",
+    "check": "Buscar",
+    "download": "Descargar",
+    "updated": "App actualizada correctamente"
+  },
   "explorer": {
     "title": "Explorador",
     "addBaseFolder": "Agregar Carpeta Base",
@@ -258,7 +274,8 @@
     "automaticOrder": "Automático",
     "openInFileManager": "Abrir en Explorador de Archivos",
     "sendToOneShot": "Abrir en One Shot",
-    "sendToSeries": "Abrir en Series"
+    "sendToSeries": "Abrir en Series",
+    "gridItemSize": "Tamaño de Ítem"
   },
   "themes": {
     "dark": "Oscuro",

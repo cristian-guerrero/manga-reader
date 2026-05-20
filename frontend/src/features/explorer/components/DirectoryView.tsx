@@ -30,6 +30,7 @@ interface DirectoryViewProps {
     onLoadThumbnail: (path: string, coverImage: string) => Promise<void>;
     onOpenViewer: (path: string, e: React.MouseEvent) => void;
     viewMode: ViewMode;
+    gridItemSize: number;
 }
 
 function renderFooterLeft(entry: ExplorerEntry, t: (key: string) => string) {
@@ -101,6 +102,7 @@ export function DirectoryView({
     onLoadThumbnail,
     onOpenViewer,
     viewMode,
+    gridItemSize,
 }: DirectoryViewProps) {
     const { t } = useTranslation();
 
@@ -126,7 +128,7 @@ export function DirectoryView({
 
         if (isSortable) {
             return (
-                <GridItem key={entry.path}>
+                <GridItem key={entry.path} width={gridItemSize}>
                     <SortableEntryTile
                         entry={entry}
                         thumbnail={thumb}
@@ -146,11 +148,11 @@ export function DirectoryView({
         }
 
         return (
-            <GridItem key={entry.path}>
+            <GridItem key={entry.path} width={gridItemSize}>
                 <MediaTile {...commonProps} />
             </GridItem>
         );
-    }, [entries, thumbnails, isCustomMode, onItemClick, onItemAuxClick, onItemContextMenu, onLoadThumbnail, onOpenViewer, t]);
+    }, [entries, thumbnails, isCustomMode, onItemClick, onItemAuxClick, onItemContextMenu, onLoadThumbnail, onOpenViewer, t, gridItemSize]);
 
     const renderListEntry = useCallback((entry: ExplorerEntry) => {
         const thumb = entry.thumbnailUrl || thumbnails[entry.path];
@@ -190,7 +192,7 @@ export function DirectoryView({
                     items={sortableIds}
                     strategy={rectSortingStrategy}
                 >
-                    <GridContainer>{renderContent()}</GridContainer>
+                    <GridContainer itemWidth={gridItemSize}>{renderContent()}</GridContainer>
                 </SortableContext>
                 <DragOverlay adjustScale={true}>
                     {activeEntry ? (
@@ -206,5 +208,5 @@ export function DirectoryView({
         );
     }
 
-    return <GridContainer>{renderContent()}</GridContainer>;
+    return <GridContainer itemWidth={gridItemSize}>{renderContent()}</GridContainer>;
 }

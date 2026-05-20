@@ -238,6 +238,22 @@
     "avifWasm": "WASM (Normal)",
     "webpStatus": "WebP Decoding"
   },
+  "updater": {
+    "title": "Updates",
+    "currentVersion": "Current Version",
+    "autoUpdate": "Auto Update",
+    "autoUpdateDesc": "Automatically check and download updates in the background",
+    "channel": "Update Channel",
+    "stable": "Stable",
+    "dev": "Latest",
+    "status": "Status",
+    "upToDate": "Up to date",
+    "available": "{{version}} available",
+    "downloaded": "Update ready — will install on next restart",
+    "check": "Check",
+    "download": "Download",
+    "updated": "App updated successfully"
+  },
   "explorer": {
     "title": "Explorer",
     "addBaseFolder": "Add Base Folder",
@@ -262,7 +278,8 @@
     "automaticOrder": "Automatic",
     "openInFileManager": "Open in File Manager",
     "sendToOneShot": "Open in One Shot",
-    "sendToSeries": "Open in Series"
+    "sendToSeries": "Open in Series",
+    "gridItemSize": "Item Size"
   },
   "themes": {
     "dark": "Dark",

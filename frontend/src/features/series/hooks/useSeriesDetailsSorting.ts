@@ -7,6 +7,7 @@ export function useSeriesDetailsSorting(seriesPath: string) {
 
     useEffect(() => {
         UIPreferencesAPI.getSeriesDetailsSortPreference(seriesPath).then((pref) => {
+            if (!pref) return;
             setSortBy((pref.sortBy === 'date' ? 'pages' : pref.sortBy) as 'name' | 'pages');
             setSortOrder((pref.sortOrder as 'asc' | 'desc') || 'asc');
         }).catch(() => {});

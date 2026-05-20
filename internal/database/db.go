@@ -82,6 +82,10 @@ func (d *Database) migrate() error {
 		return fmt.Errorf("create schema v2: %w", err)
 	}
 
+	if _, err := tx.Exec(schemaV3); err != nil {
+		return fmt.Errorf("create schema v3: %w", err)
+	}
+
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("commit migration: %w", err)
 	}
@@ -599,5 +603,13 @@ var schemaV2 = `
 CREATE TABLE IF NOT EXISTS ui_preferences (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL
+);
+`
+
+var schemaV3 = `
+CREATE TABLE IF NOT EXISTS folder_grid_sizes (
+    parent_path TEXT PRIMARY KEY,
+    grid_size INTEGER NOT NULL DEFAULT 200,
+    modified_at TEXT NOT NULL DEFAULT ''
 );
 `

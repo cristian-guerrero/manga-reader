@@ -105,6 +105,15 @@ func (r *SettingsRepository) Update(updates map[string]interface{}) error {
 				}
 				r.settings.EnabledMenuItems = menuMap
 			}
+			if key == "themeAccents" {
+				accentsMap := make(map[string]string)
+				for k, mv := range v {
+					if s, ok := mv.(string); ok {
+						accentsMap[k] = s
+					}
+				}
+				r.settings.ThemeAccents = accentsMap
+			}
 			if key == "downloadAlgorithmConfig" {
 				cfg := make(map[string]persistence.AlgorithmDownloadConfig)
 				for siteID, cv := range v {
@@ -141,6 +150,7 @@ func (r *SettingsRepository) saveNow() error {
 		"lastPage":              r.settings.LastPage,
 		"downloadPath":          r.settings.DownloadPath,
 		"verticalWidth":         fmt.Sprintf("%d", r.settings.VerticalWidth),
+		"scrollSpeed":           fmt.Sprintf("%d", r.settings.ScrollSpeed),
 		"preloadCount":          fmt.Sprintf("%d", r.settings.PreloadCount),
 		"minImageSize":          fmt.Sprintf("%d", r.settings.MinImageSize),
 		"windowWidth":           fmt.Sprintf("%d", r.settings.WindowWidth),
@@ -158,7 +168,14 @@ func (r *SettingsRepository) saveNow() error {
 		"tabMemorySaving":       fmt.Sprintf("%t", r.settings.TabMemorySaving),
 		"restoreTabs":           fmt.Sprintf("%t", r.settings.RestoreTabs),
 		"generateThumbnails":    fmt.Sprintf("%t", r.settings.GenerateThumbnails),
+		"autoUpdate":            fmt.Sprintf("%t", r.settings.AutoUpdate),
+		"updateChannel":         r.settings.UpdateChannel,
 		"savedTabs":             r.settings.SavedTabs,
+	}
+
+	if len(r.settings.ThemeAccents) > 0 {
+		b, _ := json.Marshal(r.settings.ThemeAccents)
+		data["themeAccents"] = string(b)
 	}
 
 	if r.settings.EnabledMenuItems != nil {
@@ -232,6 +249,8 @@ func setField(s *persistence.Settings, key, value string) {
 		s.SavedTabs = value
 	case "verticalWidth":
 		fmt.Sscanf(value, "%d", &s.VerticalWidth)
+	case "scrollSpeed":
+		fmt.Sscanf(value, "%d", &s.ScrollSpeed)
 	case "preloadCount":
 		fmt.Sscanf(value, "%d", &s.PreloadCount)
 	case "minImageSize":
@@ -266,8 +285,14 @@ func setField(s *persistence.Settings, key, value string) {
 		s.RestoreTabs = value == "true"
 	case "generateThumbnails":
 		s.GenerateThumbnails = value == "true"
+	case "autoUpdate":
+		s.AutoUpdate = value == "true"
+	case "updateChannel":
+		s.UpdateChannel = value
 	case "enabledMenuItems":
 		json.Unmarshal([]byte(value), &s.EnabledMenuItems)
+	case "themeAccents":
+		json.Unmarshal([]byte(value), &s.ThemeAccents)
 	case "downloadAlgorithmConfig":
 		json.Unmarshal([]byte(value), &s.DownloadAlgorithmConfig)
 	}
@@ -281,6 +306,8 @@ func setNumericField(s *persistence.Settings, key string, value float64) {
 	switch key {
 	case "verticalWidth":
 		s.VerticalWidth = int(value)
+	case "scrollSpeed":
+		s.ScrollSpeed = int(value)
 	case "preloadCount":
 		s.PreloadCount = int(value)
 	case "minImageSize":
@@ -320,5 +347,7 @@ func setBoolField(s *persistence.Settings, key string, value bool) {
 		s.RestoreTabs = value
 	case "generateThumbnails":
 		s.GenerateThumbnails = value
+	case "autoUpdate":
+		s.AutoUpdate = value
 	}
 }

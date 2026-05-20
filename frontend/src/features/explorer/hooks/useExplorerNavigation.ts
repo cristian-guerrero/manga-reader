@@ -219,8 +219,8 @@ export function useExplorerNavigation({
 
         // Fetch current sort preferences from backend (always up-to-date)
         const pref = await UIPreferencesAPI.getExplorerSortPreference(path);
-        const resolvedSortBy = pref.sortBy || 'name';
-        const resolvedSortOrder = pref.sortOrder || 'asc';
+        const resolvedSortBy = pref?.sortBy ?? 'name';
+        const resolvedSortOrder = pref?.sortOrder ?? 'asc';
 
         navigate('viewer', {
             folder: path,
@@ -264,8 +264,8 @@ export function useExplorerNavigation({
 
                     // Fetch current sort preferences from backend (always up-to-date)
                     const pref = await UIPreferencesAPI.getExplorerSortPreference(currentPath);
-                    const resolvedSortBy = pref.sortBy || 'name';
-                    const resolvedSortOrder = pref.sortOrder || 'asc';
+                    const resolvedSortBy = pref?.sortBy ?? 'name';
+                    const resolvedSortOrder = pref?.sortOrder ?? 'asc';
 
                     navigate('viewer', {
                         folder: currentPath,
@@ -314,8 +314,8 @@ export function useExplorerNavigation({
 
                         // Fetch current sort preferences from backend (always up-to-date)
                         const pref = await UIPreferencesAPI.getExplorerSortPreference(currentPath);
-                        const resolvedSortBy = pref.sortBy || 'name';
-                        const resolvedSortOrder = pref.sortOrder || 'asc';
+                        const resolvedSortBy = pref?.sortBy ?? 'name';
+                        const resolvedSortOrder = pref?.sortOrder ?? 'asc';
 
                         addTab('viewer', {
                             folder: currentPath,

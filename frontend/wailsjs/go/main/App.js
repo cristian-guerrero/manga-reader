@@ -26,6 +26,10 @@ export function AddSeries(arg1, arg2, arg3) {
   return window['go']['main']['App']['AddSeries'](arg1, arg2, arg3);
 }
 
+export function CheckForUpdate() {
+  return window['go']['main']['App']['CheckForUpdate']();
+}
+
 export function ClearAllData() {
   return window['go']['main']['App']['ClearAllData']();
 }
@@ -90,6 +94,10 @@ export function ColorizerStopServer() {
   return window['go']['main']['App']['ColorizerStopServer']();
 }
 
+export function DownloadUpdate(arg1) {
+  return window['go']['main']['App']['DownloadUpdate'](arg1);
+}
+
 export function ExploreFolder(arg1, arg2, arg3) {
   return window['go']['main']['App']['ExploreFolder'](arg1, arg2, arg3);
 }
@@ -108,6 +116,10 @@ export function GetBaseFolders() {
 
 export function GetChapterNavigation(arg1) {
   return window['go']['main']['App']['GetChapterNavigation'](arg1);
+}
+
+export function GetCurrentVersion() {
+  return window['go']['main']['App']['GetCurrentVersion']();
 }
 
 export function GetDownloadAlgorithmConfig() {
@@ -132,6 +144,10 @@ export function GetExplorerSortPreferences() {
 
 export function GetFolderAutoOrder(arg1) {
   return window['go']['main']['App']['GetFolderAutoOrder'](arg1);
+}
+
+export function GetFolderGridSize(arg1) {
+  return window['go']['main']['App']['GetFolderGridSize'](arg1);
 }
 
 export function GetFolderInfo(arg1) {
@@ -246,6 +262,10 @@ export function GetThumbnail(arg1) {
   return window['go']['main']['App']['GetThumbnail'](arg1);
 }
 
+export function GetUpdateState() {
+  return window['go']['main']['App']['GetUpdateState']();
+}
+
 export function GetViewerState(arg1) {
   return window['go']['main']['App']['GetViewerState'](arg1);
 }
@@ -268,6 +288,10 @@ export function HasFolderCustomOrder(arg1) {
 
 export function IsSeries(arg1) {
   return window['go']['main']['App']['IsSeries'](arg1);
+}
+
+export function IsUpdatePending() {
+  return window['go']['main']['App']['IsUpdatePending']();
 }
 
 export function LoadImageAsBase64(arg1) {
@@ -316,6 +340,10 @@ export function ResetFolderOrder(arg1) {
 
 export function ResetImageOrder(arg1) {
   return window['go']['main']['App']['ResetImageOrder'](arg1);
+}
+
+export function ResetSettings() {
+  return window['go']['main']['App']['ResetSettings']();
 }
 
 export function ResolveFolder(arg1) {
@@ -380,6 +408,10 @@ export function SetExplorerSortPreference(arg1, arg2, arg3) {
 
 export function SetFolderAutoOrder(arg1, arg2, arg3) {
   return window['go']['main']['App']['SetFolderAutoOrder'](arg1, arg2, arg3);
+}
+
+export function SetFolderGridSize(arg1, arg2) {
+  return window['go']['main']['App']['SetFolderGridSize'](arg1, arg2);
 }
 
 export function SetFolderOrder(arg1, arg2, arg3) {

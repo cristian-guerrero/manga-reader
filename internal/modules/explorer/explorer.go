@@ -22,6 +22,7 @@ type Module struct {
 	explorerManager *database.ExplorerRepository
 	folderOrders    *database.FolderOrdersRepository
 	folderViewModes *database.FolderViewModeRepository
+	folderGridSizes *database.FolderGridSizeRepository
 	fileLoader      services.FileLoaderInterface
 	urlBuilder      services.URLBuilderInterface
 	logger          services.LoggerInterface
@@ -33,7 +34,7 @@ type Module struct {
 }
 
 // NewModule creates a new Explorer module
-func NewModule(fileLoader services.FileLoaderInterface, urlBuilder services.URLBuilderInterface, logger services.LoggerInterface, explorer *database.ExplorerRepository, folderOrders *database.FolderOrdersRepository, folderViewModes *database.FolderViewModeRepository) *Module {
+func NewModule(fileLoader services.FileLoaderInterface, urlBuilder services.URLBuilderInterface, logger services.LoggerInterface, explorer *database.ExplorerRepository, folderOrders *database.FolderOrdersRepository, folderViewModes *database.FolderViewModeRepository, folderGridSizes *database.FolderGridSizeRepository) *Module {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		if logger != nil {
@@ -46,6 +47,7 @@ func NewModule(fileLoader services.FileLoaderInterface, urlBuilder services.URLB
 		explorerManager: explorer,
 		folderOrders:    folderOrders,
 		folderViewModes: folderViewModes,
+		folderGridSizes: folderGridSizes,
 		fileLoader:      fileLoader,
 		urlBuilder:      urlBuilder,
 		logger:          logger,
@@ -913,6 +915,33 @@ func (m *Module) GetFolderViewMode(parentPath string) string {
 		return "grid"
 	}
 	return *mode
+}
+
+// GetFolderGridSize returns the stored grid item size for a parent directory.
+func (m *Module) GetFolderGridSize(parentPath string) int {
+	if m.folderGridSizes == nil {
+		return 200
+	}
+	size := m.folderGridSizes.Get(parentPath)
+	if size == nil {
+		return 200
+	}
+	return *size
+}
+
+// SetFolderGridSize saves the grid item size preference for a parent directory.
+func (m *Module) SetFolderGridSize(parentPath string, gridSize int) error {
+	if m.folderGridSizes == nil {
+		return nil
+	}
+	if m.logger != nil {
+		m.logger.Infof("[Explorer] Saving grid size for %s: %d", parentPath, gridSize)
+	}
+	err := m.folderGridSizes.Set(parentPath, gridSize)
+	if err != nil && m.logger != nil {
+		m.logger.Errorf("[Explorer] Failed to save grid size: %v", err)
+	}
+	return err
 }
 
 // SetFolderViewMode saves the view mode preference for a parent directory.

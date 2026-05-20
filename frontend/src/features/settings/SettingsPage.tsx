@@ -13,6 +13,7 @@ import { ViewerSection } from './components/ViewerSection';
 import { KeyboardSection } from './components/KeyboardSection';
 import { AdvancedSection } from './components/AdvancedSection';
 import { TabsSection } from './components/TabsSection';
+import { UpdateSection } from './components/UpdateSection';
 import { DangerZoneSection } from './components/DangerZoneSection';
 import { SettingsDialogs } from './components/SettingsDialogs';
 
@@ -106,6 +107,9 @@ export const SettingsPage: React.FC = () => {
             setRestoreTabs: settings.setRestoreTabs,
           }}
         />
+
+        {/* Updates Section */}
+        <UpdateSection />
 
         {/* Danger Zone */}
         <DangerZoneSection

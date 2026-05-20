@@ -111,7 +111,9 @@ jobs:
         timeout-minutes: 30
         shell: bash
         run: |
-          echo "Iniciando compilación para plataforma: ${{ matrix.platform }}"
+          RELEASE_TAG="${{ needs.create-release.outputs.release_tag }}"
+          VERSION_LD="-X manga-visor/internal/version.Version=${RELEASE_TAG}"
+          echo "Iniciando compilación para plataforma: ${{ matrix.platform }} (versión: ${RELEASE_TAG})"
           
           if [ "${{ matrix.os }}" == "ubuntu-latest" ]; then
             # Build Linux AppImage using the script
@@ -119,10 +121,19 @@ jobs:
             ./build-appimage.sh
           else
             # Standard build for Windows/macOS
-            wails build -platform ${{ matrix.platform }}
+            wails build -platform ${{ matrix.platform }} -ldflags="${VERSION_LD}"
           fi
           
           echo "Compilación completada exitosamente"
+          
+          # Generate checksums
+          cd build/bin
+          if [ "${{ matrix.os }}" == "macos-latest" ]; then
+            sha256sum *.zip > checksums.txt 2>/dev/null || true
+          else
+            sha256sum * > checksums.txt 2>/dev/null || true
+          fi
+          cd ../../
           if [ "${{ matrix.os }}" == "macos-latest" ]; then
             echo "Procesando archivo .app para macOS..."
             cd build/bin
@@ -146,6 +157,11 @@ jobs:
         run: |
           RELEASE_TAG="${{ needs.create-release.outputs.release_tag }}"
           echo "Subiendo archivos al release: $RELEASE_TAG"
+          
+          # Subir checksums
+          if [ -f "build/bin/checksums.txt" ]; then
+            gh release upload "$RELEASE_TAG" build/bin/checksums.txt --clobber
+          fi
           
           # Subir archivos según la plataforma
           if [ "${{ matrix.os }}" == "macos-latest" ]; then

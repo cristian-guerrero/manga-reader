@@ -458,6 +458,7 @@ export namespace persistence {
 	    theme: string;
 	    viewerMode: string;
 	    verticalWidth: number;
+	    scrollSpeed: number;
 	    lateralMode: string;
 	    readingDirection: string;
 	    panicKey: string;
@@ -483,7 +484,10 @@ export namespace persistence {
 	    restoreTabs: boolean;
 	    savedTabs: string;
 	    generateThumbnails: boolean;
+	    themeAccents: Record<string, string>;
 	    downloadAlgorithmConfig: Record<string, AlgorithmDownloadConfig>;
+	    autoUpdate: boolean;
+	    updateChannel: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new Settings(source);
@@ -495,6 +499,7 @@ export namespace persistence {
 	        this.theme = source["theme"];
 	        this.viewerMode = source["viewerMode"];
 	        this.verticalWidth = source["verticalWidth"];
+	        this.scrollSpeed = source["scrollSpeed"];
 	        this.lateralMode = source["lateralMode"];
 	        this.readingDirection = source["readingDirection"];
 	        this.panicKey = source["panicKey"];
@@ -520,7 +525,10 @@ export namespace persistence {
 	        this.restoreTabs = source["restoreTabs"];
 	        this.savedTabs = source["savedTabs"];
 	        this.generateThumbnails = source["generateThumbnails"];
+	        this.themeAccents = source["themeAccents"];
 	        this.downloadAlgorithmConfig = this.convertValues(source["downloadAlgorithmConfig"], AlgorithmDownloadConfig, true);
+	        this.autoUpdate = source["autoUpdate"];
+	        this.updateChannel = source["updateChannel"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -723,6 +731,45 @@ export namespace series {
 		    }
 		    return a;
 		}
+	}
+
+}
+
+export namespace updater {
+	
+	export class UpdateInfo {
+	    available: boolean;
+	    version: string;
+	    url: string;
+	    channel: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new UpdateInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.available = source["available"];
+	        this.version = source["version"];
+	        this.url = source["url"];
+	        this.channel = source["channel"];
+	    }
+	}
+	export class UpdateState {
+	    pending: boolean;
+	    pendingVersion: string;
+	    downloadedAt: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new UpdateState(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.pending = source["pending"];
+	        this.pendingVersion = source["pendingVersion"];
+	        this.downloadedAt = source["downloadedAt"];
+	    }
 	}
 
 }

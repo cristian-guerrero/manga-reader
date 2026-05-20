@@ -29,6 +29,7 @@ type Container struct {
 	Orders          *database.ImageOrdersRepository
 	FolderOrders    *database.FolderOrdersRepository
 	FolderViewModes *database.FolderViewModeRepository
+	FolderGridSizes *database.FolderGridSizeRepository
 	Downloader      *database.DownloaderRepository
 	Tabs            *database.TabsRepository
 	ViewerStates    *database.ViewerStatesRepository
@@ -60,6 +61,7 @@ func NewContainer() *Container {
 	orders := database.NewImageOrdersRepository(db)
 	folderOrders := database.NewFolderOrdersRepository(db)
 	folderViewModes := database.NewFolderViewModeRepository(db)
+	folderGridSizes := database.NewFolderGridSizeRepository(db)
 	downloader := database.NewDownloaderRepository(db)
 	tabs := database.NewTabsRepository(db)
 	viewerStates := database.NewViewerStatesRepository(db)
@@ -84,6 +86,7 @@ func NewContainer() *Container {
 		Orders:          orders,
 		FolderOrders:    folderOrders,
 		FolderViewModes: folderViewModes,
+		FolderGridSizes: folderGridSizes,
 		Downloader:      downloader,
 		Tabs:            tabs,
 		ViewerStates:    viewerStates,
