@@ -28,6 +28,7 @@ Wails v2 (Go 1.24 backend, React 18 + TypeScript + Vite frontend). State: Zustan
 ├── libraries.json          ← Registry: list of libraries + active library ID
 ├── manga-visor.db          ← Default library
 ├── library__<name>.db      ← Additional libraries
+├── update-log.txt          ← Update history (timestamp | version | channel)
 ├── cache/
 ├── downloads/
 └── temp/

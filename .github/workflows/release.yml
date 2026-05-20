@@ -5,63 +5,10 @@ on:
     branches:
       - main
     tags:
-      - 'v*' # Se activa al subir una etiqueta que empiece con 'v' (ej: v1.0.0)
-#  pull_request:
-#    branches:
-#      - main
+      - 'v*'
 
 jobs:
-  create-release:
-    if: startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    permissions:
-      contents: write
-    outputs:
-      release_tag: ${{ steps.set-tag.outputs.release_tag }}
-    steps:
-      - name: Checkout del código
-        uses: actions/checkout@v4
-
-      - name: Determinar tag del release
-        id: set-tag
-        shell: bash
-        run: |
-          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
-            echo "release_tag=${{ github.ref_name }}" >> $GITHUB_OUTPUT
-          else
-            echo "release_tag=latest" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Eliminar release y tag anteriores (para latest)
-        if: github.ref == 'refs/heads/main'
-        shell: bash
-        run: |
-          echo "Eliminando release 'latest' anterior si existe..."
-          gh release delete latest --yes || true
-          echo "Eliminando tag 'latest' anterior si existe..."
-          gh api -X DELETE /repos/${{ github.repository }}/git/refs/tags/latest || true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Crear Release en GitHub
-        shell: bash
-        run: |
-          RELEASE_TAG="${{ steps.set-tag.outputs.release_tag }}"
-          
-          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
-            RELEASE_TITLE="${{ github.ref_name }}"
-          else
-            RELEASE_TITLE="Latest Development Build"
-          fi
-          
-          echo "Creando release: $RELEASE_TAG"
-          gh release create "$RELEASE_TAG" --title "$RELEASE_TITLE" --notes "Build automático de la rama main"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  build-and-release:
-    needs: create-release
+  build:
     strategy:
       matrix:
         include:
@@ -77,7 +24,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     permissions:
-      contents: write
+      contents: read
 
     steps:
       - name: Checkout del código
@@ -111,68 +58,87 @@ jobs:
         timeout-minutes: 30
         shell: bash
         run: |
-          RELEASE_TAG="${{ needs.create-release.outputs.release_tag }}"
-          VERSION_LD="-X manga-visor/internal/version.Version=${RELEASE_TAG}"
-          echo "Iniciando compilación para plataforma: ${{ matrix.platform }} (versión: ${RELEASE_TAG})"
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            VERSION_LD="-X manga-visor/internal/version.Version=${{ github.ref_name }}"
+          else
+            VERSION_LD="-X manga-visor/internal/version.Version=latest"
+          fi
+          
+          echo "Iniciando compilación para plataforma: ${{ matrix.platform }}"
           
           if [ "${{ matrix.os }}" == "ubuntu-latest" ]; then
-            # Build Linux AppImage using the script
             chmod +x build-appimage.sh
             ./build-appimage.sh
           else
-            # Standard build for Windows/macOS
             wails build -platform ${{ matrix.platform }} -ldflags="${VERSION_LD}"
           fi
-          
-          echo "Compilación completada exitosamente"
-          
-          if [ "${{ matrix.os }}" == "macos-latest" ]; then
-            echo "Procesando archivo .app para macOS..."
-            cd build/bin
-            # En macOS el build genera una carpeta .app, comprimirla
-            # El .zip es suficiente para distribución, los usuarios pueden descomprimirlo
-            zip -r manga-visor2-macos.zip *.app
-            echo "Archivo .zip creado correctamente"
-          fi
 
-      - name: Listar archivos en build/bin (debug)
+      - name: Empaquetar macOS
         if: matrix.os == 'macos-latest'
         shell: bash
         run: |
-          echo "Contenido de build/bin:"
-          ls -la build/bin/
-          echo "Buscando .app:"
-          find build/bin -maxdepth 1 -name "*.app" -type d
-
-      - name: Generar checksums
-        shell: bash
-        run: |
           cd build/bin
-          SHASUM=$(command -v sha256sum || command -v shasum || echo "")
-          if [ -n "$SHASUM" ]; then
-            if [ "${{ matrix.os }}" == "macos-latest" ]; then
-              $SHASUM -a 256 *.zip > checksums.txt 2>/dev/null || true
-            else
-              $SHASUM * > checksums.txt 2>/dev/null || true
-            fi
-          fi
-          cd ../../
+          zip -r manga-visor2-macos.zip *.app
 
-      - name: Subir archivos al Release
+      - name: Subir artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-${{ matrix.os }}
+          path: build/bin/
+          if-no-files-found: error
+
+  release:
+    needs: build
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+
+    steps:
+      - name: Determinar tag del release
+        id: set-tag
         shell: bash
         run: |
-          RELEASE_TAG="${{ needs.create-release.outputs.release_tag }}"
-          echo "Subiendo archivos al release: $RELEASE_TAG"
-          
-          # Subir archivos según la plataforma
-          if [ "${{ matrix.os }}" == "macos-latest" ]; then
-            # Para macOS, solo subir el .zip (el .app está dentro)
-            gh release upload "$RELEASE_TAG" build/bin/*.zip --clobber
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            echo "release_tag=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+            echo "release_title=${{ github.ref_name }}" >> $GITHUB_OUTPUT
           else
-            # Para otras plataformas, subir todos los archivos
-            gh release upload "$RELEASE_TAG" build/bin/* --clobber
+            echo "release_tag=latest" >> $GITHUB_OUTPUT
+            echo "release_title=Latest Development Build" >> $GITHUB_OUTPUT
           fi
+
+      - name: Eliminar release y tag latest anteriores (solo main)
+        if: github.ref == 'refs/heads/main'
+        shell: bash
+        run: |
+          echo "Eliminando release 'latest' anterior..."
+          gh release delete latest --yes || true
+          echo "Eliminando tag 'latest' anterior..."
+          gh api -X DELETE /repos/${{ github.repository }}/git/refs/tags/latest || true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Descargar artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: build-*
+          merge-multiple: true
+          path: dist
 
+      - name: Listar archivos
+        run: ls -la dist/
+
+      - name: Crear Release
+        shell: bash
+        run: |
+          RELEASE_TAG="${{ steps.set-tag.outputs.release_tag }}"
+          RELEASE_TITLE="${{ steps.set-tag.outputs.release_title }}"
+          
+          echo "Creando release: $RELEASE_TAG"
+          gh release create "$RELEASE_TAG" \
+            --title "$RELEASE_TITLE" \
+            --notes "Build automático de la rama main" \
+            dist/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
