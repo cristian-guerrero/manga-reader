@@ -9,6 +9,7 @@ import (
 	_ "image/gif" // GIF support
 	"image/jpeg"
 	"image/png"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -30,16 +31,20 @@ const (
 	thumbnailCacheDir     = "cache/thumbnails"
 	tallImageThresholdRatio = 3.0  // If height/width > 3, treat as tall image (manhwa)
 	tallImageCropHeight    = 2000 // Height in pixels to crop from top of tall images
-	thumbnailCacheVersion  = "v2" // Cache version for invalidation when logic changes
+	thumbnailCacheVersion  = "v3" // Cache version for invalidation when logic changes
 )
+
+// ImageOpener is a function that opens an image by path and returns a ReadCloser
+type ImageOpener func(imagePath string) (io.ReadCloser, error)
 
 // Generator handles thumbnail generation and caching
 type Generator struct {
-	cacheDir  string
-	mu        sync.RWMutex
-	pending   sync.Map      // map[string]chan struct{} for deduplicating generation
-	semaphore chan struct{} // Global limit for concurrent generation
-	paused    atomic.Bool   // Whether generation is currently paused
+	cacheDir    string
+	mu          sync.RWMutex
+	pending     sync.Map      // map[string]chan struct{} for deduplicating generation
+	semaphore   chan struct{} // Global limit for concurrent generation
+	paused      atomic.Bool   // Whether generation is currently paused
+	imageOpener ImageOpener   // Optional opener for archive/virtual paths; defaults to os.Open
 }
 
 // NewGenerator creates a new thumbnail generator
@@ -54,21 +59,42 @@ func NewGenerator() *Generator {
 	// Create cache directory
 	os.MkdirAll(fullCacheDir, 0755)
 
-	return &Generator{
+	g := &Generator{
 		cacheDir:  fullCacheDir,
 		semaphore: make(chan struct{}, 4), // Limit to 4 concurrent generations
 	}
+
+	// Clean up legacy flat files in background
+	go g.cleanupLegacyFiles()
+
+	return g
+}
+
+// SetImageOpener sets a custom function for opening image files
+// Used to support reading from archives or virtual paths
+func (g *Generator) SetImageOpener(opener ImageOpener) {
+	g.imageOpener = opener
+}
+
+// openImage opens an image using the configured opener, falling back to os.Open
+func (g *Generator) openImage(imagePath string) (io.ReadCloser, error) {
+	if g.imageOpener != nil {
+		return g.imageOpener(imagePath)
+	}
+	return os.Open(imagePath)
 }
 
 // generateCacheKey generates a cache key for an image path
 func (g *Generator) generateCacheKey(imagePath string) string {
 	hash := md5.Sum([]byte(imagePath + thumbnailCacheVersion))
-	return fmt.Sprintf("%x.jpg", hash)
+	return fmt.Sprintf("%x", hash)
 }
 
 // GetCachePath returns the full cache path for an image
+// Uses hash-based subdirectories (ab/cdef...) to avoid thousands of files in one dir
 func (g *Generator) GetCachePath(imagePath string) string {
-	return filepath.Join(g.cacheDir, g.generateCacheKey(imagePath))
+	key := g.generateCacheKey(imagePath)
+	return filepath.Join(g.cacheDir, key[:2], key[2:]+".jpg")
 }
 
 // IsCached checks if a thumbnail is already cached
@@ -145,6 +171,22 @@ func (g *Generator) SetPaused(paused bool) {
 	}
 }
 
+// cleanupLegacyFiles removes flat .jpg files left from older cache layout
+func (g *Generator) cleanupLegacyFiles() {
+	entries, err := os.ReadDir(g.cacheDir)
+	if err != nil {
+		return
+	}
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		if strings.EqualFold(filepath.Ext(e.Name()), ".jpg") {
+			os.Remove(filepath.Join(g.cacheDir, e.Name()))
+		}
+	}
+}
+
 // generateThumbnail generates a thumbnail for an image
 func (g *Generator) generateThumbnail(imagePath string) (string, error) {
 	// Check if paused - return error immediately to avoid blocking connections
@@ -156,21 +198,22 @@ func (g *Generator) generateThumbnail(imagePath string) (string, error) {
 	g.semaphore <- struct{}{}
 	defer func() { <-g.semaphore }()
 
-	// Open original image
-	file, err := os.Open(imagePath)
-	if err != nil {
-		return "", fmt.Errorf("failed to open image: %w", err)
-	}
-	defer file.Close()
-
 	// Decode image - with internal retry for extracted files that might be "busy" or 0-filled temporarily
 	var img image.Image
 	var format string
 	var decodeErr error
+	var headerData []byte
+	var fileSize int64
 
 	for attempts := 0; attempts < 3; attempts++ {
-		file.Seek(0, 0)
+		file, err := g.openImage(imagePath)
+		if err != nil {
+			return "", fmt.Errorf("failed to open image: %w", err)
+		}
+
 		img, format, decodeErr = image.Decode(file)
+		file.Close()
+
 		if decodeErr == nil {
 			break
 		}
@@ -181,21 +224,24 @@ func (g *Generator) generateThumbnail(imagePath string) (string, error) {
 		}
 
 		// Check if it's the "zeros" issue
-		file.Seek(0, 0)
-		header := make([]byte, 16)
-		n, _ := file.Read(header)
-		isZeros := true
-		for i := 0; i < n; i++ {
-			if header[i] != 0 {
-				isZeros = false
-				break
+		zeroFile, zeroErr := g.openImage(imagePath)
+		if zeroErr == nil {
+			header := make([]byte, 16)
+			n, _ := zeroFile.Read(header)
+			zeroFile.Close()
+			isZeros := true
+			for i := 0; i < n; i++ {
+				if header[i] != 0 {
+					isZeros = false
+					break
+				}
 			}
-		}
 
-		if isZeros && n > 0 {
-			fmt.Printf("[Generator] Warning: Header read as zeros for %s. Retrying in 200ms... (attempt %d)\n", imagePath, attempts+1)
-			time.Sleep(200 * time.Millisecond)
-			continue
+			if isZeros && n > 0 {
+				fmt.Printf("[Generator] Warning: Header read as zeros for %s. Retrying in 200ms... (attempt %d)\n", imagePath, attempts+1)
+				time.Sleep(200 * time.Millisecond)
+				continue
+			}
 		}
 		break
 	}
@@ -206,16 +252,22 @@ func (g *Generator) generateThumbnail(imagePath string) (string, error) {
 			return g.loadSVGAsThumbnail(imagePath)
 		}
 
-		// Final error logging
-		file.Seek(0, 0)
-		header := make([]byte, 16)
-		n, _ := file.Read(header)
-		fileInfo, _ := os.Stat(imagePath)
-		fileSize := int64(0)
-		if fileInfo != nil {
-			fileSize = fileInfo.Size()
+		// Final error logging - read header from a fresh open
+		headerData = nil
+		fileSize = 0
+		errFile, err := g.openImage(imagePath)
+		if err == nil {
+			header := make([]byte, 16)
+			n, _ := errFile.Read(header)
+			headerData = header[:n]
+			errFile.Close()
 		}
-		return "", fmt.Errorf("failed to decode image (%s): %w (header_read: %d bytes, data: %x, total_size: %d bytes)", format, decodeErr, n, header[:n], fileSize)
+		// Try to get file size via os.Stat (works for regular files, may fail for archive paths)
+		if fi, statErr := os.Stat(imagePath); statErr == nil {
+			fileSize = fi.Size()
+		}
+
+		return "", fmt.Errorf("failed to decode image (%s): %w (header_read: %d bytes, data: %x, total_size: %d bytes)", format, decodeErr, len(headerData), headerData, fileSize)
 	}
 
 	// Calculate new dimensions maintaining aspect ratio

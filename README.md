@@ -177,7 +177,31 @@ wails build -platform windows/amd64 -name manga-visor2
 
 ## 📊 Data Storage
 
-All application state is stored locally in a single **SQLite database** (`manga-visor.db`) at `~/.manga-visor/` (Windows: `%USERPROFILE%\.manga-visor\`). Backend is the single source of truth — no frontend localStorage is used.
+All application state is stored locally at `~/.manga-visor/` (Windows: `%USERPROFILE%\.manga-visor\`). Backend is the single source of truth — no frontend localStorage is used.
+
+### Multi-Library Architecture
+
+Each **library** is a fully self-contained SQLite database (`.db`) with its own settings, themes, library entries, history, tabs, and viewer state. A **JSON registry** (`libraries.json`) tracks which libraries exist and which is active.
+
+```
+~/.manga-visor/
+├── libraries.json          ← Registry: list of libraries + active library ID
+├── manga-visor.db          ← Default library (legacy or freshly created)
+├── library__comics.db      ← Additional library (e.g. "Comics")
+├── cache/
+├── downloads/
+└── temp/
+```
+
+- **`libraries.json`** — lightweight file storing `{ libraries: [...], activeLibraryId: "..." }`.
+  Each library entry has an id, name, filename, and isDefault flag.
+- **Each `.db`** — complete SQLite database containing all tables: `settings`,
+  `ui_preferences`, `library_entries`, `series_entries`, `history`, `tabs`,
+  `viewer_states`, `explorer_folders`, `download_jobs`, etc.
+- Settings are per-library: switching libraries also switches themes, sidebar
+  visibility, viewer preferences, and all other UI state.
+- Creating a new library copies the current library's settings so it starts
+  with the same look and feel.
 
 ### Folders
 - **`avif-bin/`** — Cached native AVIF libraries auto-downloaded from GitHub Releases.

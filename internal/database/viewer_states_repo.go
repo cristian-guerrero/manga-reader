@@ -12,6 +12,12 @@ type ViewerStatesRepository struct {
 	mu     sync.RWMutex
 }
 
+func (r *ViewerStatesRepository) SetDB(db *Database) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.db = db
+}
+
 func NewViewerStatesRepository(db *Database) *ViewerStatesRepository {
 	r := &ViewerStatesRepository{db: db, states: make(map[string]*persistence.ViewerState)}
 	if err := r.Load(); err != nil {

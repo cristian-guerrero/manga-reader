@@ -14,6 +14,12 @@ type FolderViewModeRepository struct {
 	mu    sync.RWMutex
 }
 
+func (r *FolderViewModeRepository) SetDB(db *Database) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.db = db
+}
+
 func NewFolderViewModeRepository(db *Database) *FolderViewModeRepository {
 	r := &FolderViewModeRepository{db: db, modes: make(map[string]persistence.FolderViewMode)}
 	if err := r.Load(); err != nil {

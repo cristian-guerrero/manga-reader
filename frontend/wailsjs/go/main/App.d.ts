@@ -55,6 +55,10 @@ export function ColorizerStartServer():Promise<void>;
 
 export function ColorizerStopServer():Promise<void>;
 
+export function CreateLibrary(arg1:string):Promise<persistence.LibraryInfo>;
+
+export function DeleteLibrary(arg1:string):Promise<void>;
+
 export function DownloadUpdate(arg1:string):Promise<void>;
 
 export function ExploreFolder(arg1:string,arg2:string,arg3:string):Promise<Array<explorer.ExplorerEntry>>;
@@ -63,11 +67,15 @@ export function FetchMangaInfo(arg1:string):Promise<downloader.SiteInfo>;
 
 export function GetAVIFStatus():Promise<string>;
 
+export function GetActiveLibraryID():Promise<string>;
+
 export function GetBaseFolders():Promise<Array<explorer.BaseFolderEntry>>;
 
 export function GetChapterNavigation(arg1:string):Promise<series.ChapterNavigation>;
 
 export function GetCurrentVersion():Promise<string>;
+
+export function GetDefaultLibrary():Promise<persistence.LibraryInfo>;
 
 export function GetDownloadAlgorithmConfig():Promise<Record<string, persistence.AlgorithmDownloadConfig>>;
 
@@ -113,7 +121,11 @@ export function GetImagesShallowWithSort(arg1:string,arg2:string,arg3:string):Pr
 
 export function GetImagesWithSort(arg1:string,arg2:string,arg3:string):Promise<Array<persistence.ImageInfo>>;
 
+export function GetLibraries():Promise<Array<persistence.LibraryInfo>>;
+
 export function GetLibrary():Promise<Array<persistence.FolderInfo>>;
+
+export function GetLibraryByID(arg1:string):Promise<persistence.LibraryInfo>;
 
 export function GetOneShotSortBy():Promise<string>;
 
@@ -158,6 +170,8 @@ export function IsUpdatePending():Promise<boolean>;
 export function LoadImageAsBase64(arg1:string):Promise<string>;
 
 export function OpenInFileManager(arg1:string):Promise<void>;
+
+export function OpenLibraryFile(arg1:string):Promise<persistence.LibraryInfo>;
 
 export function PreloadThumbnails(arg1:Array<string>):Promise<void>;
 
@@ -207,6 +221,8 @@ export function SaveWindowState():Promise<void>;
 
 export function SelectFolder():Promise<string>;
 
+export function SelectLibraryFile():Promise<string>;
+
 export function SetExplorerRootViewMode(arg1:string):Promise<void>;
 
 export function SetExplorerSortPreference(arg1:string,arg2:string,arg3:string):Promise<void>;
@@ -234,6 +250,8 @@ export function SetSeriesSortOrder(arg1:string):Promise<void>;
 export function SetThumbnailsPaused(arg1:boolean):Promise<void>;
 
 export function StartDownload(arg1:string,arg2:string,arg3:string):Promise<string>;
+
+export function SwitchLibrary(arg1:string):Promise<void>;
 
 export function UpdateSettings(arg1:Record<string, any>):Promise<void>;
 

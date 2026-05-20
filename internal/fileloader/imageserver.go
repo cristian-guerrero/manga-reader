@@ -65,6 +65,14 @@ func NewImageServer(fl *FileLoader, tg *thumbnails.Generator, logger LoggerInter
 	// Create cache directory
 	os.MkdirAll(fullCacheDir, 0755)
 
+	// Set image opener on thumbnail generator to support archive virtual paths
+	if tg != nil {
+		tg.SetImageOpener(func(imagePath string) (io.ReadCloser, error) {
+			rc, _, _, err := fl.OpenImage(imagePath)
+			return rc, err
+		})
+	}
+
 	return &ImageServer{
 		fileLoader:         fl,
 		thumbGen:           tg,
@@ -212,25 +220,19 @@ func (is *ImageServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		finalPath = originalImagePath
 	}
 
-	// Check if file exists
-	fileInfo, err := os.Stat(finalPath)
+	// Open image via fileLoader (supports both filesystem and archive paths)
+	reader, mimeType, fileSize, err := is.fileLoader.OpenImage(finalPath)
 	if err != nil {
-		if os.IsNotExist(err) {
-			is.logWarn("[ImageServer] Error: File not found: %s", finalPath)
+		if strings.Contains(err.Error(), "not found") {
+			is.logWarn("[ImageServer] Error: Image not found: %s", finalPath)
 			http.Error(w, "Image not found", http.StatusNotFound)
-			return
+		} else {
+			is.logError("[ImageServer] Error opening image %s: %v", finalPath, err)
+			http.Error(w, "Failed to open image", http.StatusInternalServerError)
 		}
-		is.logError("[ImageServer] Error accessing file %s: %v", finalPath, err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
-
-	file, err := os.Open(finalPath)
-	if err != nil {
-		http.Error(w, "Failed to open image", http.StatusInternalServerError)
-		return
-	}
-	defer file.Close()
+	defer reader.Close()
 
 	// Check if we need to convert AVIF to JPEG for Linux (WebKitGTK doesn't support AVIF)
 	ext := strings.ToLower(filepath.Ext(finalPath))
@@ -260,7 +262,6 @@ func (is *ImageServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				http.ServeFile(w, r, cachePath)
 				return
 			}
-			// If somehow it's still not there, fall back to converting below (shouldn't happen)
 		} else {
 			// We are responsible for converting it
 			defer func() {
@@ -274,8 +275,17 @@ func (is *ImageServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			is.semaphore <- struct{}{}
 			defer func() { <-is.semaphore }()
 
-			// Decode AVIF
-			img, _, err := image.Decode(file)
+			// Decode AVIF (reader must be re-opened since it was consumed by image.Decode)
+			reader.Close()
+			decReader, _, _, decErr := is.fileLoader.OpenImage(finalPath)
+			if decErr != nil {
+				is.logError("[ImageServer] Failed to reopen image for AVIF decode: %v", decErr)
+				http.Error(w, "Failed to open image for decode", http.StatusInternalServerError)
+				return
+			}
+			defer decReader.Close()
+
+			img, _, err := image.Decode(decReader)
 			if err != nil {
 				is.logError("[ImageServer] Failed to decode AVIF: %v", err)
 				http.Error(w, "Failed to decode AVIF image", http.StatusInternalServerError)
@@ -311,19 +321,16 @@ func (is *ImageServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Regular file serving for non-AVIF or non-Linux
-	mimeType := is.fileLoader.GetMimeType(finalPath)
 	w.Header().Set("Content-Type", mimeType)
-	w.Header().Set("Content-Length", fmt.Sprintf("%d", fileInfo.Size()))
-	w.Header().Set("Cache-Control", "private, max-age=31536000") // Cache for 1 year
+	w.Header().Set("Content-Length", fmt.Sprintf("%d", fileSize))
+	w.Header().Set("Cache-Control", "private, max-age=31536000")
 	w.Header().Set("Accept-Ranges", "bytes")
 
-	// Get filename for content-disposition
 	filename := filepath.Base(finalPath)
 	w.Header().Set("Content-Disposition", fmt.Sprintf("inline; filename=\"%s\"", filename))
 
-	// Stream the file directly to the response
-	is.logInfo("[ImageServer] Serving %s (%d bytes, mime: %s)", filename, fileInfo.Size(), mimeType)
-	bytesWritten, err := io.Copy(w, file)
+	is.logInfo("[ImageServer] Serving %s (%d bytes, mime: %s)", filename, fileSize, mimeType)
+	bytesWritten, err := io.Copy(w, reader)
 	if err != nil {
 		is.logError("[ImageServer] Copy error for %s: %v", filename, err)
 	} else {
@@ -373,8 +380,8 @@ func (is *ImageServer) PreloadConverted(imagePaths []string) {
 					is.pendingCon.Delete(path)
 				}()
 
-				// Open file
-				file, err := os.Open(path)
+				// Open file (supports archive virtual paths)
+				file, _, _, err := is.fileLoader.OpenImage(path)
 				if err != nil {
 					return
 				}

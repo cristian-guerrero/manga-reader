@@ -20,6 +20,12 @@ func NewExplorerRepository(db *Database) *ExplorerRepository {
 	return r
 }
 
+func (r *ExplorerRepository) SetDB(db *Database) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.db = db
+}
+
 func (r *ExplorerRepository) GetAll() []persistence.BaseFolder {
 	r.mu.RLock()
 	defer r.mu.RUnlock()

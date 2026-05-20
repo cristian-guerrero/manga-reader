@@ -22,6 +22,12 @@ func NewSeriesRepository(db *Database) *SeriesRepository {
 	return r
 }
 
+func (r *SeriesRepository) SetDB(db *Database) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.db = db
+}
+
 func (r *SeriesRepository) GetAll() []persistence.SeriesEntry {
 	r.mu.RLock()
 	defer r.mu.RUnlock()

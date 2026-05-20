@@ -29,7 +29,9 @@
     "name": "Name",
     "date": "Date",
     "pages": "pages",
-    "noFolderSelected": "No folder selected"
+    "noFolderSelected": "No folder selected",
+    "create": "Create",
+    "alwaysOn": "Always On"
   },
   "navigation": {
     "home": "Home",
@@ -40,7 +42,8 @@
     "colorizer": "Colorizer",
     "settings": "Settings",
     "viewer": "Viewer",
-    "explorer": "Explorer"
+    "explorer": "Explorer",
+    "libraryManager": "Libraries"
   },
   "home": {
     "welcome": "Welcome to Manga Visor ",
@@ -387,6 +390,21 @@
       "installingDeps": "Installing Python dependencies...",
       "complete": "Installation complete!",
       "error": "Installation failed"
+    }
+  },
+  "libraryManager": {
+    "title": "Library Manager",
+    "create": "New Library",
+    "open": "Open Library",
+    "activate": "Activate",
+    "active": "Active",
+    "default": "Default",
+    "noLibraries": "No libraries registered",
+    "createDialog": {
+      "title": "Create New Library",
+      "nameLabel": "Library Name",
+      "displayNameLabel": "Display Name (optional)",
+      "displayNamePlaceholder": "My Comics"
     }
   }
 }

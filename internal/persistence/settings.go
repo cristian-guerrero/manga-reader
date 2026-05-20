@@ -82,6 +82,9 @@ type Settings struct {
 	// Auto-update settings
 	AutoUpdate    bool   `json:"autoUpdate"`
 	UpdateChannel string `json:"updateChannel"`
+
+	// Active library ID (for restoring on startup)
+	ActiveLibraryID string `json:"activeLibraryId"`
 }
 
 // DefaultSettings returns the default settings
@@ -111,14 +114,15 @@ func DefaultSettings() *Settings {
 		WindowMaximized:       false,
 		LastPage:              "home",
 		EnabledMenuItems: map[string]bool{
-			"home":      true,
-			"history":   true,
-			"oneShot":   true,
-			"series":    true,
-			"explorer":  true,
-			"download":  true,
-			"colorizer": true,
-			"settings":  true,
+			"home":            true,
+			"history":         true,
+			"oneShot":         true,
+			"series":          true,
+			"explorer":        true,
+			"download":        true,
+			"colorizer":       true,
+			"settings":        true,
+			"library-manager": true,
 		},
 		DownloadPath:         "", // empty means default
 		ClipboardAutoMonitor: true,

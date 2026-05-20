@@ -14,6 +14,12 @@ type FolderGridSizeRepository struct {
 	mu   sync.RWMutex
 }
 
+func (r *FolderGridSizeRepository) SetDB(db *Database) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.db = db
+}
+
 func NewFolderGridSizeRepository(db *Database) *FolderGridSizeRepository {
 	r := &FolderGridSizeRepository{db: db, sizes: make(map[string]persistence.FolderGridSize)}
 	if err := r.Load(); err != nil {

@@ -453,6 +453,24 @@ export namespace persistence {
 	        this.modTime = source["modTime"];
 	    }
 	}
+	export class LibraryInfo {
+	    id: string;
+	    name: string;
+	    filename: string;
+	    isDefault: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new LibraryInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.filename = source["filename"];
+	        this.isDefault = source["isDefault"];
+	    }
+	}
 	export class Settings {
 	    language: string;
 	    theme: string;
@@ -488,6 +506,7 @@ export namespace persistence {
 	    downloadAlgorithmConfig: Record<string, AlgorithmDownloadConfig>;
 	    autoUpdate: boolean;
 	    updateChannel: string;
+	    activeLibraryId: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new Settings(source);
@@ -529,6 +548,7 @@ export namespace persistence {
 	        this.downloadAlgorithmConfig = this.convertValues(source["downloadAlgorithmConfig"], AlgorithmDownloadConfig, true);
 	        this.autoUpdate = source["autoUpdate"];
 	        this.updateChannel = source["updateChannel"];
+	        this.activeLibraryId = source["activeLibraryId"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

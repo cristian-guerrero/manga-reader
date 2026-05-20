@@ -19,6 +19,7 @@ const ThumbnailsPage = lazy(() => import('../features/thumbnails/ThumbnailsPage'
 const SettingsPage = lazy(() => import('../features/settings/SettingsPage').then(m => ({ default: m.default || m.SettingsPage })));
 const DownloadPage = lazy(() => import('../features/download/DownloadPage').then(m => ({ default: m.default || m.DownloadPage })));
 const ColorizerPage = lazy(() => import('../features/colorizer/ColorizerPage').then(m => ({ default: m.default || m.ColorizerPage })));
+const LibraryManagerPage = lazy(() => import('../features/library-manager').then(m => ({ default: m.default })));
 
 /**
  * Route configuration mapping page types to components
@@ -35,6 +36,7 @@ export const routes: Record<PageType, React.LazyExoticComponent<any>> = {
     settings: SettingsPage,
     download: DownloadPage,
     colorizer: ColorizerPage,
+    'library-manager': LibraryManagerPage,
 };
 
 /**
@@ -74,6 +76,8 @@ export function renderPage(
         case 'download':
             return <PageComponent />;
         case 'colorizer':
+            return <PageComponent />;
+        case 'library-manager':
             return <PageComponent />;
         default:
             return <routes.home />;

@@ -95,6 +95,12 @@ func (r *LibraryRepository) Clear() error {
 	return err
 }
 
+func (r *LibraryRepository) SetDB(db *Database) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.db = db
+}
+
 func (r *LibraryRepository) Load() error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
