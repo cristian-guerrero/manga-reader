@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SectionHeader } from '@shared/components';
 import { Toggle } from '@shared/components';
@@ -8,7 +9,9 @@ import { useUpdaterStore } from '@stores/updaterStore';
 export function UpdateSection() {
   const { t } = useTranslation();
   const { autoUpdate, setAutoUpdate, updateChannel, setUpdateChannel } = useSettingsStore();
-  const { currentVersion, updateState, isChecking, checkForUpdate, updateInfo } = useUpdaterStore();
+  const { currentVersion, updateState, isChecking, checkForUpdate, updateInfo, init } = useUpdaterStore();
+
+  useEffect(() => { init(); }, [init]);
 
   return (
     <section className="animate-slide-up" style={{ animationDelay: '0.45s' }}>

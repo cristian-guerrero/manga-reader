@@ -6,8 +6,12 @@ import { useSettingsStore } from '../../stores/settingsStore';
 export function UpdateBanner() {
   const { t } = useTranslation();
   const autoUpdate = useSettingsStore((s) => s.autoUpdate);
-  const { updateInfo, updateState, isChecking, updatedRecently, dismissUpdated, checkForUpdate, downloadUpdate, isDownloading } =
+  const { currentVersion, updateInfo, updateState, isChecking, updatedRecently, dismissUpdated, checkForUpdate, downloadUpdate, isDownloading, init } =
     useUpdaterStore();
+
+  useEffect(() => {
+    init();
+  }, [init]);
 
   useEffect(() => {
     if (autoUpdate) {
