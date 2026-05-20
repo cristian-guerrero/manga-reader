@@ -30,7 +30,7 @@ const (
 	thumbnailCacheDir     = "cache/thumbnails"
 	tallImageThresholdRatio = 3.0  // If height/width > 3, treat as tall image (manhwa)
 	tallImageCropHeight    = 2000 // Height in pixels to crop from top of tall images
-	thumbnailCacheVersion  = "v2" // Cache version for invalidation when logic changes
+	thumbnailCacheVersion  = "v3" // Cache version for invalidation when logic changes
 )
 
 // Generator handles thumbnail generation and caching
@@ -54,21 +54,28 @@ func NewGenerator() *Generator {
 	// Create cache directory
 	os.MkdirAll(fullCacheDir, 0755)
 
-	return &Generator{
+	g := &Generator{
 		cacheDir:  fullCacheDir,
 		semaphore: make(chan struct{}, 4), // Limit to 4 concurrent generations
 	}
+
+	// Clean up legacy flat files in background
+	go g.cleanupLegacyFiles()
+
+	return g
 }
 
 // generateCacheKey generates a cache key for an image path
 func (g *Generator) generateCacheKey(imagePath string) string {
 	hash := md5.Sum([]byte(imagePath + thumbnailCacheVersion))
-	return fmt.Sprintf("%x.jpg", hash)
+	return fmt.Sprintf("%x", hash)
 }
 
 // GetCachePath returns the full cache path for an image
+// Uses hash-based subdirectories (ab/cdef...) to avoid thousands of files in one dir
 func (g *Generator) GetCachePath(imagePath string) string {
-	return filepath.Join(g.cacheDir, g.generateCacheKey(imagePath))
+	key := g.generateCacheKey(imagePath)
+	return filepath.Join(g.cacheDir, key[:2], key[2:]+".jpg")
 }
 
 // IsCached checks if a thumbnail is already cached
@@ -142,6 +149,22 @@ func (g *Generator) SetPaused(paused bool) {
 		fmt.Println("[Generator] Thumbnail generation paused")
 	} else {
 		fmt.Println("[Generator] Thumbnail generation resumed")
+	}
+}
+
+// cleanupLegacyFiles removes flat .jpg files left from older cache layout
+func (g *Generator) cleanupLegacyFiles() {
+	entries, err := os.ReadDir(g.cacheDir)
+	if err != nil {
+		return
+	}
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		if strings.EqualFold(filepath.Ext(e.Name()), ".jpg") {
+			os.Remove(filepath.Join(g.cacheDir, e.Name()))
+		}
 	}
 }
 
