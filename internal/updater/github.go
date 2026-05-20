@@ -29,13 +29,16 @@ func NewGitHubAPI() *GitHubAPI {
 }
 
 func (g *GitHubAPI) getLatestRelease(channel Channel) (*Release, error) {
-	var url string
 	switch channel {
 	case ChannelDev:
-		url = fmt.Sprintf("https://api.github.com/repos/%s/%s/releases/tags/latest", g.owner, g.repo)
+		return g.getDevRelease()
 	default:
-		url = fmt.Sprintf("https://api.github.com/repos/%s/%s/releases/latest", g.owner, g.repo)
+		return g.getStableRelease()
 	}
+}
+
+func (g *GitHubAPI) getStableRelease() (*Release, error) {
+	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/releases/latest", g.owner, g.repo)
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
@@ -63,6 +66,42 @@ func (g *GitHubAPI) getLatestRelease(channel Channel) (*Release, error) {
 	}
 
 	return &release, nil
+}
+
+func (g *GitHubAPI) getDevRelease() (*Release, error) {
+	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/releases?per_page=30", g.owner, g.repo)
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("create request: %w", err)
+	}
+	req.Header.Set("Accept", "application/vnd.github.v3+json")
+
+	resp, err := g.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("http request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 256))
+		return nil, fmt.Errorf("GitHub API %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
+	}
+
+	var releases []Release
+	if err := json.NewDecoder(resp.Body).Decode(&releases); err != nil {
+		return nil, fmt.Errorf("decode releases: %w", err)
+	}
+
+	var latest *Release
+	for i := range releases {
+		if strings.HasPrefix(releases[i].TagName, "latest-") {
+			latest = &releases[i]
+			break
+		}
+	}
+
+	return latest, nil
 }
 
 func (g *GitHubAPI) findAsset(release *Release) *Asset {

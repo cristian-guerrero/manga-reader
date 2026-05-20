@@ -58,9 +58,11 @@ func (s *Service) CheckForUpdate(channel string) *UpdateInfo {
 		return s.lastResult
 	}
 
-	if !isNewer(latest, current) {
-		s.lastResult = &UpdateInfo{Available: false}
-		return s.lastResult
+	if ch == ChannelStable {
+		if !isNewer(latest, current) {
+			s.lastResult = &UpdateInfo{Available: false}
+			return s.lastResult
+		}
 	}
 
 	asset := s.api.findAsset(release)

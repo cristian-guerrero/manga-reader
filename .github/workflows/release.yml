@@ -61,7 +61,8 @@ jobs:
           if [[ "${{ github.ref }}" == refs/tags/* ]]; then
             VERSION_LD="-X manga-visor/internal/version.Version=${{ github.ref_name }}"
           else
-            VERSION_LD="-X manga-visor/internal/version.Version=latest"
+            SHORT_SHA="${GITHUB_SHA::7}"
+            VERSION_LD="-X manga-visor/internal/version.Version=latest-${SHORT_SHA}"
           fi
           
           echo "Iniciando compilación para plataforma: ${{ matrix.platform }}"
@@ -108,20 +109,10 @@ jobs:
             echo "release_tag=${{ github.ref_name }}" >> $GITHUB_OUTPUT
             echo "release_title=${{ github.ref_name }}" >> $GITHUB_OUTPUT
           else
-            echo "release_tag=latest" >> $GITHUB_OUTPUT
-            echo "release_title=Latest Development Build" >> $GITHUB_OUTPUT
+            SHORT_SHA="${GITHUB_SHA::7}"
+            echo "release_tag=latest-${SHORT_SHA}" >> $GITHUB_OUTPUT
+            echo "release_title=Latest Development Build (${SHORT_SHA})" >> $GITHUB_OUTPUT
           fi
-
-      - name: Eliminar release y tag latest anteriores (solo main)
-        if: github.ref == 'refs/heads/main'
-        shell: bash
-        run: |
-          echo "Eliminando release 'latest' anterior..."
-          gh release delete latest --yes || true
-          echo "Eliminando tag 'latest' anterior..."
-          gh api -X DELETE /repos/${{ github.repository }}/git/refs/tags/latest || true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Descargar artifacts
         uses: actions/download-artifact@v4
@@ -142,11 +133,12 @@ jobs:
         run: |
           RELEASE_TAG="${{ steps.set-tag.outputs.release_tag }}"
           RELEASE_TITLE="${{ steps.set-tag.outputs.release_title }}"
-          
+
           echo "Creando release: $RELEASE_TAG"
           gh release create "$RELEASE_TAG" \
             --title "$RELEASE_TITLE" \
             --notes "Build automático de la rama main" \
+            --latest=false \
             dist/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
