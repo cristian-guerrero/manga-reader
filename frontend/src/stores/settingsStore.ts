@@ -48,6 +48,8 @@ const INITIAL_STATE: Settings = {
   tabMemorySaving: true,
   restoreTabs: false,
   generateThumbnails: false,
+  autoUpdate: true,
+  updateChannel: 'stable',
 };
 
 export interface SettingsState extends Settings {
@@ -73,6 +75,8 @@ export interface SettingsState extends Settings {
   setTabMemorySaving: (enable: boolean) => void;
   setRestoreTabs: (enable: boolean) => void;
   setGenerateThumbnails: (enable: boolean) => void;
+  setAutoUpdate: (enable: boolean) => void;
+  setUpdateChannel: (channel: string) => void;
 
   setLastPage: (page: string) => void;
   setEnabledMenuItems: (items: Record<string, boolean>) => void;
@@ -229,6 +233,16 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     get().updateBackend('generateThumbnails', generateThumbnails);
   },
 
+  setAutoUpdate: (autoUpdate) => {
+    set({ autoUpdate });
+    get().updateBackend('autoUpdate', autoUpdate);
+  },
+
+  setUpdateChannel: (updateChannel) => {
+    set({ updateChannel });
+    get().updateBackend('updateChannel', updateChannel);
+  },
+
   setLastPage: (lastPage) => {
     set({ lastPage });
     get().saveSettings();
@@ -305,7 +319,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         'enableHistory', 'minImageSize', 'processDroppedFolders', 'lastPage',
         'enabledMenuItems', 'downloadPath', 'clipboardAutoMonitor',
         'autoResumeDownloads', 'themeAccents', 'tabMemorySaving', 'restoreTabs',
-        'generateThumbnails',
+        'generateThumbnails', 'autoUpdate', 'updateChannel',
       ];
 
       keys.forEach(key => {

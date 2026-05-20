@@ -2,6 +2,8 @@ package persistence
 
 import (
 	"fmt"
+	"manga-visor/internal/version"
+	"strings"
 	"sync"
 	"time"
 )
@@ -76,6 +78,10 @@ type Settings struct {
 	ThemeAccents map[string]string `json:"themeAccents"`
 	// Per-algorithm download concurrency config
 	DownloadAlgorithmConfig map[string]AlgorithmDownloadConfig `json:"downloadAlgorithmConfig"`
+
+	// Auto-update settings
+	AutoUpdate    bool   `json:"autoUpdate"`
+	UpdateChannel string `json:"updateChannel"`
 }
 
 // DefaultSettings returns the default settings
@@ -146,6 +152,8 @@ func DefaultSettings() *Settings {
 			"hentaifox.com":    {MaxParallelChapters: 2, MaxParallelImages: 1},
 			"nhentai.to":       {MaxParallelChapters: 2, MaxParallelImages: 1},
 		},
+		AutoUpdate:    true,
+		UpdateChannel: defaultUpdateChannel(),
 	}
 }
 
@@ -401,6 +409,14 @@ func (sm *SettingsManager) Update(updates map[string]interface{}) error {
 			if v, ok := value.(bool); ok {
 				sm.settings.GenerateThumbnails = v
 			}
+		case "autoUpdate":
+			if v, ok := value.(bool); ok {
+				sm.settings.AutoUpdate = v
+			}
+		case "updateChannel":
+			if v, ok := value.(string); ok {
+				sm.settings.UpdateChannel = v
+			}
 		case "themeAccents":
 			if v, ok := value.(map[string]interface{}); ok {
 				newMap := make(map[string]string)
@@ -418,4 +434,12 @@ func (sm *SettingsManager) Update(updates map[string]interface{}) error {
 	// Schedule a debounced save instead of saving immediately
 	sm.scheduleSave()
 	return nil
+}
+
+func defaultUpdateChannel() string {
+	v := version.Version
+	if strings.HasPrefix(v, "v") && len(v) > 1 && v[1] >= '0' && v[1] <= '9' {
+		return "stable"
+	}
+	return "dev"
 }

@@ -14,7 +14,7 @@ Wails v2 (Go 1.24 backend, React 18 + TypeScript + Vite frontend). State: Zustan
 
 ## Architecture
 - **Entrypoints**: `main.go` → `app.go` (Wails app struct with bound methods)
-- **Go backend**: `internal/` with `services/` (DI container), `database/` (SQLite repositories), `persistence/` (shared model types only), `modules/` (colorizer, downloader, explorer, library, series, history), `fileloader/` (image server), `thumbnails/`, `archiver/`
+- **Go backend**: `internal/` with `services/` (DI container), `database/` (SQLite repositories), `persistence/` (shared model types only), `modules/` (colorizer, downloader, explorer, library, series, history), `fileloader/` (image server), `thumbnails/`, `archiver/`, `updater/` (auto-update via GitHub releases), `version/` (build-time version injection via ldflags)
 - **Frontend**: Vite config at `frontend/vite.config.ts` with path aliases (`@app`, `@features`, `@shared`, `@services`, `@stores`, `@hooks`, `@components`, `@types`, `@utils`, `@constants`, `@themes`, `@i18n`)
 - **API bridge**: Go methods in `app.go` exposed to frontend via Wails binding; frontend calls via `services/api/*`
 - **Colorizer**: Python/Flask server for image processing; managed by `internal/modules/colorizer/`
@@ -57,6 +57,13 @@ Wails v2 (Go 1.24 backend, React 18 + TypeScript + Vite frontend). State: Zustan
 - **Output binary**: `manga-visor2` (not `manga-visor`) — configured in `wails.json`
 - **Frontend style**: Functional React components, TypeScript strict mode
 - **ContextMenu**: Reusable right-click menu at `components/ui/ContextMenu.tsx` using `ContextMenuItem` type from `@types`. Used in Explorer for folder actions (Open in Colorizer, Open in File Manager). Theming via CSS variables.
+
+## Updater Module
+- Auto-update via GitHub releases (`cristian-guerrero/manga-reader`). Two channels: `stable` (tags `v*`) and `dev` (latest from main).
+- Check on startup via GitHub API. Download in background. Applies on shutdown via `os.Rename` + `WriteFile` (no scripts, no terminal).
+- Toggle `auto_update` in Settings (default `true`). Channel and version stored in SQLite.
+- Version injected via `-ldflags=-X manga-visor/internal/version.Version=<tag>` in CI.
+- UI: toast banner for new version, Settings section for channel select + status.
 
 ## Downloader Module
 - 22 supported sites with per-algorithm concurrency config (parallel chapters + parallel images per chapter) stored in SQLite settings and editable via settings dialog in download page (gear icon)

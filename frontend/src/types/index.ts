@@ -126,6 +126,11 @@ export interface Settings {
   restoreTabs: boolean;
   /** Generate thumbnails for images */
   generateThumbnails: boolean;
+
+  /** Auto-update enabled */
+  autoUpdate: boolean;
+  /** Update channel (stable, dev) */
+  updateChannel: string;
 }
 
 

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"manga-visor/internal/avifbin"
 	"manga-visor/internal/fileloader"
+	"manga-visor/internal/updater"
 	"manga-visor/internal/webpbin"
 	"manga-visor/internal/modules/colorizer"
 	"manga-visor/internal/modules/downloader"
@@ -41,6 +42,7 @@ type App struct {
 	explorerMod   *explorer.Module
 	downloaderMod *downloader.Module
 	colorizerMod  *colorizer.Manager
+	updaterSvc    *updater.Service
 }
 
 // Convenience getters for backward compatibility
@@ -95,6 +97,10 @@ func NewApp() *App {
 	// Colorizer module (initialized in startup with data dir)
 	var cMod *colorizer.Manager
 
+	homeDir, _ := os.UserHomeDir()
+	dataDir := filepath.Join(homeDir, ".manga-visor")
+	uSvc := updater.NewService(dataDir)
+
 	return &App{
 		services:      container,
 		libraryMod:    lMod,
@@ -103,6 +109,7 @@ func NewApp() *App {
 		explorerMod:   eMod,
 		downloaderMod: dMod,
 		colorizerMod:  cMod,
+		updaterSvc:    uSvc,
 	}
 }
 
@@ -183,8 +190,19 @@ func (a *App) startup(ctx context.Context) {
 	})
 	a.services.Logger.Infof("[Colorizer] Data directory: %s", colorizerDataDir)
 
-	// Restore window position
+	// Auto-update check (silent, runs in background)
 	settings := a.settings().Get()
+	if settings.AutoUpdate {
+		go func() {
+			info := a.updaterSvc.CheckForUpdate(settings.UpdateChannel)
+			if info != nil && info.Available {
+				_ = a.updaterSvc.DownloadUpdate(info)
+			}
+		}()
+	}
+
+	// Restore window position
+	settings = a.settings().Get()
 	// Validation: Windows often sets coordinates to -32000 when minimized.
 	// We ensure coordinates are within a reasonable visible range.
 	if settings.WindowX != -1 && settings.WindowY != -1 {
@@ -214,6 +232,16 @@ func (a *App) domReady(ctx context.Context) {
 
 // shutdown is called when the app is closing
 func (a *App) shutdown(ctx context.Context) {
+	// Apply pending update silently
+	settings := a.settings().Get()
+	if settings.AutoUpdate {
+		if err := a.updaterSvc.ApplyUpdate(); err != nil {
+			a.services.Logger.Debugf("[Updater] No pending update: %v", err)
+		} else {
+			a.services.Logger.Infof("[Updater] Update applied successfully")
+		}
+	}
+
 	a.services.Logger.Info("Flushing settings...")
 	a.settings().Flush()
 
@@ -1209,6 +1237,7 @@ func (a *App) SaveColorizedImageAuto(base64Data string, fileName string, origina
 // next to the original images' parent directory. All images are saved in the same colorized folder.
 // Returns the list of saved file paths.
 func (a *App) SaveMultipleColorizedImagesAuto(images []SaveImageRequest, sourceImagePaths []string) ([]string, error) {
+
 	if len(images) == 0 {
 		return nil, fmt.Errorf("no images to save")
 	}
@@ -1254,4 +1283,36 @@ func (a *App) SaveMultipleColorizedImagesAuto(images []SaveImageRequest, sourceI
 	}
 
 	return savedPaths, nil
+}
+
+// =============================================================================
+// Updater Methods (Exposed to Frontend)
+// =============================================================================
+
+func (a *App) CheckForUpdate() *updater.UpdateInfo {
+	settings := a.settings().Get()
+	if !settings.AutoUpdate {
+		return &updater.UpdateInfo{Available: false}
+	}
+	return a.updaterSvc.CheckForUpdate(settings.UpdateChannel)
+}
+
+func (a *App) DownloadUpdate(version string) error {
+	info := a.updaterSvc.CheckForUpdate(a.settings().Get().UpdateChannel)
+	if info == nil || !info.Available {
+		return fmt.Errorf("no update available")
+	}
+	return a.updaterSvc.DownloadUpdate(info)
+}
+
+func (a *App) GetUpdateState() updater.UpdateState {
+	return updater.UpdateState{}
+}
+
+func (a *App) GetCurrentVersion() string {
+	return a.updaterSvc.GetCurrentVersion()
+}
+
+func (a *App) IsUpdatePending() bool {
+	return false
 }

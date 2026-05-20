@@ -168,6 +168,8 @@ func (r *SettingsRepository) saveNow() error {
 		"tabMemorySaving":       fmt.Sprintf("%t", r.settings.TabMemorySaving),
 		"restoreTabs":           fmt.Sprintf("%t", r.settings.RestoreTabs),
 		"generateThumbnails":    fmt.Sprintf("%t", r.settings.GenerateThumbnails),
+		"autoUpdate":            fmt.Sprintf("%t", r.settings.AutoUpdate),
+		"updateChannel":         r.settings.UpdateChannel,
 		"savedTabs":             r.settings.SavedTabs,
 	}
 
@@ -283,6 +285,10 @@ func setField(s *persistence.Settings, key, value string) {
 		s.RestoreTabs = value == "true"
 	case "generateThumbnails":
 		s.GenerateThumbnails = value == "true"
+	case "autoUpdate":
+		s.AutoUpdate = value == "true"
+	case "updateChannel":
+		s.UpdateChannel = value
 	case "enabledMenuItems":
 		json.Unmarshal([]byte(value), &s.EnabledMenuItems)
 	case "themeAccents":
@@ -341,5 +347,7 @@ func setBoolField(s *persistence.Settings, key string, value bool) {
 		s.RestoreTabs = value
 	case "generateThumbnails":
 		s.GenerateThumbnails = value
+	case "autoUpdate":
+		s.AutoUpdate = value
 	}
 }
