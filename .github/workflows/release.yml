@@ -121,7 +121,7 @@ jobs:
           git log -1 --format="%s" > /tmp/release-notes.txt
 
           if [[ "${{ github.ref }}" == refs/tags/* ]]; then
-            # Release versionado: crear SIN assets (1 paso, como llama.cpp)
+            # Release versionado
             TAG="${{ github.ref_name }}"
             echo "Creando release: $TAG"
             gh release create "$TAG" \
@@ -129,20 +129,43 @@ jobs:
               --notes-file /tmp/release-notes.txt
             gh release upload "$TAG" dist/* --clobber
           else
-            # Nightly build — un solo release actualizado in-place
-            echo "Actualizando nightly build..."
+            # Dev build — crear/actualizar release "latest" como ANNOTATED TAG
+            # para que GitHub lo ordene arriba (como v1.1.0)
+            echo "Actualizando build latest..."
 
-            if gh release view nightly >/dev/null 2>&1; then
-              gh release upload nightly dist/* --clobber
-              gh release edit nightly --title "Nightly Build" --notes-file /tmp/release-notes.txt
-              git tag -f nightly
-              git push -f origin nightly
+            if gh release view latest >/dev/null 2>&1; then
+              TAG_SHA=$(gh api repos/${{ github.repository }}/git/tags \
+                --method POST \
+                -f tag='latest' \
+                -f message='Latest development build' \
+                -f object=${{ github.sha }} \
+                -f type='commit' \
+                --jq '.sha')
+              gh api repos/${{ github.repository }}/git/refs \
+                --method PATCH \
+                -f ref='refs/tags/latest' \
+                -f sha="$TAG_SHA" \
+                --jq '.ref' >/dev/null
+
+              gh release upload latest dist/* --clobber
+              gh release edit latest --title "Latest Development Build" --notes-file /tmp/release-notes.txt
             else
-              # Crear SIN assets primero (1 paso, evita draft→publish)
-              gh release create nightly \
-                --title "Nightly Build" \
+              TAG_SHA=$(gh api repos/${{ github.repository }}/git/tags \
+                --method POST \
+                -f tag='latest' \
+                -f message='Latest development build' \
+                -f object=${{ github.sha }} \
+                -f type='commit' \
+                --jq '.sha')
+              gh api repos/${{ github.repository }}/git/refs \
+                --method POST \
+                -f ref='refs/tags/latest' \
+                -f sha="$TAG_SHA"
+
+              gh release create latest \
+                --title "Latest Development Build" \
                 --notes-file /tmp/release-notes.txt
-              gh release upload nightly dist/* --clobber
+              gh release upload latest dist/* --clobber
             fi
           fi
         env:

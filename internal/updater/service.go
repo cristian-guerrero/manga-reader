@@ -53,12 +53,17 @@ func (s *Service) CheckForUpdate(channel string) *UpdateInfo {
 	current := strings.TrimPrefix(version.Version, "v")
 	latest := strings.TrimPrefix(release.TagName, "v")
 
-	if latest == "" || latest == current {
-		s.lastResult = &UpdateInfo{Available: false}
-		return s.lastResult
-	}
-
-	if ch == ChannelStable {
+	if ch == ChannelDev {
+		last := s.readLatestTimestamp()
+		if !release.CreatedAt.IsZero() && !release.CreatedAt.After(last) {
+			s.lastResult = &UpdateInfo{Available: false}
+			return s.lastResult
+		}
+	} else {
+		if latest == "" || latest == current {
+			s.lastResult = &UpdateInfo{Available: false}
+			return s.lastResult
+		}
 		if !isNewer(latest, current) {
 			s.lastResult = &UpdateInfo{Available: false}
 			return s.lastResult
@@ -78,6 +83,11 @@ func (s *Service) CheckForUpdate(channel string) *UpdateInfo {
 		URL:       asset.DownloadURL,
 		Channel:   string(ch),
 	}
+
+	if ch == ChannelDev {
+		s.writeLatestTimestamp(release.CreatedAt)
+	}
+
 	s.lastErr = nil
 	return s.lastResult
 }
@@ -221,6 +231,24 @@ func (s *Service) LastError() error {
 
 func (s *Service) GetCurrentVersion() string {
 	return version.Version
+}
+
+func (s *Service) readLatestTimestamp() time.Time {
+	markerPath := filepath.Join(s.dataDir, ".latest-timestamp")
+	data, err := os.ReadFile(markerPath)
+	if err != nil {
+		return time.Time{}
+	}
+	t, err := time.Parse(time.RFC3339, strings.TrimSpace(string(data)))
+	if err != nil {
+		return time.Time{}
+	}
+	return t
+}
+
+func (s *Service) writeLatestTimestamp(t time.Time) {
+	markerPath := filepath.Join(s.dataDir, ".latest-timestamp")
+	os.WriteFile(markerPath, []byte(t.Format(time.RFC3339)), 0644)
 }
 
 func (s *Service) logUpdate() {

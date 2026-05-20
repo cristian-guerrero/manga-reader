@@ -85,7 +85,7 @@ func (g *GitHubAPI) getStableRelease() (*Release, error) {
 }
 
 func (g *GitHubAPI) getDevRelease() (*Release, error) {
-	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/releases/tags/nightly", g.owner, g.repo)
+	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/releases/tags/latest", g.owner, g.repo)
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
