@@ -12,11 +12,13 @@ import (
 )
 
 type Service struct {
-	api        *GitHubAPI
-	dataDir    string
-	lastCheck  time.Time
-	lastErr    error
-	lastResult *UpdateInfo
+	api             *GitHubAPI
+	dataDir         string
+	lastCheck       time.Time
+	lastErr         error
+	lastResult      *UpdateInfo
+	pendingVersion  string
+	pendingChannel  string
 }
 
 func NewService(dataDir string) *Service {
@@ -79,6 +81,9 @@ func (s *Service) CheckForUpdate(channel string) *UpdateInfo {
 }
 
 func (s *Service) DownloadUpdate(info *UpdateInfo) error {
+	s.pendingVersion = info.Version
+	s.pendingChannel = info.Channel
+
 	asset := &Asset{
 		Name:        filepath.Base(info.URL),
 		DownloadURL: info.URL,
@@ -185,6 +190,8 @@ func (s *Service) ApplyUpdate() error {
 	os.Remove(oldBinary)
 	os.RemoveAll(tmpDir)
 
+	s.logUpdate()
+
 	return nil
 }
 
@@ -194,4 +201,25 @@ func (s *Service) LastError() error {
 
 func (s *Service) GetCurrentVersion() string {
 	return version.Version
+}
+
+func (s *Service) logUpdate() {
+	tag := s.pendingVersion
+	if tag == "" {
+		tag = version.Version
+	}
+	ch := s.pendingChannel
+	if ch == "" {
+		ch = "stable"
+	}
+
+	line := fmt.Sprintf("%s | %s | %s\n", time.Now().Format(time.RFC3339), tag, ch)
+
+	logPath := filepath.Join(s.dataDir, "update-log.txt")
+	f, err := os.OpenFile(logPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+	f.WriteString(line)
 }
