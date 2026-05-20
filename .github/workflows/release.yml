@@ -79,6 +79,20 @@ jobs:
         run: |
           cd build/bin
           zip -r manga-visor2-macos.zip *.app
+          rm -rf *.app
+
+      - name: Generar checksums
+        shell: bash
+        run: |
+          cd build/bin
+          SHASUM=$(command -v sha256sum || command -v shasum || echo "")
+          if [ -n "$SHASUM" ]; then
+            if [ "${{ matrix.os }}" == "macos-latest" ]; then
+              $SHASUM -a 256 *.zip > checksums.txt 2>/dev/null || true
+            else
+              $SHASUM * > checksums.txt 2>/dev/null || true
+            fi
+          fi
 
       - name: Subir artifact
         uses: actions/upload-artifact@v4
