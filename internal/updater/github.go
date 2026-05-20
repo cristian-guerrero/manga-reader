@@ -95,9 +95,11 @@ func (g *GitHubAPI) getDevRelease() (*Release, error) {
 
 	var latest *Release
 	for i := range releases {
-		if strings.HasPrefix(releases[i].TagName, "latest-") {
+		if !strings.HasPrefix(releases[i].TagName, "latest-") {
+			continue
+		}
+		if latest == nil || releases[i].CreatedAt.After(latest.CreatedAt) {
 			latest = &releases[i]
-			break
 		}
 	}
 

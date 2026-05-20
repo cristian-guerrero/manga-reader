@@ -111,7 +111,7 @@ jobs:
           else
             SHORT_SHA="${GITHUB_SHA::7}"
             echo "release_tag=latest-${SHORT_SHA}" >> $GITHUB_OUTPUT
-            echo "release_title=Latest Development Build (${SHORT_SHA})" >> $GITHUB_OUTPUT
+            echo "release_title=Latest-${SHORT_SHA}" >> $GITHUB_OUTPUT
           fi
 
       - name: Descargar artifacts

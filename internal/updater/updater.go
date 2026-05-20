@@ -30,8 +30,9 @@ type UpdateState struct {
 }
 
 type Release struct {
-	TagName string  `json:"tag_name"`
-	Assets  []Asset `json:"assets"`
+	TagName   string    `json:"tag_name"`
+	Assets    []Asset   `json:"assets"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 type Asset struct {
