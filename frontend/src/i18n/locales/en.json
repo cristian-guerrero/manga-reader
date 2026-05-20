@@ -260,7 +260,9 @@
     "tryDifferentSearch": "Try a different search term",
     "customOrder": "Custom",
     "automaticOrder": "Automatic",
-    "openInFileManager": "Open in File Manager"
+    "openInFileManager": "Open in File Manager",
+    "sendToOneShot": "Open in One Shot",
+    "sendToSeries": "Open in Series"
   },
   "themes": {
     "dark": "Dark",

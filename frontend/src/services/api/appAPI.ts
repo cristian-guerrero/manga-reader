@@ -58,6 +58,7 @@ export class AppAPI extends BaseAPI {
     static resolveFolder = FolderAPI.resolveFolder;
     static addFolder = FolderAPI.addFolder;
     static isSeries = FolderAPI.isSeries;
+
     static selectFolder = FolderAPI.selectFolder;
 
     // Image operations - delegate to ImageAPI

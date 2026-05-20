@@ -625,6 +625,8 @@ func (a *App) ExploreFolder(path string, sortMode string, sortOrder string) ([]e
 	return a.explorerMod.ListDirectoryWithSort(path, sortMode, sortOrder)
 }
 
+
+
 // GetFolderNavigation returns prev/next folder navigation for explorer
 func (a *App) GetFolderNavigation(folderPath string) *explorer.FolderNavigation {
 	return a.explorerMod.GetFolderNavigation(folderPath)

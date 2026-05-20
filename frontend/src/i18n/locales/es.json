@@ -256,7 +256,9 @@
     "tryDifferentSearch": "Prueba con un término de búsqueda diferente",
     "customOrder": "Personalizado",
     "automaticOrder": "Automático",
-    "openInFileManager": "Abrir en Explorador de Archivos"
+    "openInFileManager": "Abrir en Explorador de Archivos",
+    "sendToOneShot": "Abrir en One Shot",
+    "sendToSeries": "Abrir en Series"
   },
   "themes": {
     "dark": "Oscuro",

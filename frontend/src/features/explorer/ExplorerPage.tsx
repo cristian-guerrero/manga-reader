@@ -221,9 +221,40 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
 
   const contextMenuItems: ContextMenuItem[] = contextMenu
     ? [
-        ...(contextMenu.entry.isDirectory &&
-          contextMenu.entry.hasImages &&
-          contextMenu.entry.subdirectoryCount === 0
+        // "Open in One Shot": only for leaf directories with images
+        ...(contextMenu.entry.subdirectoryCount === 0 && contextMenu.entry.hasImages
+          ? [
+              {
+                id: 'send-to-one-shot',
+                label: t('explorer.sendToOneShot'),
+                onClick: () =>
+                  AppAPI.addFolder(contextMenu.entry.path).then(result => {
+                    if (result) navigate('viewer', { folder: result.path }, 'oneShot');
+                  }),
+              } as ContextMenuItem,
+            ]
+          : []),
+        // "Open in Series": only for directories with subfolders
+        ...(contextMenu.entry.subdirectoryCount > 0
+          ? [
+              {
+                id: 'send-to-series',
+                label: t('explorer.sendToSeries'),
+                onClick: () =>
+                  AppAPI.addFolder(contextMenu.entry.path).then(result => {
+                    if (result) {
+                      if (result.isSeries) {
+                        navigate('series-details', { series: result.path }, 'series');
+                      } else {
+                        navigate('viewer', { folder: result.path }, 'oneShot');
+                      }
+                    }
+                  }),
+              } as ContextMenuItem,
+            ]
+          : []),
+        // "Open in Colorizer": only for leaf directories with images
+        ...(contextMenu.entry.subdirectoryCount === 0 && contextMenu.entry.hasImages
           ? [
               {
                 id: 'open-in-colorizer',
@@ -235,6 +266,7 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
               } as ContextMenuItem,
             ]
           : []),
+        // Always show "Open in File Manager"
         {
           id: 'open-in-file-manager',
           label: t('explorer.openInFileManager'),
