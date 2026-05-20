@@ -422,7 +422,7 @@ func TestSettingsManager_UpdatesPersistAcrossInstances(t *testing.T) {
 
 func TestDefaultEnabledMenuItems_HaveExpectedKeys(t *testing.T) {
 	s := DefaultSettings()
-	expected := []string{"home", "history", "folders", "series", "explorer", "settings", "download"}
+	expected := []string{"home", "history", "oneShot", "series", "explorer", "settings", "download", "colorizer"}
 	for _, key := range expected {
 		if _, ok := s.EnabledMenuItems[key]; !ok {
 			t.Errorf("default EnabledMenuItems missing key %q", key)

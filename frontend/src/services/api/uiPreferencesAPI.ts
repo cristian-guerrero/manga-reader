@@ -26,17 +26,16 @@ export class UIPreferencesAPI extends BaseAPI {
         );
     }
 
-    static async getExplorerSortPreference(path: string): Promise<ExplorerSortPref> {
-        return this.call(
+    static async getExplorerSortPreference(path: string): Promise<ExplorerSortPref | null> {
+        return this.callOrNull(
             async () => {
                 const result = await AppBackend.GetExplorerSortPreference(path);
-                return { sortBy: result.sortBy || 'name', sortOrder: result.sortOrder || 'asc' };
+                return result as ExplorerSortPref | null;
             },
             {
                 component: 'UIPreferencesAPI',
                 action: 'getExplorerSortPreference',
                 details: { path },
-                defaultValue: { sortBy: 'name', sortOrder: 'asc' },
             }
         );
     }
@@ -54,10 +53,10 @@ export class UIPreferencesAPI extends BaseAPI {
         );
     }
 
-    static async getSeriesSortBy(): Promise<string> {
-        return this.call(
+    static async getSeriesSortBy(): Promise<string | null> {
+        return this.callOrNull(
             async () => AppBackend.GetSeriesSortBy(),
-            { component: 'UIPreferencesAPI', action: 'getSeriesSortBy', defaultValue: 'name' }
+            { component: 'UIPreferencesAPI', action: 'getSeriesSortBy' }
         );
     }
 
@@ -68,10 +67,10 @@ export class UIPreferencesAPI extends BaseAPI {
         );
     }
 
-    static async getSeriesSortOrder(): Promise<string> {
-        return this.call(
+    static async getSeriesSortOrder(): Promise<string | null> {
+        return this.callOrNull(
             async () => AppBackend.GetSeriesSortOrder(),
-            { component: 'UIPreferencesAPI', action: 'getSeriesSortOrder', defaultValue: 'asc' }
+            { component: 'UIPreferencesAPI', action: 'getSeriesSortOrder' }
         );
     }
 
@@ -82,10 +81,10 @@ export class UIPreferencesAPI extends BaseAPI {
         );
     }
 
-    static async getOneShotSortBy(): Promise<string> {
-        return this.call(
+    static async getOneShotSortBy(): Promise<string | null> {
+        return this.callOrNull(
             async () => AppBackend.GetOneShotSortBy(),
-            { component: 'UIPreferencesAPI', action: 'getOneShotSortBy', defaultValue: 'name' }
+            { component: 'UIPreferencesAPI', action: 'getOneShotSortBy' }
         );
     }
 
@@ -96,10 +95,10 @@ export class UIPreferencesAPI extends BaseAPI {
         );
     }
 
-    static async getOneShotSortOrder(): Promise<string> {
-        return this.call(
+    static async getOneShotSortOrder(): Promise<string | null> {
+        return this.callOrNull(
             async () => AppBackend.GetOneShotSortOrder(),
-            { component: 'UIPreferencesAPI', action: 'getOneShotSortOrder', defaultValue: 'asc' }
+            { component: 'UIPreferencesAPI', action: 'getOneShotSortOrder' }
         );
     }
 
@@ -124,17 +123,16 @@ export class UIPreferencesAPI extends BaseAPI {
         );
     }
 
-    static async getSeriesDetailsSortPreference(seriesPath: string): Promise<SeriesDetailsSortPref> {
-        return this.call(
+    static async getSeriesDetailsSortPreference(seriesPath: string): Promise<SeriesDetailsSortPref | null> {
+        return this.callOrNull(
             async () => {
                 const result = await AppBackend.GetSeriesDetailsSortPreference(seriesPath);
-                return { sortBy: result.sortBy || 'name', sortOrder: result.sortOrder || 'asc' };
+                return result as SeriesDetailsSortPref | null;
             },
             {
                 component: 'UIPreferencesAPI',
                 action: 'getSeriesDetailsSortPreference',
                 details: { seriesPath },
-                defaultValue: { sortBy: 'name', sortOrder: 'asc' },
             }
         );
     }
@@ -150,10 +148,10 @@ export class UIPreferencesAPI extends BaseAPI {
         );
     }
 
-    static async getExplorerRootViewMode(): Promise<string> {
-        return this.call(
+    static async getExplorerRootViewMode(): Promise<string | null> {
+        return this.callOrNull(
             async () => AppBackend.GetExplorerRootViewMode(),
-            { component: 'UIPreferencesAPI', action: 'getExplorerRootViewMode', defaultValue: 'grid' }
+            { component: 'UIPreferencesAPI', action: 'getExplorerRootViewMode' }
         );
     }
 
@@ -164,10 +162,10 @@ export class UIPreferencesAPI extends BaseAPI {
         );
     }
 
-    static async getHistoryViewMode(): Promise<string> {
-        return this.call(
+    static async getHistoryViewMode(): Promise<string | null> {
+        return this.callOrNull(
             async () => AppBackend.GetHistoryViewMode(),
-            { component: 'UIPreferencesAPI', action: 'getHistoryViewMode', defaultValue: 'list' }
+            { component: 'UIPreferencesAPI', action: 'getHistoryViewMode' }
         );
     }
 

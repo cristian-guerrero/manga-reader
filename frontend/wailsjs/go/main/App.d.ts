@@ -166,6 +166,8 @@ export function ResetFolderOrder(arg1:string):Promise<void>;
 
 export function ResetImageOrder(arg1:string):Promise<void>;
 
+export function ResetSettings():Promise<void>;
+
 export function ResolveFolder(arg1:string):Promise<string>;
 
 export function ResumeIncompleteDownloads(arg1:boolean):Promise<void>;

@@ -24,6 +24,8 @@ type Settings struct {
 	ViewerMode string `json:"viewerMode"`
 	// Width percentage for vertical viewer (10-100)
 	VerticalWidth int `json:"verticalWidth"`
+	// Auto-scroll speed for vertical viewer (0-100)
+	ScrollSpeed int `json:"scrollSpeed"`
 	// Lateral viewer mode (single, double)
 	LateralMode string `json:"lateralMode"`
 	// Reading direction (ltr, rtl)
@@ -70,6 +72,8 @@ type Settings struct {
 	SavedTabs string `json:"savedTabs"`
 	// Generate thumbnails for images
 	GenerateThumbnails bool `json:"generateThumbnails"`
+	// Per-theme accent colors { themeId: color }
+	ThemeAccents map[string]string `json:"themeAccents"`
 	// Per-algorithm download concurrency config
 	DownloadAlgorithmConfig map[string]AlgorithmDownloadConfig `json:"downloadAlgorithmConfig"`
 }
@@ -81,6 +85,7 @@ func DefaultSettings() *Settings {
 		Theme:            "dark",
 		ViewerMode:       "vertical",
 		VerticalWidth:    80,
+		ScrollSpeed:      50,
 		LateralMode:      "single",
 		ReadingDirection: "ltr",
 		PanicKey:         "Escape",
@@ -100,21 +105,23 @@ func DefaultSettings() *Settings {
 		WindowMaximized:       false,
 		LastPage:              "home",
 		EnabledMenuItems: map[string]bool{
-			"home":     true,
-			"history":  true,
-			"folders":  true,
-			"series":   true,
-			"explorer": true,
-			"settings": true,
-			"download": true,
+			"home":      true,
+			"history":   true,
+			"oneShot":   true,
+			"series":    true,
+			"explorer":  true,
+			"download":  true,
+			"colorizer": true,
+			"settings":  true,
 		},
 		DownloadPath:         "", // empty means default
-		ClipboardAutoMonitor: true,
+		ClipboardAutoMonitor: false,
 		AutoResumeDownloads:  false,
-		TabMemorySaving:      false,
-		RestoreTabs:          true,
+		TabMemorySaving:      true,
+		RestoreTabs:          false,
 		SavedTabs:            "",
-		GenerateThumbnails:   true,
+		GenerateThumbnails:   false,
+		ThemeAccents:         map[string]string{},
 		DownloadAlgorithmConfig: map[string]AlgorithmDownloadConfig{
 			"hitomi.la":        {MaxParallelChapters: 2, MaxParallelImages: 1},
 			"zonatmo":          {MaxParallelChapters: 3, MaxParallelImages: 1},
@@ -269,6 +276,10 @@ func (sm *SettingsManager) Update(updates map[string]interface{}) error {
 			if v, ok := value.(float64); ok {
 				sm.settings.VerticalWidth = int(v)
 			}
+		case "scrollSpeed":
+			if v, ok := value.(float64); ok {
+				sm.settings.ScrollSpeed = int(v)
+			}
 		case "lateralMode":
 			if v, ok := value.(string); ok {
 				sm.settings.LateralMode = v
@@ -389,6 +400,16 @@ func (sm *SettingsManager) Update(updates map[string]interface{}) error {
 		case "generateThumbnails":
 			if v, ok := value.(bool); ok {
 				sm.settings.GenerateThumbnails = v
+			}
+		case "themeAccents":
+			if v, ok := value.(map[string]interface{}); ok {
+				newMap := make(map[string]string)
+				for k, val := range v {
+					if strVal, ok := val.(string); ok {
+						newMap[k] = strVal
+					}
+				}
+				sm.settings.ThemeAccents = newMap
 			}
 		}
 

@@ -458,6 +458,7 @@ export namespace persistence {
 	    theme: string;
 	    viewerMode: string;
 	    verticalWidth: number;
+	    scrollSpeed: number;
 	    lateralMode: string;
 	    readingDirection: string;
 	    panicKey: string;
@@ -483,6 +484,7 @@ export namespace persistence {
 	    restoreTabs: boolean;
 	    savedTabs: string;
 	    generateThumbnails: boolean;
+	    themeAccents: Record<string, string>;
 	    downloadAlgorithmConfig: Record<string, AlgorithmDownloadConfig>;
 	
 	    static createFrom(source: any = {}) {
@@ -495,6 +497,7 @@ export namespace persistence {
 	        this.theme = source["theme"];
 	        this.viewerMode = source["viewerMode"];
 	        this.verticalWidth = source["verticalWidth"];
+	        this.scrollSpeed = source["scrollSpeed"];
 	        this.lateralMode = source["lateralMode"];
 	        this.readingDirection = source["readingDirection"];
 	        this.panicKey = source["panicKey"];
@@ -520,6 +523,7 @@ export namespace persistence {
 	        this.restoreTabs = source["restoreTabs"];
 	        this.savedTabs = source["savedTabs"];
 	        this.generateThumbnails = source["generateThumbnails"];
+	        this.themeAccents = source["themeAccents"];
 	        this.downloadAlgorithmConfig = this.convertValues(source["downloadAlgorithmConfig"], AlgorithmDownloadConfig, true);
 	    }
 	

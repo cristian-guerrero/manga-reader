@@ -318,6 +318,10 @@ export function ResetImageOrder(arg1) {
   return window['go']['main']['App']['ResetImageOrder'](arg1);
 }
 
+export function ResetSettings() {
+  return window['go']['main']['App']['ResetSettings']();
+}
+
 export function ResolveFolder(arg1) {
   return window['go']['main']['App']['ResolveFolder'](arg1);
 }

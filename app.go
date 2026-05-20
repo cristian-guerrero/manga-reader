@@ -334,6 +334,10 @@ func (a *App) UpdateSettings(updates map[string]interface{}) error {
 	return a.settings().Update(updates)
 }
 
+func (a *App) ResetSettings() error {
+	return a.settings().Save(persistence.DefaultSettings())
+}
+
 // =============================================================================
 // History Methods (Delegated)
 // =============================================================================

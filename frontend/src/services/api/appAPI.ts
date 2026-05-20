@@ -114,6 +114,7 @@ export class AppAPI extends BaseAPI {
     static getSettings = SettingsAPI.getSettings;
     static updateSettings = SettingsAPI.updateSettings;
     static saveSettings = SettingsAPI.saveSettings;
+    static resetSettings = SettingsAPI.resetSettings;
 
     // Viewer State operations - delegate to ViewerStateAPI
     static getViewerState = ViewerStateAPI.getViewerState;

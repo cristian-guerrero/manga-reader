@@ -3,7 +3,7 @@
  */
 
 import { create } from 'zustand';
-import { Settings, DEFAULT_SETTINGS } from '../types';
+import { Settings } from '../types';
 import { applyTheme, getThemeById, darkTheme } from '../themes';
 import { AppAPI } from '../services/api/appAPI';
 import { errorService } from '../services/errorService';
@@ -11,6 +11,44 @@ import { DEBOUNCE_DELAYS } from '../constants';
 
 // Debounce timer for accent color updates
 let accentColorDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+// Bootstrap initial state (overwritten by backend loadSettings before any render)
+const INITIAL_STATE: Settings = {
+  language: 'en',
+  theme: 'dark',
+  viewerMode: 'vertical',
+  verticalWidth: 80,
+  scrollSpeed: 50,
+  lateralMode: 'single',
+  readingDirection: 'ltr',
+  panicKey: 'Escape',
+  lastFolder: '',
+  sidebarCollapsed: false,
+  showImageInfo: false,
+  preloadImages: true,
+  preloadCount: 3,
+  enableHistory: true,
+  minImageSize: 0,
+  processDroppedFolders: true,
+  lastPage: 'home',
+  enabledMenuItems: {
+    'home': true,
+    'history': true,
+    'oneShot': true,
+    'series': true,
+    'explorer': true,
+    'download': true,
+    'colorizer': true,
+    'settings': true
+  },
+  downloadPath: '',
+  clipboardAutoMonitor: false,
+  autoResumeDownloads: false,
+  themeAccents: {},
+  tabMemorySaving: true,
+  restoreTabs: false,
+  generateThumbnails: false,
+};
 
 export interface SettingsState extends Settings {
   // Actions
@@ -49,8 +87,8 @@ export interface SettingsState extends Settings {
 }
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
-  // Initial state from defaults
-  ...DEFAULT_SETTINGS,
+  // Bootstrap initial state (overwritten by loadSettings from backend)
+  ...INITIAL_STATE,
 
   // Actions
   setLanguage: (language) => {
@@ -205,7 +243,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     if (item === 'settings') return;
 
     const { enabledMenuItems, updateBackend } = get();
-    const currentItems = enabledMenuItems || DEFAULT_SETTINGS.enabledMenuItems;
+    const currentItems = enabledMenuItems;
 
     const currentValue = currentItems[item] !== false;
     const newItems = { ...currentItems, [item]: !currentValue };
@@ -245,33 +283,36 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         const accent = settings.themeAccents?.[settings.theme];
         applyTheme(theme, accent);
       } else {
-        // If settings is null/undefined, use defaults
-        const theme = getThemeById(DEFAULT_SETTINGS.theme) || darkTheme;
-        applyTheme(theme);
+        applyTheme(darkTheme);
       }
     } catch (error) {
       errorService.handle(error, {
         component: 'SettingsStore',
         action: 'loadSettings'
       }, { showToast: false });
-      // Apply default theme on error
-      const theme = getThemeById(DEFAULT_SETTINGS.theme) || darkTheme;
-      applyTheme(theme);
+      applyTheme(darkTheme);
     }
   },
 
   saveSettings: async () => {
     try {
       const state = get();
-      // Create a clean object with only settings properties to avoid sending store functions
-      const filteredSettings: any = {};
-      const keys = Object.keys(DEFAULT_SETTINGS);
+      const filteredSettings: Record<string, unknown> = {};
+      const keys: (keyof Settings)[] = [
+        'language', 'theme', 'viewerMode', 'verticalWidth', 'scrollSpeed',
+        'lateralMode', 'readingDirection', 'panicKey', 'lastFolder',
+        'sidebarCollapsed', 'showImageInfo', 'preloadImages', 'preloadCount',
+        'enableHistory', 'minImageSize', 'processDroppedFolders', 'lastPage',
+        'enabledMenuItems', 'downloadPath', 'clipboardAutoMonitor',
+        'autoResumeDownloads', 'themeAccents', 'tabMemorySaving', 'restoreTabs',
+        'generateThumbnails',
+      ];
 
       keys.forEach(key => {
-        filteredSettings[key] = state[key as keyof Settings];
+        filteredSettings[key] = state[key];
       });
 
-      await AppAPI.saveSettings(filteredSettings as Settings);
+      await AppAPI.saveSettings(filteredSettings as unknown as Settings);
     } catch (error) {
       errorService.handle(error, {
         component: 'SettingsStore',
@@ -281,11 +322,15 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   },
 
 
-  resetSettings: () => {
-    set(DEFAULT_SETTINGS);
-    const theme = getThemeById(DEFAULT_SETTINGS.theme) || darkTheme;
-    // Default settings has empty themeAccents
-    applyTheme(theme);
-    get().saveSettings();
+  resetSettings: async () => {
+    try {
+      await AppAPI.resetSettings();
+      await get().loadSettings();
+    } catch (error) {
+      errorService.handle(error, {
+        component: 'SettingsStore',
+        action: 'resetSettings'
+      }, { showToast: false });
+    }
   },
 }));

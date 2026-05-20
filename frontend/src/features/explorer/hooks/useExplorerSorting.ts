@@ -22,7 +22,7 @@ export function useExplorerSorting({ currentPath, onCustomOrderDetected, onSortR
 
         const loadPrefs = async () => {
             const pref = await UIPreferencesAPI.getExplorerSortPreference(targetPath || 'root');
-            if (cancelled) return;
+            if (cancelled || !pref) return;
 
             let resolvedSortBy = pref.sortBy as SortBy;
             let resolvedSortOrder = pref.sortOrder as 'asc' | 'desc';

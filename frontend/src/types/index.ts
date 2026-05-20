@@ -130,45 +130,6 @@ export interface Settings {
 
 
 
-export const DEFAULT_SETTINGS: Settings = {
-  language: 'en',
-  theme: 'dark',
-  viewerMode: 'vertical',
-  verticalWidth: 80,
-  scrollSpeed: 50,
-  lateralMode: 'single',
-  readingDirection: 'ltr',
-  panicKey: 'Escape',
-  lastFolder: '',
-  sidebarCollapsed: false,
-  showImageInfo: false,
-  preloadImages: true,
-
-  preloadCount: 3,
-
-  enableHistory: true,
-  minImageSize: 0,
-  processDroppedFolders: true,
-  lastPage: 'home',
-  enabledMenuItems: {
-    'home': true,
-    'history': true,
-    'oneShot': true,
-    'series': true,
-    'explorer': true,
-    'download': true,
-    'colorizer': true,
-    'settings': true
-  },
-  downloadPath: '',
-  clipboardAutoMonitor: false,
-  autoResumeDownloads: false,
-  themeAccents: {},
-  tabMemorySaving: true,
-  restoreTabs: false,
-  generateThumbnails: false,
-};
-
 
 
 // ============================================================================
