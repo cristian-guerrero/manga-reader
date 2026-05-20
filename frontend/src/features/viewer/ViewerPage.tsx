@@ -34,7 +34,7 @@ interface ViewerPageProps {
 
 export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPageProps) {
     const { t } = useTranslation();
-    const { goBack, navigate, params, fromPage: navFromPage } = useNavigation();
+    const { goBack, navigate, params, fromPage: navFromPage, history } = useNavigation();
     const fromPage = navFromPage || params.from || 'series';
     const isExplorerMode = fromPage === 'explorer';
     console.log('[ViewerPage] fromPage:', fromPage, 'isExplorer:', isExplorerMode, 'folderPath:', folderPath);
@@ -216,16 +216,16 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
 const handlePrevChapter = useCallback(async () => {
     if (chapterNav?.prevChapter) {
         await saveProgress();
-        navigate('viewer', { folder: chapterNav.prevChapter.path, shallow: 'true' }, 'series');
+        navigate('viewer', { folder: chapterNav.prevChapter.path, shallow: 'true', from: fromPage }, 'series');
     }
-}, [chapterNav, navigate, saveProgress]);
+}, [chapterNav, navigate, saveProgress, fromPage]);
 
 const handleNextChapter = useCallback(async () => {
     if (chapterNav?.nextChapter) {
         await saveProgress();
-        navigate('viewer', { folder: chapterNav.nextChapter.path, shallow: 'true' }, 'series');
+        navigate('viewer', { folder: chapterNav.nextChapter.path, shallow: 'true', from: fromPage }, 'series');
     }
-}, [chapterNav, navigate, saveProgress]);
+}, [chapterNav, navigate, saveProgress, fromPage]);
 
 // Folder navigation handlers (explorer)
 const handlePrevFolder = useCallback(async () => {
@@ -242,10 +242,18 @@ const handleNextFolder = useCallback(async () => {
     }
 }, [folderNav, navigate, saveProgress, fromPage, params.navRoot, sortBy, sortOrder]);
 
-// Custom back handler - navigates directly to the original entry point
+// Custom back handler - navigates to the last non-viewer entry in history to preserve params
 const handleBack = useCallback(() => {
+    // Walk backwards through history (skip current entry) to find the originating page
+    const entries = history;
+    for (let i = entries.length - 2; i >= 0; i--) {
+        if (entries[i].page !== 'viewer') {
+            navigate(entries[i].page as PageType, entries[i].params);
+            return;
+        }
+    }
     navigate(fromPage as PageType, {});
-}, [navigate, fromPage]);
+}, [navigate, fromPage, history]);
 
     const handleGoToStart = useCallback(async () => {
         viewerState.setResumeIndex(0);
