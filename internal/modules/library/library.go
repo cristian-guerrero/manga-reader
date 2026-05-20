@@ -2,8 +2,6 @@ package library
 
 import (
 	"context"
-	"crypto/md5"
-	"fmt"
 	"manga-visor/internal/archiver"
 	"manga-visor/internal/database"
 	"manga-visor/internal/fileloader"
@@ -88,32 +86,25 @@ func (m *Module) ResolveFolder(path string) string {
 
 // AddFolder adds a folder to the LIBRARY or SERIES
 func (m *Module) AddFolder(path string) (*persistence.AddFolderResult, error) {
-	isTemp := false
 	actualPath := path
 
-	// If it's an archive, extract it
+	// If it's an archive, register it with the fileLoader for direct reading
 	if archiver.IsArchive(path) {
-		tempBase := persistence.GetTempDir()
-		hash := md5.Sum([]byte(path))
-		folderName := strings.TrimSuffix(filepath.Base(path), filepath.Ext(path))
-		dest := filepath.Join(tempBase, fmt.Sprintf("%x_%s", hash, folderName))
-
-		if err := archiver.Extract(path, dest); err != nil {
-			return nil, err
-		}
-		actualPath = m.unwrapArchiveRoot(dest)
-		isTemp = true
+		// Register archive for virtual reading (no extraction)
+		m.fileLoader.RegisterDirectory(path)
+		actualPath = path
 	} else {
 		actualPath = path
 	}
 
 	folderPath := m.resolveToFolder(actualPath)
 
-	// Check if it's a series (has subfolders with images)
-	// We need a helper to check subfolders, which might be in this module or utility
-	subfolders, _ := m.GetSubfolders(folderPath) // We need to implement GetSubfolders in this module
-	if len(subfolders) > 0 && m.seriesModule != nil {
-		return m.seriesModule.AddSeries(folderPath, subfolders, isTemp)
+	// Skip series detection for archives (flat reading only)
+	if !archiver.IsArchive(path) {
+		subfolders, _ := m.GetSubfolders(folderPath)
+		if len(subfolders) > 0 && m.seriesModule != nil {
+			return m.seriesModule.AddSeries(folderPath, subfolders, false)
+		}
 	}
 
 	folderInfo, err := m.GetFolderInfo(folderPath)
@@ -131,7 +122,7 @@ func (m *Module) AddFolder(path string) (*persistence.AddFolderResult, error) {
 		TotalImages: folderInfo.ImageCount,
 		CoverImage:  folderInfo.CoverImage,
 		AddedAt:     time.Now().Format(time.RFC3339),
-		IsTemporary: isTemp,
+		IsTemporary: false,
 	}
 
 	if err := m.library.Add(entry); err != nil {
@@ -164,7 +155,11 @@ func (m *Module) GetLibrary() []persistence.FolderInfo {
 			// Path exists, generate thumbnail URL if we have a cover image
 			if entry.CoverImage != "" {
 				dirHash := m.fileLoader.RegisterDirectory(entry.FolderPath)
-				info.ThumbnailURL = m.urlBuilder.BuildThumbnailURLFromPath(dirHash, entry.CoverImage)
+				if archiver.IsArchive(entry.FolderPath) {
+					info.ThumbnailURL = m.urlBuilder.BuildThumbnailURL(dirHash, entry.CoverImage)
+				} else {
+					info.ThumbnailURL = m.urlBuilder.BuildThumbnailURLFromPath(dirHash, entry.CoverImage)
+				}
 			}
 		}
 		// If path doesn't exist, we still return it so UI can show error or handle removal
@@ -219,7 +214,11 @@ func (m *Module) GetFolderInfo(folderPath string) (*persistence.FolderInfo, erro
 	if len(images) > 0 {
 		coverImage = images[0].Path
 		dirHash := m.fileLoader.RegisterDirectory(folderPath)
-		thumbnailURL = m.urlBuilder.BuildThumbnailURLFromPath(dirHash, coverImage)
+		if archiver.IsArchive(folderPath) {
+			thumbnailURL = m.urlBuilder.BuildThumbnailURL(dirHash, coverImage)
+		} else {
+			thumbnailURL = m.urlBuilder.BuildThumbnailURLFromPath(dirHash, coverImage)
+		}
 	}
 
 	return &persistence.FolderInfo{
@@ -243,7 +242,11 @@ func (m *Module) GetFolderInfoShallow(folderPath string) (*persistence.FolderInf
 	if len(images) > 0 {
 		coverImage = images[0].Path
 		dirHash := m.fileLoader.RegisterDirectory(folderPath)
-		thumbnailURL = m.urlBuilder.BuildThumbnailURLFromPath(dirHash, coverImage)
+		if archiver.IsArchive(folderPath) {
+			thumbnailURL = m.urlBuilder.BuildThumbnailURL(dirHash, coverImage)
+		} else {
+			thumbnailURL = m.urlBuilder.BuildThumbnailURLFromPath(dirHash, coverImage)
+		}
 	}
 
 	return &persistence.FolderInfo{
@@ -351,14 +354,24 @@ func (m *Module) GetImages(path string, settings *persistence.Settings, orders *
 	}
 
 	dirHash := m.fileLoader.RegisterDirectory(folderPath)
+	isArchive := archiver.IsArchive(folderPath)
 
 	result := make([]persistence.ImageInfo, len(images))
 
 	for i, img := range images {
+		var imageURL, thumbURL string
+		if isArchive {
+			// For archives, img.Path is just the entry name
+			imageURL = m.urlBuilder.BuildImageURL(dirHash, img.Path)
+			thumbURL = m.urlBuilder.BuildThumbnailURL(dirHash, img.Path)
+		} else {
+			imageURL = m.urlBuilder.BuildImageURLFromPath(dirHash, folderPath, img.Path)
+			thumbURL = m.urlBuilder.BuildThumbnailURLFromPath(dirHash, img.Path)
+		}
 		result[i] = persistence.ImageInfo{
 			Path:         img.Path,
-			ThumbnailURL: m.urlBuilder.BuildThumbnailURLFromPath(dirHash, img.Path),
-			ImageURL:     m.urlBuilder.BuildImageURLFromPath(dirHash, folderPath, img.Path),
+			ThumbnailURL: thumbURL,
+			ImageURL:     imageURL,
 			Name:         img.Name,
 			Extension:    img.Extension,
 			Size:         img.Size,
@@ -420,14 +433,23 @@ func (m *Module) GetImagesShallow(path string, settings *persistence.Settings, o
 	}
 
 	dirHash := m.fileLoader.RegisterDirectory(folderPath)
+	isArchive := archiver.IsArchive(folderPath)
 
 	result := make([]persistence.ImageInfo, len(images))
 
 	for i, img := range images {
+		var imageURL, thumbURL string
+		if isArchive {
+			imageURL = m.urlBuilder.BuildImageURL(dirHash, img.Path)
+			thumbURL = m.urlBuilder.BuildThumbnailURL(dirHash, img.Path)
+		} else {
+			imageURL = m.urlBuilder.BuildImageURLFromPath(dirHash, folderPath, img.Path)
+			thumbURL = m.urlBuilder.BuildThumbnailURLFromPath(dirHash, img.Path)
+		}
 		result[i] = persistence.ImageInfo{
 			Path:         img.Path,
-			ThumbnailURL: m.urlBuilder.BuildThumbnailURLFromPath(dirHash, img.Path),
-			ImageURL:     m.urlBuilder.BuildImageURLFromPath(dirHash, folderPath, img.Path),
+			ThumbnailURL: thumbURL,
+			ImageURL:     imageURL,
 			Name:         img.Name,
 			Extension:    img.Extension,
 			Size:         img.Size,

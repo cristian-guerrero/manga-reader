@@ -13,3 +13,4 @@ build/windows/installers/tmp
 .raggrep/
 .playwright-mcp
 .go-mcp
+.idea/
