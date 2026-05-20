@@ -26,6 +26,12 @@ Manga Visor is a desktop app that lets you browse, read, and download manga from
 - **🌐 Multi-language** — English and Spanish supported.
 - **🔄 Auto-Update** — Silent background updates via GitHub releases. Two channels: Stable (tagged releases) and Dev (latest build).
 
+## 📸 Screenshots
+
+<img src="screenshots/01.png" />
+
+[Screenshots →](screenshots/SCREENSHOTS.md)
+
 <details>
 <summary><strong>🌐 Supported Download Sites</strong> (click to expand)</summary>
 
