@@ -42,12 +42,12 @@ const INITIAL_STATE: Settings = {
     'settings': true
   },
   downloadPath: '',
-  clipboardAutoMonitor: false,
+  clipboardAutoMonitor: true,
   autoResumeDownloads: false,
   themeAccents: {},
   tabMemorySaving: true,
   restoreTabs: false,
-  generateThumbnails: false,
+  generateThumbnails: true,
   autoUpdate: true,
   updateChannel: 'stable',
 };

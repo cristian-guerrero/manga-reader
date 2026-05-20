@@ -121,12 +121,12 @@ func DefaultSettings() *Settings {
 			"settings":  true,
 		},
 		DownloadPath:         "", // empty means default
-		ClipboardAutoMonitor: false,
+		ClipboardAutoMonitor: true,
 		AutoResumeDownloads:  false,
 		TabMemorySaving:      true,
 		RestoreTabs:          false,
 		SavedTabs:            "",
-		GenerateThumbnails:   false,
+		GenerateThumbnails:   true,
 		ThemeAccents:         map[string]string{},
 		DownloadAlgorithmConfig: map[string]AlgorithmDownloadConfig{
 			"hitomi.la":        {MaxParallelChapters: 2, MaxParallelImages: 1},
