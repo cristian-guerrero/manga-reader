@@ -96,6 +96,9 @@ jobs:
       contents: write
 
     steps:
+      - name: Checkout del código
+        uses: actions/checkout@v4
+
       - name: Determinar tag del release
         id: set-tag
         shell: bash
