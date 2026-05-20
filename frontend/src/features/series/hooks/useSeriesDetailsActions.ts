@@ -12,7 +12,7 @@ export function useSeriesDetailsActions() {
 
     const handleOpenChapter = useCallback((path: string) => {
         // Maintain 'series' as active menu page when viewing a chapter from series details
-        navigate('viewer', { folder: path }, 'series');
+        navigate('viewer', { folder: path, shallow: 'true' }, 'series');
     }, [navigate]);
 
     const handleAuxClick = useCallback((e: React.MouseEvent, path: string, name: string) => {

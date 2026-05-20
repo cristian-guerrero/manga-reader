@@ -104,7 +104,7 @@ func (m *Module) AddFolder(path string) (*persistence.AddFolderResult, error) {
 		actualPath = m.unwrapArchiveRoot(dest)
 		isTemp = true
 	} else {
-		actualPath = m.unwrapArchiveRoot(path)
+		actualPath = path
 	}
 
 	folderPath := m.resolveToFolder(actualPath)
@@ -270,40 +270,26 @@ func (m *Module) GetSubfolders(folderPath string) ([]persistence.FolderInfo, err
 
 		fullPath := filepath.Join(folderPath, entry.Name())
 
-		// Use shallow scan instead of full recursive scan for performance
-		// Only check immediate directory for images, not recursively
+		// Only include immediate subfolders that have images directly (shallow scan)
+		// This prevents nested folder structures from creating invalid chapters
 		imageCount := m.fileLoader.GetShallowImageCount(fullPath)
-		hasSubdirs := m.fileLoader.HasSubdirectories(fullPath)
-
-		// Skip folders with no images and no subdirectories
-		if imageCount == 0 && !hasSubdirs {
+		if imageCount == 0 {
 			continue
 		}
 
-		// Find first image for cover (optimized search)
-		coverImage, hasImages := m.fileLoader.FindFirstImage(fullPath)
+		coverImage, hasImages := m.fileLoader.FindFirstImageShallow(fullPath)
 		if !hasImages {
-			// If no images in immediate directory but has subdirs, still include it
-			// as it might be a series container
-			if hasSubdirs {
-				coverImage = ""
-			} else {
-				continue
-			}
+			continue
 		}
 
 		var thumbnailURL string
-		if hasImages && coverImage != "" {
-			dirHash := m.fileLoader.RegisterDirectory(fullPath)
-			thumbnailURL = m.urlBuilder.BuildThumbnailURLFromPath(dirHash, coverImage)
-		}
+		dirHash := m.fileLoader.RegisterDirectory(fullPath)
+		thumbnailURL = m.urlBuilder.BuildThumbnailURLFromPath(dirHash, coverImage)
 
-		// For count, we'll use shallow count for immediate directory only
-		// The actual count will be recalculated when the folder is added as a series
 		info := persistence.FolderInfo{
 			Path:         fullPath,
 			Name:         entry.Name(),
-			ImageCount:   imageCount, // Shallow count only
+			ImageCount:   imageCount,
 			CoverImage:   coverImage,
 			ThumbnailURL: thumbnailURL,
 		}

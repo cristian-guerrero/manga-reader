@@ -216,14 +216,14 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
 const handlePrevChapter = useCallback(async () => {
     if (chapterNav?.prevChapter) {
         await saveProgress();
-        navigate('viewer', { folder: chapterNav.prevChapter.path }, 'series');
+        navigate('viewer', { folder: chapterNav.prevChapter.path, shallow: 'true' }, 'series');
     }
 }, [chapterNav, navigate, saveProgress]);
 
 const handleNextChapter = useCallback(async () => {
     if (chapterNav?.nextChapter) {
         await saveProgress();
-        navigate('viewer', { folder: chapterNav.nextChapter.path }, 'series');
+        navigate('viewer', { folder: chapterNav.nextChapter.path, shallow: 'true' }, 'series');
     }
 }, [chapterNav, navigate, saveProgress]);
 
