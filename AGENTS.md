@@ -14,7 +14,7 @@ Wails v2 (Go 1.24 backend, React 18 + TypeScript + Vite frontend). State: Zustan
 
 ## Architecture
 - **Entrypoints**: `main.go` → `app.go` (Wails app struct with bound methods)
-- **Go backend**: `internal/` with `services/` (DI container), `database/` (SQLite repositories), `persistence/` (shared model types only), `modules/` (colorizer, downloader, explorer, library, series, history), `fileloader/` (image server), `thumbnails/`, `archiver/`, `updater/` (auto-update via GitHub releases), `version/` (build-time version injection via ldflags)
+- **Go backend**: `internal/` with `services/` (DI container), `database/` (SQLite repositories), `persistence/` (shared model types only), `modules/` (colorizer, downloader, explorer, library, series, history), `fileloader/` (image server, network server, asset extraction, API bridge), `thumbnails/`, `archiver/`, `updater/` (auto-update via GitHub releases), `version/` (build-time version injection via ldflags)
 - **Frontend**: Vite config at `frontend/vite.config.ts` with path aliases (`@app`, `@features`, `@shared`, `@services`, `@stores`, `@hooks`, `@components`, `@types`, `@utils`, `@constants`, `@themes`, `@i18n`)
 - **API bridge**: Go methods in `app.go` exposed to frontend via Wails binding; frontend calls via `services/api/*`
 - **Colorizer**: Python/Flask server for image processing; managed by `internal/modules/colorizer/`
@@ -29,6 +29,7 @@ Wails v2 (Go 1.24 backend, React 18 + TypeScript + Vite frontend). State: Zustan
 ├── manga-visor.db          ← Default library
 ├── library__<name>.db      ← Additional libraries
 ├── update-log.txt          ← Update history (timestamp | version | channel)
+├── web/                    ← Extracted frontend assets for network server (auto-generated)
 ├── cache/
 │   └── thumbnails.db      ← bbolt thumbnail cache (single file, invisible)
 ├── downloads/
@@ -93,6 +94,15 @@ Wails v2 (Go 1.24 backend, React 18 + TypeScript + Vite frontend). State: Zustan
 - 22 supported sites with per-algorithm concurrency config (parallel chapters + parallel images per chapter) stored in SQLite settings and editable via settings dialog in download page (gear icon)
 - Clipboard monitoring triggers auto-detection (`internal/modules/downloader/clipboard.go`)
 - Sites detected by URL patterns, each with dedicated `internal/modules/downloader/*.go` file
+
+## Network Server Module
+- Serves the complete React app on the local network at `0.0.0.0:8080` so other LAN devices can access it via browser
+- **Architecture**: Extracts embedded frontend assets to `~/.manga-visor/web/`, generates `shim.js` (mocks `window.runtime` + `window.go`), serves static files + `/api/call` reflection bridge
+- **Files**: `internal/fileloader/networkserver.go` (HTTP server), `extractor.go` (asset extraction), `shim.go` (JS generation), `bridge.go` (reflection API handler)
+- **Toggle**: `LocalNetworkServer` bool in Settings (default `false`). Server always starts OFF — user enables via Settings UI
+- **Frontend**: `NetworkServerSection.tsx` in Settings with toggle + IP address display + copy button
+- **Cache**: `index.html` and `shim.js` served with `no-cache`; Vite-hashed assets served with `immutable` headers
+- **API Bridge**: `POST /api/call` with `{method, args}` → reflection on `*App` struct → returns `{result}` or `{error}`
 
 ## Build Notes
 - **Linux**: Uses `build-appimage.sh` (not standard `wails build`) to produce AppImage with FUSE-free tooling

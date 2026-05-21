@@ -22,6 +22,7 @@ Manga Visor is a desktop app that lets you browse, read, and download manga from
 - **🏛️ Library** — Organize one-shots and series with automatic chapter detection.
 - **🎨 Colorizer** — AI-powered colorization for black & white manga (requires Python).
 - **📖 Reading History** — Auto-resume where you left off, progress indicators.
+- ** Network Server** — Serve the app on your local network (port 8080) so other devices can access it via browser.
 - **🎭 9 Themes** — Dark, Light, AMOLED Black, Sakura, and more.
 - **🌐 Multi-language** — English and Spanish supported.
 - **🔄 Auto-Update** — Silent background updates via GitHub releases (build number `bNNNN`, like llama.cpp).
@@ -188,6 +189,7 @@ Each **library** is a fully self-contained SQLite database (`.db`) with its own 
 ├── libraries.json          ← Registry: list of libraries + active library ID
 ├── manga-visor.db          ← Default library (legacy or freshly created)
 ├── library__comics.db      ← Additional library (e.g. "Comics")
+├── web/                    ← Extracted frontend assets for network server
 ├── cache/
 ├── downloads/
 └── temp/

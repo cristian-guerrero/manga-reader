@@ -403,5 +403,13 @@
       "displayNameLabel": "Nombre a mostrar (opcional)",
       "displayNamePlaceholder": "Mis Cómics"
     }
+  },
+  "networkServer": {
+    "title": "Servidor de Red",
+    "enable": "Habilitar Servidor de Red",
+    "enableDesc": "Sirve la app en tu red local para que otros dispositivos puedan acceder desde el navegador.",
+    "address": "Acceder desde otros dispositivos",
+    "running": "En ejecución",
+    "stopped": "Detenido"
   }
 }

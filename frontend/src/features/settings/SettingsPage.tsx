@@ -13,6 +13,7 @@ import { ViewerSection } from './components/ViewerSection';
 import { KeyboardSection } from './components/KeyboardSection';
 import { AdvancedSection } from './components/AdvancedSection';
 import { TabsSection } from './components/TabsSection';
+import { NetworkServerSection } from './components/NetworkServerSection';
 import { UpdateSection } from './components/UpdateSection';
 import { DangerZoneSection } from './components/DangerZoneSection';
 import { SettingsDialogs } from './components/SettingsDialogs';
@@ -60,6 +61,9 @@ export const SettingsPage: React.FC = () => {
           }}
           onLanguageChange={handleLanguageChange}
         />
+
+        {/* Network Server Section */}
+        <NetworkServerSection />
 
         {/* Viewer Section */}
         <ViewerSection

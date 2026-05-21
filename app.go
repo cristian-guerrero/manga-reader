@@ -22,6 +22,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	stdruntime "runtime"
 	"strings"
 	"time"
@@ -45,6 +46,9 @@ type App struct {
 	colorizerMod     *colorizer.Manager
 	updaterSvc       *updater.Service
 	libraryManagerMod *librarymanager.Module
+
+	// Network server (serves web app on local network)
+	networkServer *fileloader.NetworkServer
 }
 
 // Convenience getters for backward compatibility
@@ -1426,4 +1430,64 @@ func (a *App) IsUpdatePending() bool {
 
 func (a *App) WasJustUpdated() bool {
 	return a.updaterSvc.WasJustUpdated()
+}
+
+// =============================================================================
+// Network Server Methods (Exposed to Frontend)
+// =============================================================================
+
+func (a *App) ToggleLocalNetworkServer(enabled bool) error {
+	if enabled {
+		if a.networkServer == nil {
+			a.networkServer = fileloader.NewNetworkServer(a.services.ImageServer)
+		}
+		if a.networkServer.IsRunning() {
+			return nil
+		}
+
+		// Get all exported method names from App struct
+		methodNames := getAppMethodNames(a)
+
+		// Prepare assets (extract + generate shim)
+		if err := a.networkServer.Prepare(assets, methodNames); err != nil {
+			return fmt.Errorf("prepare network server: %w", err)
+		}
+
+		// Start server
+		if err := a.networkServer.Start(a); err != nil {
+			return fmt.Errorf("start network server: %w", err)
+		}
+	} else {
+		if a.networkServer != nil && a.networkServer.IsRunning() {
+			if err := a.networkServer.Stop(); err != nil {
+				return fmt.Errorf("stop network server: %w", err)
+			}
+		}
+	}
+	return nil
+}
+
+func (a *App) GetLocalNetworkServerStatus() bool {
+	if a.networkServer == nil {
+		return false
+	}
+	return a.networkServer.IsRunning()
+}
+
+func (a *App) GetLocalNetworkAddress() (string, error) {
+	if a.networkServer == nil || !a.networkServer.IsRunning() {
+		return "", fmt.Errorf("network server not running")
+	}
+	return a.networkServer.Address()
+}
+
+// getAppMethodNames returns all exported method names from the App struct.
+func getAppMethodNames(a *App) []string {
+	t := reflect.TypeOf(a)
+
+	var names []string
+	for i := 0; i < t.NumMethod(); i++ {
+		names = append(names, t.Method(i).Name)
+	}
+	return names
 }

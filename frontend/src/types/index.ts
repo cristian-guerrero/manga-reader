@@ -129,6 +129,9 @@ export interface Settings {
 
   /** Auto-update enabled */
   autoUpdate: boolean;
+
+  /** Local network server enabled */
+  localNetworkServer: boolean;
 }
 
 
