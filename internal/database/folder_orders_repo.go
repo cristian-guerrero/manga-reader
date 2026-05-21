@@ -258,7 +258,18 @@ func (r *FolderOrdersRepository) Load() error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	rows, err := r.db.db.Query("SELECT parent_path, custom_order, auto_order, original_order, modified_at FROM folder_orders")
+	// Ensure pinned columns exist (safe to run on every load, ignores errors if columns exist)
+	alterStmts := []string{
+		"ALTER TABLE folder_orders ADD COLUMN pinned_name TEXT NOT NULL DEFAULT '[]'",
+		"ALTER TABLE folder_orders ADD COLUMN pinned_date TEXT NOT NULL DEFAULT '[]'",
+		"ALTER TABLE folder_orders ADD COLUMN pinned_auto TEXT NOT NULL DEFAULT '[]'",
+		"ALTER TABLE folder_orders ADD COLUMN pinned_custom TEXT NOT NULL DEFAULT '[]'",
+	}
+	for _, stmt := range alterStmts {
+		r.db.db.Exec(stmt)
+	}
+
+	rows, err := r.db.db.Query("SELECT parent_path, custom_order, auto_order, original_order, modified_at, pinned_name, pinned_date, pinned_auto, pinned_custom FROM folder_orders")
 	if err != nil {
 		return fmt.Errorf("query folder orders: %w", err)
 	}
@@ -268,12 +279,17 @@ func (r *FolderOrdersRepository) Load() error {
 	for rows.Next() {
 		var o persistence.FolderOrder
 		var customJSON, autoJSON, originalJSON string
-		if err := rows.Scan(&o.ParentPath, &customJSON, &autoJSON, &originalJSON, &o.ModifiedAt); err != nil {
+		var pinnedNameJSON, pinnedDateJSON, pinnedAutoJSON, pinnedCustomJSON string
+		if err := rows.Scan(&o.ParentPath, &customJSON, &autoJSON, &originalJSON, &o.ModifiedAt, &pinnedNameJSON, &pinnedDateJSON, &pinnedAutoJSON, &pinnedCustomJSON); err != nil {
 			return fmt.Errorf("scan folder order: %w", err)
 		}
 		json.Unmarshal([]byte(customJSON), &o.CustomOrder)
 		json.Unmarshal([]byte(autoJSON), &o.AutoOrder)
 		json.Unmarshal([]byte(originalJSON), &o.OriginalOrder)
+		json.Unmarshal([]byte(pinnedNameJSON), &o.PinnedName)
+		json.Unmarshal([]byte(pinnedDateJSON), &o.PinnedDate)
+		json.Unmarshal([]byte(pinnedAutoJSON), &o.PinnedAuto)
+		json.Unmarshal([]byte(pinnedCustomJSON), &o.PinnedCustom)
 		if o.CustomOrder == nil {
 			o.CustomOrder = []string{}
 		}
@@ -282,6 +298,18 @@ func (r *FolderOrdersRepository) Load() error {
 		}
 		if o.OriginalOrder == nil {
 			o.OriginalOrder = []string{}
+		}
+		if o.PinnedName == nil {
+			o.PinnedName = []string{}
+		}
+		if o.PinnedDate == nil {
+			o.PinnedDate = []string{}
+		}
+		if o.PinnedAuto == nil {
+			o.PinnedAuto = []string{}
+		}
+		if o.PinnedCustom == nil {
+			o.PinnedCustom = []string{}
 		}
 		hash := folderOrderHash(o.ParentPath)
 		r.orders[hash] = o
@@ -304,7 +332,7 @@ func (r *FolderOrdersRepository) writeAll() error {
 		return fmt.Errorf("clear folder orders: %w", err)
 	}
 
-	stmt, err := tx.Prepare(`INSERT INTO folder_orders (parent_path, custom_order, auto_order, original_order, modified_at) VALUES (?, ?, ?, ?, ?)`)
+	stmt, err := tx.Prepare(`INSERT INTO folder_orders (parent_path, custom_order, auto_order, original_order, modified_at, pinned_name, pinned_date, pinned_auto, pinned_custom) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`)
 	if err != nil {
 		return fmt.Errorf("prepare folder orders stmt: %w", err)
 	}
@@ -314,7 +342,11 @@ func (r *FolderOrdersRepository) writeAll() error {
 		customJSON, _ := json.Marshal(o.CustomOrder)
 		autoJSON, _ := json.Marshal(o.AutoOrder)
 		originalJSON, _ := json.Marshal(o.OriginalOrder)
-		if _, err := stmt.Exec(o.ParentPath, string(customJSON), string(autoJSON), string(originalJSON), o.ModifiedAt); err != nil {
+		pinnedNameJSON, _ := json.Marshal(o.PinnedName)
+		pinnedDateJSON, _ := json.Marshal(o.PinnedDate)
+		pinnedAutoJSON, _ := json.Marshal(o.PinnedAuto)
+		pinnedCustomJSON, _ := json.Marshal(o.PinnedCustom)
+		if _, err := stmt.Exec(o.ParentPath, string(customJSON), string(autoJSON), string(originalJSON), o.ModifiedAt, string(pinnedNameJSON), string(pinnedDateJSON), string(pinnedAutoJSON), string(pinnedCustomJSON)); err != nil {
 			return fmt.Errorf("insert folder order: %w", err)
 		}
 	}
@@ -324,4 +356,93 @@ func (r *FolderOrdersRepository) writeAll() error {
 
 func folderOrderHash(path string) string {
 	return fmt.Sprintf("%x", md5.Sum([]byte(path)))
+}
+
+func getPinnedField(o *persistence.FolderOrder, sortMode string) *[]string {
+	switch sortMode {
+	case "name":
+		return &o.PinnedName
+	case "date":
+		return &o.PinnedDate
+	case "auto":
+		return &o.PinnedAuto
+	case "custom":
+		return &o.PinnedCustom
+	default:
+		return nil
+	}
+}
+
+func (r *FolderOrdersRepository) GetPinned(parentPath, sortMode string) []string {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	hash := folderOrderHash(parentPath)
+	if o, ok := r.orders[hash]; ok {
+		pinned := getPinnedField(&o, sortMode)
+		if pinned != nil && len(*pinned) > 0 {
+			cp := make([]string, len(*pinned))
+			copy(cp, *pinned)
+			return cp
+		}
+	}
+	return nil
+}
+
+func (r *FolderOrdersRepository) PinFolder(parentPath, sortMode, entryName string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	hash := folderOrderHash(parentPath)
+	o, hasExisting := r.orders[hash]
+	if !hasExisting {
+		o.ParentPath = parentPath
+		o.CustomOrder = []string{}
+		o.AutoOrder = []string{}
+		o.OriginalOrder = []string{}
+	}
+
+	pinned := getPinnedField(&o, sortMode)
+	if pinned == nil {
+		return nil
+	}
+
+	for _, name := range *pinned {
+		if name == entryName {
+			return nil
+		}
+	}
+
+	*pinned = append(*pinned, entryName)
+	o.ModifiedAt = time.Now().UTC().Format(time.RFC3339)
+	r.orders[hash] = o
+
+	return r.writeAll()
+}
+
+func (r *FolderOrdersRepository) UnpinFolder(parentPath, sortMode, entryName string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	hash := folderOrderHash(parentPath)
+	o, hasExisting := r.orders[hash]
+	if !hasExisting {
+		return nil
+	}
+
+	pinned := getPinnedField(&o, sortMode)
+	if pinned == nil {
+		return nil
+	}
+
+	newPinned := make([]string, 0, len(*pinned))
+	for _, name := range *pinned {
+		if name != entryName {
+			newPinned = append(newPinned, name)
+		}
+	}
+	*pinned = newPinned
+	o.ModifiedAt = time.Now().UTC().Format(time.RFC3339)
+	r.orders[hash] = o
+
+	return r.writeAll()
 }

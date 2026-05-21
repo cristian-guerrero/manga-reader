@@ -579,7 +579,11 @@ CREATE TABLE IF NOT EXISTS folder_orders (
     custom_order TEXT NOT NULL DEFAULT '[]',
     auto_order TEXT NOT NULL DEFAULT '[]',
     original_order TEXT NOT NULL DEFAULT '[]',
-    modified_at TEXT NOT NULL DEFAULT ''
+    modified_at TEXT NOT NULL DEFAULT '',
+    pinned_name TEXT NOT NULL DEFAULT '[]',
+    pinned_date TEXT NOT NULL DEFAULT '[]',
+    pinned_auto TEXT NOT NULL DEFAULT '[]',
+    pinned_custom TEXT NOT NULL DEFAULT '[]'
 );
 
 CREATE TABLE IF NOT EXISTS folder_view_modes (

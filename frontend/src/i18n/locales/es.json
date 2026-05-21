@@ -275,7 +275,9 @@
     "openInFileManager": "Abrir en Explorador de Archivos",
     "sendToOneShot": "Abrir en One Shot",
     "sendToSeries": "Abrir en Series",
-    "gridItemSize": "Tamaño de Ítem"
+    "gridItemSize": "Tamaño de Ítem",
+    "pinFolder": "Fijar",
+    "unpinFolder": "Desfijar"
   },
   "themes": {
     "dark": "Oscuro",

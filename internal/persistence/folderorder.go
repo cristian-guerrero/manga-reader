@@ -15,6 +15,10 @@ type FolderOrder struct {
 	AutoOrder     []string `json:"autoOrder,omitempty"`
 	OriginalOrder []string `json:"originalOrder"`
 	ModifiedAt    string   `json:"modifiedAt"`
+	PinnedName    []string `json:"pinnedName,omitempty"`
+	PinnedDate    []string `json:"pinnedDate,omitempty"`
+	PinnedAuto    []string `json:"pinnedAuto,omitempty"`
+	PinnedCustom  []string `json:"pinnedCustom,omitempty"`
 }
 
 type FolderOrders struct {

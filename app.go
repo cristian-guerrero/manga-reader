@@ -472,6 +472,22 @@ func (a *App) ResetFolderAutoOrder(parentPath string) error {
 }
 
 // =============================================================================
+// Folder Pin Methods (Per-sort-mode pinned folders)
+// =============================================================================
+
+func (a *App) PinFolder(parentPath, sortMode, entryName string) error {
+	return a.explorerMod.PinFolder(parentPath, sortMode, entryName)
+}
+
+func (a *App) UnpinFolder(parentPath, sortMode, entryName string) error {
+	return a.explorerMod.UnpinFolder(parentPath, sortMode, entryName)
+}
+
+func (a *App) GetPinnedFolders(parentPath, sortMode string) []string {
+	return a.explorerMod.GetPinnedFolders(parentPath, sortMode)
+}
+
+// =============================================================================
 // Folder View Mode Methods (Per-folder grid/list preference)
 // =============================================================================
 

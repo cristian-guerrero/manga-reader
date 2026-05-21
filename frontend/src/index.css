@@ -772,8 +772,8 @@ body.window-rounded #root {
 }
 
 /* =============================================================================
-   Wails Specific - Frameless Window Support
-   ============================================================================= */
+    Wails Specific - Frameless Window Support
+    ============================================================================= */
 
 .wails-drag {
   --wails-draggable: drag;
@@ -787,4 +787,48 @@ select,
 textarea,
 [role="button"] {
   -webkit-app-region: no-drag;
+}
+
+/* =============================================================================
+    Pinned Folder - Gacha Rare Card Glow Border
+    ============================================================================= */
+
+.pinned-folder-glow {
+  border-radius: var(--radius-lg);
+  padding: 2px;
+  background: linear-gradient(135deg, #f59e0b, #ef4444, #8b5cf6, #3b82f6, #f59e0b);
+  background-size: 300% 300%;
+  animation: pinned-folder-shimmer 4s ease infinite;
+  box-shadow: 0 0 16px rgba(245, 158, 11, 0.35), 0 0 32px rgba(139, 92, 246, 0.2);
+}
+
+.pinned-folder-glow > * {
+  border-radius: calc(var(--radius-lg) - 2px);
+}
+
+@keyframes pinned-folder-shimmer {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.pinned-folder-slide-up {
+  animation: pinned-folder-slide-up 0.45s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes pinned-folder-slide-up {
+  0% {
+    opacity: 0.6;
+    transform: translateY(20px) scale(0.96);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
