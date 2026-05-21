@@ -88,6 +88,15 @@ func (s *Service) DownloadUpdate(info *UpdateInfo) error {
 		return fmt.Errorf("download: %w", err)
 	}
 
+	if runtime.GOOS == "windows" {
+		dest := filepath.Join(tmpDir, "manga-visor2-updated")
+		if err := copyFile(path, dest); err != nil {
+			return fmt.Errorf("copy windows binary: %w", err)
+		}
+		os.Remove(path)
+		path = dest
+	}
+
 	if runtime.GOOS == "darwin" {
 		extractDir := filepath.Join(tmpDir, "extracted")
 		if err := extractZip(path, extractDir); err != nil {
@@ -148,6 +157,12 @@ func (s *Service) WasJustUpdated() bool {
 		return false
 	}
 	os.Remove(markerPath)
+
+	// Clean up old binary from previous update
+	exe, _ := os.Executable()
+	oldBinary := exe + ".old"
+	os.Remove(oldBinary)
+
 	return strings.TrimSpace(string(data)) == version.Version
 }
 
@@ -179,22 +194,33 @@ func (s *Service) ApplyUpdate() error {
 	}
 
 	oldBinary := exe + ".old"
+
+	// Clean up any leftover .old from a previous failed update
+	os.Remove(oldBinary)
+
 	if err := os.Rename(exe, oldBinary); err != nil {
 		return fmt.Errorf("rename current -> old: %w", err)
 	}
 
 	data, err := os.ReadFile(newBinary)
 	if err != nil {
-		os.Rename(oldBinary, exe)
+		// Rollback: restore from .old
+		if rbErr := os.Rename(oldBinary, exe); rbErr != nil {
+			return fmt.Errorf("read new binary: %w (rollback also failed: %v)", err, rbErr)
+		}
 		return fmt.Errorf("read new binary: %w", err)
 	}
 
 	if err := os.WriteFile(exe, data, 0755); err != nil {
-		os.Rename(oldBinary, exe)
+		// Rollback: restore from .old
+		if rbErr := os.Rename(oldBinary, exe); rbErr != nil {
+			return fmt.Errorf("write new binary: %w (rollback also failed: %v)", err, rbErr)
+		}
 		return fmt.Errorf("write new binary: %w", err)
 	}
 
-	os.Remove(oldBinary)
+	// Don't remove .old here — let WasJustUpdated() clean it on next startup
+	// This way if the new binary fails to launch, the old one is still available
 	os.RemoveAll(tmpDir)
 
 	s.logUpdate()
