@@ -153,14 +153,15 @@ func (m *Module) GetLibrary() []persistence.FolderInfo {
 		// Only check if path exists (fast check), don't re-scan images
 		if _, err := os.Stat(entry.FolderPath); err == nil {
 			// Path exists, generate thumbnail URL if we have a cover image
-			if entry.CoverImage != "" {
-				dirHash := m.fileLoader.RegisterDirectory(entry.FolderPath)
-				if archiver.IsArchive(entry.FolderPath) {
-					info.ThumbnailURL = m.urlBuilder.BuildThumbnailURL(dirHash, entry.CoverImage)
-				} else {
-					info.ThumbnailURL = m.urlBuilder.BuildThumbnailURLFromPath(dirHash, entry.CoverImage)
-				}
+		if entry.CoverImage != "" {
+			dirHash := m.fileLoader.RegisterDirectory(entry.FolderPath)
+			if archiver.IsArchive(entry.FolderPath) {
+				info.ThumbnailURL = m.urlBuilder.BuildThumbnailURL(dirHash, entry.CoverImage)
+			} else {
+				thumbURL := m.urlBuilder.BuildImageURLFromPath(dirHash, entry.FolderPath, entry.CoverImage)
+				info.ThumbnailURL = strings.Replace(thumbURL, "/images?", "/thumbnails?", 1)
 			}
+		}
 		}
 		// If path doesn't exist, we still return it so UI can show error or handle removal
 
@@ -217,7 +218,8 @@ func (m *Module) GetFolderInfo(folderPath string) (*persistence.FolderInfo, erro
 		if archiver.IsArchive(folderPath) {
 			thumbnailURL = m.urlBuilder.BuildThumbnailURL(dirHash, coverImage)
 		} else {
-			thumbnailURL = m.urlBuilder.BuildThumbnailURLFromPath(dirHash, coverImage)
+			thumbURL := m.urlBuilder.BuildImageURLFromPath(dirHash, folderPath, coverImage)
+			thumbnailURL = strings.Replace(thumbURL, "/images?", "/thumbnails?", 1)
 		}
 	}
 
@@ -366,7 +368,8 @@ func (m *Module) GetImages(path string, settings *persistence.Settings, orders *
 			thumbURL = m.urlBuilder.BuildThumbnailURL(dirHash, img.Path)
 		} else {
 			imageURL = m.urlBuilder.BuildImageURLFromPath(dirHash, folderPath, img.Path)
-			thumbURL = m.urlBuilder.BuildThumbnailURLFromPath(dirHash, img.Path)
+			thumbURL = m.urlBuilder.BuildImageURLFromPath(dirHash, folderPath, img.Path)
+			thumbURL = strings.Replace(thumbURL, "/images?", "/thumbnails?", 1)
 		}
 		result[i] = persistence.ImageInfo{
 			Path:         img.Path,
@@ -444,7 +447,8 @@ func (m *Module) GetImagesShallow(path string, settings *persistence.Settings, o
 			thumbURL = m.urlBuilder.BuildThumbnailURL(dirHash, img.Path)
 		} else {
 			imageURL = m.urlBuilder.BuildImageURLFromPath(dirHash, folderPath, img.Path)
-			thumbURL = m.urlBuilder.BuildThumbnailURLFromPath(dirHash, img.Path)
+			thumbURL = m.urlBuilder.BuildImageURLFromPath(dirHash, folderPath, img.Path)
+			thumbURL = strings.Replace(thumbURL, "/images?", "/thumbnails?", 1)
 		}
 		result[i] = persistence.ImageInfo{
 			Path:         img.Path,
