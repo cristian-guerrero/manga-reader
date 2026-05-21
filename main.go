@@ -3,6 +3,11 @@ package main
 import (
 	"context"
 	"embed"
+	"fmt"
+	"os"
+	"os/signal"
+	"syscall"
+
 	_ "image/gif"
 	_ "image/jpeg"
 	_ "image/png"
@@ -24,6 +29,23 @@ var assets embed.FS
 func main() {
 	// Create an instance of the app structure
 	app := NewApp()
+
+	// Register signal handler for graceful shutdown during wails dev hot reload
+	// This ensures bbolt and other resources are closed properly when the process
+	// receives SIGTERM/SIGINT (e.g., during hot reload)
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		sig := <-sigCh
+		fmt.Printf("\n[main] Received signal %v, cleaning up...\n", sig)
+		if app.services != nil {
+			if app.services.ThumbGen != nil {
+				_ = app.services.ThumbGen.Close()
+			}
+			app.services.Shutdown()
+		}
+		os.Exit(0)
+	}()
 
 	// Load settings to get window dimensions
 	settings := app.GetSettings()

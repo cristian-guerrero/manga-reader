@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"go.etcd.io/bbolt"
 )
@@ -19,13 +20,18 @@ type BoltStore struct {
 }
 
 // NewBoltStore opens or creates a bbolt database at the given path.
+// Uses a 5-second timeout to handle hot-reload scenarios where the previous
+// process was killed before releasing the file lock.
 func NewBoltStore(dbPath string) (*BoltStore, error) {
 	dir := filepath.Dir(dbPath)
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return nil, err
 	}
 
-	db, err := bbolt.Open(dbPath, 0600, bbolt.DefaultOptions)
+	opts := *bbolt.DefaultOptions
+	opts.Timeout = 500 * time.Millisecond
+
+	db, err := bbolt.Open(dbPath, 0600, &opts)
 	if err != nil {
 		return nil, err
 	}
