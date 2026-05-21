@@ -11,9 +11,18 @@ import (
 )
 
 func (s *Service) applyUpdateWindows(exe, newBinary string) error {
+	oldBinary := exe + ".old"
+
+	// Strategy: rename current exe to .old (works even while running),
+	// then copy new binary to original path, then launch it.
 	cmdLine := fmt.Sprintf(
-		`timeout /t 2 /nobreak >nul & copy /y "%s" "%s" >nul & start "" "%s"`,
-		newBinary, exe, exe)
+		`@echo off & timeout /t 2 /nobreak >nul & `+
+			`move /y "%s" "%s" >nul 2>&1 & `+
+			`copy /y "%s" "%s" >nul 2>&1 & `+
+			`start "" "%s"`,
+		exe, oldBinary,
+		newBinary, exe,
+		exe)
 
 	cmd := exec.Command("cmd", "/c", cmdLine)
 	cmd.SysProcAttr = &syscall.SysProcAttr{
