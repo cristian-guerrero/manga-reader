@@ -7,17 +7,20 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
+	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
 
+var buildTagRegex = regexp.MustCompile(`^b(\d+)$`)
+
 type GitHubAPI struct {
-	client    *http.Client
-	owner     string
-	repo      string
-	baseOwner string
-	baseRepo  string
+	client *http.Client
+	owner  string
+	repo   string
 }
 
 func NewGitHubAPI() *GitHubAPI {
@@ -28,13 +31,40 @@ func NewGitHubAPI() *GitHubAPI {
 	}
 }
 
-func (g *GitHubAPI) getLatestRelease(channel Channel) (*Release, error) {
-	switch channel {
-	case ChannelDev:
-		return g.getDevRelease()
-	default:
-		return g.getStableRelease()
+func (g *GitHubAPI) getLatestRelease() (*Release, error) {
+	releases, err := g.listReleases()
+	if err != nil {
+		return nil, err
 	}
+
+	var buildReleases []Release
+	for _, r := range releases {
+		if !buildTagRegex.MatchString(r.TagName) {
+			continue
+		}
+		buildReleases = append(buildReleases, r)
+	}
+
+	if len(buildReleases) == 0 {
+		return nil, nil
+	}
+
+	sort.Slice(buildReleases, func(i, j int) bool {
+		a := parseBuildNumber(buildReleases[i].TagName)
+		b := parseBuildNumber(buildReleases[j].TagName)
+		return a > b
+	})
+
+	return &buildReleases[0], nil
+}
+
+func parseBuildNumber(tag string) int {
+	matches := buildTagRegex.FindStringSubmatch(tag)
+	if matches == nil {
+		return 0
+	}
+	n, _ := strconv.Atoi(matches[1])
+	return n
 }
 
 func (g *GitHubAPI) listReleases() ([]Release, error) {
@@ -63,56 +93,6 @@ func (g *GitHubAPI) listReleases() ([]Release, error) {
 	}
 
 	return releases, nil
-}
-
-func (g *GitHubAPI) getStableRelease() (*Release, error) {
-	releases, err := g.listReleases()
-	if err != nil {
-		return nil, err
-	}
-
-	var latest *Release
-	for i := range releases {
-		if !strings.HasPrefix(releases[i].TagName, "v") {
-			continue
-		}
-		if latest == nil || releases[i].CreatedAt.After(latest.CreatedAt) {
-			latest = &releases[i]
-		}
-	}
-
-	return latest, nil
-}
-
-func (g *GitHubAPI) getDevRelease() (*Release, error) {
-	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/releases/tags/latest", g.owner, g.repo)
-
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return nil, fmt.Errorf("create request: %w", err)
-	}
-	req.Header.Set("Accept", "application/vnd.github.v3+json")
-
-	resp, err := g.client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("http request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == http.StatusNotFound {
-		return nil, nil
-	}
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(io.LimitReader(resp.Body, 256))
-		return nil, fmt.Errorf("GitHub API %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
-	}
-
-	var release Release
-	if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
-		return nil, fmt.Errorf("decode release: %w", err)
-	}
-
-	return &release, nil
 }
 
 func (g *GitHubAPI) findAsset(release *Release) *Asset {

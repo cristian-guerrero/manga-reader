@@ -761,7 +761,6 @@ export namespace updater {
 	    available: boolean;
 	    version: string;
 	    url: string;
-	    channel: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new UpdateInfo(source);
@@ -772,7 +771,6 @@ export namespace updater {
 	        this.available = source["available"];
 	        this.version = source["version"];
 	        this.url = source["url"];
-	        this.channel = source["channel"];
 	    }
 	}
 	export class UpdateState {

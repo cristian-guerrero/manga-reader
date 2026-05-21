@@ -197,7 +197,7 @@ func (a *App) startup(ctx context.Context) {
 	settings := a.settings().Get()
 	if settings.AutoUpdate {
 		go func() {
-			info := a.updaterSvc.CheckForUpdate(settings.UpdateChannel)
+			info := a.updaterSvc.CheckForUpdate()
 			if info != nil && info.Available {
 				_ = a.updaterSvc.DownloadUpdate(info)
 			}
@@ -1356,11 +1356,11 @@ func (a *App) CheckForUpdate() *updater.UpdateInfo {
 	if !settings.AutoUpdate {
 		return &updater.UpdateInfo{Available: false}
 	}
-	return a.updaterSvc.CheckForUpdate(settings.UpdateChannel)
+	return a.updaterSvc.CheckForUpdate()
 }
 
 func (a *App) DownloadUpdate(version string) error {
-	info := a.updaterSvc.CheckForUpdate(a.settings().Get().UpdateChannel)
+	info := a.updaterSvc.CheckForUpdate()
 	if info == nil || !info.Available {
 		return fmt.Errorf("no update available")
 	}
@@ -1368,7 +1368,7 @@ func (a *App) DownloadUpdate(version string) error {
 }
 
 func (a *App) GetUpdateState() updater.UpdateState {
-	return updater.UpdateState{}
+	return a.updaterSvc.GetState()
 }
 
 func (a *App) GetCurrentVersion() string {
@@ -1376,7 +1376,7 @@ func (a *App) GetCurrentVersion() string {
 }
 
 func (a *App) IsUpdatePending() bool {
-	return false
+	return a.updaterSvc.GetState().Pending
 }
 
 func (a *App) WasJustUpdated() bool {

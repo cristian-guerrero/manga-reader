@@ -12,13 +12,12 @@ import (
 )
 
 type Service struct {
-	api             *GitHubAPI
-	dataDir         string
-	lastCheck       time.Time
-	lastErr         error
-	lastResult      *UpdateInfo
-	pendingVersion  string
-	pendingChannel  string
+	api            *GitHubAPI
+	dataDir        string
+	lastCheck      time.Time
+	lastErr        error
+	lastResult     *UpdateInfo
+	pendingVersion string
 }
 
 func NewService(dataDir string) *Service {
@@ -28,18 +27,18 @@ func NewService(dataDir string) *Service {
 	}
 }
 
-func (s *Service) CheckForUpdate(channel string) *UpdateInfo {
+func (s *Service) CheckForUpdate() *UpdateInfo {
 	if time.Since(s.lastCheck) < CheckInterval && s.lastResult != nil {
 		return s.lastResult
 	}
 	s.lastCheck = time.Now()
 
-	ch := Channel(channel)
-	if ch != ChannelDev {
-		ch = ChannelStable
+	if version.Version == "dev" {
+		s.lastResult = &UpdateInfo{Available: false}
+		return s.lastResult
 	}
 
-	release, err := s.api.getLatestRelease(ch)
+	release, err := s.api.getLatestRelease()
 	if err != nil {
 		s.lastErr = fmt.Errorf("check update: %w", err)
 		s.lastResult = &UpdateInfo{Available: false}
@@ -50,24 +49,12 @@ func (s *Service) CheckForUpdate(channel string) *UpdateInfo {
 		return s.lastResult
 	}
 
-	current := strings.TrimPrefix(version.Version, "v")
-	latest := strings.TrimPrefix(release.TagName, "v")
+	currentBuild := parseBuildNumber(version.Version)
+	latestBuild := parseBuildNumber(release.TagName)
 
-	if ch == ChannelDev {
-		last := s.readLatestTimestamp()
-		if !release.CreatedAt.IsZero() && !release.CreatedAt.After(last) {
-			s.lastResult = &UpdateInfo{Available: false}
-			return s.lastResult
-		}
-	} else {
-		if latest == "" || latest == current {
-			s.lastResult = &UpdateInfo{Available: false}
-			return s.lastResult
-		}
-		if !isNewer(latest, current) {
-			s.lastResult = &UpdateInfo{Available: false}
-			return s.lastResult
-		}
+	if latestBuild == 0 || latestBuild <= currentBuild {
+		s.lastResult = &UpdateInfo{Available: false}
+		return s.lastResult
 	}
 
 	asset := s.api.findAsset(release)
@@ -81,11 +68,6 @@ func (s *Service) CheckForUpdate(channel string) *UpdateInfo {
 		Available: true,
 		Version:   release.TagName,
 		URL:       asset.DownloadURL,
-		Channel:   string(ch),
-	}
-
-	if ch == ChannelDev {
-		s.writeLatestTimestamp(release.CreatedAt)
 	}
 
 	s.lastErr = nil
@@ -94,7 +76,6 @@ func (s *Service) CheckForUpdate(channel string) *UpdateInfo {
 
 func (s *Service) DownloadUpdate(info *UpdateInfo) error {
 	s.pendingVersion = info.Version
-	s.pendingChannel = info.Channel
 
 	asset := &Asset{
 		Name:        filepath.Base(info.URL),
@@ -225,6 +206,31 @@ func (s *Service) ApplyUpdate() error {
 	return nil
 }
 
+func (s *Service) GetState() UpdateState {
+	tmpDir := filepath.Join(s.dataDir, "updates")
+	entries, err := os.ReadDir(tmpDir)
+	if err != nil {
+		return UpdateState{Pending: false}
+	}
+
+	for _, e := range entries {
+		if !e.IsDir() && (e.Name() == "manga-visor2-updated" || e.Name() == "manga-visor2-macos-updated") {
+			info, err := e.Info()
+			downloadedAt := ""
+			if err == nil {
+				downloadedAt = info.ModTime().Format(time.RFC3339)
+			}
+			return UpdateState{
+				Pending:        true,
+				PendingVersion: s.pendingVersion,
+				DownloadedAt:   downloadedAt,
+			}
+		}
+	}
+
+	return UpdateState{Pending: false}
+}
+
 func (s *Service) LastError() error {
 	return s.lastErr
 }
@@ -233,35 +239,13 @@ func (s *Service) GetCurrentVersion() string {
 	return version.Version
 }
 
-func (s *Service) readLatestTimestamp() time.Time {
-	markerPath := filepath.Join(s.dataDir, ".latest-timestamp")
-	data, err := os.ReadFile(markerPath)
-	if err != nil {
-		return time.Time{}
-	}
-	t, err := time.Parse(time.RFC3339, strings.TrimSpace(string(data)))
-	if err != nil {
-		return time.Time{}
-	}
-	return t
-}
-
-func (s *Service) writeLatestTimestamp(t time.Time) {
-	markerPath := filepath.Join(s.dataDir, ".latest-timestamp")
-	os.WriteFile(markerPath, []byte(t.Format(time.RFC3339)), 0644)
-}
-
 func (s *Service) logUpdate() {
 	tag := s.pendingVersion
 	if tag == "" {
 		tag = version.Version
 	}
-	ch := s.pendingChannel
-	if ch == "" {
-		ch = "stable"
-	}
 
-	line := fmt.Sprintf("%s | %s | %s\n", time.Now().Format(time.RFC3339), tag, ch)
+	line := fmt.Sprintf("%s | %s\n", time.Now().Format(time.RFC3339), tag)
 
 	logPath := filepath.Join(s.dataDir, "update-log.txt")
 	f, err := os.OpenFile(logPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)

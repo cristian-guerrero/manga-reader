@@ -5,7 +5,6 @@ export interface UpdateInfo {
   available: boolean;
   version: string;
   url: string;
-  channel: string;
 }
 
 export interface UpdateState {

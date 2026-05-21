@@ -16,8 +16,8 @@ echo -e "${BLUE}Building AppImage for $APP_NAME ($VERSION)...${NC}"
 
 # 1. Build the application
 echo -e "${GREEN}Building binary with Wails...${NC}"
-# Note: -production is not a valid flag in some Wails versions, using standard build
-wails build -platform linux/amd64 -ldflags="-s -w"
+LDFLAGS="${1:--s -w}"
+wails build -platform linux/amd64 -ldflags="$LDFLAGS"
 
 if [ ! -f "build/bin/$BINARY_NAME" ]; then
     echo -e "${RED}Error: Binary build/bin/$BINARY_NAME not found. Build failed?${NC}"

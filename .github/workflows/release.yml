@@ -29,6 +29,8 @@ jobs:
     steps:
       - name: Checkout del código
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Instalar Go
         uses: actions/setup-go@v5
@@ -54,22 +56,32 @@ jobs:
         working-directory: ./frontend
         run: npm install
 
+      - name: Determinar tag
+        id: tag
+        shell: bash
+        run: |
+          BUILD_NUMBER="$(git rev-list --count HEAD)"
+          SHORT_SHA="$(git rev-parse --short=7 HEAD)"
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            echo "name=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+            echo "version=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          else
+            echo "name=b${BUILD_NUMBER}" >> $GITHUB_OUTPUT
+            echo "version=b${BUILD_NUMBER}" >> $GITHUB_OUTPUT
+          fi
+
       - name: Compilar App
         timeout-minutes: 30
         shell: bash
         run: |
-          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
-            VERSION_LD="-X manga-visor/internal/version.Version=${{ github.ref_name }}"
-          else
-            SHORT_SHA="${GITHUB_SHA::7}"
-            VERSION_LD="-X manga-visor/internal/version.Version=latest-${SHORT_SHA}"
-          fi
+          VERSION_LD="-X manga-visor/internal/version.Version=${{ steps.tag.outputs.version }}"
           
           echo "Iniciando compilación para plataforma: ${{ matrix.platform }}"
+          echo "Versión: ${{ steps.tag.outputs.version }}"
           
           if [ "${{ matrix.os }}" == "ubuntu-latest" ]; then
             chmod +x build-appimage.sh
-            ./build-appimage.sh
+            ./build-appimage.sh "${VERSION_LD} -s -w"
           else
             wails build -platform ${{ matrix.platform }} -ldflags="${VERSION_LD}"
           fi
@@ -100,6 +112,19 @@ jobs:
     steps:
       - name: Checkout del código
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determinar tag
+        id: tag
+        shell: bash
+        run: |
+          BUILD_NUMBER="$(git rev-list --count HEAD)"
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            echo "name=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          else
+            echo "name=b${BUILD_NUMBER}" >> $GITHUB_OUTPUT
+          fi
 
       - name: Descargar artifacts
         uses: actions/download-artifact@v4
@@ -118,55 +143,13 @@ jobs:
       - name: Publicar Release
         shell: bash
         run: |
-          git log -1 --format="%s" > /tmp/release-notes.txt
-
-          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
-            # Release versionado
-            TAG="${{ github.ref_name }}"
-            echo "Creando release: $TAG"
-            gh release create "$TAG" \
-              --title "$TAG" \
-              --notes-file /tmp/release-notes.txt
-            gh release upload "$TAG" dist/* --clobber
-          else
-            # Dev build — crear/actualizar release "latest" como ANNOTATED TAG
-            # para que GitHub lo ordene arriba (como v1.1.0)
-            echo "Actualizando build latest..."
-
-            if gh release view latest >/dev/null 2>&1; then
-              TAG_SHA=$(gh api repos/${{ github.repository }}/git/tags \
-                --method POST \
-                -f tag='latest' \
-                -f message='Latest development build' \
-                -f object=${{ github.sha }} \
-                -f type='commit' \
-                --jq '.sha')
-              gh api repos/${{ github.repository }}/git/refs \
-                --method PATCH \
-                -f ref='refs/tags/latest' \
-                -f sha="$TAG_SHA" \
-                --jq '.ref' >/dev/null
-
-              gh release upload latest dist/* --clobber
-              gh release edit latest --title "Latest Development Build" --notes-file /tmp/release-notes.txt
-            else
-              TAG_SHA=$(gh api repos/${{ github.repository }}/git/tags \
-                --method POST \
-                -f tag='latest' \
-                -f message='Latest development build' \
-                -f object=${{ github.sha }} \
-                -f type='commit' \
-                --jq '.sha')
-              gh api repos/${{ github.repository }}/git/refs \
-                --method POST \
-                -f ref='refs/tags/latest' \
-                -f sha="$TAG_SHA"
-
-              gh release create latest \
-                --title "Latest Development Build" \
-                --notes-file /tmp/release-notes.txt
-              gh release upload latest dist/* --clobber
-            fi
-          fi
+          COMMIT_MSG=$(git log -1 --format="%s")
+          TAG="${{ steps.tag.outputs.name }}"
+          echo "Creando release: $TAG"
+          
+          gh release create "$TAG" \
+            --title "$TAG" \
+            --notes "$COMMIT_MSG"
+          gh release upload "$TAG" dist/* --clobber
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -9,18 +9,10 @@ const (
 	CheckInterval = 1 * time.Hour
 )
 
-type Channel string
-
-const (
-	ChannelStable Channel = "stable"
-	ChannelDev    Channel = "dev"
-)
-
 type UpdateInfo struct {
 	Available bool   `json:"available"`
 	Version   string `json:"version"`
 	URL       string `json:"url"`
-	Channel   string `json:"channel"`
 }
 
 type UpdateState struct {
@@ -30,9 +22,10 @@ type UpdateState struct {
 }
 
 type Release struct {
-	TagName   string    `json:"tag_name"`
-	Assets    []Asset   `json:"assets"`
-	CreatedAt time.Time `json:"created_at"`
+	TagName     string    `json:"tag_name"`
+	Assets      []Asset   `json:"assets"`
+	CreatedAt   time.Time `json:"created_at"`
+	PublishedAt time.Time `json:"published_at"`
 }
 
 type Asset struct {

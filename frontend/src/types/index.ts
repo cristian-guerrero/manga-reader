@@ -129,8 +129,6 @@ export interface Settings {
 
   /** Auto-update enabled */
   autoUpdate: boolean;
-  /** Update channel (stable, dev) */
-  updateChannel: string;
 }
 
 

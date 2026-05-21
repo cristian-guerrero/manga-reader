@@ -67,7 +67,11 @@ export const useUpdaterStore = create<UpdaterStoreState>((set, get) => ({
     try {
       await UpdaterAPI.downloadUpdate(updateInfo.version);
       const state = await UpdaterAPI.getUpdateState();
-      set({ updateState: state, isDownloading: false });
+      set({
+        updateState: state,
+        isDownloading: false,
+        updateInfo: null,
+      });
     } catch {
       set({ isDownloading: false });
     }

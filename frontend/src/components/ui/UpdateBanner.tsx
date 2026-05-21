@@ -6,7 +6,7 @@ import { useSettingsStore } from '../../stores/settingsStore';
 export function UpdateBanner() {
   const { t } = useTranslation();
   const autoUpdate = useSettingsStore((s) => s.autoUpdate);
-  const { currentVersion, updateInfo, updateState, isChecking, updatedRecently, dismissUpdated, checkForUpdate, downloadUpdate, isDownloading, init } =
+  const { updateInfo, updateState, isDownloading, updatedRecently, dismissUpdated, checkForUpdate, downloadUpdate, init } =
     useUpdaterStore();
 
   useEffect(() => {
@@ -43,6 +43,23 @@ export function UpdateBanner() {
     );
   }
 
+  if (updateState.pending) {
+    return (
+      <div
+        className="fixed bottom-4 right-4 z-50 flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg animate-slide-in-right"
+        style={{
+          backgroundColor: 'var(--color-surface-elevated)',
+          border: '1px solid var(--color-border)',
+          borderLeft: '4px solid var(--color-success, #22c55e)',
+        }}
+      >
+        <span className="text-sm" style={{ color: 'var(--color-text-primary)' }}>
+          {t('updater.downloaded', 'Update ready — will install on next restart')}
+        </span>
+      </div>
+    );
+  }
+
   if (!updateInfo?.available) return null;
 
   return (
@@ -57,23 +74,17 @@ export function UpdateBanner() {
       <span className="text-sm" style={{ color: 'var(--color-text-primary)' }}>
         {t('updater.available', '{{version}} available', { version: updateInfo.version })}
       </span>
-      {updateState.pending ? (
-        <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
-          {t('updater.downloaded', 'Ready to install')}
-        </span>
-      ) : (
-        <button
-          onClick={downloadUpdate}
-          disabled={isDownloading}
-          className="text-xs px-3 py-1 rounded font-medium transition-opacity disabled:opacity-50"
-          style={{
-            backgroundColor: 'var(--color-accent)',
-            color: 'var(--color-on-accent, #fff)',
-          }}
-        >
-          {isDownloading ? t('common.loading', 'Downloading...') : t('updater.download', 'Download')}
-        </button>
-      )}
+      <button
+        onClick={downloadUpdate}
+        disabled={isDownloading}
+        className="text-xs px-3 py-1 rounded font-medium transition-opacity disabled:opacity-50"
+        style={{
+          backgroundColor: 'var(--color-accent)',
+          color: 'var(--color-on-accent, #fff)',
+        }}
+      >
+        {isDownloading ? t('common.loading', 'Downloading...') : t('updater.download', 'Download')}
+      </button>
     </div>
   );
 }
