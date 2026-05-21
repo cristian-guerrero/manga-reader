@@ -191,6 +191,8 @@ export function RemoveLibraryEntry(arg1:string):Promise<void>;
 
 export function RemoveSeries(arg1:string):Promise<void>;
 
+export function ReorderPinnedFolders(arg1:string,arg2:string,arg3:Array<string>):Promise<void>;
+
 export function ResetFolderAutoOrder(arg1:string):Promise<void>;
 
 export function ResetFolderOrder(arg1:string):Promise<void>;

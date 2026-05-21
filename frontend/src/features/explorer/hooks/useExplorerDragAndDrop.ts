@@ -10,6 +10,9 @@ interface UseExplorerDragAndDropOptions {
     onEntriesChange: (entries: ExplorerEntry[]) => void;
     onSortModeChange: (mode: string) => void;
     sortOrder?: 'asc' | 'desc';
+    pinnedFolders?: string[];
+    sortMode?: string;
+    onPinnedOrderChange?: (newOrder: string[]) => void;
 }
 
 export function useExplorerDragAndDrop({
@@ -18,6 +21,9 @@ export function useExplorerDragAndDrop({
     onEntriesChange,
     onSortModeChange,
     sortOrder = 'asc',
+    pinnedFolders = [],
+    sortMode = 'name',
+    onPinnedOrderChange,
 }: UseExplorerDragAndDropOptions) {
     const [activeId, setActiveId] = useState<string | null>(null);
 
@@ -35,6 +41,15 @@ export function useExplorerDragAndDrop({
 
     const sortOrderRef = useRef(sortOrder);
     useEffect(() => { sortOrderRef.current = sortOrder; }, [sortOrder]);
+
+    const pinnedFoldersRef = useRef(pinnedFolders);
+    useEffect(() => { pinnedFoldersRef.current = pinnedFolders; }, [pinnedFolders]);
+
+    const sortModeRef = useRef(sortMode);
+    useEffect(() => { sortModeRef.current = sortMode; }, [sortMode]);
+
+    const onPinnedOrderChangeRef = useRef(onPinnedOrderChange);
+    useEffect(() => { onPinnedOrderChangeRef.current = onPinnedOrderChange; }, [onPinnedOrderChange]);
 
     const directoryEntries = useMemo(
         () => entries.filter((e) => e.isDirectory),
@@ -61,6 +76,49 @@ export function useExplorerDragAndDrop({
             );
             if (oldIndex === -1 || newIndex === -1) return;
 
+            const draggedName = dirEntries[oldIndex].name;
+            const targetName = dirEntries[newIndex].name;
+            const currentPinned = pinnedFoldersRef.current;
+            const isDraggedPinned = currentPinned.includes(draggedName);
+            const isTargetPinned = currentPinned.includes(targetName);
+
+            // If both are pinned, reorder within pinned array
+            if (isDraggedPinned && isTargetPinned) {
+                const pinnedOldIndex = currentPinned.indexOf(draggedName);
+                const pinnedNewIndex = currentPinned.indexOf(targetName);
+                if (pinnedOldIndex === -1 || pinnedNewIndex === -1) return;
+
+                const newPinnedOrder = arrayMove(currentPinned, pinnedOldIndex, pinnedNewIndex);
+
+                // Reorder the entries array to match new pinned order
+                const pinnedEntries = dirEntries.filter((e) => newPinnedOrder.includes(e.name));
+                const unpinnedEntries = dirEntries.filter((e) => !newPinnedOrder.includes(e.name));
+                const sortedPinned = newPinnedOrder.map((name) => pinnedEntries.find((e) => e.name === name)!);
+                const newDirOrder = [...sortedPinned, ...unpinnedEntries];
+                const files = currentEntries.filter((e) => !e.isDirectory);
+                const newEntries = [...newDirOrder, ...files];
+
+                // Update both states synchronously to batch into one render cycle
+                onEntriesChangeRef.current(newEntries);
+                onPinnedOrderChangeRef.current?.(newPinnedOrder);
+
+                const currentParentPath = parentPathRef.current;
+                const currentSortMode = sortModeRef.current;
+                if (currentParentPath) {
+                    try {
+                        await FolderOrderAPI.reorderPinnedFolders(
+                            currentParentPath,
+                            currentSortMode,
+                            newPinnedOrder,
+                        );
+                    } catch (error) {
+                        console.error('[DnD] Failed to reorder pinned folders:', error);
+                    }
+                }
+                return;
+            }
+
+            // Existing custom order logic
             const newDirOrder = arrayMove(dirEntries, oldIndex, newIndex);
 
             const files = currentEntries.filter((e) => !e.isDirectory);

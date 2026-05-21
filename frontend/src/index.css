@@ -68,6 +68,11 @@
   --shadow-glow: 0 0 30px var(--color-accent-glow);
   --shadow-inner-glow: inset 0 0 30px rgba(139, 92, 246, 0.05);
 
+  /* Pinned folder glow - Dark theme (gacha rare card) */
+  --pinned-folder-gradient: linear-gradient(135deg, #f59e0b, #ef4444, #8b5cf6, #3b82f6, #f59e0b);
+  --pinned-folder-shadow-1: rgba(245, 158, 11, 0.35);
+  --pinned-folder-shadow-2: rgba(139, 92, 246, 0.2);
+
   /* Transitions */
   --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-normal: 250ms cubic-bezier(0.4, 0, 0.2, 1);
@@ -121,6 +126,11 @@
   --shadow-glow: 0 0 30px var(--color-accent-glow);
   --shadow-inner-glow: inset 0 0 30px color-mix(in srgb, var(--color-accent), transparent 95%);
   --shadow-inner-glow-color: color-mix(in srgb, var(--color-accent), transparent 90%);
+
+  /* Pinned folder glow - Light theme (vibrant card border) */
+  --pinned-folder-gradient: linear-gradient(135deg, #f59e0b, #dc2626, #7c3aed, #2563eb, #f59e0b);
+  --pinned-folder-shadow-1: rgba(245, 158, 11, 0.45);
+  --pinned-folder-shadow-2: rgba(124, 58, 237, 0.35);
 }
 
 /* =============================================================================
@@ -796,10 +806,10 @@ textarea,
 .pinned-folder-glow {
   border-radius: var(--radius-lg);
   padding: 2px;
-  background: linear-gradient(135deg, #f59e0b, #ef4444, #8b5cf6, #3b82f6, #f59e0b);
+  background: var(--pinned-folder-gradient);
   background-size: 300% 300%;
   animation: pinned-folder-shimmer 4s ease infinite;
-  box-shadow: 0 0 16px rgba(245, 158, 11, 0.35), 0 0 32px rgba(139, 92, 246, 0.2);
+  box-shadow: 0 0 16px var(--pinned-folder-shadow-1), 0 0 32px var(--pinned-folder-shadow-2);
 }
 
 .pinned-folder-glow > * {

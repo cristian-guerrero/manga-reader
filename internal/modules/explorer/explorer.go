@@ -1063,6 +1063,14 @@ func (m *Module) GetPinnedFolders(parentPath, sortMode string) []string {
 	return m.folderOrders.GetPinned(parentPath, sortMode)
 }
 
+// ReorderPinnedFolders reorders the pinned folders array for the given sort mode
+func (m *Module) ReorderPinnedFolders(parentPath, sortMode string, newOrder []string) error {
+	if m.folderOrders == nil {
+		return nil
+	}
+	return m.folderOrders.ReorderPinnedFolders(parentPath, sortMode, newOrder)
+}
+
 // SortImagesByExplorerPreference sorts images according to Explorer sort preferences.
 // This mirrors the sorting logic in ListDirectoryWithSort but for ImageInfo slices.
 // sortMode: "custom", "auto", "name", "date"

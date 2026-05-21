@@ -8,7 +8,9 @@ import {
 import {
     SortableContext,
     rectSortingStrategy,
+    useSortable,
 } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { GridItem, GridContainer, Tooltip, MediaTile } from '@shared/components';
 import { SortableEntryTile } from './SortableEntryTile';
 import { ExplorerListItem } from './ExplorerListItem';
@@ -33,6 +35,7 @@ interface DirectoryViewProps {
     gridItemSize: number;
     pinnedFolders?: string[];
     justPinned?: string | null;
+    hasPinnedFolders?: boolean;
 }
 
 function renderFooterLeft(entry: ExplorerEntry, t: (key: string) => string) {
@@ -89,6 +92,68 @@ const fallbackIcon = (
     </svg>
 );
 
+function PinnedSortableTile({
+    entry,
+    thumbnail,
+    onClick,
+    onAuxClick,
+    onContextMenu,
+    onVisible,
+    footerLeft,
+    footerRight,
+    fallbackIcon,
+    isJustPinned,
+}: {
+    entry: ExplorerEntry;
+    thumbnail?: string;
+    onClick: () => void;
+    onAuxClick: (e: React.MouseEvent) => void;
+    onContextMenu: (e: React.MouseEvent) => void;
+    onVisible: () => Promise<void>;
+    footerLeft: React.ReactNode;
+    footerRight: React.ReactNode;
+    fallbackIcon: React.ReactNode;
+    isJustPinned: boolean;
+}) {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging,
+    } = useSortable({ id: entry.path });
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+    };
+
+    const wrapperClass = ['pinned-folder-glow', isJustPinned ? 'pinned-folder-slide-up' : ''].filter(Boolean).join(' ');
+
+    return (
+        <div ref={setNodeRef} style={style}>
+            <div className={wrapperClass}>
+                <MediaTile
+                    id={entry.path}
+                    name={entry.name}
+                    thumbnail={thumbnail}
+                    onClick={onClick}
+                    onAuxClick={onAuxClick}
+                    onContextMenu={onContextMenu}
+                    onVisible={onVisible}
+                    footerLeft={footerLeft}
+                    footerRight={footerRight}
+                    fallbackIcon={fallbackIcon}
+                    isDragging={isDragging}
+                    dragHandleProps={{ ...attributes, ...listeners }}
+                />
+            </div>
+        </div>
+    );
+}
+
 export function DirectoryView({
     entries,
     thumbnails,
@@ -107,6 +172,7 @@ export function DirectoryView({
     gridItemSize,
     pinnedFolders = [],
     justPinned = null,
+    hasPinnedFolders = false,
 }: DirectoryViewProps) {
     const { t } = useTranslation();
 
@@ -160,6 +226,28 @@ export function DirectoryView({
             );
         }
 
+        if (isPinned) {
+            return (
+                <GridItem key={entry.path} width={gridItemSize}>
+                    <PinnedSortableTile
+                        entry={entry}
+                        thumbnail={thumb}
+                        onClick={() => onItemClick(entry)}
+                        onAuxClick={(e: React.MouseEvent) => onItemAuxClick(e, entry)}
+                        onContextMenu={(e: React.MouseEvent) => onItemContextMenu(e, entry)}
+                        onVisible={async () => {
+                            if (!entry.coverImage || thumb) return;
+                            await onLoadThumbnail(entry.path, entry.coverImage);
+                        }}
+                        footerLeft={renderFooterLeft(entry, t)}
+                        footerRight={renderFooterRight(entry, onOpenViewer, t)}
+                        fallbackIcon={fallbackIcon}
+                        isJustPinned={isJustPinned}
+                    />
+                </GridItem>
+            );
+        }
+
         return (
             <GridItem key={entry.path} width={gridItemSize}>
                 <div className={wrapperClass}>
@@ -207,7 +295,7 @@ export function DirectoryView({
                     items={sortableIds}
                     strategy={rectSortingStrategy}
                 >
-                    <GridContainer itemWidth={gridItemSize}>{renderContent()}</GridContainer>
+                    <GridContainer itemWidth={gridItemSize} className="pt-4">{renderContent()}</GridContainer>
                 </SortableContext>
                 <DragOverlay adjustScale={true}>
                     {activeEntry ? (
@@ -223,5 +311,34 @@ export function DirectoryView({
         );
     }
 
-    return <GridContainer itemWidth={gridItemSize}>{renderContent()}</GridContainer>;
+    if (hasPinnedFolders && directoryEntries.length > 0) {
+        const sortableIds = directoryEntries.map((e) => e.path);
+        return (
+            <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragStart={onDragStart}
+                onDragEnd={onDragEnd}
+            >
+                <SortableContext
+                    items={sortableIds}
+                    strategy={rectSortingStrategy}
+                >
+                    <GridContainer itemWidth={gridItemSize} className="pt-4">{renderContent()}</GridContainer>
+                </SortableContext>
+                <DragOverlay adjustScale={false} dropAnimation={null}>
+                    {activeEntry ? (
+                        <MediaTile
+                            id={activeEntry.path}
+                            name={activeEntry.name}
+                            thumbnail={activeEntry.thumbnailUrl || thumbnails[activeEntry.path]}
+                            isDragging
+                        />
+                    ) : null}
+                </DragOverlay>
+            </DndContext>
+        );
+    }
+
+    return <GridContainer itemWidth={gridItemSize} className="pt-4">{renderContent()}</GridContainer>;
 }
