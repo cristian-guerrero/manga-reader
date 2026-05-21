@@ -277,7 +277,9 @@
     "sendToSeries": "Abrir en Series",
     "gridItemSize": "Tamaño de Ítem",
     "pinFolder": "Fijar",
-    "unpinFolder": "Desfijar"
+    "unpinFolder": "Desfijar",
+    "pinImage": "Fijar Imagen",
+    "unpinImage": "Desfijar Imagen"
   },
   "themes": {
     "dark": "Oscuro",

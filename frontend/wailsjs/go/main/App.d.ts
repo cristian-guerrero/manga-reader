@@ -135,6 +135,8 @@ export function GetOriginalOrder(arg1:string):Promise<Array<string>>;
 
 export function GetPinnedFolders(arg1:string,arg2:string):Promise<Array<string>>;
 
+export function GetPinnedImages(arg1:string,arg2:string):Promise<Array<string>>;
+
 export function GetSeries():Promise<Array<series.SeriesEntryWithURLs>>;
 
 export function GetSeriesDetailsSortPreference(arg1:string):Promise<database.SeriesDetailsSortPref>;
@@ -177,6 +179,8 @@ export function OpenLibraryFile(arg1:string):Promise<persistence.LibraryInfo>;
 
 export function PinFolder(arg1:string,arg2:string,arg3:string):Promise<void>;
 
+export function PinImage(arg1:string,arg2:string,arg3:string):Promise<void>;
+
 export function PreloadThumbnails(arg1:Array<string>):Promise<void>;
 
 export function PromoteToAutoOrder(arg1:string,arg2:string,arg3:Array<string>):Promise<Array<string>>;
@@ -192,6 +196,8 @@ export function RemoveLibraryEntry(arg1:string):Promise<void>;
 export function RemoveSeries(arg1:string):Promise<void>;
 
 export function ReorderPinnedFolders(arg1:string,arg2:string,arg3:Array<string>):Promise<void>;
+
+export function ReorderPinnedImages(arg1:string,arg2:string,arg3:Array<string>):Promise<void>;
 
 export function ResetFolderAutoOrder(arg1:string):Promise<void>;
 
@@ -260,6 +266,8 @@ export function StartDownload(arg1:string,arg2:string,arg3:string):Promise<strin
 export function SwitchLibrary(arg1:string):Promise<void>;
 
 export function UnpinFolder(arg1:string,arg2:string,arg3:string):Promise<void>;
+
+export function UnpinImage(arg1:string,arg2:string,arg3:string):Promise<void>;
 
 export function UpdateSettings(arg1:Record<string, any>):Promise<void>;
 

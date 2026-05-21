@@ -2,6 +2,7 @@ package explorer
 
 import (
 	"context"
+	"log"
 	"manga-visor/internal/database"
 	"manga-visor/internal/persistence"
 	"manga-visor/internal/services"
@@ -22,6 +23,7 @@ type Module struct {
 	ctx             context.Context
 	explorerManager *database.ExplorerRepository
 	folderOrders    *database.FolderOrdersRepository
+	imageOrders     *database.ImageOrdersRepository
 	folderViewModes *database.FolderViewModeRepository
 	folderGridSizes *database.FolderGridSizeRepository
 	fileLoader      services.FileLoaderInterface
@@ -480,6 +482,16 @@ func (m *Module) ListDirectoryWithSort(path string, sortMode string, sortOrder s
 		pinnedSet[name] = true
 	}
 
+	var pinnedImgs []string
+	if m.imageOrders != nil {
+		pinnedImgs = m.imageOrders.GetPinnedImages(path, sortMode)
+	}
+	log.Printf("[Explorer] ListDirectoryWithSort: path=%s, sortMode=%s, pinnedFolders=%d, pinnedImages=%d, imageOrders=%v", path, sortMode, len(pinned), len(pinnedImgs), m.imageOrders != nil)
+	pinnedImageSet := make(map[string]bool, len(pinnedImgs))
+	for _, name := range pinnedImgs {
+		pinnedImageSet[name] = true
+	}
+
 	sort.SliceStable(result, func(i, j int) bool {
 		// Directories before files
 		if result[i].IsDirectory != result[j].IsDirectory {
@@ -537,6 +549,27 @@ func (m *Module) ListDirectoryWithSort(path string, sortMode string, sortOrder s
 					return result[i].LastModified < result[j].LastModified
 				}
 				return result[i].LastModified > result[j].LastModified
+			}
+		}
+		// If both are files, check for pinned image order
+		if !result[i].IsDirectory && !result[j].IsDirectory && len(pinnedImgs) > 0 {
+			iPinned := pinnedImageSet[result[i].Name]
+			jPinned := pinnedImageSet[result[j].Name]
+			if iPinned || jPinned {
+				if iPinned && !jPinned {
+					return true
+				}
+				if !iPinned && jPinned {
+					return false
+				}
+				for _, name := range pinnedImgs {
+					if name == result[i].Name {
+						return true
+					}
+					if name == result[j].Name {
+						return false
+					}
+				}
 			}
 		}
 		return false
@@ -1039,6 +1072,11 @@ func (m *Module) GetFolderOrdersRepo() *database.FolderOrdersRepository {
 	return m.folderOrders
 }
 
+// SetImageOrdersRepo sets the image orders repository
+func (m *Module) SetImageOrdersRepo(repo *database.ImageOrdersRepository) {
+	m.imageOrders = repo
+}
+
 // PinFolder pins a folder for the given sort mode
 func (m *Module) PinFolder(parentPath, sortMode, entryName string) error {
 	if m.folderOrders == nil {
@@ -1071,12 +1109,64 @@ func (m *Module) ReorderPinnedFolders(parentPath, sortMode string, newOrder []st
 	return m.folderOrders.ReorderPinnedFolders(parentPath, sortMode, newOrder)
 }
 
+// ApplyPinnedImages moves pinned images to the front of the slice.
+// Used by GetImages/GetImagesShallow when no explicit sort mode is requested.
+func ApplyPinnedImages(images []persistence.ImageInfo, parentPath string, imageOrders *database.ImageOrdersRepository) {
+	if imageOrders == nil || len(images) == 0 {
+		return
+	}
+	applyPinnedImagesToSlice(images, parentPath, "name", imageOrders)
+}
+
+func applyPinnedImagesToSlice(images []persistence.ImageInfo, parentPath string, sortMode string, imageOrders *database.ImageOrdersRepository) {
+	if imageOrders == nil || len(images) == 0 {
+		return
+	}
+	pinned := imageOrders.GetPinnedImages(parentPath, sortMode)
+	if len(pinned) == 0 {
+		return
+	}
+
+	pinnedSet := make(map[string]bool, len(pinned))
+	for _, name := range pinned {
+		pinnedSet[name] = true
+	}
+
+	sort.SliceStable(images, func(i, j int) bool {
+		iPinned := pinnedSet[images[i].Name]
+		jPinned := pinnedSet[images[j].Name]
+		if iPinned && !jPinned {
+			return true
+		}
+		if !iPinned && jPinned {
+			return false
+		}
+		if iPinned && jPinned {
+			for _, name := range pinned {
+				if name == images[i].Name {
+					return true
+				}
+				if name == images[j].Name {
+					return false
+				}
+			}
+		}
+		return false
+	})
+}
+
 // SortImagesByExplorerPreference sorts images according to Explorer sort preferences.
 // This mirrors the sorting logic in ListDirectoryWithSort but for ImageInfo slices.
 // sortMode: "custom", "auto", "name", "date"
 // sortOrder: "asc", "desc"
-func SortImagesByExplorerPreference(images []persistence.ImageInfo, parentPath string, sortMode string, sortOrder string, folderOrders *database.FolderOrdersRepository) {
-	if folderOrders == nil || len(images) == 0 {
+func SortImagesByExplorerPreference(images []persistence.ImageInfo, parentPath string, sortMode string, sortOrder string, folderOrders *database.FolderOrdersRepository, imageOrders *database.ImageOrdersRepository) {
+	if len(images) == 0 {
+		return
+	}
+
+	applyPinnedImagesToSlice(images, parentPath, sortMode, imageOrders)
+
+	if folderOrders == nil {
 		return
 	}
 
@@ -1091,7 +1181,6 @@ func SortImagesByExplorerPreference(images []persistence.ImageInfo, parentPath s
 		if len(order) > 0 {
 			applyOrderToImages(images, order, sortOrder)
 		} else {
-			// Fallback: newest first by lastModified
 			sort.SliceStable(images, func(i, j int) bool {
 				if sortOrder == "desc" {
 					return images[i].ModTime > images[j].ModTime

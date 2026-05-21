@@ -91,6 +91,7 @@ func NewApp() *App {
 	sMod := series.NewModule(container.Series, container.FileLoader, container.URLBuilder, container.Logger)
 	hMod := history.NewModule(container.History, container.Settings)
 	eMod := explorer.NewModule(container.FileLoader, container.URLBuilder, container.Logger, container.Explorer, container.FolderOrders, container.FolderViewModes, container.FolderGridSizes, container.ThumbGen)
+	eMod.SetImageOrdersRepo(container.Orders)
 	dMod := downloader.NewModule(container.Downloader, container.Settings, container.Logger)
 
 	// Dependency injection (Circular dependency resolution)
@@ -427,6 +428,22 @@ func (a *App) GetOriginalOrder(folderPath string) []string {
 	return nil
 }
 
+func (a *App) PinImage(folderPath, sortMode, imageName string) error {
+	return a.orders().PinImage(folderPath, sortMode, imageName)
+}
+
+func (a *App) UnpinImage(folderPath, sortMode, imageName string) error {
+	return a.orders().UnpinImage(folderPath, sortMode, imageName)
+}
+
+func (a *App) GetPinnedImages(folderPath, sortMode string) []string {
+	return a.orders().GetPinnedImages(folderPath, sortMode)
+}
+
+func (a *App) ReorderPinnedImages(folderPath, sortMode string, newOrder []string) error {
+	return a.orders().ReorderPinnedImages(folderPath, sortMode, newOrder)
+}
+
 // =============================================================================
 // Folder Order Methods (Custom sorting for subfolders in Explorer)
 // =============================================================================
@@ -563,7 +580,11 @@ func (a *App) SelectLibraryFile() (string, error) {
 // I MUST expose `GetImages` via `App` but logic should probably be in `Library` or `Explorer`?
 func (a *App) GetImages(path string) ([]persistence.ImageInfo, error) {
 	images, err := a.libraryMod.GetImages(path, a.settings().Get(), a.orders())
-	if err == nil && len(images) > 0 && stdruntime.GOOS == "linux" {
+	if err != nil {
+		return images, err
+	}
+	explorer.ApplyPinnedImages(images, path, a.orders())
+	if len(images) > 0 && stdruntime.GOOS == "linux" {
 		var paths []string
 		for _, img := range images {
 			paths = append(paths, img.Path)
@@ -579,7 +600,7 @@ func (a *App) GetImagesWithSort(path string, sortMode string, sortOrder string) 
 	if err != nil {
 		return nil, err
 	}
-	explorer.SortImagesByExplorerPreference(images, path, sortMode, sortOrder, a.explorerMod.GetFolderOrdersRepo())
+	explorer.SortImagesByExplorerPreference(images, path, sortMode, sortOrder, a.explorerMod.GetFolderOrdersRepo(), a.orders())
 	if err == nil && len(images) > 0 && stdruntime.GOOS == "linux" {
 		var paths []string
 		for _, img := range images {
@@ -593,7 +614,11 @@ func (a *App) GetImagesWithSort(path string, sortMode string, sortOrder string) 
 // GetImagesShallow returns a list of images in the specified folder (non-recursive, only immediate directory)
 func (a *App) GetImagesShallow(path string) ([]persistence.ImageInfo, error) {
 	images, err := a.libraryMod.GetImagesShallow(path, a.settings().Get(), a.orders())
-	if err == nil && len(images) > 0 && stdruntime.GOOS == "linux" {
+	if err != nil {
+		return images, err
+	}
+	explorer.ApplyPinnedImages(images, path, a.orders())
+	if len(images) > 0 && stdruntime.GOOS == "linux" {
 		var paths []string
 		for _, img := range images {
 			paths = append(paths, img.Path)
@@ -609,7 +634,7 @@ func (a *App) GetImagesShallowWithSort(path string, sortMode string, sortOrder s
 	if err != nil {
 		return nil, err
 	}
-	explorer.SortImagesByExplorerPreference(images, path, sortMode, sortOrder, a.explorerMod.GetFolderOrdersRepo())
+	explorer.SortImagesByExplorerPreference(images, path, sortMode, sortOrder, a.explorerMod.GetFolderOrdersRepo(), a.orders())
 	if err == nil && len(images) > 0 && stdruntime.GOOS == "linux" {
 		var paths []string
 		for _, img := range images {

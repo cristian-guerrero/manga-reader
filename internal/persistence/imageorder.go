@@ -11,14 +11,12 @@ const ordersFile = "orders.json"
 
 // ImageOrder represents a custom image order for a folder
 type ImageOrder struct {
-	// Folder path
-	FolderPath string `json:"folderPath"`
-	// Custom order (array of filenames)
-	CustomOrder []string `json:"customOrder"`
-	// Original order for reset
+	FolderPath    string   `json:"folderPath"`
+	CustomOrder   []string `json:"customOrder"`
 	OriginalOrder []string `json:"originalOrder"`
-	// When the order was modified
-	ModifiedAt string `json:"modifiedAt"`
+	ModifiedAt    string   `json:"modifiedAt"`
+	PinnedName    []string `json:"pinnedName,omitempty"`
+	PinnedDate    []string `json:"pinnedDate,omitempty"`
 }
 
 // Orders represents all custom image orders

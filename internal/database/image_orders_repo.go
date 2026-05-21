@@ -4,6 +4,7 @@ import (
 	"crypto/md5"
 	"encoding/json"
 	"fmt"
+	"log"
 	"manga-visor/internal/persistence"
 	"sync"
 	"time"
@@ -145,7 +146,15 @@ func (r *ImageOrdersRepository) Load() error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	rows, err := r.db.db.Query("SELECT folder_path, custom_order, original_order, modified_at FROM image_orders")
+	alterStmts := []string{
+		"ALTER TABLE image_orders ADD COLUMN pinned_name TEXT NOT NULL DEFAULT '[]'",
+		"ALTER TABLE image_orders ADD COLUMN pinned_date TEXT NOT NULL DEFAULT '[]'",
+	}
+	for _, stmt := range alterStmts {
+		r.db.db.Exec(stmt)
+	}
+
+	rows, err := r.db.db.Query("SELECT folder_path, custom_order, original_order, modified_at, pinned_name, pinned_date FROM image_orders")
 	if err != nil {
 		return fmt.Errorf("query image orders: %w", err)
 	}
@@ -154,17 +163,25 @@ func (r *ImageOrdersRepository) Load() error {
 	r.orders = make(map[string]persistence.ImageOrder)
 	for rows.Next() {
 		var o persistence.ImageOrder
-		var customJSON, originalJSON string
-		if err := rows.Scan(&o.FolderPath, &customJSON, &originalJSON, &o.ModifiedAt); err != nil {
+		var customJSON, originalJSON, pinnedNameJSON, pinnedDateJSON string
+		if err := rows.Scan(&o.FolderPath, &customJSON, &originalJSON, &o.ModifiedAt, &pinnedNameJSON, &pinnedDateJSON); err != nil {
 			return fmt.Errorf("scan image order: %w", err)
 		}
 		json.Unmarshal([]byte(customJSON), &o.CustomOrder)
 		json.Unmarshal([]byte(originalJSON), &o.OriginalOrder)
+		json.Unmarshal([]byte(pinnedNameJSON), &o.PinnedName)
+		json.Unmarshal([]byte(pinnedDateJSON), &o.PinnedDate)
 		if o.CustomOrder == nil {
 			o.CustomOrder = []string{}
 		}
 		if o.OriginalOrder == nil {
 			o.OriginalOrder = []string{}
+		}
+		if o.PinnedName == nil {
+			o.PinnedName = []string{}
+		}
+		if o.PinnedDate == nil {
+			o.PinnedDate = []string{}
 		}
 		hash := imageOrderHash(o.FolderPath)
 		r.orders[hash] = o
@@ -187,7 +204,7 @@ func (r *ImageOrdersRepository) writeAll() error {
 		return fmt.Errorf("clear image orders: %w", err)
 	}
 
-	stmt, err := tx.Prepare(`INSERT INTO image_orders (folder_path, custom_order, original_order, modified_at) VALUES (?, ?, ?, ?)`)
+	stmt, err := tx.Prepare(`INSERT INTO image_orders (folder_path, custom_order, original_order, modified_at, pinned_name, pinned_date) VALUES (?, ?, ?, ?, ?, ?)`)
 	if err != nil {
 		return fmt.Errorf("prepare image orders stmt: %w", err)
 	}
@@ -196,7 +213,9 @@ func (r *ImageOrdersRepository) writeAll() error {
 	for _, o := range r.orders {
 		customJSON, _ := json.Marshal(o.CustomOrder)
 		originalJSON, _ := json.Marshal(o.OriginalOrder)
-		if _, err := stmt.Exec(o.FolderPath, string(customJSON), string(originalJSON), o.ModifiedAt); err != nil {
+		pinnedNameJSON, _ := json.Marshal(o.PinnedName)
+		pinnedDateJSON, _ := json.Marshal(o.PinnedDate)
+		if _, err := stmt.Exec(o.FolderPath, string(customJSON), string(originalJSON), o.ModifiedAt, string(pinnedNameJSON), string(pinnedDateJSON)); err != nil {
 			return fmt.Errorf("insert image order: %w", err)
 		}
 	}
@@ -206,4 +225,118 @@ func (r *ImageOrdersRepository) writeAll() error {
 
 func imageOrderHash(folderPath string) string {
 	return fmt.Sprintf("%x", md5.Sum([]byte(folderPath)))
+}
+
+func getPinnedImageField(o *persistence.ImageOrder, sortMode string) *[]string {
+	switch sortMode {
+	case "name":
+		return &o.PinnedName
+	case "date":
+		return &o.PinnedDate
+	default:
+		return &o.PinnedName
+	}
+}
+
+func (r *ImageOrdersRepository) GetPinnedImages(folderPath, sortMode string) []string {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	hash := imageOrderHash(folderPath)
+	if o, ok := r.orders[hash]; ok {
+		pinned := getPinnedImageField(&o, sortMode)
+		if pinned != nil && len(*pinned) > 0 {
+			cp := make([]string, len(*pinned))
+			copy(cp, *pinned)
+			log.Printf("[ImageOrders] GetPinnedImages: %s has %d pinned (sortMode=%s)", folderPath, len(cp), sortMode)
+			return cp
+		}
+	}
+	_, hasEntry := r.orders[hash]
+	log.Printf("[ImageOrders] GetPinnedImages: %s has 0 pinned (sortMode=%s, hasEntry=%v)", folderPath, sortMode, hasEntry)
+	return nil
+}
+
+func (r *ImageOrdersRepository) PinImage(folderPath, sortMode, imageName string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	hash := imageOrderHash(folderPath)
+	o, hasExisting := r.orders[hash]
+	if !hasExisting {
+		o.FolderPath = folderPath
+		o.CustomOrder = []string{}
+		o.OriginalOrder = []string{}
+		log.Printf("[ImageOrders] PinImage: new entry for %s, hash=%s", folderPath, hash)
+	}
+
+	pinned := getPinnedImageField(&o, sortMode)
+	if pinned == nil {
+		log.Printf("[ImageOrders] PinImage: no pinned field for sortMode=%s", sortMode)
+		return nil
+	}
+
+	for _, name := range *pinned {
+		if name == imageName {
+			log.Printf("[ImageOrders] PinImage: already pinned %s", imageName)
+			return nil
+		}
+	}
+
+	*pinned = append(*pinned, imageName)
+	o.ModifiedAt = time.Now().UTC().Format(time.RFC3339)
+	r.orders[hash] = o
+
+	log.Printf("[ImageOrders] PinImage: pinned %s in %s (sortMode=%s), now has %d pinned", imageName, folderPath, sortMode, len(*pinned))
+
+	return r.writeAll()
+}
+
+func (r *ImageOrdersRepository) UnpinImage(folderPath, sortMode, imageName string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	hash := imageOrderHash(folderPath)
+	o, hasExisting := r.orders[hash]
+	if !hasExisting {
+		return nil
+	}
+
+	pinned := getPinnedImageField(&o, sortMode)
+	if pinned == nil {
+		return nil
+	}
+
+	newPinned := make([]string, 0, len(*pinned))
+	for _, name := range *pinned {
+		if name != imageName {
+			newPinned = append(newPinned, name)
+		}
+	}
+	*pinned = newPinned
+	o.ModifiedAt = time.Now().UTC().Format(time.RFC3339)
+	r.orders[hash] = o
+
+	return r.writeAll()
+}
+
+func (r *ImageOrdersRepository) ReorderPinnedImages(folderPath, sortMode string, newOrder []string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	hash := imageOrderHash(folderPath)
+	o, hasExisting := r.orders[hash]
+	if !hasExisting {
+		return nil
+	}
+
+	pinned := getPinnedImageField(&o, sortMode)
+	if pinned == nil {
+		return nil
+	}
+
+	*pinned = newOrder
+	o.ModifiedAt = time.Now().UTC().Format(time.RFC3339)
+	r.orders[hash] = o
+
+	return r.writeAll()
 }

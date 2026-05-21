@@ -281,7 +281,9 @@
     "sendToSeries": "Open in Series",
     "gridItemSize": "Item Size",
     "pinFolder": "Pin",
-    "unpinFolder": "Unpin"
+    "unpinFolder": "Unpin",
+    "pinImage": "Pin Image",
+    "unpinImage": "Unpin Image"
   },
   "themes": {
     "dark": "Dark",

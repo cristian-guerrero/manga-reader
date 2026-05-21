@@ -13,6 +13,7 @@ interface UseExplorerSearchOptions {
   sortBy: SortBy;
   sortOrder: 'asc' | 'desc';
   pinnedFolders?: string[];
+  pinnedImages?: string[];
 }
 
 export function useExplorerSearch({
@@ -21,6 +22,7 @@ export function useExplorerSearch({
   sortBy,
   sortOrder,
   pinnedFolders = [],
+  pinnedImages = [],
 }: UseExplorerSearchOptions) {
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -55,39 +57,64 @@ export function useExplorerSearch({
     const filtered = [...entries]
       .filter(entry => matchesSearch(entry, searchQuery));
 
-    const pinnedSet = new Set(pinnedFolders);
+    const pinnedFolderSet = new Set(pinnedFolders);
+    const pinnedImageSet = new Set(pinnedImages);
 
-    const pinned = filtered.filter(e => e.isDirectory && pinnedSet.has(e.name));
-    const rest = filtered.filter(e => !e.isDirectory || !pinnedSet.has(e.name));
+    const dirs = filtered.filter(e => e.isDirectory);
+    const images = filtered.filter(e => !e.isDirectory);
 
-    const pinnedOrder = pinnedFolders.filter(name => pinned.some(e => e.name === name));
-    pinned.sort((a, b) => {
-      const idxA = pinnedOrder.indexOf(a.name);
-      const idxB = pinnedOrder.indexOf(b.name);
+    // Sort pinned folders
+    const pinnedDirs = dirs.filter(e => pinnedFolderSet.has(e.name));
+    const unpinnedDirs = dirs.filter(e => !pinnedFolderSet.has(e.name));
+    const pinnedFolderOrder = pinnedFolders.filter(name => pinnedDirs.some(e => e.name === name));
+    pinnedDirs.sort((a, b) => {
+      const idxA = pinnedFolderOrder.indexOf(a.name);
+      const idxB = pinnedFolderOrder.indexOf(b.name);
       return idxA - idxB;
     });
 
-    if (sortBy === 'custom' || sortBy === 'auto') {
-      return [...pinned, ...rest];
-    }
-
-    rest.sort((a, b) => {
-      if (a.isDirectory !== b.isDirectory) {
-        return a.isDirectory ? -1 : 1;
-      }
-      let res = 0;
-      if (sortBy === 'name') {
-        res = a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
-      } else {
-        const dateA = a.lastModified || 0;
-        const dateB = b.lastModified || 0;
-        res = dateA - dateB;
-      }
-      return sortOrder === 'asc' ? res : -res;
+    // Sort pinned images
+    const pinnedImgs = images.filter(e => pinnedImageSet.has(e.name));
+    const unpinnedImgs = images.filter(e => !pinnedImageSet.has(e.name));
+    const pinnedImageOrder = pinnedImages.filter(name => pinnedImgs.some(e => e.name === name));
+    pinnedImgs.sort((a, b) => {
+      const idxA = pinnedImageOrder.indexOf(a.name);
+      const idxB = pinnedImageOrder.indexOf(b.name);
+      return idxA - idxB;
     });
 
-    return [...pinned, ...rest];
-  }, [entries, searchQuery, sortBy, sortOrder, pinnedFolders]);
+    // Sort unpinned dirs
+    if (sortBy !== 'custom' && sortBy !== 'auto') {
+      unpinnedDirs.sort((a, b) => {
+        let res = 0;
+        if (sortBy === 'name') {
+          res = a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
+        } else {
+          const dateA = a.lastModified || 0;
+          const dateB = b.lastModified || 0;
+          res = dateA - dateB;
+        }
+        return sortOrder === 'asc' ? res : -res;
+      });
+    }
+
+    // Sort unpinned images
+    if (sortBy !== 'custom' && sortBy !== 'auto') {
+      unpinnedImgs.sort((a, b) => {
+        let res = 0;
+        if (sortBy === 'name') {
+          res = a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
+        } else {
+          const dateA = a.lastModified || 0;
+          const dateB = b.lastModified || 0;
+          res = dateA - dateB;
+        }
+        return sortOrder === 'asc' ? res : -res;
+      });
+    }
+
+    return [...pinnedDirs, ...unpinnedDirs, ...pinnedImgs, ...unpinnedImgs];
+  }, [entries, searchQuery, sortBy, sortOrder, pinnedFolders, pinnedImages]);
 
   return {
     searchQuery,

@@ -36,6 +36,9 @@ interface DirectoryViewProps {
     pinnedFolders?: string[];
     justPinned?: string | null;
     hasPinnedFolders?: boolean;
+    pinnedImages?: string[];
+    justPinnedImage?: string | null;
+    hasPinnedImages?: boolean;
 }
 
 function renderFooterLeft(entry: ExplorerEntry, t: (key: string) => string) {
@@ -173,14 +176,19 @@ export function DirectoryView({
     pinnedFolders = [],
     justPinned = null,
     hasPinnedFolders = false,
+    pinnedImages = [],
+    justPinnedImage = null,
+    hasPinnedImages = false,
 }: DirectoryViewProps) {
     const { t } = useTranslation();
 
     const renderGridEntry = useCallback((entry: ExplorerEntry) => {
         const thumb = entry.thumbnailUrl || thumbnails[entry.path];
-        const isSortable = isCustomMode && entry.isDirectory;
-        const isPinned = entry.isDirectory && pinnedFolders.includes(entry.name);
-        const isJustPinned = entry.name === justPinned;
+        const isSortable = isCustomMode;
+        const isPinnedFolder = entry.isDirectory && pinnedFolders.includes(entry.name);
+        const isPinnedImage = !entry.isDirectory && pinnedImages.includes(entry.name);
+        const isJustPinnedFolder = entry.name === justPinned;
+        const isJustPinnedImage = entry.name === justPinnedImage;
 
         const commonProps = {
             id: entry.path,
@@ -198,6 +206,8 @@ export function DirectoryView({
             fallbackIcon,
         };
 
+        const isPinned = isPinnedFolder || isPinnedImage;
+        const isJustPinned = isJustPinnedFolder || isJustPinnedImage;
         const glowClass = isPinned ? 'pinned-folder-glow' : '';
         const animateClass = isJustPinned ? 'pinned-folder-slide-up' : '';
         const wrapperClass = [glowClass, animateClass].filter(Boolean).join(' ');
@@ -255,7 +265,7 @@ export function DirectoryView({
                 </div>
             </GridItem>
         );
-    }, [entries, thumbnails, isCustomMode, pinnedFolders, justPinned, onItemClick, onItemAuxClick, onItemContextMenu, onLoadThumbnail, onOpenViewer, t, gridItemSize]);
+    }, [entries, thumbnails, isCustomMode, pinnedFolders, pinnedImages, justPinned, justPinnedImage, onItemClick, onItemAuxClick, onItemContextMenu, onLoadThumbnail, onOpenViewer, t, gridItemSize]);
 
     const renderListEntry = useCallback((entry: ExplorerEntry) => {
         const thumb = entry.thumbnailUrl || thumbnails[entry.path];
@@ -282,37 +292,10 @@ export function DirectoryView({
 
     const renderContent = () => entries.map(renderGridEntry);
 
-    if (isCustomMode && directoryEntries.length > 0) {
-        const sortableIds = directoryEntries.map((e) => e.path);
-        return (
-            <DndContext
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                onDragStart={onDragStart}
-                onDragEnd={onDragEnd}
-            >
-                <SortableContext
-                    items={sortableIds}
-                    strategy={rectSortingStrategy}
-                >
-                    <GridContainer itemWidth={gridItemSize} className="pt-4">{renderContent()}</GridContainer>
-                </SortableContext>
-                <DragOverlay adjustScale={true}>
-                    {activeEntry ? (
-                        <MediaTile
-                            id={activeEntry.path}
-                            name={activeEntry.name}
-                            thumbnail={activeEntry.thumbnailUrl || thumbnails[activeEntry.path]}
-                            isDragging
-                        />
-                    ) : null}
-                </DragOverlay>
-            </DndContext>
-        );
-    }
+    const allSortableEntries = isCustomMode ? entries : entries;
 
-    if (hasPinnedFolders && directoryEntries.length > 0) {
-        const sortableIds = directoryEntries.map((e) => e.path);
+    if (allSortableEntries.length > 0) {
+        const sortableIds = allSortableEntries.map((e) => e.path);
         return (
             <DndContext
                 sensors={sensors}

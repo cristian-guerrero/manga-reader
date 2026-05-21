@@ -2,6 +2,7 @@ import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { DragStartEvent, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove } from '@dnd-kit/sortable';
 import { FolderOrderAPI } from '@services/api/folderOrderAPI';
+import { ImageOrderAPI } from '@services/api/imageOrderAPI';
 import type { ExplorerEntry } from '../types';
 
 interface UseExplorerDragAndDropOptions {
@@ -11,8 +12,10 @@ interface UseExplorerDragAndDropOptions {
     onSortModeChange: (mode: string) => void;
     sortOrder?: 'asc' | 'desc';
     pinnedFolders?: string[];
+    pinnedImages?: string[];
     sortMode?: string;
     onPinnedOrderChange?: (newOrder: string[]) => void;
+    onPinnedImagesOrderChange?: (newOrder: string[]) => void;
 }
 
 export function useExplorerDragAndDrop({
@@ -22,8 +25,10 @@ export function useExplorerDragAndDrop({
     onSortModeChange,
     sortOrder = 'asc',
     pinnedFolders = [],
+    pinnedImages = [],
     sortMode = 'name',
     onPinnedOrderChange,
+    onPinnedImagesOrderChange,
 }: UseExplorerDragAndDropOptions) {
     const [activeId, setActiveId] = useState<string | null>(null);
 
@@ -45,11 +50,17 @@ export function useExplorerDragAndDrop({
     const pinnedFoldersRef = useRef(pinnedFolders);
     useEffect(() => { pinnedFoldersRef.current = pinnedFolders; }, [pinnedFolders]);
 
+    const pinnedImagesRef = useRef(pinnedImages);
+    useEffect(() => { pinnedImagesRef.current = pinnedImages; }, [pinnedImages]);
+
     const sortModeRef = useRef(sortMode);
     useEffect(() => { sortModeRef.current = sortMode; }, [sortMode]);
 
     const onPinnedOrderChangeRef = useRef(onPinnedOrderChange);
     useEffect(() => { onPinnedOrderChangeRef.current = onPinnedOrderChange; }, [onPinnedOrderChange]);
+
+    const onPinnedImagesOrderChangeRef = useRef(onPinnedImagesOrderChange);
+    useEffect(() => { onPinnedImagesOrderChangeRef.current = onPinnedImagesOrderChange; }, [onPinnedImagesOrderChange]);
 
     const directoryEntries = useMemo(
         () => entries.filter((e) => e.isDirectory),
@@ -66,95 +77,169 @@ export function useExplorerDragAndDrop({
 
         if (over && active.id !== over.id) {
             const currentEntries = entriesRef.current;
-            const dirEntries = currentEntries.filter((e) => e.isDirectory);
+            const draggedEntry = currentEntries.find((e) => e.path === active.id);
+            const targetEntry = currentEntries.find((e) => e.path === over.id);
+            if (!draggedEntry || !targetEntry) return;
 
-            const oldIndex = dirEntries.findIndex(
-                (item) => item.path === active.id,
-            );
-            const newIndex = dirEntries.findIndex(
-                (item) => item.path === over.id,
-            );
-            if (oldIndex === -1 || newIndex === -1) return;
+            const draggedIsDir = draggedEntry.isDirectory;
+            const targetIsDir = targetEntry.isDirectory;
 
-            const draggedName = dirEntries[oldIndex].name;
-            const targetName = dirEntries[newIndex].name;
-            const currentPinned = pinnedFoldersRef.current;
-            const isDraggedPinned = currentPinned.includes(draggedName);
-            const isTargetPinned = currentPinned.includes(targetName);
+            // Both are directories → folder DnD
+            if (draggedIsDir && targetIsDir) {
+                const dirEntries = currentEntries.filter((e) => e.isDirectory);
+                const oldIndex = dirEntries.findIndex((item) => item.path === active.id);
+                const newIndex = dirEntries.findIndex((item) => item.path === over.id);
+                if (oldIndex === -1 || newIndex === -1) return;
 
-            // If both are pinned, reorder within pinned array
-            if (isDraggedPinned && isTargetPinned) {
-                const pinnedOldIndex = currentPinned.indexOf(draggedName);
-                const pinnedNewIndex = currentPinned.indexOf(targetName);
-                if (pinnedOldIndex === -1 || pinnedNewIndex === -1) return;
+                const draggedName = dirEntries[oldIndex].name;
+                const targetName = dirEntries[newIndex].name;
+                const currentPinned = pinnedFoldersRef.current;
+                const isDraggedPinned = currentPinned.includes(draggedName);
+                const isTargetPinned = currentPinned.includes(targetName);
 
-                const newPinnedOrder = arrayMove(currentPinned, pinnedOldIndex, pinnedNewIndex);
+                if (isDraggedPinned && isTargetPinned) {
+                    const pinnedOldIndex = currentPinned.indexOf(draggedName);
+                    const pinnedNewIndex = currentPinned.indexOf(targetName);
+                    if (pinnedOldIndex === -1 || pinnedNewIndex === -1) return;
 
-                // Reorder the entries array to match new pinned order
-                const pinnedEntries = dirEntries.filter((e) => newPinnedOrder.includes(e.name));
-                const unpinnedEntries = dirEntries.filter((e) => !newPinnedOrder.includes(e.name));
-                const sortedPinned = newPinnedOrder.map((name) => pinnedEntries.find((e) => e.name === name)!);
-                const newDirOrder = [...sortedPinned, ...unpinnedEntries];
+                    const newPinnedOrder = arrayMove(currentPinned, pinnedOldIndex, pinnedNewIndex);
+                    const pinnedEntries = dirEntries.filter((e) => newPinnedOrder.includes(e.name));
+                    const unpinnedEntries = dirEntries.filter((e) => !newPinnedOrder.includes(e.name));
+                    const sortedPinned = newPinnedOrder.map((name) => pinnedEntries.find((e) => e.name === name)!);
+                    const newDirOrder = [...sortedPinned, ...unpinnedEntries];
+                    const files = currentEntries.filter((e) => !e.isDirectory);
+                    const newEntries = [...newDirOrder, ...files];
+
+                    onEntriesChangeRef.current(newEntries);
+                    onPinnedOrderChangeRef.current?.(newPinnedOrder);
+
+                    const currentParentPath = parentPathRef.current;
+                    const currentSortMode = sortModeRef.current;
+                    if (currentParentPath) {
+                        try {
+                            await FolderOrderAPI.reorderPinnedFolders(
+                                currentParentPath,
+                                currentSortMode,
+                                newPinnedOrder,
+                            );
+                        } catch (error) {
+                            console.error('[DnD] Failed to reorder pinned folders:', error);
+                        }
+                    }
+                    return;
+                }
+
+                const newDirOrder = arrayMove(dirEntries, oldIndex, newIndex);
                 const files = currentEntries.filter((e) => !e.isDirectory);
                 const newEntries = [...newDirOrder, ...files];
 
-                // Update both states synchronously to batch into one render cycle
                 onEntriesChangeRef.current(newEntries);
-                onPinnedOrderChangeRef.current?.(newPinnedOrder);
+                onSortModeChangeRef.current('custom');
 
                 const currentParentPath = parentPathRef.current;
-                const currentSortMode = sortModeRef.current;
                 if (currentParentPath) {
                     try {
-                        await FolderOrderAPI.reorderPinnedFolders(
+                        let customOrder = newDirOrder.map((d) => d.name);
+                        if (sortOrderRef.current === 'desc') {
+                            customOrder = [...customOrder].reverse();
+                        }
+                        const originalOrder = [...dirEntries]
+                            .sort((a, b) =>
+                                a.name.localeCompare(b.name, undefined, {
+                                    numeric: true,
+                                    sensitivity: 'base',
+                                }),
+                            )
+                            .map((d) => d.name);
+                        await FolderOrderAPI.setFolderOrder(
                             currentParentPath,
-                            currentSortMode,
-                            newPinnedOrder,
+                            customOrder,
+                            originalOrder,
                         );
                     } catch (error) {
-                        console.error('[DnD] Failed to reorder pinned folders:', error);
+                        console.error('[DnD] Failed to save folder order:', error);
                     }
                 }
                 return;
             }
 
-            // Existing custom order logic
-            const newDirOrder = arrayMove(dirEntries, oldIndex, newIndex);
+            // Both are images → image DnD
+            if (!draggedIsDir && !targetIsDir) {
+                const imageEntries = currentEntries.filter((e) => !e.isDirectory);
+                const oldIndex = imageEntries.findIndex((item) => item.path === active.id);
+                const newIndex = imageEntries.findIndex((item) => item.path === over.id);
+                if (oldIndex === -1 || newIndex === -1) return;
 
-            const files = currentEntries.filter((e) => !e.isDirectory);
-            const newEntries = [...newDirOrder, ...files];
+                const draggedName = imageEntries[oldIndex].name;
+                const targetName = imageEntries[newIndex].name;
+                const currentPinned = pinnedImagesRef.current;
+                const isDraggedPinned = currentPinned.includes(draggedName);
+                const isTargetPinned = currentPinned.includes(targetName);
 
-            onEntriesChangeRef.current(newEntries);
-            onSortModeChangeRef.current('custom');
+                if (isDraggedPinned && isTargetPinned) {
+                    const pinnedOldIndex = currentPinned.indexOf(draggedName);
+                    const pinnedNewIndex = currentPinned.indexOf(targetName);
+                    if (pinnedOldIndex === -1 || pinnedNewIndex === -1) return;
 
-            const currentParentPath = parentPathRef.current;
-            if (currentParentPath) {
-                try {
-                    let customOrder = newDirOrder.map((d) => d.name);
-                    // In desc mode, display is reversed from canonical; reverse back before saving
-                    if (sortOrderRef.current === 'desc') {
-                        customOrder = [...customOrder].reverse();
+                    const newPinnedOrder = arrayMove(currentPinned, pinnedOldIndex, pinnedNewIndex);
+                    const pinnedImgs = imageEntries.filter((e) => newPinnedOrder.includes(e.name));
+                    const unpinnedImgs = imageEntries.filter((e) => !newPinnedOrder.includes(e.name));
+                    const sortedPinned = newPinnedOrder.map((name) => pinnedImgs.find((e) => e.name === name)!);
+                    const newImageOrder = [...sortedPinned, ...unpinnedImgs];
+                    const dirs = currentEntries.filter((e) => e.isDirectory);
+                    const newEntries = [...dirs, ...newImageOrder];
+
+                    onEntriesChangeRef.current(newEntries);
+                    onPinnedImagesOrderChangeRef.current?.(newPinnedOrder);
+
+                    const currentParentPath = parentPathRef.current;
+                    const currentSortMode = sortModeRef.current;
+                    if (currentParentPath) {
+                        try {
+                            await ImageOrderAPI.reorderPinnedImages(
+                                currentParentPath,
+                                currentSortMode,
+                                newPinnedOrder,
+                            );
+                        } catch (error) {
+                            console.error('[DnD] Failed to reorder pinned images:', error);
+                        }
                     }
-                    const originalOrder = [...dirEntries]
-                        .sort((a, b) =>
-                            a.name.localeCompare(b.name, undefined, {
-                                numeric: true,
-                                sensitivity: 'base',
-                            }),
-                        )
-                        .map((d) => d.name);
-                    console.log('[DnD] Saving folder order for', currentParentPath, customOrder);
-                    await FolderOrderAPI.setFolderOrder(
-                        currentParentPath,
-                        customOrder,
-                        originalOrder,
-                    );
-                    console.log('[DnD] Folder order saved successfully');
-                } catch (error) {
-                    console.error('[DnD] Failed to save folder order:', error);
+                    return;
                 }
-            } else {
-                console.warn('[DnD] parentPath is null, skipping save');
+
+                const newImageOrder = arrayMove(imageEntries, oldIndex, newIndex);
+                const dirs = currentEntries.filter((e) => e.isDirectory);
+                const newEntries = [...dirs, ...newImageOrder];
+
+                onEntriesChangeRef.current(newEntries);
+                onSortModeChangeRef.current('custom');
+
+                const currentParentPath = parentPathRef.current;
+                if (currentParentPath) {
+                    try {
+                        let customOrder = newImageOrder.map((d) => d.name);
+                        if (sortOrderRef.current === 'desc') {
+                            customOrder = [...customOrder].reverse();
+                        }
+                        const originalOrder = [...imageEntries]
+                            .sort((a, b) =>
+                                a.name.localeCompare(b.name, undefined, {
+                                    numeric: true,
+                                    sensitivity: 'base',
+                                }),
+                            )
+                            .map((d) => d.name);
+                        await FolderOrderAPI.setFolderOrder(
+                            currentParentPath,
+                            customOrder,
+                            originalOrder,
+                        );
+                    } catch (error) {
+                        console.error('[DnD] Failed to save image order:', error);
+                    }
+                }
+                return;
             }
         } else {
             console.log('[DnD] Drag cancelled (no over or same position)');
