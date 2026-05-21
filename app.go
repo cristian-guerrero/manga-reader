@@ -487,6 +487,10 @@ func (a *App) GetPinnedFolders(parentPath, sortMode string) []string {
 	return a.explorerMod.GetPinnedFolders(parentPath, sortMode)
 }
 
+func (a *App) ReorderPinnedFolders(parentPath, sortMode string, newOrder []string) error {
+	return a.explorerMod.ReorderPinnedFolders(parentPath, sortMode, newOrder)
+}
+
 // =============================================================================
 // Folder View Mode Methods (Per-folder grid/list preference)
 // =============================================================================

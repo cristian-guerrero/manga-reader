@@ -177,4 +177,17 @@ export class FolderOrderAPI extends BaseAPI {
             }
         );
     }
+
+    static async reorderPinnedFolders(parentPath: string, sortMode: string, newOrder: string[]): Promise<void> {
+        return this.callVoid(
+            async () => {
+                await AppBackend.ReorderPinnedFolders(parentPath, sortMode, newOrder);
+            },
+            {
+                component: 'FolderOrderAPI',
+                action: 'reorderPinnedFolders',
+                details: { parentPath, sortMode }
+            }
+        );
+    }
 }

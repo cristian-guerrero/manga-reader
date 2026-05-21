@@ -214,7 +214,7 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
   // Use view mode hook (includes grid item size)
   const { viewMode, setViewMode, gridItemSize, setGridItemSize } = useExplorerView(explorerStateHook.currentPath);
 
-  // Use drag-and-drop hook (for custom folder ordering)
+  // Use drag-and-drop hook (for custom folder ordering and pinned folder reordering)
   const dnd = useExplorerDragAndDrop({
     parentPath: explorerStateHook.currentPath,
     entries: loading.entries,
@@ -225,6 +225,9 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
       }
     },
     sortOrder: sorting.sortOrder,
+    pinnedFolders,
+    sortMode: sorting.sortBy,
+    onPinnedOrderChange: setPinnedFolders,
   });
 
   // DnD sensors
@@ -581,6 +584,7 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
             onOpenViewer={navigation.handleOpenInViewer}
             pinnedFolders={pinnedFolders}
             justPinned={justPinned}
+            hasPinnedFolders={pinnedFolders.length > 0}
           />
         )}
 

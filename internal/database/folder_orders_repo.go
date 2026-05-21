@@ -446,3 +446,25 @@ func (r *FolderOrdersRepository) UnpinFolder(parentPath, sortMode, entryName str
 
 	return r.writeAll()
 }
+
+func (r *FolderOrdersRepository) ReorderPinnedFolders(parentPath, sortMode string, newOrder []string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	hash := folderOrderHash(parentPath)
+	o, hasExisting := r.orders[hash]
+	if !hasExisting {
+		return nil
+	}
+
+	pinned := getPinnedField(&o, sortMode)
+	if pinned == nil {
+		return nil
+	}
+
+	*pinned = newOrder
+	o.ModifiedAt = time.Now().UTC().Format(time.RFC3339)
+	r.orders[hash] = o
+
+	return r.writeAll()
+}

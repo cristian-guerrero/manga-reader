@@ -366,6 +366,10 @@ export function RemoveSeries(arg1) {
   return window['go']['main']['App']['RemoveSeries'](arg1);
 }
 
+export function ReorderPinnedFolders(arg1, arg2, arg3) {
+  return window['go']['main']['App']['ReorderPinnedFolders'](arg1, arg2, arg3);
+}
+
 export function ResetFolderAutoOrder(arg1) {
   return window['go']['main']['App']['ResetFolderAutoOrder'](arg1);
 }
