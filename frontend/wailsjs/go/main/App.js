@@ -254,6 +254,10 @@ export function GetPinnedFolders(arg1, arg2) {
   return window['go']['main']['App']['GetPinnedFolders'](arg1, arg2);
 }
 
+export function GetPinnedImages(arg1, arg2) {
+  return window['go']['main']['App']['GetPinnedImages'](arg1, arg2);
+}
+
 export function GetSeries() {
   return window['go']['main']['App']['GetSeries']();
 }
@@ -338,6 +342,10 @@ export function PinFolder(arg1, arg2, arg3) {
   return window['go']['main']['App']['PinFolder'](arg1, arg2, arg3);
 }
 
+export function PinImage(arg1, arg2, arg3) {
+  return window['go']['main']['App']['PinImage'](arg1, arg2, arg3);
+}
+
 export function PreloadThumbnails(arg1) {
   return window['go']['main']['App']['PreloadThumbnails'](arg1);
 }
@@ -368,6 +376,10 @@ export function RemoveSeries(arg1) {
 
 export function ReorderPinnedFolders(arg1, arg2, arg3) {
   return window['go']['main']['App']['ReorderPinnedFolders'](arg1, arg2, arg3);
+}
+
+export function ReorderPinnedImages(arg1, arg2, arg3) {
+  return window['go']['main']['App']['ReorderPinnedImages'](arg1, arg2, arg3);
 }
 
 export function ResetFolderAutoOrder(arg1) {
@@ -504,6 +516,10 @@ export function SwitchLibrary(arg1) {
 
 export function UnpinFolder(arg1, arg2, arg3) {
   return window['go']['main']['App']['UnpinFolder'](arg1, arg2, arg3);
+}
+
+export function UnpinImage(arg1, arg2, arg3) {
+  return window['go']['main']['App']['UnpinImage'](arg1, arg2, arg3);
 }
 
 export function UpdateSettings(arg1) {

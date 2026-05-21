@@ -28,6 +28,7 @@ import {
 import type { ContextMenuItem } from "@types";
 import { AppAPI } from "@services/api/appAPI";
 import { FolderOrderAPI } from "@services/api/folderOrderAPI";
+import { ImageOrderAPI } from "@services/api/imageOrderAPI";
 import {
   useExplorerState,
   useExplorerSorting,
@@ -161,6 +162,59 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
     return pinnedFolders.includes(entryName);
   }, [pinnedFolders]);
 
+  const [pinnedImages, setPinnedImages] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!explorerStateHook.currentPath) {
+      setPinnedImages([]);
+      return;
+    }
+    ImageOrderAPI.getPinnedImages(explorerStateHook.currentPath, sorting.sortBy)
+      .then(setPinnedImages)
+      .catch(() => setPinnedImages([]));
+  }, [explorerStateHook.currentPath, sorting.sortBy]);
+
+  const [justPinnedImage, setJustPinnedImage] = useState<string | null>(null);
+
+  const handlePinImage = useCallback(async (imageName: string) => {
+    if (!explorerStateHook.currentPath) return;
+    console.log('[PinImage] Pinning:', imageName, 'in', explorerStateHook.currentPath);
+    await ImageOrderAPI.pinImage(explorerStateHook.currentPath, sorting.sortBy, imageName);
+    const updated = await ImageOrderAPI.getPinnedImages(explorerStateHook.currentPath, sorting.sortBy);
+    console.log('[PinImage] Updated pinned images:', updated);
+    setPinnedImages(updated);
+    setJustPinnedImage(imageName);
+    setTimeout(() => setJustPinnedImage(null), 500);
+    loading.setEntries((prev) => {
+      const pinned = new Set(updated);
+      const dirs = prev.filter((e) => e.isDirectory);
+      const images = prev.filter((e) => !e.isDirectory);
+      const pinnedImgs = images.filter((e) => pinned.has(e.name));
+      const unpinnedImgs = images.filter((e) => !pinned.has(e.name));
+      console.log('[PinImage] Reordering entries:', { dirs: dirs.length, pinnedImgs: pinnedImgs.map(e => e.name), unpinnedImgs: unpinnedImgs.length });
+      return [...dirs, ...pinnedImgs, ...unpinnedImgs];
+    });
+  }, [explorerStateHook.currentPath, sorting.sortBy, loading.setEntries]);
+
+  const handleUnpinImage = useCallback(async (imageName: string) => {
+    if (!explorerStateHook.currentPath) return;
+    await ImageOrderAPI.unpinImage(explorerStateHook.currentPath, sorting.sortBy, imageName);
+    const updated = await ImageOrderAPI.getPinnedImages(explorerStateHook.currentPath, sorting.sortBy);
+    setPinnedImages(updated);
+    loading.setEntries((prev) => {
+      const pinned = new Set(updated);
+      const dirs = prev.filter((e) => e.isDirectory);
+      const images = prev.filter((e) => !e.isDirectory);
+      const pinnedImgs = images.filter((e) => pinned.has(e.name));
+      const unpinnedImgs = images.filter((e) => !pinned.has(e.name));
+      return [...dirs, ...pinnedImgs, ...unpinnedImgs];
+    });
+  }, [explorerStateHook.currentPath, sorting.sortBy, loading.setEntries]);
+
+  const isImagePinned = useCallback((imageName: string) => {
+    return pinnedImages.includes(imageName);
+  }, [pinnedImages]);
+
   // Use search hook
   const search = useExplorerSearch({
     baseFolders: loading.baseFolders,
@@ -168,6 +222,7 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
     sortBy: sorting.sortBy,
     sortOrder: sorting.sortOrder,
     pinnedFolders,
+    pinnedImages,
   });
 
   // Use navigation hook
@@ -226,8 +281,10 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
     },
     sortOrder: sorting.sortOrder,
     pinnedFolders,
+    pinnedImages,
     sortMode: sorting.sortBy,
     onPinnedOrderChange: setPinnedFolders,
+    onPinnedImagesOrderChange: setPinnedImages,
   });
 
   // DnD sensors
@@ -251,7 +308,6 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
 
   const handleContextMenu = useCallback(
     (e: React.MouseEvent, entry: ExplorerEntry) => {
-      if (!entry.isDirectory) return;
       setContextMenu({ x: e.clientX, y: e.clientY, entry });
     },
     [],
@@ -276,6 +332,22 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
                     id: 'pin-folder',
                     label: t('explorer.pinFolder'),
                     onClick: () => handlePinFolder(contextMenu.entry.name),
+                  } as ContextMenuItem,
+            ]
+          : []),
+        // Pin/Unpin for images (files)
+        ...(!contextMenu.entry.isDirectory
+          ? [
+              isImagePinned(contextMenu.entry.name)
+                ? {
+                    id: 'unpin-image',
+                    label: t('explorer.unpinImage'),
+                    onClick: () => handleUnpinImage(contextMenu.entry.name),
+                  } as ContextMenuItem
+                : {
+                    id: 'pin-image',
+                    label: t('explorer.pinImage'),
+                    onClick: () => handlePinImage(contextMenu.entry.name),
                   } as ContextMenuItem,
             ]
           : []),
@@ -585,6 +657,9 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
             pinnedFolders={pinnedFolders}
             justPinned={justPinned}
             hasPinnedFolders={pinnedFolders.length > 0}
+            pinnedImages={pinnedImages}
+            justPinnedImage={justPinnedImage}
+            hasPinnedImages={pinnedImages.length > 0}
           />
         )}
 
