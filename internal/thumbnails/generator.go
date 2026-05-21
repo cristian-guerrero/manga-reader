@@ -373,6 +373,18 @@ func (g *Generator) ClearCacheForFolder(folderPath string) error {
 	return g.boltStore.DeleteByFolder(folderPath)
 }
 
+// Close closes the underlying bbolt database.
+// Called during graceful shutdown to release file locks.
+func (g *Generator) Close() error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
+	if g.boltStore != nil {
+		return g.boltStore.Close()
+	}
+	return nil
+}
+
 // PreloadThumbnails generates thumbnails for all images in a folder
 func (g *Generator) PreloadThumbnails(imagePaths []string) {
 	var wg sync.WaitGroup
