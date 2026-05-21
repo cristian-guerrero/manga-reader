@@ -90,7 +90,7 @@ func NewApp() *App {
 	lMod := library.NewModule(container.Library, container.FileLoader, container.URLBuilder, container.Logger)
 	sMod := series.NewModule(container.Series, container.FileLoader, container.URLBuilder, container.Logger)
 	hMod := history.NewModule(container.History, container.Settings)
-	eMod := explorer.NewModule(container.FileLoader, container.URLBuilder, container.Logger, container.Explorer, container.FolderOrders, container.FolderViewModes, container.FolderGridSizes)
+	eMod := explorer.NewModule(container.FileLoader, container.URLBuilder, container.Logger, container.Explorer, container.FolderOrders, container.FolderViewModes, container.FolderGridSizes, container.ThumbGen)
 	dMod := downloader.NewModule(container.Downloader, container.Settings, container.Logger)
 
 	// Dependency injection (Circular dependency resolution)

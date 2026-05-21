@@ -5,6 +5,7 @@ import (
 	"manga-visor/internal/database"
 	"manga-visor/internal/persistence"
 	"manga-visor/internal/services"
+	"manga-visor/internal/thumbnails"
 	"os"
 	"path/filepath"
 	"sort"
@@ -26,6 +27,7 @@ type Module struct {
 	fileLoader      services.FileLoaderInterface
 	urlBuilder      services.URLBuilderInterface
 	logger          services.LoggerInterface
+	thumbGen        *thumbnails.Generator
 
 	// File watching
 	watcher     *fsnotify.Watcher
@@ -34,7 +36,7 @@ type Module struct {
 }
 
 // NewModule creates a new Explorer module
-func NewModule(fileLoader services.FileLoaderInterface, urlBuilder services.URLBuilderInterface, logger services.LoggerInterface, explorer *database.ExplorerRepository, folderOrders *database.FolderOrdersRepository, folderViewModes *database.FolderViewModeRepository, folderGridSizes *database.FolderGridSizeRepository) *Module {
+func NewModule(fileLoader services.FileLoaderInterface, urlBuilder services.URLBuilderInterface, logger services.LoggerInterface, explorer *database.ExplorerRepository, folderOrders *database.FolderOrdersRepository, folderViewModes *database.FolderViewModeRepository, folderGridSizes *database.FolderGridSizeRepository, thumbGen *thumbnails.Generator) *Module {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		if logger != nil {
@@ -51,6 +53,7 @@ func NewModule(fileLoader services.FileLoaderInterface, urlBuilder services.URLB
 		fileLoader:      fileLoader,
 		urlBuilder:      urlBuilder,
 		logger:          logger,
+		thumbGen:        thumbGen,
 		watcher:         watcher,
 		watchedDirs:     make(map[string]bool),
 	}
@@ -100,6 +103,17 @@ func (m *Module) watchFileChanges() {
 				if isDir || isParentDir {
 					// Check if this path or its parent is being watched
 					if m.isWatchedPath(event.Name) || m.isWatchedPath(parentDir) {
+						// Clear thumbnails for removed/renamed directories
+						if event.Op&(fsnotify.Remove|fsnotify.Rename) != 0 {
+							affectedPath := event.Name
+							if !isDir {
+								affectedPath = parentDir
+							}
+							if m.thumbGen != nil {
+								go m.thumbGen.ClearCacheForFolder(affectedPath)
+							}
+						}
+
 						// Debounce: only emit if enough time has passed
 						now := time.Now()
 						if now.Sub(lastEmitTime) >= emitDebounceDuration {

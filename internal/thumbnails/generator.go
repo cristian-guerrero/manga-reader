@@ -2,7 +2,7 @@
 package thumbnails
 
 import (
-	"crypto/md5"
+	"bytes"
 	"encoding/base64"
 	"fmt"
 	"image"
@@ -26,12 +26,12 @@ import (
 )
 
 const (
-	thumbnailWidth        = 400
-	thumbnailHeight       = 600
-	thumbnailCacheDir     = "cache/thumbnails"
-	tallImageThresholdRatio = 3.0  // If height/width > 3, treat as tall image (manhwa)
-	tallImageCropHeight    = 2000 // Height in pixels to crop from top of tall images
-	thumbnailCacheVersion  = "v3" // Cache version for invalidation when logic changes
+	thumbnailWidth          = 400
+	thumbnailHeight         = 600
+	thumbnailCacheFile      = "cache/thumbnails.db"
+	tallImageThresholdRatio = 3.0   // If height/width > 3, treat as tall image (manhwa)
+	tallImageCropHeight     = 2000  // Height in pixels to crop from top of tall images
+	thumbnailCacheVersion   = "v3"  // Cache version for invalidation when logic changes
 )
 
 // ImageOpener is a function that opens an image by path and returns a ReadCloser
@@ -39,7 +39,8 @@ type ImageOpener func(imagePath string) (io.ReadCloser, error)
 
 // Generator handles thumbnail generation and caching
 type Generator struct {
-	cacheDir    string
+	boltStore   *BoltStore
+	legacyDir   string // legacy file cache dir for migration
 	mu          sync.RWMutex
 	pending     sync.Map      // map[string]chan struct{} for deduplicating generation
 	semaphore   chan struct{} // Global limit for concurrent generation
@@ -54,20 +55,39 @@ func NewGenerator() *Generator {
 		homeDir = "."
 	}
 
-	fullCacheDir := filepath.Join(homeDir, ".manga-visor", thumbnailCacheDir)
+	dbPath := filepath.Join(homeDir, ".manga-visor", thumbnailCacheFile)
+	legacyDir := filepath.Join(homeDir, ".manga-visor", "cache", "thumbnails")
 
-	// Create cache directory
-	os.MkdirAll(fullCacheDir, 0755)
+	boltStore, err := NewBoltStore(dbPath)
+	if err != nil {
+		fmt.Printf("[Generator] Failed to open thumbnail database: %v\n", err)
+		// Fall back to a temp DB so the app doesn't crash
+		tmpPath := filepath.Join(os.TempDir(), "manga-visor-thumbnails.db")
+		boltStore, err = NewBoltStore(tmpPath)
+		if err != nil {
+			panic(fmt.Sprintf("failed to create thumbnail store: %v", err))
+		}
+	}
 
 	g := &Generator{
-		cacheDir:  fullCacheDir,
+		boltStore: boltStore,
+		legacyDir: legacyDir,
 		semaphore: make(chan struct{}, 4), // Limit to 4 concurrent generations
 	}
 
-	// Clean up legacy flat files in background
-	go g.cleanupLegacyFiles()
+	// Remove legacy file cache directory on startup
+	go cleanupLegacyDir(legacyDir)
 
 	return g
+}
+
+// cleanupLegacyDir removes the old flat-file thumbnail cache directory.
+func cleanupLegacyDir(dir string) {
+	if err := os.RemoveAll(dir); err != nil {
+		fmt.Printf("[Generator] Failed to remove legacy thumbnail cache dir %s: %v\n", dir, err)
+	} else {
+		fmt.Println("[Generator] Legacy thumbnail cache directory removed")
+	}
 }
 
 // SetImageOpener sets a custom function for opening image files
@@ -84,17 +104,10 @@ func (g *Generator) openImage(imagePath string) (io.ReadCloser, error) {
 	return os.Open(imagePath)
 }
 
-// generateCacheKey generates a cache key for an image path
-func (g *Generator) generateCacheKey(imagePath string) string {
-	hash := md5.Sum([]byte(imagePath + thumbnailCacheVersion))
-	return fmt.Sprintf("%x", hash)
-}
-
-// GetCachePath returns the full cache path for an image
-// Uses hash-based subdirectories (ab/cdef...) to avoid thousands of files in one dir
-func (g *Generator) GetCachePath(imagePath string) string {
-	key := g.generateCacheKey(imagePath)
-	return filepath.Join(g.cacheDir, key[:2], key[2:]+".jpg")
+// storeKey returns the key used in the bbolt store for a given image path.
+// Includes the cache version so that logic changes invalidate old thumbnails.
+func (g *Generator) storeKey(imagePath string) string {
+	return thumbnailCacheVersion + "|" + imagePath
 }
 
 // IsCached checks if a thumbnail is already cached
@@ -102,9 +115,7 @@ func (g *Generator) IsCached(imagePath string) bool {
 	g.mu.RLock()
 	defer g.mu.RUnlock()
 
-	cachePath := g.GetCachePath(imagePath)
-	_, err := os.Stat(cachePath)
-	return err == nil
+	return g.boltStore.Exists(g.storeKey(imagePath))
 }
 
 // GetThumbnail returns a thumbnail for an image (generates if not cached)
@@ -135,26 +146,35 @@ func (g *Generator) GetThumbnail(imagePath string) (string, error) {
 
 // GetThumbnailBytes returns thumbnail as raw bytes
 func (g *Generator) GetThumbnailBytes(imagePath string) ([]byte, error) {
-	cachePath := g.GetCachePath(imagePath)
+	key := g.storeKey(imagePath)
 
-	// Generate if not cached
-	if !g.IsCached(imagePath) {
-		_, err := g.GetThumbnail(imagePath)
-		if err != nil {
-			return nil, err
-		}
+	// Single lookup: try to get from cache
+	data, err := g.boltStore.Get(key)
+	if err != nil {
+		return nil, err
+	}
+	if data != nil {
+		return data, nil
 	}
 
-	return os.ReadFile(cachePath)
+	// Not cached — generate it
+	_, err = g.GetThumbnail(imagePath)
+	if err != nil {
+		return nil, err
+	}
+
+	// Now it's in cache, fetch it
+	return g.boltStore.Get(key)
 }
 
 // loadCachedThumbnail loads a thumbnail from cache
 func (g *Generator) loadCachedThumbnail(imagePath string) (string, error) {
-	cachePath := g.GetCachePath(imagePath)
-
-	data, err := os.ReadFile(cachePath)
+	data, err := g.boltStore.Get(g.storeKey(imagePath))
 	if err != nil {
 		return "", fmt.Errorf("failed to load cached thumbnail: %w", err)
+	}
+	if data == nil {
+		return "", fmt.Errorf("thumbnail not found in cache")
 	}
 
 	base64Data := base64.StdEncoding.EncodeToString(data)
@@ -168,22 +188,6 @@ func (g *Generator) SetPaused(paused bool) {
 		fmt.Println("[Generator] Thumbnail generation paused")
 	} else {
 		fmt.Println("[Generator] Thumbnail generation resumed")
-	}
-}
-
-// cleanupLegacyFiles removes flat .jpg files left from older cache layout
-func (g *Generator) cleanupLegacyFiles() {
-	entries, err := os.ReadDir(g.cacheDir)
-	if err != nil {
-		return
-	}
-	for _, e := range entries {
-		if e.IsDir() {
-			continue
-		}
-		if strings.EqualFold(filepath.Ext(e.Name()), ".jpg") {
-			os.Remove(filepath.Join(g.cacheDir, e.Name()))
-		}
 	}
 }
 
@@ -297,23 +301,21 @@ func (g *Generator) generateThumbnail(imagePath string) (string, error) {
 	// Create thumbnail using Catmull-Rom scaling for much better quality
 	thumbnail := imaging.Resize(sourceImg, newWidth, newHeight, imaging.CatmullRom)
 
-	// Save to cache
-	cachePath := g.GetCachePath(imagePath)
-	os.MkdirAll(filepath.Dir(cachePath), 0755)
-	cacheFile, err := os.Create(cachePath)
-	if err != nil {
-		return "", fmt.Errorf("failed to create cache file: %w", err)
-	}
-	defer cacheFile.Close()
-
-	// Encode as JPEG with very high quality
-	err = jpeg.Encode(cacheFile, thumbnail, &jpeg.Options{Quality: 90})
-	if err != nil {
+	// Encode to JPEG buffer
+	var buf bytes.Buffer
+	if err := jpeg.Encode(&buf, thumbnail, &jpeg.Options{Quality: 90}); err != nil {
 		return "", fmt.Errorf("failed to encode thumbnail: %w", err)
 	}
 
+	// Store in bbolt
+	key := g.storeKey(imagePath)
+	if err := g.boltStore.Put(key, buf.Bytes()); err != nil {
+		return "", fmt.Errorf("failed to store thumbnail: %w", err)
+	}
+
 	// Return as base64
-	return g.loadCachedThumbnail(imagePath)
+	base64Data := base64.StdEncoding.EncodeToString(buf.Bytes())
+	return fmt.Sprintf("data:image/jpeg;base64,%s", base64Data), nil
 }
 
 // loadSVGAsThumbnail loads an SVG file and returns it as a data URL
@@ -358,7 +360,7 @@ func (g *Generator) ClearCache() error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
-	return os.RemoveAll(g.cacheDir)
+	return g.boltStore.Clear()
 }
 
 // ClearCacheForFolder clears thumbnails for images in a specific folder
@@ -366,21 +368,9 @@ func (g *Generator) ClearCacheForFolder(folderPath string) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
-	entries, err := os.ReadDir(folderPath)
-	if err != nil {
-		return err
-	}
-
-	for _, entry := range entries {
-		if entry.IsDir() {
-			continue
-		}
-		imagePath := filepath.Join(folderPath, entry.Name())
-		cachePath := g.GetCachePath(imagePath)
-		os.Remove(cachePath) // Ignore errors for non-existent files
-	}
-
-	return nil
+	// bbolt uses versioned keys, so we need to scan with the version prefix
+	// We iterate all keys in the store and delete those matching the folder
+	return g.boltStore.DeleteByFolder(folderPath)
 }
 
 // PreloadThumbnails generates thumbnails for all images in a folder
