@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"syscall"
 )
 
@@ -15,6 +16,11 @@ func (s *Service) applyUpdateWindows(exe, newBinary string) error {
 
 	// Strategy: rename current exe to .old (works even while running),
 	// then copy new binary to original path, then launch it.
+	// Properly escape paths for Windows batch commands
+	exe = strings.ReplaceAll(exe, `"`, `""`)
+	oldBinary = strings.ReplaceAll(oldBinary, `"`, `""`)
+	newBinary = strings.ReplaceAll(newBinary, `"`, `""`)
+
 	cmdLine := fmt.Sprintf(
 		`@echo off & timeout /t 2 /nobreak >nul & `+
 			`move /y "%s" "%s" >nul 2>&1 & `+
