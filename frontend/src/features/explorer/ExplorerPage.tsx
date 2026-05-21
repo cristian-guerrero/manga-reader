@@ -5,6 +5,7 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
+import { useMobileScroll } from "@contexts/MobileScrollContext";
 import {
   KeyboardSensor,
   PointerSensor,
@@ -65,6 +66,7 @@ interface ExplorerPageProps {
 
 export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
   const { t } = useTranslation();
+  const { headerVisible } = useMobileScroll();
   const {
     navigate,
     explorerState,
@@ -424,22 +426,29 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
 
   return (
     <div
-      className="h-full p-6 flex flex-col"
+      className="h-full p-2 sm:p-6 flex flex-col"
       style={{ backgroundColor: "var(--color-surface-primary)" }}
     >
       {/* Header */}
-      <div className="flex items-center justify-between mb-6 flex-shrink-0">
-        <div className="flex items-center gap-4 flex-1 min-w-0">
+      <div
+        className="flex items-center justify-between mb-2 sm:mb-6 flex-shrink-0 flex-wrap gap-2 transition-all duration-300 sm:opacity-100 sm:translate-y-0"
+        style={{
+          opacity: headerVisible ? 1 : 0,
+          transform: headerVisible ? 'translateY(0)' : 'translateY(-100%)',
+          pointerEvents: headerVisible ? 'auto' : 'none',
+        }}
+      >
+        <div className="flex items-center gap-2 flex-1 min-w-0">
           {explorerStateHook.currentPath && (
             <Tooltip content={t("common.back")} placement="right">
               <button
                 onClick={navigation.handleBack}
-                className="p-2 rounded-full hover:bg-white/10 transition-all opacity-100 translate-x-0 flex-shrink-0"
+                className="p-1.5 sm:p-2 rounded-full hover:bg-white/10 transition-all opacity-100 translate-x-0 flex-shrink-0"
                 aria-label={t("common.back")}
               >
                 <svg
-                  width="24"
-                  height="24"
+                  width="20"
+                  height="20"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
@@ -462,7 +471,7 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
           </div>
 
           {/* Sort Controls */}
-          <div className="flex-shrink-0 ml-8">
+          <div className="flex-shrink-0 ml-4 sm:ml-8 hidden sm:block">
             <SortControls
               sortBy={sorting.sortBy}
               sortOrder={sorting.sortOrder}
@@ -494,7 +503,7 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
 
           {/* View Mode Toggle */}
           {explorerStateHook.currentPath && loading.entries.length > 0 && (
-            <div className="flex items-center bg-surface-tertiary rounded-lg p-1 border border-white/5 ml-4 flex-shrink-0">
+            <div className="flex items-center bg-surface-tertiary rounded-lg p-1 border border-white/5 ml-2 sm:ml-4 flex-shrink-0 hidden sm:flex">
               <Tooltip content={t('explorer.gridView') || 'Grid View'} placement="bottom">
                 <button
                   onClick={() => setViewMode('grid')}
@@ -526,7 +535,7 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
         {!explorerStateHook.currentPath && (
           <button
             onClick={navigation.handleAddBaseFolder}
-            className="btn-primary transition-transform hover:scale-105 active:scale-95 ml-6"
+            className="btn-primary transition-transform hover:scale-105 active:scale-95 ml-2 sm:ml-6 text-sm px-3 py-1.5 hidden sm:inline-flex"
           >
             <span className="mr-2">+</span>
             {t("explorer.addBaseFolder")}
@@ -537,14 +546,14 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
       {/* Search Bar & Grid Size Slider */}
       {((!explorerStateHook.currentPath && loading.baseFolders.length > 0) ||
         (explorerStateHook.currentPath && loading.entries.length > 0)) && (
-        <div className="mb-4 flex items-center gap-4">
+        <div className="mb-2 sm:mb-4 flex items-center gap-2 flex-wrap">
           <SearchBar
             placeholder={t("explorer.searchPlaceholder") || "Search by name..."}
             onSearch={search.setSearchQuery}
-            className="max-w-md"
+            className="flex-1 min-w-0 sm:max-w-md hidden sm:block"
           />
           {viewMode === 'grid' && explorerStateHook.currentPath && (
-            <div className="flex items-center gap-2 ml-auto">
+            <div className="flex items-center gap-2 ml-auto hidden sm:flex">
               <span className="text-xs text-text-secondary whitespace-nowrap">
                 {t('explorer.gridItemSize')}
               </span>
@@ -568,7 +577,7 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
 
       {/* Content */}
       <div
-        className="flex-1 overflow-auto pr-2"
+        className="flex-1 overflow-auto pr-1 sm:pr-2"
         key={explorerStateHook.currentPath || "root"}
       >
         {/* Base Folders View */}

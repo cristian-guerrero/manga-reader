@@ -209,6 +209,18 @@ func (a *App) startup(ctx context.Context) {
 		}()
 	}
 
+	// Auto-start network server if enabled in settings
+	if settings.LocalNetworkServer {
+		go func() {
+			if err := a.ToggleLocalNetworkServer(true); err != nil {
+				a.services.Logger.Errorf("Failed to auto-start network server: %v", err)
+			} else {
+				addr, _ := a.GetLocalNetworkAddress()
+				a.services.Logger.Infof("[Network Server] Auto-started on %s", addr)
+			}
+		}()
+	}
+
 	// Restore window position
 	settings = a.settings().Get()
 	// Validation: Windows often sets coordinates to -32000 when minimized.

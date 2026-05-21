@@ -34,16 +34,17 @@ export function OneShotHeader({
 
     return (
         <div className="mb-6">
-            <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-4">
+            <div className="flex items-center justify-between mb-3 sm:mb-4">
+                <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0">
                     <h1
-                        className="text-2xl font-bold"
+                        className="text-lg sm:text-2xl font-bold truncate"
                         style={{ color: 'var(--color-text-primary)' }}
                     >
                         {t('oneShot.title')}
                     </h1>
 
                     {/* Sort Controls */}
+                    <div className="hidden sm:block">
                     <SortControls
                         sortBy={sortBy}
                         sortOrder={sortOrder}
@@ -55,9 +56,10 @@ export function OneShotHeader({
                         ]}
                         show={folders.length > 0}
                     />
+                    </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 hidden sm:flex">
                     {folders.length > 0 && (
                         <button
                             onClick={onClearAll}
@@ -79,11 +81,11 @@ export function OneShotHeader({
 
             {/* Search Bar */}
             {folders.length > 0 && (
-                <div>
+                <div className="mt-3 sm:mt-4 hidden sm:block">
                     <SearchBar
                         placeholder={t('oneShot.searchPlaceholder') || 'Search folders by name...'}
                         onSearch={onSearchChange}
-                        className="max-w-md"
+                        className="max-w-md sm:max-w-md"
                     />
                 </div>
             )}

@@ -42,6 +42,7 @@ export default defineConfig(({ mode }) => ({
       '@constants': path.resolve(__dirname, './src/constants'),
       '@themes': path.resolve(__dirname, './src/themes'),
       '@i18n': path.resolve(__dirname, './src/i18n'),
+      '@contexts': path.resolve(__dirname, './src/contexts'),
     },
   },
   server: {

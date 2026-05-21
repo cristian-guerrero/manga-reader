@@ -27,10 +27,10 @@ export function HomePage() {
 
     return (
         <div
-            className="flex flex-col items-center min-h-full px-8 py-12 animate-fade-in"
+            className="flex flex-col items-center min-h-full px-2 sm:px-8 py-4 sm:py-12 animate-fade-in"
         >
             {historyEntries.length > 0 ? (
-                <div className="w-full max-w-6xl space-y-12">
+                <div className="w-full max-w-6xl space-y-6 sm:space-y-12">
                     {/* Featured Recent Item (The very last one read) */}
                     <FeaturedCard
                         entry={historyEntries[0]}

@@ -9,23 +9,12 @@ interface GridContainerProps {
 }
 
 export function GridContainer({ children, className = '', gap = 'md', variant = 'default', itemWidth = 200 }: GridContainerProps) {
-    const gapClass = {
-        sm: 'gap-2',
-        md: 'gap-4',
-        lg: 'gap-6',
-    }[gap];
-
-    const gridStyle: React.CSSProperties = {
-        gridTemplateColumns: `repeat(auto-fill, ${itemWidth}px)`,
-        justifyContent: 'center',
-    };
-
-    const mobileClass = variant === 'thumbnails' ? 'grid-cols-2' : 'grid-cols-1';
+    const minWidth = Math.max(itemWidth, 50);
 
     return (
         <div
-            className={`grid ${mobileClass} ${gapClass} animate-fade-in ${className}`}
-            style={gridStyle}
+            className={`grid grid-cols-2 gap-x-5 gap-y-3 animate-fade-in px-2 sm:px-3 sm:grid-cols-[repeat(auto-fill,minmax(var(--grid-item-width),1fr))] ${className}`}
+            style={{ '--grid-item-width': `${minWidth}px` } as React.CSSProperties}
         >
             {children}
         </div>

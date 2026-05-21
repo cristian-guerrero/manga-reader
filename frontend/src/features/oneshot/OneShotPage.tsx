@@ -63,7 +63,7 @@ export function OneShotPage() {
     if (isLoading) {
         return (
             <div
-                className="h-full overflow-auto p-6"
+                className="h-full overflow-auto p-2 sm:p-6"
                 style={{ backgroundColor: 'var(--color-surface-primary)' }}
             >
                 <OneShotLoadingState />
@@ -73,7 +73,7 @@ export function OneShotPage() {
 
     return (
         <div
-            className="h-full overflow-auto p-6"
+            className="h-full overflow-auto p-2 sm:p-6"
             style={{ backgroundColor: 'var(--color-surface-primary)' }}
         >
             {/* Header */}
