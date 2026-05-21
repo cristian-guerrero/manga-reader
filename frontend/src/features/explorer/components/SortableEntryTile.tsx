@@ -14,6 +14,7 @@ interface SortableEntryTileProps {
     footerLeft?: React.ReactNode;
     footerRight?: React.ReactNode;
     fallbackIcon?: React.ReactNode;
+    isPinned?: boolean;
 }
 
 export function SortableEntryTile({
@@ -26,6 +27,7 @@ export function SortableEntryTile({
     footerLeft,
     footerRight,
     fallbackIcon,
+    isPinned = false,
 }: SortableEntryTileProps) {
     const {
         attributes,
@@ -43,6 +45,7 @@ export function SortableEntryTile({
 
     return (
         <div ref={setNodeRef} style={style}>
+            <div className={isPinned ? 'pinned-folder-glow' : ''}>
                 <MediaTile
                     id={entry.path}
                     name={entry.name}
@@ -57,6 +60,7 @@ export function SortableEntryTile({
                     isDragging={isDragging}
                     dragHandleProps={{ ...attributes, ...listeners }}
                 />
+            </div>
         </div>
     );
 }

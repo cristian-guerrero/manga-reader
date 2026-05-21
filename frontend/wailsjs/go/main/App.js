@@ -250,6 +250,10 @@ export function GetOriginalOrder(arg1) {
   return window['go']['main']['App']['GetOriginalOrder'](arg1);
 }
 
+export function GetPinnedFolders(arg1, arg2) {
+  return window['go']['main']['App']['GetPinnedFolders'](arg1, arg2);
+}
+
 export function GetSeries() {
   return window['go']['main']['App']['GetSeries']();
 }
@@ -328,6 +332,10 @@ export function OpenInFileManager(arg1) {
 
 export function OpenLibraryFile(arg1) {
   return window['go']['main']['App']['OpenLibraryFile'](arg1);
+}
+
+export function PinFolder(arg1, arg2, arg3) {
+  return window['go']['main']['App']['PinFolder'](arg1, arg2, arg3);
 }
 
 export function PreloadThumbnails(arg1) {
@@ -488,6 +496,10 @@ export function StartDownload(arg1, arg2, arg3) {
 
 export function SwitchLibrary(arg1) {
   return window['go']['main']['App']['SwitchLibrary'](arg1);
+}
+
+export function UnpinFolder(arg1, arg2, arg3) {
+  return window['go']['main']['App']['UnpinFolder'](arg1, arg2, arg3);
 }
 
 export function UpdateSettings(arg1) {

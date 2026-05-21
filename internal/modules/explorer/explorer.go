@@ -474,6 +474,12 @@ func (m *Module) ListDirectoryWithSort(path string, sortMode string, sortOrder s
 	}
 
 	// Sort based on mode
+	pinned := m.folderOrders.GetPinned(path, sortMode)
+	pinnedSet := make(map[string]bool, len(pinned))
+	for _, name := range pinned {
+		pinnedSet[name] = true
+	}
+
 	sort.SliceStable(result, func(i, j int) bool {
 		// Directories before files
 		if result[i].IsDirectory != result[j].IsDirectory {
@@ -481,6 +487,25 @@ func (m *Module) ListDirectoryWithSort(path string, sortMode string, sortOrder s
 		}
 		// If both are directories, check for order based on mode
 		if result[i].IsDirectory && m.folderOrders != nil {
+			iPinned := pinnedSet[result[i].Name]
+			jPinned := pinnedSet[result[j].Name]
+			if iPinned || jPinned {
+				if iPinned && !jPinned {
+					return true
+				}
+				if !iPinned && jPinned {
+					return false
+				}
+				// Both pinned: maintain pinned order
+				for _, name := range pinned {
+					if name == result[i].Name {
+						return true
+					}
+					if name == result[j].Name {
+						return false
+					}
+				}
+			}
 			if sortMode == "custom" {
 				customOrder := m.folderOrders.GetOrder(path)
 				if len(customOrder) > 0 {
@@ -668,58 +693,94 @@ func (m *Module) getEnabledSubdirsWithSort(dirPath string, sortMode string, sort
 		sortOrder = "asc"
 	}
 
-	switch sortMode {
-	case "custom":
-		if m.folderOrders == nil {
-			break
-		}
-		order := m.folderOrders.GetOrder(dirPath)
-		if len(order) > 0 {
-			applyOrderToFolderInfos(folders, order, sortOrder)
-		}
-	case "auto":
-		if m.folderOrders == nil {
-			break
-		}
-		order := m.folderOrders.GetAutoOrder(dirPath)
-		if len(order) > 0 {
-			applyOrderToFolderInfos(folders, order, sortOrder)
+	pinned := m.folderOrders.GetPinned(dirPath, sortMode)
+	pinnedSet := make(map[string]bool, len(pinned))
+	for _, name := range pinned {
+		pinnedSet[name] = true
+	}
+
+	var pinnedFolders, restFolders []FolderInfo
+	for _, f := range folders {
+		if pinnedSet[f.Name] {
+			pinnedFolders = append(pinnedFolders, f)
 		} else {
-			// Fallback: newest first by name (date would need stat)
-			sort.SliceStable(folders, func(i, j int) bool {
-				if sortOrder == "desc" {
-					return strings.ToLower(folders[i].Name) > strings.ToLower(folders[j].Name)
-				}
-				return strings.ToLower(folders[i].Name) < strings.ToLower(folders[j].Name)
-			})
+			restFolders = append(restFolders, f)
 		}
-	case "date":
-		sort.SliceStable(folders, func(i, j int) bool {
-			infoI, errI := os.Stat(filepath.Join(dirPath, folders[i].Name))
-			infoJ, errJ := os.Stat(filepath.Join(dirPath, folders[j].Name))
-			modI := int64(0)
-			modJ := int64(0)
-			if errI == nil {
-				modI = infoI.ModTime().Unix()
+	}
+
+	// Sort pinned folders by pinned order
+	if len(pinnedFolders) > 1 {
+		sort.SliceStable(pinnedFolders, func(i, j int) bool {
+			for idx, name := range pinned {
+				if name == pinnedFolders[i].Name {
+					iIdx := idx
+					for jIdx, jName := range pinned {
+						if jName == pinnedFolders[j].Name {
+							return iIdx < jIdx
+						}
+					}
+					_ = iIdx
+				}
 			}
-			if errJ == nil {
-				modJ = infoJ.ModTime().Unix()
-			}
-			if sortOrder == "desc" {
-				return modI > modJ
-			}
-			return modI < modJ
-		})
-	default: // "name"
-		sort.SliceStable(folders, func(i, j int) bool {
-			if sortOrder == "desc" {
-				return strings.ToLower(folders[i].Name) > strings.ToLower(folders[j].Name)
-			}
-			return strings.ToLower(folders[i].Name) < strings.ToLower(folders[j].Name)
+			return false
 		})
 	}
 
-	return folders
+	sortRest := func(list []FolderInfo) {
+		switch sortMode {
+		case "custom":
+			if m.folderOrders == nil {
+				break
+			}
+			order := m.folderOrders.GetOrder(dirPath)
+			if len(order) > 0 {
+				applyOrderToFolderInfos(list, order, sortOrder)
+			}
+		case "auto":
+			if m.folderOrders == nil {
+				break
+			}
+			order := m.folderOrders.GetAutoOrder(dirPath)
+			if len(order) > 0 {
+				applyOrderToFolderInfos(list, order, sortOrder)
+			} else {
+				sort.SliceStable(list, func(i, j int) bool {
+					if sortOrder == "desc" {
+						return strings.ToLower(list[i].Name) > strings.ToLower(list[j].Name)
+					}
+					return strings.ToLower(list[i].Name) < strings.ToLower(list[j].Name)
+				})
+			}
+		case "date":
+			sort.SliceStable(list, func(i, j int) bool {
+				infoI, errI := os.Stat(filepath.Join(dirPath, list[i].Name))
+				infoJ, errJ := os.Stat(filepath.Join(dirPath, list[j].Name))
+				modI := int64(0)
+				modJ := int64(0)
+				if errI == nil {
+					modI = infoI.ModTime().Unix()
+				}
+				if errJ == nil {
+					modJ = infoJ.ModTime().Unix()
+				}
+				if sortOrder == "desc" {
+					return modI > modJ
+				}
+				return modI < modJ
+			})
+		default: // "name"
+			sort.SliceStable(list, func(i, j int) bool {
+				if sortOrder == "desc" {
+					return strings.ToLower(list[i].Name) > strings.ToLower(list[j].Name)
+				}
+				return strings.ToLower(list[i].Name) < strings.ToLower(list[j].Name)
+			})
+		}
+	}
+
+	sortRest(restFolders)
+
+	return append(pinnedFolders, restFolders...)
 }
 
 // applyOrderToFolderInfos re-sorts a FolderInfo slice to follow the given name order.
@@ -976,6 +1037,30 @@ func (m *Module) SetFolderViewMode(parentPath string, viewMode string) error {
 // GetFolderOrdersRepo exposes the folder orders repository for use by App layer
 func (m *Module) GetFolderOrdersRepo() *database.FolderOrdersRepository {
 	return m.folderOrders
+}
+
+// PinFolder pins a folder for the given sort mode
+func (m *Module) PinFolder(parentPath, sortMode, entryName string) error {
+	if m.folderOrders == nil {
+		return nil
+	}
+	return m.folderOrders.PinFolder(parentPath, sortMode, entryName)
+}
+
+// UnpinFolder unpins a folder for the given sort mode
+func (m *Module) UnpinFolder(parentPath, sortMode, entryName string) error {
+	if m.folderOrders == nil {
+		return nil
+	}
+	return m.folderOrders.UnpinFolder(parentPath, sortMode, entryName)
+}
+
+// GetPinnedFolders returns pinned folders for the given sort mode
+func (m *Module) GetPinnedFolders(parentPath, sortMode string) []string {
+	if m.folderOrders == nil {
+		return nil
+	}
+	return m.folderOrders.GetPinned(parentPath, sortMode)
 }
 
 // SortImagesByExplorerPreference sorts images according to Explorer sort preferences.

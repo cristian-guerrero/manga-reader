@@ -12,6 +12,7 @@ interface UseExplorerSearchOptions {
   entries: ExplorerEntry[];
   sortBy: SortBy;
   sortOrder: 'asc' | 'desc';
+  pinnedFolders?: string[];
 }
 
 export function useExplorerSearch({
@@ -19,6 +20,7 @@ export function useExplorerSearch({
   entries,
   sortBy,
   sortOrder,
+  pinnedFolders = [],
 }: UseExplorerSearchOptions) {
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -53,10 +55,23 @@ export function useExplorerSearch({
     const filtered = [...entries]
       .filter(entry => matchesSearch(entry, searchQuery));
 
-    if (sortBy === 'custom' || sortBy === 'auto') return filtered;
+    const pinnedSet = new Set(pinnedFolders);
 
-    return filtered.sort((a, b) => {
-      // Folders first, then files
+    const pinned = filtered.filter(e => e.isDirectory && pinnedSet.has(e.name));
+    const rest = filtered.filter(e => !e.isDirectory || !pinnedSet.has(e.name));
+
+    const pinnedOrder = pinnedFolders.filter(name => pinned.some(e => e.name === name));
+    pinned.sort((a, b) => {
+      const idxA = pinnedOrder.indexOf(a.name);
+      const idxB = pinnedOrder.indexOf(b.name);
+      return idxA - idxB;
+    });
+
+    if (sortBy === 'custom' || sortBy === 'auto') {
+      return [...pinned, ...rest];
+    }
+
+    rest.sort((a, b) => {
       if (a.isDirectory !== b.isDirectory) {
         return a.isDirectory ? -1 : 1;
       }
@@ -70,7 +85,9 @@ export function useExplorerSearch({
       }
       return sortOrder === 'asc' ? res : -res;
     });
-  }, [entries, searchQuery, sortBy, sortOrder]);
+
+    return [...pinned, ...rest];
+  }, [entries, searchQuery, sortBy, sortOrder, pinnedFolders]);
 
   return {
     searchQuery,

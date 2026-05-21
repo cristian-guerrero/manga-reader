@@ -123,12 +123,51 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
   });
   loadDirRef.current = loading.loadDirectory;
 
+  const [pinnedFolders, setPinnedFolders] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!explorerStateHook.currentPath) {
+      setPinnedFolders([]);
+      return;
+    }
+    FolderOrderAPI.getPinnedFolders(explorerStateHook.currentPath, sorting.sortBy)
+      .then(setPinnedFolders)
+      .catch(() => setPinnedFolders([]));
+  }, [explorerStateHook.currentPath, sorting.sortBy]);
+
+  const [justPinned, setJustPinned] = useState<string | null>(null);
+
+  const handlePinFolder = useCallback(async (entryName: string) => {
+    if (!explorerStateHook.currentPath) return;
+    await FolderOrderAPI.pinFolder(explorerStateHook.currentPath, sorting.sortBy, entryName);
+    const updated = await FolderOrderAPI.getPinnedFolders(explorerStateHook.currentPath, sorting.sortBy);
+    setPinnedFolders(updated);
+    setJustPinned(entryName);
+    setTimeout(() => setJustPinned(null), 500);
+    const items = await AppAPI.exploreFolder(explorerStateHook.currentPath, sorting.sortBy, sorting.sortOrder);
+    loading.setEntries(items || []);
+  }, [explorerStateHook.currentPath, sorting.sortBy, sorting.sortOrder, loading.setEntries]);
+
+  const handleUnpinFolder = useCallback(async (entryName: string) => {
+    if (!explorerStateHook.currentPath) return;
+    await FolderOrderAPI.unpinFolder(explorerStateHook.currentPath, sorting.sortBy, entryName);
+    const updated = await FolderOrderAPI.getPinnedFolders(explorerStateHook.currentPath, sorting.sortBy);
+    setPinnedFolders(updated);
+    const items = await AppAPI.exploreFolder(explorerStateHook.currentPath, sorting.sortBy, sorting.sortOrder);
+    loading.setEntries(items || []);
+  }, [explorerStateHook.currentPath, sorting.sortBy, sorting.sortOrder, loading.setEntries]);
+
+  const isPinned = useCallback((entryName: string) => {
+    return pinnedFolders.includes(entryName);
+  }, [pinnedFolders]);
+
   // Use search hook
   const search = useExplorerSearch({
     baseFolders: loading.baseFolders,
     entries: loading.entries,
     sortBy: sorting.sortBy,
     sortOrder: sorting.sortOrder,
+    pinnedFolders,
   });
 
   // Use navigation hook
@@ -221,6 +260,22 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
 
   const contextMenuItems: ContextMenuItem[] = contextMenu
     ? [
+        // Pin/Unpin for directories
+        ...(contextMenu.entry.isDirectory
+          ? [
+              isPinned(contextMenu.entry.name)
+                ? {
+                    id: 'unpin-folder',
+                    label: t('explorer.unpinFolder'),
+                    onClick: () => handleUnpinFolder(contextMenu.entry.name),
+                  } as ContextMenuItem
+                : {
+                    id: 'pin-folder',
+                    label: t('explorer.pinFolder'),
+                    onClick: () => handlePinFolder(contextMenu.entry.name),
+                  } as ContextMenuItem,
+            ]
+          : []),
         // "Open in One Shot": only for leaf directories with images
         ...(contextMenu.entry.subdirectoryCount === 0 && contextMenu.entry.hasImages
           ? [
@@ -524,6 +579,8 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
             onItemContextMenu={handleContextMenu}
             onLoadThumbnail={loadThumbnail}
             onOpenViewer={navigation.handleOpenInViewer}
+            pinnedFolders={pinnedFolders}
+            justPinned={justPinned}
           />
         )}
 

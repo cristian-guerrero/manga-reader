@@ -31,6 +31,8 @@ interface DirectoryViewProps {
     onOpenViewer: (path: string, e: React.MouseEvent) => void;
     viewMode: ViewMode;
     gridItemSize: number;
+    pinnedFolders?: string[];
+    justPinned?: string | null;
 }
 
 function renderFooterLeft(entry: ExplorerEntry, t: (key: string) => string) {
@@ -103,12 +105,16 @@ export function DirectoryView({
     onOpenViewer,
     viewMode,
     gridItemSize,
+    pinnedFolders = [],
+    justPinned = null,
 }: DirectoryViewProps) {
     const { t } = useTranslation();
 
     const renderGridEntry = useCallback((entry: ExplorerEntry) => {
         const thumb = entry.thumbnailUrl || thumbnails[entry.path];
         const isSortable = isCustomMode && entry.isDirectory;
+        const isPinned = entry.isDirectory && pinnedFolders.includes(entry.name);
+        const isJustPinned = entry.name === justPinned;
 
         const commonProps = {
             id: entry.path,
@@ -126,33 +132,42 @@ export function DirectoryView({
             fallbackIcon,
         };
 
+        const glowClass = isPinned ? 'pinned-folder-glow' : '';
+        const animateClass = isJustPinned ? 'pinned-folder-slide-up' : '';
+        const wrapperClass = [glowClass, animateClass].filter(Boolean).join(' ');
+
         if (isSortable) {
             return (
                 <GridItem key={entry.path} width={gridItemSize}>
-                    <SortableEntryTile
-                        entry={entry}
-                        thumbnail={thumb}
-                        onClick={() => onItemClick(entry)}
-                        onAuxClick={(e: React.MouseEvent) => onItemAuxClick(e, entry)}
-                        onContextMenu={(e: React.MouseEvent) => onItemContextMenu(e, entry)}
-                        onVisible={async () => {
-                            if (!entry.coverImage || thumb) return;
-                            await onLoadThumbnail(entry.path, entry.coverImage);
-                        }}
-                        footerLeft={renderFooterLeft(entry, t)}
-                        footerRight={renderFooterRight(entry, onOpenViewer, t)}
-                        fallbackIcon={fallbackIcon}
-                    />
+                    <div className={wrapperClass}>
+                        <SortableEntryTile
+                            entry={entry}
+                            thumbnail={thumb}
+                            onClick={() => onItemClick(entry)}
+                            onAuxClick={(e: React.MouseEvent) => onItemAuxClick(e, entry)}
+                            onContextMenu={(e: React.MouseEvent) => onItemContextMenu(e, entry)}
+                            onVisible={async () => {
+                                if (!entry.coverImage || thumb) return;
+                                await onLoadThumbnail(entry.path, entry.coverImage);
+                            }}
+                            footerLeft={renderFooterLeft(entry, t)}
+                            footerRight={renderFooterRight(entry, onOpenViewer, t)}
+                            fallbackIcon={fallbackIcon}
+                            isPinned={isPinned}
+                        />
+                    </div>
                 </GridItem>
             );
         }
 
         return (
             <GridItem key={entry.path} width={gridItemSize}>
-                <MediaTile {...commonProps} />
+                <div className={wrapperClass}>
+                    <MediaTile {...commonProps} />
+                </div>
             </GridItem>
         );
-    }, [entries, thumbnails, isCustomMode, onItemClick, onItemAuxClick, onItemContextMenu, onLoadThumbnail, onOpenViewer, t, gridItemSize]);
+    }, [entries, thumbnails, isCustomMode, pinnedFolders, justPinned, onItemClick, onItemAuxClick, onItemContextMenu, onLoadThumbnail, onOpenViewer, t, gridItemSize]);
 
     const renderListEntry = useCallback((entry: ExplorerEntry) => {
         const thumb = entry.thumbnailUrl || thumbnails[entry.path];

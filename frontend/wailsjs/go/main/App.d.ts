@@ -133,6 +133,8 @@ export function GetOneShotSortOrder():Promise<string>;
 
 export function GetOriginalOrder(arg1:string):Promise<Array<string>>;
 
+export function GetPinnedFolders(arg1:string,arg2:string):Promise<Array<string>>;
+
 export function GetSeries():Promise<Array<series.SeriesEntryWithURLs>>;
 
 export function GetSeriesDetailsSortPreference(arg1:string):Promise<database.SeriesDetailsSortPref>;
@@ -172,6 +174,8 @@ export function LoadImageAsBase64(arg1:string):Promise<string>;
 export function OpenInFileManager(arg1:string):Promise<void>;
 
 export function OpenLibraryFile(arg1:string):Promise<persistence.LibraryInfo>;
+
+export function PinFolder(arg1:string,arg2:string,arg3:string):Promise<void>;
 
 export function PreloadThumbnails(arg1:Array<string>):Promise<void>;
 
@@ -252,6 +256,8 @@ export function SetThumbnailsPaused(arg1:boolean):Promise<void>;
 export function StartDownload(arg1:string,arg2:string,arg3:string):Promise<string>;
 
 export function SwitchLibrary(arg1:string):Promise<void>;
+
+export function UnpinFolder(arg1:string,arg2:string,arg3:string):Promise<void>;
 
 export function UpdateSettings(arg1:Record<string, any>):Promise<void>;
 

@@ -137,4 +137,44 @@ export class FolderOrderAPI extends BaseAPI {
             }
         );
     }
+
+    static async pinFolder(parentPath: string, sortMode: string, entryName: string): Promise<void> {
+        return this.callVoid(
+            async () => {
+                await AppBackend.PinFolder(parentPath, sortMode, entryName);
+            },
+            {
+                component: 'FolderOrderAPI',
+                action: 'pinFolder',
+                details: { parentPath, sortMode, entryName }
+            }
+        );
+    }
+
+    static async unpinFolder(parentPath: string, sortMode: string, entryName: string): Promise<void> {
+        return this.callVoid(
+            async () => {
+                await AppBackend.UnpinFolder(parentPath, sortMode, entryName);
+            },
+            {
+                component: 'FolderOrderAPI',
+                action: 'unpinFolder',
+                details: { parentPath, sortMode, entryName }
+            }
+        );
+    }
+
+    static async getPinnedFolders(parentPath: string, sortMode: string): Promise<string[]> {
+        return this.callOrEmpty(
+            async () => {
+                const result = await AppBackend.GetPinnedFolders(parentPath, sortMode);
+                return (result as string[]) || [];
+            },
+            {
+                component: 'FolderOrderAPI',
+                action: 'getPinnedFolders',
+                details: { parentPath, sortMode }
+            }
+        );
+    }
 }
