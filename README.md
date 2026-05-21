@@ -206,7 +206,7 @@ Each **library** is a fully self-contained SQLite database (`.db`) with its own 
 ### Folders
 - **`avif-bin/`** — Cached native AVIF libraries auto-downloaded from GitHub Releases.
 - **`webp-bin/`** — Cached native WebP libraries auto-downloaded from GitHub Releases.
-- **`cache/`** — Persistent thumbnail cache.
+- **`cache/thumbnails.db`** — bbolt database for persistent thumbnail cache (single file).
 - **`downloads/`** — Default download location.
 - **`temp/`** — Temporary workspace for archive extraction.
 

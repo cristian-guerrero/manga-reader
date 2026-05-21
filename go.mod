@@ -9,6 +9,7 @@ require (
 	github.com/gen2brain/webp v0.5.5
 	github.com/nwaples/rardecode/v2 v2.2.2
 	github.com/wailsapp/wails/v2 v2.12.0
+	go.etcd.io/bbolt v1.4.3
 	golang.org/x/image v0.34.0
 	golang.org/x/net v0.35.0
 	golang.org/x/sys v0.42.0

@@ -207,14 +207,22 @@ func (is *ImageServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			is.logInfo("[ImageServer] Thumbnails disabled, serving original image: %s", originalImagePath)
 			finalPath = originalImagePath
 		} else {
-			// Ensure thumbnail exists and get its cache path
-			_, err := is.thumbGen.GetThumbnailBytes(originalImagePath)
+			// Get thumbnail bytes from bbolt store and serve directly
+			data, err := is.thumbGen.GetThumbnailBytes(originalImagePath)
 			if err != nil {
 				is.logError("[ImageServer] Thumbnail generation failed for %s: %v", originalImagePath, err)
 				http.Error(w, "Failed to generate thumbnail", http.StatusInternalServerError)
 				return
 			}
-			finalPath = is.thumbGen.GetCachePath(originalImagePath)
+			w.Header().Set("Content-Type", "image/jpeg")
+			w.Header().Set("Content-Length", fmt.Sprintf("%d", len(data)))
+			w.Header().Set("Cache-Control", "private, max-age=31536000")
+			w.Header().Set("Accept-Ranges", "bytes")
+			filename := filepath.Base(originalImagePath)
+			filenameJpeg := strings.TrimSuffix(filename, filepath.Ext(filename)) + ".jpg"
+			w.Header().Set("Content-Disposition", fmt.Sprintf("inline; filename=\"%s\"", filenameJpeg))
+			w.Write(data)
+			return
 		}
 	} else {
 		finalPath = originalImagePath

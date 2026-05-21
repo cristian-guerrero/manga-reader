@@ -30,6 +30,7 @@ Wails v2 (Go 1.24 backend, React 18 + TypeScript + Vite frontend). State: Zustan
 ├── library__<name>.db      ← Additional libraries
 ├── update-log.txt          ← Update history (timestamp | version | channel)
 ├── cache/
+│   └── thumbnails.db      ← bbolt thumbnail cache (single file, invisible)
 ├── downloads/
 └── temp/
 ```
