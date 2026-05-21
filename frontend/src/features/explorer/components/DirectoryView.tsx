@@ -207,7 +207,7 @@ export function DirectoryView({
                     items={sortableIds}
                     strategy={rectSortingStrategy}
                 >
-                    <GridContainer itemWidth={gridItemSize}>{renderContent()}</GridContainer>
+                    <GridContainer itemWidth={gridItemSize} className="pt-4">{renderContent()}</GridContainer>
                 </SortableContext>
                 <DragOverlay adjustScale={true}>
                     {activeEntry ? (
@@ -223,5 +223,5 @@ export function DirectoryView({
         );
     }
 
-    return <GridContainer itemWidth={gridItemSize}>{renderContent()}</GridContainer>;
+    return <GridContainer itemWidth={gridItemSize} className="pt-4">{renderContent()}</GridContainer>;
 }
