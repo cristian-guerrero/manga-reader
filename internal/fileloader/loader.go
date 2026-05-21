@@ -630,6 +630,7 @@ func (fl *FileLoader) FindFirstImage(folderPath string) (string, bool) {
 			if exists {
 				return path, true
 			}
+			break
 		}
 	}
 

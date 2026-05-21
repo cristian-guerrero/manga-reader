@@ -349,11 +349,9 @@ func (m *Module) GetBaseFolders() []BaseFolderEntry {
 
 		if hasImages {
 			entry.HasImages = true
-			// For thumbnails, we need to register the directory of the image itself
-			// but for consistency with the explorer view, we register the base folder
-			// and use the relative path.
 			dirHash := m.fileLoader.RegisterDirectory(f.Path)
-			entry.ThumbnailURL = m.urlBuilder.BuildThumbnailURLFromPath(dirHash, imagePath)
+			thumbnailURL := m.urlBuilder.BuildImageURLFromPath(dirHash, f.Path, imagePath)
+			entry.ThumbnailURL = strings.Replace(thumbnailURL, "/images?", "/thumbnails?", 1)
 		}
 
 		result = append(result, entry)
@@ -439,12 +437,14 @@ func (m *Module) ListDirectoryWithSort(path string, sortMode string, sortOrder s
 			imageCount = count
 			subdirCount = m.fileLoader.GetSubdirectoryCount(fullPath)
 
-			if hasImages {
-				coverImage = imagePath
-				// Generate thumbnail URL using relative path for the file ID
-				dirHash := m.fileLoader.RegisterDirectory(fullPath)
-				thumbnailURL = m.urlBuilder.BuildThumbnailURLFromPath(dirHash, imagePath)
-			}
+		if hasImages {
+			coverImage = imagePath
+			// Generate thumbnail URL using relative path for the file ID
+			dirHash := m.fileLoader.RegisterDirectory(fullPath)
+			thumbnailURL = m.urlBuilder.BuildImageURLFromPath(dirHash, fullPath, imagePath)
+			// Convert /images URL to /thumbnails URL
+			thumbnailURL = strings.Replace(thumbnailURL, "/images?", "/thumbnails?", 1)
+		}
 		} else {
 			// It's a file - check if it's an image
 			if !m.fileLoader.IsSupportedImage(entry.Name()) {
