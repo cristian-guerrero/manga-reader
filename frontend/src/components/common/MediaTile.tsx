@@ -114,7 +114,7 @@ export function MediaTile({
   return (
     <div
       ref={containerRef}
-      className={`group/tile relative rounded-xl border border-white/5 hover:border-accent/50 transition-all hover:shadow-xl cursor-pointer animate-scale-in hover-lift ${getVariantClasses()} ${className} ${isDragging ? 'opacity-50 scale-95 z-50' : ''}`}
+      className={`group/tile relative rounded-lg sm:rounded-xl border-0 sm:border sm:border-white/5 hover:sm:border-accent/50 transition-all hover:shadow-xl cursor-pointer animate-scale-in hover-lift ${getVariantClasses()} ${className} ${isDragging ? 'opacity-50 scale-95 z-50' : ''}`}
       onClick={onClick}
       onMouseDown={(e) => {
         // Prevent browser autoscroll on middle-click
@@ -137,7 +137,7 @@ export function MediaTile({
     >
       {/* Thumbnail Area */}
       <div
-        className={`${aspectRatio} w-full relative overflow-hidden bg-surface-tertiary rounded-t-xl`}
+        className={`${aspectRatio} w-full relative overflow-hidden bg-surface-tertiary rounded-t-lg sm:rounded-t-xl`}
       >
         {thumbnail ? (
           isVisible ? (
@@ -229,15 +229,15 @@ export function MediaTile({
 
       {/* Footer / Info */}
       {showFooter && (
-        <div className="p-3 bg-gradient-to-t from-black/20 to-transparent rounded-b-xl">
+        <div className="p-2 sm:p-3 bg-gradient-to-t from-black/20 to-transparent rounded-b-lg sm:rounded-b-xl">
           <Tooltip content={name} className="w-full">
-            <h3 className="font-semibold text-white truncate text-shadow-sm w-full min-w-0">
+            <h3 className="font-semibold text-white truncate text-shadow-sm w-full min-w-0 text-sm sm:text-base">
               {name}
             </h3>
           </Tooltip>
           {(footerLeft || footerRight) && (
-            <div className="flex items-center justify-between mt-1 min-h-[24px]">
-              <div className="text-xs text-white/70 truncate flex-1 mr-2">
+            <div className="flex items-center justify-between mt-0.5 sm:mt-1 min-h-[20px]">
+              <div className="text-[10px] sm:text-xs text-white/70 truncate flex-1 mr-2">
                 {footerLeft}
               </div>
               <div className="flex-shrink-0">{footerRight}</div>

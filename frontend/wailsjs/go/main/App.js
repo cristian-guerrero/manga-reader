@@ -238,6 +238,14 @@ export function GetLibraryByID(arg1) {
   return window['go']['main']['App']['GetLibraryByID'](arg1);
 }
 
+export function GetLocalNetworkAddress() {
+  return window['go']['main']['App']['GetLocalNetworkAddress']();
+}
+
+export function GetLocalNetworkServerStatus() {
+  return window['go']['main']['App']['GetLocalNetworkServerStatus']();
+}
+
 export function GetOneShotSortBy() {
   return window['go']['main']['App']['GetOneShotSortBy']();
 }
@@ -512,6 +520,10 @@ export function StartDownload(arg1, arg2, arg3) {
 
 export function SwitchLibrary(arg1) {
   return window['go']['main']['App']['SwitchLibrary'](arg1);
+}
+
+export function ToggleLocalNetworkServer(arg1) {
+  return window['go']['main']['App']['ToggleLocalNetworkServer'](arg1);
 }
 
 export function UnpinFolder(arg1, arg2, arg3) {

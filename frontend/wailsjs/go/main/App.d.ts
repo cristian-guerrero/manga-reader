@@ -127,6 +127,10 @@ export function GetLibrary():Promise<Array<persistence.FolderInfo>>;
 
 export function GetLibraryByID(arg1:string):Promise<persistence.LibraryInfo>;
 
+export function GetLocalNetworkAddress():Promise<string>;
+
+export function GetLocalNetworkServerStatus():Promise<boolean>;
+
 export function GetOneShotSortBy():Promise<string>;
 
 export function GetOneShotSortOrder():Promise<string>;
@@ -264,6 +268,8 @@ export function SetThumbnailsPaused(arg1:boolean):Promise<void>;
 export function StartDownload(arg1:string,arg2:string,arg3:string):Promise<string>;
 
 export function SwitchLibrary(arg1:string):Promise<void>;
+
+export function ToggleLocalNetworkServer(arg1:boolean):Promise<void>;
 
 export function UnpinFolder(arg1:string,arg2:string,arg3:string):Promise<void>;
 

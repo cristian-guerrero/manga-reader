@@ -506,6 +506,7 @@ export namespace persistence {
 	    downloadAlgorithmConfig: Record<string, AlgorithmDownloadConfig>;
 	    autoUpdate: boolean;
 	    updateChannel: string;
+	    localNetworkServer: boolean;
 	    activeLibraryId: string;
 	
 	    static createFrom(source: any = {}) {
@@ -548,6 +549,7 @@ export namespace persistence {
 	        this.downloadAlgorithmConfig = this.convertValues(source["downloadAlgorithmConfig"], AlgorithmDownloadConfig, true);
 	        this.autoUpdate = source["autoUpdate"];
 	        this.updateChannel = source["updateChannel"];
+	        this.localNetworkServer = source["localNetworkServer"];
 	        this.activeLibraryId = source["activeLibraryId"];
 	    }
 	

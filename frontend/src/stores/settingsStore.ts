@@ -50,6 +50,7 @@ const INITIAL_STATE: Settings = {
   restoreTabs: false,
   generateThumbnails: true,
   autoUpdate: true,
+  localNetworkServer: false,
 };
 
 export interface SettingsState extends Settings {
@@ -76,6 +77,7 @@ export interface SettingsState extends Settings {
   setRestoreTabs: (enable: boolean) => void;
   setGenerateThumbnails: (enable: boolean) => void;
   setAutoUpdate: (enable: boolean) => void;
+  setLocalNetworkServer: (enable: boolean) => void;
 
   setLastPage: (page: string) => void;
   setEnabledMenuItems: (items: Record<string, boolean>) => void;
@@ -235,6 +237,19 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   setAutoUpdate: (autoUpdate) => {
     set({ autoUpdate });
     get().updateBackend('autoUpdate', autoUpdate);
+  },
+
+  setLocalNetworkServer: async (localNetworkServer) => {
+    set({ localNetworkServer });
+    try {
+      await AppAPI.toggleLocalNetworkServer(localNetworkServer);
+    } catch (error) {
+      errorService.handle(error, {
+        component: 'SettingsStore',
+        action: 'setLocalNetworkServer',
+      }, { showToast: true });
+      set({ localNetworkServer: !localNetworkServer });
+    }
   },
 
   setLastPage: (lastPage) => {

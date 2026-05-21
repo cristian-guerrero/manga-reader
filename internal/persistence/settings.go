@@ -83,6 +83,9 @@ type Settings struct {
 	AutoUpdate    bool   `json:"autoUpdate"`
 	UpdateChannel string `json:"updateChannel"`
 
+	// Local network server
+	LocalNetworkServer bool `json:"localNetworkServer"`
+
 	// Active library ID (for restoring on startup)
 	ActiveLibraryID string `json:"activeLibraryId"`
 }
@@ -156,8 +159,9 @@ func DefaultSettings() *Settings {
 			"hentaifox.com":    {MaxParallelChapters: 2, MaxParallelImages: 1},
 			"nhentai.to":       {MaxParallelChapters: 2, MaxParallelImages: 1},
 		},
-		AutoUpdate:    true,
-		UpdateChannel: defaultUpdateChannel(),
+		AutoUpdate:         true,
+		UpdateChannel:      defaultUpdateChannel(),
+		LocalNetworkServer: false,
 	}
 }
 

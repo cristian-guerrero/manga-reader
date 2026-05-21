@@ -147,10 +147,30 @@ export class AppAPI extends BaseAPI {
             {
                 component: 'AppAPI',
                 action: 'updateTaskbarIcon',
-                defaultValue: undefined // Don't throw, but return void
+                defaultValue: undefined
             } as any
         ).catch(() => {
-            // Silently fail - taskbar icon update failure shouldn't break the app
         });
+    }
+
+    /**
+     * Toggle local network server
+     */
+    static async toggleLocalNetworkServer(enabled: boolean): Promise<void> {
+        await AppBackend.ToggleLocalNetworkServer(enabled);
+    }
+
+    /**
+     * Get local network server status
+     */
+    static async getLocalNetworkServerStatus(): Promise<boolean> {
+        return AppBackend.GetLocalNetworkServerStatus();
+    }
+
+    /**
+     * Get local network server address
+     */
+    static async getLocalNetworkAddress(): Promise<string> {
+        return AppBackend.GetLocalNetworkAddress();
     }
 }

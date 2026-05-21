@@ -3,9 +3,10 @@
  */
 
 import { useTranslation } from 'react-i18next';
-import { useNavigation, useDragAndDrop, useClipboardMonitor } from '../../hooks';
+import { useNavigation, useDragAndDrop, useClipboardMonitor, useIsMobileNetwork } from '../../hooks';
 import { Sidebar } from './Sidebar';
 import { TitleBar } from './TitleBar';
+import { MobileLayout } from './MobileLayout';
 
 interface MainLayoutProps {
     children: React.ReactNode;
@@ -14,10 +15,15 @@ interface MainLayoutProps {
 export function MainLayout({ children }: MainLayoutProps) {
     const { t } = useTranslation();
     const { isPanicMode, isProcessing } = useNavigation();
+    const isMobileView = useIsMobileNetwork();
 
-    // Use hooks for drag & drop and clipboard monitoring
+    // Use hooks for drag & drop and clipboard monitoring (desktop only)
     useDragAndDrop();
     useClipboardMonitor();
+
+    if (isMobileView) {
+        return <MobileLayout>{children}</MobileLayout>;
+    }
 
     return (
         <div

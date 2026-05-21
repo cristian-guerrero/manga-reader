@@ -407,5 +407,13 @@
       "displayNameLabel": "Display Name (optional)",
       "displayNamePlaceholder": "My Comics"
     }
+  },
+  "networkServer": {
+    "title": "Network Server",
+    "enable": "Enable Network Server",
+    "enableDesc": "Serve the app on your local network so other devices can access it via browser.",
+    "address": "Access from other devices",
+    "running": "Running",
+    "stopped": "Stopped"
   }
 }
