@@ -43,6 +43,9 @@ export function UpdateBanner() {
     );
   }
 
+  // When autoUpdate is on, everything is silent — no download button, no "ready" message
+  if (autoUpdate) return null;
+
   if (updateState.pending) {
     return (
       <div

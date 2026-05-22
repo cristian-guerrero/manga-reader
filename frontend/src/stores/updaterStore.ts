@@ -48,9 +48,13 @@ export const useUpdaterStore = create<UpdaterStoreState>((set, get) => ({
 
     set({ isChecking: true });
     try {
-      const info = await UpdaterAPI.checkForUpdate();
+      const [info, state] = await Promise.all([
+        UpdaterAPI.checkForUpdate(),
+        UpdaterAPI.getUpdateState(),
+      ]);
       set({
-        updateInfo: info,
+        updateInfo: state.pending ? null : info,
+        updateState: state,
         isChecking: false,
         lastCheckTime: Date.now(),
       });

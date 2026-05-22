@@ -7,6 +7,7 @@ import (
 	"manga-visor/internal/avifbin"
 	"manga-visor/internal/fileloader"
 	"manga-visor/internal/updater"
+	"manga-visor/internal/version"
 	"manga-visor/internal/webpbin"
 	"manga-visor/internal/modules/colorizer"
 	"manga-visor/internal/modules/downloader"
@@ -198,6 +199,16 @@ func (a *App) startup(ctx context.Context) {
 	})
 	a.services.Logger.Infof("[Colorizer] Data directory: %s", colorizerDataDir)
 
+	// Apply any pending update that wasn't applied during previous shutdown
+	if err := a.updaterSvc.ApplyUpdate(); err != nil {
+		a.services.Logger.Debugf("[Updater] No pending update to apply: %v", err)
+	} else {
+		a.services.Logger.Infof("[Updater] Pending update applied successfully")
+		if pv := a.updaterSvc.PendingVersion(); pv != "" {
+			version.Version = pv
+		}
+	}
+
 	// Auto-update check (silent, runs in background)
 	settings := a.settings().Get()
 	if settings.AutoUpdate {
@@ -256,7 +267,7 @@ func (a *App) shutdown(ctx context.Context) {
 	settings := a.settings().Get()
 	if settings.AutoUpdate {
 		if err := a.updaterSvc.ApplyUpdate(); err != nil {
-			a.services.Logger.Debugf("[Updater] No pending update: %v", err)
+			a.services.Logger.Warnf("[Updater] Failed to apply update: %v", err)
 		} else {
 			a.services.Logger.Infof("[Updater] Update applied successfully")
 		}

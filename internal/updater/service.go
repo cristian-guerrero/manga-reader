@@ -147,7 +147,15 @@ func (s *Service) DownloadUpdate(info *UpdateInfo) error {
 		}
 	}
 
+	// Persist version for ApplyUpdate to read from a fresh process
+	versionPath := filepath.Join(tmpDir, "manga-visor2-version")
+	os.WriteFile(versionPath, []byte(info.Version), 0644)
+
 	return nil
+}
+
+func (s *Service) PendingVersion() string {
+	return s.pendingVersion
 }
 
 func (s *Service) WasJustUpdated() bool {
@@ -173,6 +181,29 @@ func (s *Service) ApplyUpdate() error {
 	}
 
 	tmpDir := filepath.Join(s.dataDir, "updates")
+
+	// If pendingVersion is not set (fresh process), load from the version file
+	if s.pendingVersion == "" {
+		versionPath := filepath.Join(tmpDir, "manga-visor2-version")
+		if data, err := os.ReadFile(versionPath); err == nil {
+			s.pendingVersion = strings.TrimSpace(string(data))
+		}
+	}
+
+	// Without a version file we can't validate the binary — clean up stale files
+	if s.pendingVersion == "" {
+		os.RemoveAll(tmpDir)
+		return fmt.Errorf("no version file for pending update, cleaned up stale files")
+	}
+
+	// Version guard: only apply if the pending version is actually newer
+	currentBuild := parseBuildNumber(version.Version)
+	pendingBuild := parseBuildNumber(s.pendingVersion)
+	if pendingBuild <= currentBuild {
+		os.RemoveAll(tmpDir)
+		return fmt.Errorf("pending version %s is not newer than current version %s", s.pendingVersion, version.Version)
+	}
+
 	entries, err := os.ReadDir(tmpDir)
 	if err != nil {
 		return fmt.Errorf("read updates dir: %w", err)
