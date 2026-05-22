@@ -85,10 +85,11 @@ Wails v2 (Go 1.24 backend, React 18 + TypeScript + Vite frontend). State: Zustan
 ## Updater Module
 - Auto-update via GitHub releases (`cristian-guerrero/manga-reader`). Single channel using build numbers (`bNNNN`).
 - Each push to `main` creates a new release with tag `bNNNN` where NNNN is the commit count (like llama.cpp).
-- Check on startup via GitHub API. Download in background. Applies on shutdown via `os.Rename` + `WriteFile` (no scripts, no terminal).
+- Check on startup via GitHub API. Download in background. Applies on shutdown (via `os.Rename` + `WriteFile`) and also on next startup as fallback if shutdown apply was missed.
+- Version file (`updates/manga-visor2-version`) persisted during download so `ApplyUpdate()` works from a fresh process. `PendingVersion()` getter returns the in-memory pending version.
 - Toggle `auto_update` in Settings (default `true`). Version stored in SQLite.
 - Version injected via `-ldflags=-X manga-visor/internal/version.Version=b<build_number>` in CI.
-- UI: toast banner for new version with Download button, Settings section with auto-update toggle + status.
+- UI: When `autoUpdate=true` (default), banner is silent during download and pending-apply phases — only "App updated successfully" shows after restart. When `autoUpdate=false`, banner shows download button + "ready to install" message. Settings section has auto-update toggle + status.
 
 ## Downloader Module
 - 22 supported sites with per-algorithm concurrency config (parallel chapters + parallel images per chapter) stored in SQLite settings and editable via settings dialog in download page (gear icon)
