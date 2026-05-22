@@ -21,14 +21,16 @@ func (s *Service) applyUpdateWindows(exe, newBinary string) error {
 		return fmt.Errorf("rename current -> old: %w", err)
 	}
 
-	// Step 2: Rename new binary to original exe path
-	if err := os.Rename(newBinary, exe); err != nil {
+	// Step 2: Copy new binary to original exe path (copy works across volumes)
+	if err := copyFile(newBinary, exe); err != nil {
 		// Rollback: restore old binary
 		if rbErr := os.Rename(oldBinary, exe); rbErr != nil {
-			return fmt.Errorf("rename new -> exe: %w (rollback also failed: %v)", err, rbErr)
+			os.Remove(exe)
+			return fmt.Errorf("copy new -> exe: %w (rollback also failed: %v)", err, rbErr)
 		}
-		return fmt.Errorf("rename new -> exe: %w", err)
+		return fmt.Errorf("copy new -> exe: %w", err)
 	}
+	_ = os.Remove(newBinary)
 
 	// Step 3: Try to remove .old (will fail on Windows since process holds handle)
 	// If it fails, hide it instead using SetFileAttributesW
