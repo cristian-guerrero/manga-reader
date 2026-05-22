@@ -147,7 +147,15 @@ func (s *Service) DownloadUpdate(info *UpdateInfo) error {
 		}
 	}
 
+	// Persist version for ApplyUpdate to read from a fresh process
+	versionPath := filepath.Join(tmpDir, "manga-visor2-version")
+	os.WriteFile(versionPath, []byte(info.Version), 0644)
+
 	return nil
+}
+
+func (s *Service) PendingVersion() string {
+	return s.pendingVersion
 }
 
 func (s *Service) WasJustUpdated() bool {
@@ -173,6 +181,15 @@ func (s *Service) ApplyUpdate() error {
 	}
 
 	tmpDir := filepath.Join(s.dataDir, "updates")
+
+	// If pendingVersion is not set (fresh process), load from the version file
+	if s.pendingVersion == "" {
+		versionPath := filepath.Join(tmpDir, "manga-visor2-version")
+		if data, err := os.ReadFile(versionPath); err == nil {
+			s.pendingVersion = strings.TrimSpace(string(data))
+		}
+	}
+
 	entries, err := os.ReadDir(tmpDir)
 	if err != nil {
 		return fmt.Errorf("read updates dir: %w", err)
