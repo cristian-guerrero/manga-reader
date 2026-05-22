@@ -203,7 +203,6 @@ func (s *Service) ApplyUpdate() error {
 		os.RemoveAll(tmpDir)
 		return fmt.Errorf("pending version %s is not newer than current version %s", s.pendingVersion, version.Version)
 	}
-
 	entries, err := os.ReadDir(tmpDir)
 	if err != nil {
 		return fmt.Errorf("read updates dir: %w", err)
