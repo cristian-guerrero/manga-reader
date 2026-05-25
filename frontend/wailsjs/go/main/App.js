@@ -454,6 +454,10 @@ export function SaveWindowState() {
   return window['go']['main']['App']['SaveWindowState']();
 }
 
+export function SearchExplorer(arg1, arg2) {
+  return window['go']['main']['App']['SearchExplorer'](arg1, arg2);
+}
+
 export function SelectFolder() {
   return window['go']['main']['App']['SelectFolder']();
 }

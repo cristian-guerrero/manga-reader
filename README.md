@@ -18,7 +18,7 @@ Manga Visor is a desktop app that lets you browse, read, and download manga from
 
 - **📥 Downloader** — Paste a URL and download automatically. Supports 22 sites (see list below).
 - **🖼️ Viewer** — Vertical scroll or lateral pages, auto-scroll, zoom & pan, thumbnails view.
-- **📂 Explorer** — Browse folders recursively, sort by name/date, drag & drop to reorder.
+- **📂 Explorer** — Browse folders recursively, search recursively by name, sort by name/date, drag & drop to reorder.
 - **🏛️ Library** — Organize one-shots and series with automatic chapter detection.
 - **🎨 Colorizer** — AI-powered colorization for black & white manga (requires Python).
 - **📖 Reading History** — Auto-resume where you left off, progress indicators.

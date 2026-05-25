@@ -799,7 +799,9 @@ func (a *App) ExploreFolder(path string, sortMode string, sortOrder string) ([]e
 	return a.explorerMod.ListDirectoryWithSort(path, sortMode, sortOrder)
 }
 
-
+func (a *App) SearchExplorer(rootPath string, query string) ([]explorer.ExplorerEntry, error) {
+	return a.explorerMod.SearchRecursive(rootPath, query)
+}
 
 // GetFolderNavigation returns prev/next folder navigation for explorer
 func (a *App) GetFolderNavigation(folderPath string) *explorer.FolderNavigation {

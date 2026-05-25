@@ -59,6 +59,11 @@ Wails v2 (Go 1.24 backend, React 18 + TypeScript + Vite frontend). State: Zustan
 - Auto mode: folders promoted to front on click via `PromoteToFront()`, falls back to newest-first date sort.
 - Frontend: `useExplorerDragAndDrop` hook + `SortableEntryTile` + `DirectoryView` components using `@dnd-kit`.
 
+### Explorer Search (Recursive)
+- **Backend**: `SearchRecursive()` in `internal/modules/explorer/explorer.go` walks the filesystem via `filepath.WalkDir`, filters by name case-insensitively, returns up to 200 results with thumbnails.
+- **Frontend**: `useExplorerSearch` hook calls `ExplorerAPI.searchExplorer()` on query change (debounced via `SearchBar`). Results displayed in a grid with parent path shown; clicking a folder navigates into it, clicking a file opens the viewer.
+- **Scope**: At root level, searches across all base folders. Inside a directory, searches from that directory recursively.
+
 ### UI Preferences
 **Backend is the single source of truth.** No localStorage, no IndexedDB, no frontend defaults. Frontend calls backend for every preference and never pre-seeds defaults. Backend always returns defaults when nothing saved:
 - `GetExplorerSortPreference(path)` → `{sortBy, sortOrder}` (default: `{name, asc}`)

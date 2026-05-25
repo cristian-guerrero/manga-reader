@@ -2,6 +2,7 @@ package explorer
 
 import (
 	"context"
+	"io/fs"
 	"log"
 	"manga-visor/internal/database"
 	"manga-visor/internal/persistence"
@@ -576,6 +577,84 @@ func (m *Module) ListDirectoryWithSort(path string, sortMode string, sortOrder s
 	})
 
 	return result, nil
+}
+
+// SearchRecursive searches recursively through rootPath for entries matching query (case-insensitive).
+// Returns up to maxResults entries (default 200), sorted by path to group results by parent directory.
+func (m *Module) SearchRecursive(rootPath string, query string) ([]ExplorerEntry, error) {
+	if query == "" {
+		return []ExplorerEntry{}, nil
+	}
+
+	queryLower := strings.ToLower(query)
+	results := make([]ExplorerEntry, 0, 50)
+	maxResults := 200
+
+	err := filepath.WalkDir(rootPath, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return nil
+		}
+		if path == rootPath {
+			return nil
+		}
+
+		if !strings.Contains(strings.ToLower(d.Name()), queryLower) {
+			return nil
+		}
+
+		info, err := d.Info()
+		if err != nil {
+			return nil
+		}
+
+		entry := ExplorerEntry{
+			Path:         path,
+			Name:         d.Name(),
+			IsDirectory:  d.IsDir(),
+			Size:         info.Size(),
+			LastModified: info.ModTime().Unix(),
+		}
+
+		if d.IsDir() {
+			imagePath, hasImages := m.fileLoader.FindFirstImage(path)
+			if hasImages {
+				entry.HasImages = true
+				entry.CoverImage = imagePath
+				entry.ImageCount = m.fileLoader.GetShallowImageCount(path)
+				entry.SubdirectoryCount = m.fileLoader.GetSubdirectoryCount(path)
+
+				dirHash := m.fileLoader.RegisterDirectory(path)
+				thumbnailURL := m.urlBuilder.BuildImageURLFromPath(dirHash, path, imagePath)
+				entry.ThumbnailURL = strings.Replace(thumbnailURL, "/images?", "/thumbnails?", 1)
+			}
+		} else {
+			if !m.fileLoader.IsSupportedImage(d.Name()) {
+				return nil
+			}
+			entry.HasImages = true
+			entry.ImageCount = 1
+			entry.CoverImage = path
+		}
+
+		results = append(results, entry)
+
+		if len(results) >= maxResults {
+			return fs.SkipAll
+		}
+
+		return nil
+	})
+
+	if err != nil && err != fs.SkipAll {
+		return nil, err
+	}
+
+	// Sort by path to group results from the same directory
+	sort.SliceStable(results, func(i, j int) bool {
+		return results[i].Path < results[j].Path
+	})
+
+	return results, nil
 }
 
 // applyNamedOrder returns true if nameA should sort before nameB per the given order.
