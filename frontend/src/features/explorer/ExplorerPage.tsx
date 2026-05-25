@@ -546,6 +546,7 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
               sortOrder={sorting.sortOrder}
               onSortByChange={(value) => {
                 const newMode = value as "name" | "date" | "custom" | "auto";
+                prevSortByRef.current = newMode;
                 sorting.setSortBy(newMode);
                 if (explorerStateHook.currentPath && (newMode === 'auto' || newMode === 'custom')) {
                   loading.loadDirectory(explorerStateHook.currentPath, false, newMode);
