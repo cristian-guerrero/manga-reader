@@ -66,9 +66,11 @@ export function useExplorerNavigation({
             setCurrentPath(previous);
             setEntries([]);
         } else {
+            if (currentPath) {
+                setForwardHistory(prev => [...prev, currentPath]);
+            }
             setCurrentPath(null);
             setPathHistory([]);
-            setForwardHistory([]);
             setEntries([]);
             onTitleChange(t('explorer.title') || 'Explorer');
             if (tabId) {

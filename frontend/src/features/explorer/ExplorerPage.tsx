@@ -488,7 +488,7 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
           )}
 
           {/* Breadcrumb */}
-          <div className="flex-1 min-w-0">
+          <div className={`min-w-0 ${explorerStateHook.currentPath ? 'flex-1' : ''}`}>
             <Breadcrumb
               currentPath={explorerStateHook.currentPath}
               baseFolders={loading.baseFolders}
@@ -496,6 +496,35 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
               onAuxClick={navigation.handleBreadcrumbAuxClick}
             />
           </div>
+
+          {!explorerStateHook.currentPath && (
+            <>
+              <Tooltip content={t("common.forward")} placement="right">
+                <button
+                  onClick={navigation.handleForward}
+                  disabled={explorerStateHook.forwardHistory.length === 0}
+                  className={`p-1.5 sm:p-2 rounded-full transition-all flex-shrink-0 ${
+                    explorerStateHook.forwardHistory.length === 0
+                      ? 'opacity-30 cursor-not-allowed'
+                      : 'hover:bg-white/10'
+                  }`}
+                  aria-label={t("common.forward")}
+                >
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <path d="M5 12h14M12 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </Tooltip>
+              <div className="flex-1" />
+            </>
+          )}
 
           {/* Sort Controls */}
           <div className="flex-shrink-0 ml-4 sm:ml-8 hidden sm:block">
