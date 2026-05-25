@@ -11,7 +11,7 @@ import { useTabStore } from '@stores';
 interface UseExplorerRestorationOptions {
     tabId?: string;
     isActive: boolean;
-    explorerState: { currentPath: string | null; pathHistory: string[] } | null;
+    explorerState: { currentPath: string | null; pathHistory: string[]; forwardHistory: string[] } | null;
     previousPage: string | null;
     fromPage: string | null;
     params: Record<string, string>;

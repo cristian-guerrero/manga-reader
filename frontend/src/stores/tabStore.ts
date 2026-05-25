@@ -17,6 +17,7 @@ export interface Tab {
     explorerState: {
         currentPath: string | null;
         pathHistory: string[];
+        forwardHistory: string[];
     } | null;
     thumbnailScrollPositions: Record<string, number>;
     viewerState: {

@@ -232,11 +232,13 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
     tabId,
     currentPath: explorerStateHook.currentPath,
     pathHistory: explorerStateHook.pathHistory,
+    forwardHistory: explorerStateHook.forwardHistory,
     baseFolders: loading.baseFolders,
     entries: loading.entries,
     sortedEntries: search.sortedEntries,
     setCurrentPath: explorerStateHook.setCurrentPath,
     setPathHistory: explorerStateHook.setPathHistory,
+    setForwardHistory: explorerStateHook.setForwardHistory,
     setEntries: loading.setEntries,
     loadDirectory: loading.loadDirectory,
     loadBaseFolders: loading.loadBaseFolders,
@@ -440,24 +442,49 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
       >
         <div className="flex items-center gap-2 flex-1 min-w-0">
           {explorerStateHook.currentPath && (
-            <Tooltip content={t("common.back")} placement="right">
-              <button
-                onClick={navigation.handleBack}
-                className="p-1.5 sm:p-2 rounded-full hover:bg-white/10 transition-all opacity-100 translate-x-0 flex-shrink-0"
-                aria-label={t("common.back")}
-              >
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
+            <>
+              <Tooltip content={t("common.back")} placement="right">
+                <button
+                  onClick={navigation.handleBack}
+                  className="p-1.5 sm:p-2 rounded-full hover:bg-white/10 transition-all opacity-100 translate-x-0 flex-shrink-0"
+                  aria-label={t("common.back")}
                 >
-                  <path d="M19 12H5M12 19l-7-7 7-7" />
-                </svg>
-              </button>
-            </Tooltip>
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <path d="M19 12H5M12 19l-7-7 7-7" />
+                  </svg>
+                </button>
+              </Tooltip>
+              <Tooltip content={t("common.forward")} placement="right">
+                <button
+                  onClick={navigation.handleForward}
+                  disabled={explorerStateHook.forwardHistory.length === 0}
+                  className={`p-1.5 sm:p-2 rounded-full transition-all flex-shrink-0 ${
+                    explorerStateHook.forwardHistory.length === 0
+                      ? 'opacity-30 cursor-not-allowed'
+                      : 'hover:bg-white/10'
+                  }`}
+                  aria-label={t("common.forward")}
+                >
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <path d="M5 12h14M12 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </Tooltip>
+            </>
           )}
 
           {/* Breadcrumb */}

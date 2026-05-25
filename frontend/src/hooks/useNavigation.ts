@@ -148,7 +148,7 @@ export function useNavigation() {
         });
     }, [activeTab, updateActiveTab]);
 
-    const setExplorerState = useCallback((state: { currentPath: string | null; pathHistory: string[] } | null) => {
+    const setExplorerState = useCallback((state: { currentPath: string | null; pathHistory: string[]; forwardHistory: string[] } | null) => {
         updateActiveTab({ explorerState: state });
     }, [updateActiveTab]);
 

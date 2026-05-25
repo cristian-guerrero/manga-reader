@@ -15,15 +15,17 @@ interface UseExplorerNavigationOptions {
     tabId?: string;
     currentPath: string | null;
     pathHistory: string[];
+    forwardHistory: string[];
     baseFolders: BaseFolder[];
     entries: ExplorerEntry[];
     sortedEntries: ExplorerEntry[];
     setCurrentPath: (path: string | null) => void;
     setPathHistory: React.Dispatch<React.SetStateAction<string[]>>;
+    setForwardHistory: React.Dispatch<React.SetStateAction<string[]>>;
     setEntries: React.Dispatch<React.SetStateAction<ExplorerEntry[]>>;
     loadDirectory: (path: string, pushHistory?: boolean, sortModeOverride?: string) => Promise<void>;
     loadBaseFolders: () => Promise<void>;
-    setExplorerState: (state: { currentPath: string | null; pathHistory: string[] }) => void;
+    setExplorerState: (state: { currentPath: string | null; pathHistory: string[]; forwardHistory: string[] }) => void;
     navigate: (page: PageType, params?: Record<string, string>, activeMenuPageOverride?: PageType) => void;
     onTitleChange: (title: string) => void;
     onAutoPromote?: (parentPath: string, entryName: string, allDirNames: string[]) => void;
@@ -34,11 +36,13 @@ export function useExplorerNavigation({
     tabId,
     currentPath,
     pathHistory,
+    forwardHistory,
     baseFolders,
     entries,
     sortedEntries,
     setCurrentPath,
     setPathHistory,
+    setForwardHistory,
     setEntries,
     loadDirectory,
     loadBaseFolders,
@@ -56,11 +60,15 @@ export function useExplorerNavigation({
         if (pathHistory.length > 0) {
             const previous = pathHistory[pathHistory.length - 1];
             setPathHistory(prev => prev.slice(0, -1));
+            if (currentPath) {
+                setForwardHistory(prev => [...prev, currentPath]);
+            }
             setCurrentPath(previous);
             setEntries([]);
         } else {
             setCurrentPath(null);
             setPathHistory([]);
+            setForwardHistory([]);
             setEntries([]);
             onTitleChange(t('explorer.title') || 'Explorer');
             if (tabId) {
@@ -69,7 +77,20 @@ export function useExplorerNavigation({
                 useTabStore.getState().updateActiveTab({ title: t('explorer.title') || 'Explorer' });
             }
         }
-    }, [pathHistory, setPathHistory, setCurrentPath, setEntries, tabId, onTitleChange, t, onSearchClear]);
+    }, [pathHistory, currentPath, setPathHistory, setForwardHistory, setCurrentPath, setEntries, tabId, onTitleChange, t, onSearchClear]);
+
+    const handleForward = useCallback(() => {
+        onSearchClear?.();
+        if (forwardHistory.length > 0) {
+            const next = forwardHistory[forwardHistory.length - 1];
+            setForwardHistory(prev => prev.slice(0, -1));
+            if (currentPath) {
+                setPathHistory(prev => [...prev, currentPath]);
+            }
+            setCurrentPath(next);
+            setEntries([]);
+        }
+    }, [forwardHistory, currentPath, setForwardHistory, setPathHistory, setCurrentPath, setEntries, onSearchClear]);
 
     const handleBreadcrumbClick = useCallback((path: string | null) => {
         onSearchClear?.();
@@ -140,17 +161,19 @@ export function useExplorerNavigation({
                     }
                 }
                 setPathHistory(newHistory);
+                setForwardHistory([]);
             } else {
                 // Going forward or same level - add current path to history if it exists
                 if (currentPath && path !== currentPath) {
                     setPathHistory(prev => [...prev, currentPath]);
+                    setForwardHistory([]);
                 }
             }
 
             setCurrentPath(path);
             setEntries([]);
         }
-    }, [currentPath, baseFolders, setCurrentPath, setPathHistory, setEntries, tabId, onTitleChange, t, onSearchClear]);
+    }, [currentPath, baseFolders, setCurrentPath, setPathHistory, setForwardHistory, setEntries, tabId, onTitleChange, t, onSearchClear]);
 
     const handleBreadcrumbAuxClick = useCallback((e: React.MouseEvent, path: string | null, name: string) => {
         if (e.button === 1) { // Middle click
@@ -161,14 +184,16 @@ export function useExplorerNavigation({
                 addTab('explorer', {}, t('explorer.title') || 'Explorer', {
                     explorerState: {
                         currentPath: null,
-                        pathHistory: []
+                        pathHistory: [],
+                        forwardHistory: []
                     }
                 }, false);
             } else {
                 addTab('explorer', {}, name, {
                     explorerState: {
                         currentPath: path,
-                        pathHistory: []
+                        pathHistory: [],
+                        forwardHistory: []
                     }
                 }, false);
             }
@@ -181,6 +206,7 @@ export function useExplorerNavigation({
             if (path) {
                 await AppAPI.addBaseFolder(path);
                 setPathHistory([]);
+                setForwardHistory([]);
                 setTimeout(() => {
                     loadBaseFolders();
                     loadDirectory(path, false);
@@ -189,7 +215,7 @@ export function useExplorerNavigation({
         } catch (error) {
             console.error("Failed to add base folder", error);
         }
-    }, [loadBaseFolders, loadDirectory, setPathHistory]);
+    }, [loadBaseFolders, loadDirectory, setPathHistory, setForwardHistory]);
 
     const handleRemoveBaseFolder = useCallback(async (path: string, e: React.MouseEvent) => {
         e.stopPropagation();
@@ -198,18 +224,20 @@ export function useExplorerNavigation({
             await AppAPI.removeBaseFolder(path);
             setCurrentPath(null);
             setPathHistory([]);
+            setForwardHistory([]);
             setEntries([]);
             loadBaseFolders();
         } catch (error) {
             console.error("Failed to remove base folder", error);
         }
-    }, [setCurrentPath, setPathHistory, setEntries, loadBaseFolders, onSearchClear]);
+    }, [setCurrentPath, setPathHistory, setForwardHistory, setEntries, loadBaseFolders, onSearchClear]);
 
     const handleOpenInViewer = useCallback(async (path: string, e: React.MouseEvent) => {
         e.stopPropagation();
-        setExplorerState({
+            setExplorerState({
             currentPath,
             pathHistory,
+            forwardHistory,
         });
 
         const entry = entries.find(ent => ent.path === path);
@@ -235,6 +263,7 @@ export function useExplorerNavigation({
         if ('addedAt' in entry) {
             onSearchClear?.();
             setPathHistory([]);
+            setForwardHistory([]);
             setCurrentPath(entry.path);
             setEntries([]);
         } else {
@@ -243,6 +272,7 @@ export function useExplorerNavigation({
                 onSearchClear?.();
                 if (currentPath) {
                     setPathHistory(prev => [...prev, currentPath]);
+                    setForwardHistory([]);
                     if (onAutoPromote) {
                         const allDirNames = entries.filter(ent => ent.isDirectory).map(ent => ent.name);
                         onAutoPromote(currentPath, e.name, allDirNames);
@@ -258,6 +288,7 @@ export function useExplorerNavigation({
                     setExplorerState({
                         currentPath,
                         pathHistory,
+                        forwardHistory,
                     });
 
                     const hasSubdirs = entries.some(ent => ent.isDirectory);
@@ -290,7 +321,8 @@ export function useExplorerNavigation({
                 addTab('explorer', {}, entry.name, {
                     explorerState: {
                         currentPath: entry.path,
-                        pathHistory: []
+                        pathHistory: [],
+                        forwardHistory: []
                     }
                 }, false);
             } else {
@@ -303,7 +335,8 @@ export function useExplorerNavigation({
                     addTab('explorer', {}, ent.name, {
                         explorerState: {
                             currentPath: ent.path,
-                            pathHistory: newPathHistory
+                            pathHistory: newPathHistory,
+                            forwardHistory: []
                         }
                     }, false);
                 } else {
@@ -334,6 +367,7 @@ export function useExplorerNavigation({
 
     return {
         handleBack,
+        handleForward,
         handleBreadcrumbClick,
         handleBreadcrumbAuxClick,
         handleAddBaseFolder,

@@ -9,6 +9,7 @@ import { useTabStore } from '@stores';
 interface ExplorerState {
     currentPath: string | null;
     pathHistory: string[];
+    forwardHistory: string[];
 }
 
 interface UseExplorerStateOptions {
@@ -27,6 +28,7 @@ export function useExplorerState({ tabId, isActive }: UseExplorerStateOptions) {
     const initialState = getInitialExplorerState();
     const [currentPath, setCurrentPath] = useState<string | null>(initialState?.currentPath || null);
     const [pathHistory, setPathHistory] = useState<string[]>(initialState?.pathHistory || []);
+    const [forwardHistory, setForwardHistory] = useState<string[]>(initialState?.forwardHistory || []);
     const currentPathRef = useRef<string | null>(currentPath);
 
     // Update ref when currentPath changes
@@ -43,18 +45,20 @@ export function useExplorerState({ tabId, isActive }: UseExplorerStateOptions) {
                 useTabStore.setState({
                     tabs: tabs.map((t, i) => i === tabIndex ? {
                         ...t,
-                        explorerState: { currentPath, pathHistory }
+                        explorerState: { currentPath, pathHistory, forwardHistory }
                     } : t)
                 });
             }
         }
-    }, [currentPath, pathHistory, isActive, tabId]);
+    }, [currentPath, pathHistory, forwardHistory, isActive, tabId]);
 
     return {
         currentPath,
         setCurrentPath,
         pathHistory,
         setPathHistory,
+        forwardHistory,
+        setForwardHistory,
         currentPathRef,
     };
 }
