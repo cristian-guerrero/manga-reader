@@ -4,6 +4,7 @@
 
 import * as AppBackend from '../../../wailsjs/go/main/App';
 import { BaseAPI } from './baseAPI';
+import { ExplorerEntry } from '../../features/explorer/types';
 
 // Temporary cast to fix type error until Wails regenerates bindings
 const AppBackendAny = AppBackend as any;
@@ -52,6 +53,16 @@ export class ExplorerAPI extends BaseAPI {
                 details: { folderPath, sortMode, sortOrder }
             }
         );
+    }
+
+    static async searchExplorer(rootPath: string, query: string): Promise<ExplorerEntry[]> {
+        try {
+            const result = await AppBackendAny.SearchExplorer(rootPath, query);
+            return Array.isArray(result) ? result : [];
+        } catch (error) {
+            console.error('[ExplorerAPI] searchExplorer failed:', error);
+            return [];
+        }
     }
 }
 

@@ -1,11 +1,7 @@
-/**
- * useExplorerSearch - Hook to handle search and filtering
- * Extracted from ExplorerPage to improve separation of concerns
- */
-
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { BaseFolder, ExplorerEntry } from '../types';
 import type { SortBy } from './useExplorerSorting';
+import { ExplorerAPI } from '@services/api/explorerAPI';
 
 interface UseExplorerSearchOptions {
   baseFolders: BaseFolder[];
@@ -14,6 +10,7 @@ interface UseExplorerSearchOptions {
   sortOrder: 'asc' | 'desc';
   pinnedFolders?: string[];
   pinnedImages?: string[];
+  currentPath?: string | null;
 }
 
 export function useExplorerSearch({
@@ -23,10 +20,55 @@ export function useExplorerSearch({
   sortOrder,
   pinnedFolders = [],
   pinnedImages = [],
+  currentPath,
 }: UseExplorerSearchOptions) {
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<ExplorerEntry[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const searchQueryRef = useRef(searchQuery);
+  searchQueryRef.current = searchQuery;
 
-  // Filter function for search
+  useEffect(() => {
+    const query = searchQuery.trim();
+    if (!query) {
+      setSearchResults([]);
+      setIsSearching(false);
+      return;
+    }
+
+    setIsSearching(true);
+
+    const roots: string[] = currentPath
+      ? [currentPath]
+      : baseFolders.map(f => f.path);
+
+    if (roots.length === 0) {
+      setSearchResults([]);
+      setIsSearching(false);
+      return;
+    }
+
+    const controller = new AbortController();
+
+    Promise.all(
+      roots.map(root => ExplorerAPI.searchExplorer(root, query))
+    ).then(results => {
+      if (controller.signal.aborted) return;
+      const flat = results.flat();
+      setSearchResults(flat);
+    }).catch(err => {
+      if (controller.signal.aborted) return;
+      console.error('[useExplorerSearch] Search failed:', err);
+      setSearchResults([]);
+    }).finally(() => {
+      if (!controller.signal.aborted) {
+        setIsSearching(false);
+      }
+    });
+
+    return () => controller.abort();
+  }, [searchQuery, currentPath, baseFolders]);
+
   const matchesSearch = (item: BaseFolder | ExplorerEntry, query: string): boolean => {
     if (!query.trim()) return true;
     const searchTerm = query.toLowerCase();
@@ -34,8 +76,8 @@ export function useExplorerSearch({
       ('path' in item && item.path.toLowerCase().includes(searchTerm));
   };
 
-  // Sort and filter base folders
   const sortedBaseFolders = useMemo(() => {
+    if (searchQuery.trim()) return [];
     return [...baseFolders]
       .filter(folder => matchesSearch(folder, searchQuery))
       .sort((a, b) => {
@@ -43,7 +85,6 @@ export function useExplorerSearch({
         if (sortBy === 'name') {
           res = a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
         } else {
-          // Date sort - use addedAt for base folders
           const dateA = a.addedAt ? new Date(a.addedAt).getTime() : 0;
           const dateB = b.addedAt ? new Date(b.addedAt).getTime() : 0;
           res = dateA - dateB;
@@ -52,8 +93,8 @@ export function useExplorerSearch({
       });
   }, [baseFolders, searchQuery, sortBy, sortOrder]);
 
-  // Sort and filter entries (directory view)
   const sortedEntries = useMemo(() => {
+    if (searchQuery.trim()) return [];
     const filtered = [...entries]
       .filter(entry => matchesSearch(entry, searchQuery));
 
@@ -63,7 +104,6 @@ export function useExplorerSearch({
     const dirs = filtered.filter(e => e.isDirectory);
     const images = filtered.filter(e => !e.isDirectory);
 
-    // Sort pinned folders
     const pinnedDirs = dirs.filter(e => pinnedFolderSet.has(e.name));
     const unpinnedDirs = dirs.filter(e => !pinnedFolderSet.has(e.name));
     const pinnedFolderOrder = pinnedFolders.filter(name => pinnedDirs.some(e => e.name === name));
@@ -73,7 +113,6 @@ export function useExplorerSearch({
       return idxA - idxB;
     });
 
-    // Sort pinned images
     const pinnedImgs = images.filter(e => pinnedImageSet.has(e.name));
     const unpinnedImgs = images.filter(e => !pinnedImageSet.has(e.name));
     const pinnedImageOrder = pinnedImages.filter(name => pinnedImgs.some(e => e.name === name));
@@ -83,7 +122,6 @@ export function useExplorerSearch({
       return idxA - idxB;
     });
 
-    // Sort unpinned dirs
     if (sortBy !== 'custom' && sortBy !== 'auto') {
       unpinnedDirs.sort((a, b) => {
         let res = 0;
@@ -98,7 +136,6 @@ export function useExplorerSearch({
       });
     }
 
-    // Sort unpinned images
     if (sortBy !== 'custom' && sortBy !== 'auto') {
       unpinnedImgs.sort((a, b) => {
         let res = 0;
@@ -121,5 +158,7 @@ export function useExplorerSearch({
     setSearchQuery,
     sortedBaseFolders,
     sortedEntries,
+    searchResults,
+    isSearching,
   };
 }

@@ -235,6 +235,8 @@ export function SaveViewerState(arg1:string,arg2:number,arg3:number,arg4:number)
 
 export function SaveWindowState():Promise<void>;
 
+export function SearchExplorer(arg1:string,arg2:string):Promise<Array<explorer.ExplorerEntry>>;
+
 export function SelectFolder():Promise<string>;
 
 export function SelectLibraryFile():Promise<string>;
