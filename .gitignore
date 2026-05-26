@@ -1,3 +1,7 @@
+cover.out
+coverage.out
+coverage/
+frontend/coverage/
 build/bin
 build/linux/AppDir
 build/linux/appimagetool

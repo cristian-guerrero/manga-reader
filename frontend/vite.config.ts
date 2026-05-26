@@ -1,6 +1,7 @@
 import { defineConfig, Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
+/// <reference types="vitest/config" />
 
 // Plugin to return 404 for image/thumbnail API routes
 // This allows Wails to forward these requests to the Go AssetHandler
@@ -46,5 +47,17 @@ export default defineConfig(({ mode }) => ({
     },
   },
   server: {
-  }
+  },
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: './src/test/setup.ts',
+    css: false,
+    coverage: {
+      exclude: [
+        'wailsjs/**',
+        'src/test/**',
+      ],
+    },
+  },
 }))

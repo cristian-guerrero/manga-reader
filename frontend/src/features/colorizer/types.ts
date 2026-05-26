@@ -1,30 +1,20 @@
-/**
- * Colorizer types
- */
-
-export type InstallStatus =
-    | 'not_installed'
-    | 'downloading_python'
-    | 'downloading_backend'
-    | 'installing_deps'
-    | 'installing'
-    | 'ready'
-    | 'starting_server'
-    | 'running'
-    | 'error'
-    | 'stopping';
-
-export interface InstallProgress {
-    status: InstallStatus;
-    message: string;
-    percent: number;
-    error?: string;
+export interface ColorizeSettings {
+  colorize: boolean;
+  upscale: boolean;
+  denoise: boolean;
+  upscaleFactor: 2 | 4;
+  denoiseSigma: number;
 }
 
-export interface ColorizeResponse {
-    success: boolean;
-    output_path?: string;
-    output_base64?: string;
-    message?: string;
-    processing_ms: number;
+export interface DownloadItem {
+  base64Data: string;
+  fileName: string;
+  originalPath: string;
+}
+
+export interface DownloadState {
+  status: "idle" | "saving" | "success" | "error" | "cancelled";
+  message: string;
+  savedFiles: string[];
+  progress: { current: number; total: number };
 }

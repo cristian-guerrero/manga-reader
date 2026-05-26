@@ -34,6 +34,9 @@ type ChapterWithURLs struct {
 	ThumbnailURL string `json:"thumbnailUrl"`
 }
 
+// eventsEmit is a package-level variable for runtime.EventsEmit, replaceable in tests
+var eventsEmit = runtime.EventsEmit
+
 // Module handles Series logic
 type Module struct {
 	ctx        context.Context
@@ -125,7 +128,7 @@ func (m *Module) AddSeries(path string, subfolders []persistence.FolderInfo, isT
 		return nil, err
 	}
 
-	runtime.EventsEmit(m.ctx, "series_updated")
+	eventsEmit(m.ctx, "series_updated")
 	if m.logger != nil {
 		m.logger.Infof("Series added: %s with %d chapters (temp: %v)", path, len(subfolders), isTemp)
 	}
@@ -216,7 +219,7 @@ func (m *Module) RemoveSeries(path string) error {
 
 	err := m.series.Remove(path)
 	if err == nil {
-		runtime.EventsEmit(m.ctx, "series_updated")
+		eventsEmit(m.ctx, "series_updated")
 	}
 	return err
 }
@@ -232,7 +235,7 @@ func (m *Module) ClearSeries() error {
 
 	err := m.series.Clear()
 	if err == nil {
-		runtime.EventsEmit(m.ctx, "series_updated")
+		eventsEmit(m.ctx, "series_updated")
 	}
 	return err
 }

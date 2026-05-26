@@ -19,3 +19,4 @@ export * from './folderOrderAPI';
 export * from './folderViewModeAPI';
 export * from './explorerAPI';
 export * from './libraryManagerAPI';
+export * from './colorizerAPI';

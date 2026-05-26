@@ -10,7 +10,10 @@ Wails v2 (Go 1.24 backend, React 18 + TypeScript + Vite frontend). State: Zustan
 - **Build**: `wails build -platform windows/amd64` (Linux: uses `build-appimage.sh`)
 - **Lint**: `cd frontend && npm run lint`
 - **Typecheck**: `cd frontend && npm run type-check`
-- **Go tests**: `go test ./...` (no frontend test script defined)
+- **Go tests**: `go test ./...`
+- **Frontend tests**: `cd frontend && npm run test` (Vitest)
+- **Frontend tests (watch)**: `cd frontend && npm run test:watch`
+- **Frontend coverage**: `cd frontend && npm run test:coverage`
 
 ## Architecture
 - **Entrypoints**: `main.go` → `app.go` (Wails app struct with bound methods)

@@ -24,6 +24,9 @@ type URLBuilderInterface = services.URLBuilderInterface
 // ImageInfo is a type alias for fileloader.ImageInfo to reduce direct dependency
 type ImageInfo = fileloader.ImageInfo
 
+// eventsEmit is a package-level variable for runtime.EventsEmit, replaceable in tests
+var eventsEmit = runtime.EventsEmit
+
 // Module handles Library logic
 type Module struct {
 	ctx          context.Context
@@ -129,7 +132,7 @@ func (m *Module) AddFolder(path string) (*persistence.AddFolderResult, error) {
 		return nil, err
 	}
 
-	runtime.EventsEmit(m.ctx, "library_updated")
+	eventsEmit(m.ctx, "library_updated")
 	return &persistence.AddFolderResult{Path: folderPath, IsSeries: false}, nil
 }
 
@@ -181,7 +184,7 @@ func (m *Module) RemoveLibraryEntry(folderPath string) error {
 
 	err := m.library.Remove(folderPath)
 	if err == nil {
-		runtime.EventsEmit(m.ctx, "library_updated")
+		eventsEmit(m.ctx, "library_updated")
 	}
 	return err
 }
@@ -197,7 +200,7 @@ func (m *Module) ClearLibrary() error {
 
 	err := m.library.Clear()
 	if err == nil {
-		runtime.EventsEmit(m.ctx, "library_updated")
+		eventsEmit(m.ctx, "library_updated")
 	}
 	return err
 }
