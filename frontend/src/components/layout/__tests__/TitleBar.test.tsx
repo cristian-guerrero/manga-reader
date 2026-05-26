@@ -11,7 +11,7 @@ class MockResizeObserver {
 }
 
 beforeAll(() => {
-  global.ResizeObserver = MockResizeObserver as unknown as typeof ResizeObserver
+  globalThis.ResizeObserver = MockResizeObserver as unknown as typeof ResizeObserver
 })
 
 beforeEach(() => {

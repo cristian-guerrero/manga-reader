@@ -1,5 +1,6 @@
 import { useGlobalNavigationStore } from '../globalNavigationStore'
 import { useTabStore } from '../tabStore'
+import type { FolderInfo } from '../../types'
 
 describe('globalNavigationStore', () => {
   beforeEach(() => {
@@ -37,18 +38,18 @@ describe('globalNavigationStore', () => {
   })
 
   it('setFolders replaces folders array', () => {
-    const folders = [{ path: '/test', name: 'Test', isSeries: false, coverImage: '' }]
+    const folders: FolderInfo[] = [{ path: '/test', name: 'Test', imageCount: 0, lastModified: '', coverImage: '' }]
     useGlobalNavigationStore.getState().setFolders(folders)
     expect(useGlobalNavigationStore.getState().folders).toEqual(folders)
   })
 
   it('setFolders accepts updater function', () => {
     useGlobalNavigationStore.setState({
-      folders: [{ path: '/a', name: 'A', isSeries: false, coverImage: '' }],
+      folders: [{ path: '/a', name: 'A', imageCount: 0, lastModified: '', coverImage: '' }],
     })
     useGlobalNavigationStore.getState().setFolders((prev) => [
       ...prev,
-      { path: '/b', name: 'B', isSeries: false, coverImage: '' },
+      { path: '/b', name: 'B', imageCount: 0, lastModified: '', coverImage: '' },
     ])
     expect(useGlobalNavigationStore.getState().folders).toHaveLength(2)
   })

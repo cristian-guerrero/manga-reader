@@ -132,8 +132,6 @@ vi.mock('../../../../wailsjs/go/main/App', () => {
     UnpinImage: mock(undefined),
     GetPinnedImages: mock([]),
     ReorderPinnedImages: mock(undefined),
-    GetFolderInfo: mock(),
-    ResolveFolder: mock(''),
     ClearAllData: mock(undefined),
     UpdateTaskbarIcon: mock(undefined),
     ToggleLocalNetworkServer: mock(undefined),

@@ -54,7 +54,7 @@ describe('updaterStore', () => {
   })
 
   it('checkForUpdate fetches update info', async () => {
-    const mockInfo = { available: true, version: 'b1001', url: '', notes: '' }
+    const mockInfo = { available: true, version: 'b1001', url: '' }
     vi.mocked(UpdaterAPI.checkForUpdate).mockResolvedValue(mockInfo)
     vi.mocked(UpdaterAPI.getUpdateState).mockResolvedValue({ pending: false, pendingVersion: '', downloadedAt: '' })
 
@@ -72,7 +72,7 @@ describe('updaterStore', () => {
 
   it('downloadUpdate downloads and updates state', async () => {
     useUpdaterStore.setState({
-      updateInfo: { available: true, version: 'b1001', url: '', notes: '' },
+      updateInfo: { available: true, version: 'b1001', url: '' },
     })
     vi.mocked(UpdaterAPI.downloadUpdate).mockResolvedValue(undefined)
     vi.mocked(UpdaterAPI.getUpdateState).mockResolvedValue({
@@ -94,7 +94,7 @@ describe('updaterStore', () => {
   it('downloadUpdate does nothing if already downloading', async () => {
     useUpdaterStore.setState({
       isDownloading: true,
-      updateInfo: { available: true, version: 'b1001', url: '', notes: '' },
+      updateInfo: { available: true, version: 'b1001', url: '' },
     })
     await useUpdaterStore.getState().downloadUpdate()
     expect(UpdaterAPI.downloadUpdate).not.toHaveBeenCalled()

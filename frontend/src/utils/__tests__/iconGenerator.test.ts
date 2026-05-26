@@ -10,7 +10,7 @@ class MockPath2D {
 
 describe('generateThemedIcon', () => {
   beforeAll(() => {
-    global.Path2D = MockPath2D as unknown as typeof Path2D
+    globalThis.Path2D = MockPath2D as unknown as typeof Path2D
   })
 
   afterAll(() => {

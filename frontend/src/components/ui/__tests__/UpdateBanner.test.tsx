@@ -60,10 +60,7 @@ const resetSettings = () => useSettingsStore.setState({
   setProcessDroppedFolders: vi.fn(),
   setLastPage: vi.fn(),
   toggleMenuItem: vi.fn(),
-  setDownloadPath: vi.fn(),
-  setClipboardAutoMonitor: vi.fn(),
-  setAutoResumeDownloads: vi.fn(),
-  setThemeAccent: vi.fn(),
+
   setTabMemorySaving: vi.fn(),
   setRestoreTabs: vi.fn(),
   setGenerateThumbnails: vi.fn(),
