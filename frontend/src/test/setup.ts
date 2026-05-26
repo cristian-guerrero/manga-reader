@@ -13,6 +13,17 @@ vi.mock('react-i18next', () => ({
         'oneShot.noFolders': 'No folders yet',
         'oneShot.dragDrop': 'Drag and drop folders here',
         'oneShot.selectFolder': 'Select Folder',
+        'navigation.home': 'Home',
+        'navigation.explorer': 'Explorer',
+        'navigation.history': 'History',
+        'navigation.oneShot': 'One Shot',
+        'navigation.series': 'Series',
+        'navigation.download': 'Downloads',
+        'navigation.colorizer': 'Colorizer',
+        'navigation.libraryManager': 'Library Manager',
+        'navigation.settings': 'Settings',
+        'common.close': 'Close',
+        'common.openInTab': 'Open in tab',
       }
       return translations[key] || key
     },

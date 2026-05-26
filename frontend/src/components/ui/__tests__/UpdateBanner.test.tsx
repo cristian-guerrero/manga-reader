@@ -125,7 +125,7 @@ describe('UpdateBanner', () => {
     const dismissUpdated = vi.fn()
     useUpdaterStore.setState({ updatedRecently: true, dismissUpdated })
     render(<UpdateBanner />)
-    await user.click(screen.getByText('common.close'))
+    await user.click(screen.getByText('Close'))
     expect(dismissUpdated).toHaveBeenCalled()
   })
 

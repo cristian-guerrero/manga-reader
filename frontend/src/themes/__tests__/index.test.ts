@@ -6,7 +6,18 @@ import {
   builtInThemes,
   darkTheme,
   lightTheme,
+  applyTheme,
 } from '../index'
+
+vi.mock('../../utils/iconGenerator', () => ({
+  generateThemedIcon: vi.fn(() => Promise.resolve('data:image/png;base64,icon')),
+}))
+
+vi.mock('../../services/api/appAPI', () => ({
+  AppAPI: {
+    updateTaskbarIcon: vi.fn(() => Promise.resolve()),
+  },
+}))
 
 describe('adjustColorBrightness', () => {
   it('lightens a color', () => {
@@ -153,5 +164,68 @@ describe('builtInThemes', () => {
   it('has unique IDs', () => {
     const ids = builtInThemes.map((t) => t.id)
     expect(new Set(ids).size).toBe(ids.length)
+  })
+})
+
+describe('applyTheme', () => {
+  beforeEach(() => {
+    document.documentElement.removeAttribute('data-theme')
+    document.documentElement.removeAttribute('data-theme-id')
+    vi.clearAllMocks()
+  })
+
+  it('sets data-theme and data-theme-id attributes', async () => {
+    await applyTheme(darkTheme)
+    expect(document.documentElement.getAttribute('data-theme')).toBe('dark')
+    expect(document.documentElement.getAttribute('data-theme-id')).toBe(darkTheme.id)
+  })
+
+  it('sets color-scheme to light for light themes', async () => {
+    await applyTheme(lightTheme)
+    expect(document.documentElement.style.colorScheme).toBe('light')
+  })
+
+  it('sets color-scheme to dark for dark themes', async () => {
+    await applyTheme(darkTheme)
+    expect(document.documentElement.style.colorScheme).toBe('dark')
+  })
+
+  it('applies CSS custom properties from theme colors', async () => {
+    await applyTheme(darkTheme)
+    const root = document.documentElement
+    expect(root.style.getPropertyValue('--color-accent')).toBe(darkTheme.colors.accent)
+    expect(root.style.getPropertyValue('--color-surface-primary')).toBe(darkTheme.colors.surfacePrimary)
+    expect(root.style.getPropertyValue('--color-text-primary')).toBe(darkTheme.colors.textPrimary)
+    expect(root.style.getPropertyValue('--color-border')).toBe(darkTheme.colors.border)
+    expect(root.style.getPropertyValue('--color-titlebar-bg')).toBe(darkTheme.colors.titlebarBg)
+  })
+
+  it('applies gradient variables', async () => {
+    await applyTheme(darkTheme)
+    const root = document.documentElement
+    expect(root.style.getPropertyValue('--gradient-accent')).toContain(darkTheme.colors.accent)
+    expect(root.style.getPropertyValue('--gradient-glow')).toContain('radial-gradient')
+  })
+
+  it('overrides accent color when customAccentColor is provided', async () => {
+    const customAccent = '#ff0000'
+    await applyTheme(darkTheme, customAccent)
+    const root = document.documentElement
+    expect(root.style.getPropertyValue('--color-accent')).toBe(customAccent)
+    expect(root.style.getPropertyValue('--color-accent-hover')).not.toBe(darkTheme.colors.accentHover)
+  })
+
+  it('calls generateThemedIcon and updateTaskbarIcon', async () => {
+    const { generateThemedIcon } = await import('../../utils/iconGenerator')
+    const { AppAPI } = await import('../../services/api/appAPI')
+    await applyTheme(darkTheme)
+    expect(generateThemedIcon).toHaveBeenCalled()
+    expect(AppAPI.updateTaskbarIcon).toHaveBeenCalledWith('data:image/png;base64,icon')
+  })
+
+  it('does not throw when updateTaskbarIcon fails', async () => {
+    const { AppAPI } = await import('../../services/api/appAPI')
+    vi.mocked(AppAPI.updateTaskbarIcon).mockRejectedValueOnce(new Error('icon error'))
+    await expect(applyTheme(darkTheme)).resolves.toBeUndefined()
   })
 })

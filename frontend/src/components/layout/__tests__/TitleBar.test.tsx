@@ -58,8 +58,63 @@ describe('TitleBar', () => {
     expect(buttons.length).toBeGreaterThanOrEqual(3)
   })
 
+  it('renders minimize, maximize, and close buttons', () => {
+    render(<TitleBar />)
+    expect(screen.getByLabelText('Minimize')).toBeInTheDocument()
+    expect(screen.getByLabelText('Maximize')).toBeInTheDocument()
+    expect(screen.getByLabelText('Close')).toBeInTheDocument()
+  })
+
   it('includes TabList component', () => {
     const { container } = render(<TitleBar />)
     expect(container.querySelector('.no-drag')).toBeInTheDocument()
+  })
+
+  it('calls WindowMinimise on minimize click', async () => {
+    const user = userEvent.setup()
+    render(<TitleBar />)
+    await user.click(screen.getByLabelText('Minimize'))
+    expect(window.runtime.WindowMinimise).toHaveBeenCalled()
+  })
+
+  it('calls WindowMaximise on maximize click when not maximized', async () => {
+    const user = userEvent.setup()
+    render(<TitleBar />)
+    const btn = await screen.findByLabelText('Maximize')
+    await user.click(btn)
+    expect(window.runtime.WindowMaximise).toHaveBeenCalled()
+  })
+
+  it('calls WindowUnmaximise on maximize click when maximized', async () => {
+    window.runtime.WindowIsMaximised = vi.fn(() => Promise.resolve(true))
+    const user = userEvent.setup()
+    render(<TitleBar />)
+    const btn = await screen.findByLabelText('Restore')
+    expect(btn).toBeInTheDocument()
+    await user.click(btn)
+    expect(window.runtime.WindowUnmaximise).toHaveBeenCalled()
+  })
+
+  it('calls Quit on close click', async () => {
+    const user = userEvent.setup()
+    render(<TitleBar />)
+    await user.click(screen.getByLabelText('Close'))
+    expect(window.runtime.Quit).toHaveBeenCalled()
+  })
+
+  it('checks maximized state on mount', () => {
+    render(<TitleBar />)
+    expect(window.runtime.WindowIsMaximised).toHaveBeenCalled()
+  })
+
+  it('double-clicking spacer calls handleMaximize', async () => {
+    const user = userEvent.setup()
+    render(<TitleBar />)
+    const spacer = document.querySelector('.drag')
+    expect(spacer).not.toBeNull()
+    if (spacer) {
+      await user.dblClick(spacer)
+      expect(window.runtime.WindowMaximise).toHaveBeenCalled()
+    }
   })
 })

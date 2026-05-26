@@ -18,7 +18,7 @@ describe('HelpDialog', () => {
     const user = userEvent.setup()
     const onClose = vi.fn()
     render(<HelpDialog isOpen={true} onClose={onClose} title="Title"><p>C</p></HelpDialog>)
-    await user.click(screen.getByText('common.close'))
+    await user.click(screen.getByText('Close'))
     expect(onClose).toHaveBeenCalled()
   })
 
