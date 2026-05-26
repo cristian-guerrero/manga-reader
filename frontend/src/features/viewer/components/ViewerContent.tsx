@@ -27,6 +27,8 @@ interface ViewerContentProps {
     folderPath: string;
     onPageChange: () => void;
     tabId?: string;
+    onNextBoundary?: () => void;
+    onPrevBoundary?: () => void;
 }
 
 export function ViewerContent({
@@ -49,6 +51,8 @@ export function ViewerContent({
     folderPath,
     onPageChange,
     tabId,
+    onNextBoundary,
+    onPrevBoundary,
 }: ViewerContentProps) {
     if (mode === 'vertical') {
         return (
@@ -91,6 +95,8 @@ export function ViewerContent({
                 hasChapterButtons={hasChapterButtons}
                 onRestorationComplete={onRestorationComplete}
                 tabId={tabId}
+                onNextBoundary={onNextBoundary}
+                onPrevBoundary={onPrevBoundary}
             />
         </div>
     );

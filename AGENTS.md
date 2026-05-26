@@ -89,6 +89,7 @@ Wails v2 (Go 1.24 backend, React 18 + TypeScript + Vite frontend). State: Zustan
 - **Output binary**: `manga-visor2` (not `manga-visor`) — configured in `wails.json`
 - **Frontend style**: Functional React components, TypeScript strict mode
 - **ContextMenu**: Reusable right-click menu at `components/ui/ContextMenu.tsx` using `ContextMenuItem` type from `@types`. Supports nested submenus via `children: ContextMenuItem[]` and visual `separator` items via `type: 'separator'`. Used in Explorer (folder actions), TabList (close tab), Sidebar (open in tab), and Viewer (play/pause, go to start, go back). Theming via CSS variables.
+- **Auto chapter transition**: When in lateral mode, pressing next on last page or prev on first page automatically transitions to the next/previous chapter (series) or folder (explorer). Implemented via `onNextBoundary`/`onPrevBoundary` callbacks in `useKeyboardNav.ts` and `LateralViewer.tsx`, piped from `ViewerPage.tsx` through `ViewerContent.tsx`. Next chapter navigates to page 1 (`startIndex=0`), prev chapter navigates to last page (`endOfChapter=true` param handled by `useViewerFolderLoading.ts`).
 
 ## Updater Module
 - Auto-update via GitHub releases (`cristian-guerrero/manga-reader`). Single channel using build numbers (`bNNNN`).
