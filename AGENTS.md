@@ -62,6 +62,12 @@ Wails v2 (Go 1.24 backend, React 18 + TypeScript + Vite frontend). State: Zustan
 - Auto mode: folders promoted to front on click via `PromoteToFront()`, falls back to newest-first date sort.
 - Frontend: `useExplorerDragAndDrop` hook + `SortableEntryTile` + `DirectoryView` components using `@dnd-kit`.
 
+### Folder Navigation Bar (Leaf Image Folders)
+- When inside a folder with only images (no subdirectories), a bottom navigation bar appears showing prev/next sibling folders.
+- Uses `GetFolderNavigationWithSort()` backend method to find siblings respecting current sort preferences.
+- Component: `FolderNavigationBar.tsx` (grid layout `1fr auto 1fr` to keep position indicator centered).
+- Integrated in `ExplorerPage.tsx` via `useEffect` that fetches `FolderNavigation` on path/sort change.
+
 ### Explorer Search (Recursive)
 - **Backend**: `SearchRecursive()` in `internal/modules/explorer/explorer.go` walks the filesystem via `filepath.WalkDir`, filters by name case-insensitively, returns up to 200 results with thumbnails.
 - **Frontend**: `useExplorerSearch` hook calls `ExplorerAPI.searchExplorer()` on query change (debounced via `SearchBar`). Results displayed in a grid with parent path shown; clicking a folder navigates into it, clicking a file opens the viewer.

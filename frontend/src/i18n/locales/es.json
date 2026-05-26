@@ -283,7 +283,9 @@
     "pinFolder": "Fijar",
     "unpinFolder": "Desfijar",
     "pinImage": "Fijar Imagen",
-    "unpinImage": "Desfijar Imagen"
+    "unpinImage": "Desfijar Imagen",
+    "prevFolder": "Carpeta Anterior",
+    "nextFolder": "Carpeta Siguiente"
   },
   "themes": {
     "dark": "Oscuro",
