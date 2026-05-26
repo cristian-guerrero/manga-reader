@@ -1,7 +1,11 @@
 import { useTranslation } from 'react-i18next';
+import { useCallback, useState } from 'react';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useNavigation } from '../../hooks/useNavigation';
+import { useTabStore } from '../../stores/tabStore';
 import { Tooltip } from '../ui/Tooltip';
+import { ContextMenu } from '../ui/ContextMenu';
+import type { ContextMenuItem } from '@types';
 
 // Icons
 interface NavItem {
@@ -103,6 +107,40 @@ export function Sidebar() {
     const { t } = useTranslation();
     const { sidebarCollapsed, toggleSidebar, enabledMenuItems } = useSettingsStore();
     const { activeMenuPage, navigate } = useNavigation();
+    const { addTab } = useTabStore();
+    const [contextMenu, setContextMenu] = useState<{
+        x: number;
+        y: number;
+        navItemId?: string;
+        navItemLabel?: string;
+    } | null>(null);
+
+    const handleCloseApp = useCallback(() => {
+        try {
+            (window as any).runtime?.Quit();
+        } catch {
+            console.log('Quit app');
+        }
+    }, []);
+
+    const handleNavContextMenu = useCallback(
+        (e: React.MouseEvent, itemId: string, itemLabel: string) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setContextMenu({ x: e.clientX, y: e.clientY, navItemId: itemId, navItemLabel: itemLabel });
+        },
+        [],
+    );
+
+    const handleContainerContextMenu = useCallback((e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setContextMenu({ x: e.clientX, y: e.clientY });
+    }, []);
+
+    const handleCloseContextMenu = useCallback(() => {
+        setContextMenu(null);
+    }, []);
 
     const visibleItems = navItems.filter(item => enabledMenuItems?.[item.id] !== false);
 
@@ -123,7 +161,7 @@ export function Sidebar() {
             } as any}
         >
             {/* Navigation Items */}
-            <nav className="flex-1 py-4 px-3 space-y-1 relative">
+            <nav className="flex-1 py-4 px-3 space-y-1 relative" onContextMenu={handleContainerContextMenu}>
                 {/* Active indicator */}
                 {showIndicator && (
                     <div
@@ -149,6 +187,7 @@ export function Sidebar() {
                                 navigate(item.id);
                             }
                         }}
+                        onContextMenu={(e) => handleNavContextMenu(e, item.id, t(item.labelKey))}
                     />
                 ))}
             </nav>
@@ -179,8 +218,39 @@ export function Sidebar() {
                     )}
                 </button>
             </div>
+
+            {contextMenu && (
+                <ContextMenu
+                    position={{ x: contextMenu.x, y: contextMenu.y }}
+                    onClose={handleCloseContextMenu}
+                    items={buildSidebarContextMenuItems(contextMenu.navItemId, contextMenu.navItemLabel, t, addTab, handleCloseApp)}
+                />
+            )}
         </aside>
     );
+}
+
+function buildSidebarContextMenuItems(
+    navItemId: string | undefined,
+    navItemLabel: string | undefined,
+    t: (key: string) => string,
+    addTab: (...args: any[]) => string,
+    handleCloseApp: () => void,
+): ContextMenuItem[] {
+    const items: ContextMenuItem[] = [];
+
+    if (navItemId) {
+        items.push({
+            id: 'open-in-tab',
+            label: t('common.openInTab'),
+            onClick: () => addTab(navItemId, {}, navItemLabel),
+        });
+        items.push({ id: 'separator', type: 'separator', label: '' });
+    }
+
+    items.push({ id: 'close-app', label: t('common.close'), onClick: handleCloseApp });
+
+    return items;
 }
 
 // Individual navigation button
@@ -189,9 +259,10 @@ interface NavButtonProps {
     isActive: boolean;
     isCollapsed: boolean;
     onClick: () => void;
+    onContextMenu: (e: React.MouseEvent) => void;
 }
 
-function NavButton({ item, isActive, isCollapsed, onClick }: NavButtonProps) {
+function NavButton({ item, isActive, isCollapsed, onClick, onContextMenu }: NavButtonProps) {
     const { t } = useTranslation();
 
     return (
@@ -202,6 +273,7 @@ function NavButton({ item, isActive, isCollapsed, onClick }: NavButtonProps) {
         >
             <button
                 onClick={onClick}
+                onContextMenu={onContextMenu}
                 className="relative flex items-center w-full h-11 px-3 rounded-lg transition-all group active:scale-[0.98]"
                 style={{
                     backgroundColor: isActive ? 'var(--color-accent)' : 'rgba(0, 0, 0, 0)',

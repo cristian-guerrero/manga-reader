@@ -24,7 +24,8 @@ import {
     useFolderNavigation,
     useViewerHistory,
 } from './hooks';
-import { PageType } from '@types';
+import { ContextMenu } from '../../components/ui/ContextMenu';
+import type { ContextMenuItem, PageType } from '@types';
 
 interface ViewerPageProps {
     folderPath?: string;
@@ -56,6 +57,9 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
 
     // Session flag state
     const [isNoHistorySession, setIsNoHistorySession] = useState(params.noHistory === 'true');
+
+    // Context menu state
+    const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
 
     // Sort preferences from navigation params (when opened from Explorer)
     const sortBy = params.sortBy;
@@ -255,6 +259,16 @@ const handleBack = useCallback(() => {
     navigate(fromPage as PageType, {});
 }, [navigate, fromPage, history]);
 
+    const handleContextMenu = useCallback((e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setContextMenu({ x: e.clientX, y: e.clientY });
+    }, []);
+
+    const handleCloseContextMenu = useCallback(() => {
+        setContextMenu(null);
+    }, []);
+
     const handleGoToStart = useCallback(async () => {
         viewerState.setResumeIndex(0);
         viewerState.lastSyncedIndexRef.current = 0;
@@ -301,7 +315,7 @@ const handleBack = useCallback(() => {
     }
 
     return (
-        <div className="relative h-full w-full overflow-hidden">
+        <div className="relative h-full w-full overflow-hidden" onContextMenu={handleContextMenu}>
             {/* Viewer */}
             <div className="relative h-full w-full">
                 <ViewerContent
@@ -377,6 +391,30 @@ const handleBack = useCallback(() => {
                     t={t}
                 />
             ) : null}
+
+            {contextMenu && (
+                <ContextMenu
+                    position={{ x: contextMenu.x, y: contextMenu.y }}
+                    onClose={handleCloseContextMenu}
+                    items={[
+                        {
+                            id: 'play-pause',
+                            label: controls.isAutoScrolling ? t('viewer.pause') : t('viewer.play'),
+                            onClick: () => controls.setIsAutoScrolling(!controls.isAutoScrolling),
+                        },
+                        {
+                            id: 'go-to-start',
+                            label: t('viewer.goToStart'),
+                            onClick: handleGoToStart,
+                        },
+                        {
+                            id: 'go-back',
+                            label: t('viewer.goBack'),
+                            onClick: handleBack,
+                        },
+                    ]}
+                />
+            )}
         </div>
     );
 }

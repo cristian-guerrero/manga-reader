@@ -11,6 +11,8 @@
     "remove": "Quitar",
     "edit": "Editar",
     "close": "Cerrar",
+    "closeTab": "Cerrar Pestaña",
+    "openInTab": "Abrir en Pestaña",
     "back": "Atrás",
     "forward": "Adelante",
     "next": "Siguiente",
@@ -86,7 +88,8 @@
     "scrollSpeed": "Velocidad de Scroll",
     "slow": "Lento",
     "medium": "Medio",
-    "fast": "Rápido"
+    "fast": "Rápido",
+    "goBack": "Volver Atrás"
   },
   "oneShot": {
     "title": "One shot",

@@ -219,7 +219,9 @@ export interface ContextMenuItem {
   shortcut?: string;
   disabled?: boolean;
   danger?: boolean;
-  onClick: () => void;
+  type?: 'separator';
+  onClick?: () => void;
+  children?: ContextMenuItem[];
 }
 
 // ============================================================================
