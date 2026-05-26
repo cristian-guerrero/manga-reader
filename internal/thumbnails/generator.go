@@ -368,9 +368,8 @@ func (g *Generator) ClearCacheForFolder(folderPath string) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
-	// bbolt uses versioned keys, so we need to scan with the version prefix
-	// We iterate all keys in the store and delete those matching the folder
-	return g.boltStore.DeleteByFolder(folderPath)
+	// Use the versioned key prefix so we match keys like "v3|/path/to/folder/img.png"
+	return g.boltStore.DeleteByFolder(g.storeKey(folderPath))
 }
 
 // Close closes the underlying bbolt database.
