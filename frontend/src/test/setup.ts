@@ -1,5 +1,27 @@
 import '@testing-library/jest-dom'
 
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string) => {
+      const translations: Record<string, string> = {
+        'common.ascending': 'Ascending',
+        'common.descending': 'Descending',
+        'common.cancel': 'Cancel',
+        'common.confirm': 'Confirm',
+        'common.search': 'Search',
+        'explorer.title': 'Explorer',
+        'oneShot.noFolders': 'No folders yet',
+        'oneShot.dragDrop': 'Drag and drop folders here',
+        'oneShot.selectFolder': 'Select Folder',
+      }
+      return translations[key] || key
+    },
+    i18n: { language: 'en', changeLanguage: vi.fn() },
+  }),
+  Trans: ({ children }: { children: React.ReactNode }) => children,
+  initReactI18next: { type: '3rdParty', init: vi.fn() },
+}))
+
 vi.mock('wailsjs/runtime', () => ({
   EventsOn: vi.fn(() => vi.fn()),
   EventsOff: vi.fn(),

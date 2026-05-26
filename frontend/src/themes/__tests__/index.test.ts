@@ -1,0 +1,157 @@
+import {
+  adjustColorBrightness,
+  hexToRgba,
+  getThemeById,
+  parseCustomTheme,
+  builtInThemes,
+  darkTheme,
+  lightTheme,
+} from '../index'
+
+describe('adjustColorBrightness', () => {
+  it('lightens a color', () => {
+    const result = adjustColorBrightness('#8b5cf6', 15)
+    expect(result).toBe('#9c74f7')
+  })
+
+  it('darkens a color', () => {
+    const result = adjustColorBrightness('#8b5cf6', -15)
+    expect(result).toBe('#7943f4')
+  })
+
+  it('handles 3-char hex', () => {
+    const result = adjustColorBrightness('#fff', -10)
+    expect(result).toBe('#fefefe')
+  })
+
+  it('handles hex with hash', () => {
+    const result = adjustColorBrightness('#8b5cf6', 0)
+    expect(result).toBe('#8b5cf6')
+  })
+
+  it('handles hex without hash', () => {
+    const result = adjustColorBrightness('8b5cf6', 0)
+    expect(result).toBe('#8b5cf6')
+  })
+
+  it('handles -100% brightness (approach black)', () => {
+    const result = adjustColorBrightness('#ffffff', -100)
+    expect(result).toBe('#fefefe')
+  })
+
+  it('handles +100% brightness (approach white from black)', () => {
+    const result = adjustColorBrightness('#000000', 100)
+    expect(result).toBe('#000000')
+  })
+})
+
+describe('hexToRgba', () => {
+  it('converts hex to rgba', () => {
+    const result = hexToRgba('#8b5cf6', 0.5)
+    expect(result).toBe('rgba(139, 92, 246, 0.5)')
+  })
+
+  it('handles 3-char hex', () => {
+    const result = hexToRgba('#fff', 0.8)
+    expect(result).toBe('rgba(255, 255, 255, 0.8)')
+  })
+
+  it('handles hex without hash', () => {
+    const result = hexToRgba('ff0000', 1)
+    expect(result).toBe('rgba(255, 0, 0, 1)')
+  })
+})
+
+describe('getThemeById', () => {
+  it('returns dark theme', () => {
+    const theme = getThemeById('dark')
+    expect(theme).toEqual(darkTheme)
+  })
+
+  it('returns light theme', () => {
+    const theme = getThemeById('light')
+    expect(theme).toEqual(lightTheme)
+  })
+
+  it('returns undefined for unknown theme', () => {
+    const theme = getThemeById('nonexistent')
+    expect(theme).toBeUndefined()
+  })
+})
+
+describe('parseCustomTheme', () => {
+  it('parses valid JSON theme', () => {
+    const json = JSON.stringify({
+      id: 'custom',
+      name: 'Custom',
+      isDark: true,
+      colors: {
+        accent: '#000',
+        accentHover: '#111',
+        accentGlow: 'rgba(0,0,0,0.5)',
+        surfacePrimary: '#000',
+        surfaceSecondary: '#111',
+        surfaceTertiary: '#222',
+        surfaceElevated: '#333',
+        surfaceOverlay: 'rgba(0,0,0,0.9)',
+        titlebarBg: '#111',
+        titlebarText: '#fff',
+        textPrimary: '#fff',
+        textSecondary: '#ccc',
+        textMuted: '#999',
+        textDisabled: '#666',
+        border: '#333',
+        borderHover: '#444',
+        borderFocus: '#555',
+      },
+    })
+    const result = parseCustomTheme(json)
+    expect(result).not.toBeNull()
+    expect(result!.id).toBe('custom')
+    expect(result!.name).toBe('Custom')
+    expect(result!.isDark).toBe(true)
+  })
+
+  it('returns null for invalid JSON', () => {
+    expect(parseCustomTheme('not json')).toBeNull()
+  })
+
+  it('returns null for missing required fields', () => {
+    const json = JSON.stringify({ id: 'custom' })
+    expect(parseCustomTheme(json)).toBeNull()
+  })
+
+  it('returns parsed theme even with string colors (no deep validation)', () => {
+    const json = JSON.stringify({
+      id: 'custom',
+      name: 'Custom',
+      isDark: true,
+      colors: 'not-an-object',
+    })
+    const result = parseCustomTheme(json)
+    expect(result).not.toBeNull()
+    expect(result!.id).toBe('custom')
+  })
+})
+
+describe('builtInThemes', () => {
+  it('has 11 themes', () => {
+    expect(builtInThemes).toHaveLength(11)
+  })
+
+  it('each theme has required fields', () => {
+    for (const theme of builtInThemes) {
+      expect(theme.id).toBeDefined()
+      expect(theme.name).toBeDefined()
+      expect(typeof theme.isDark).toBe('boolean')
+      expect(theme.colors.accent).toBeDefined()
+      expect(theme.colors.surfacePrimary).toBeDefined()
+      expect(theme.colors.textPrimary).toBeDefined()
+    }
+  })
+
+  it('has unique IDs', () => {
+    const ids = builtInThemes.map((t) => t.id)
+    expect(new Set(ids).size).toBe(ids.length)
+  })
+})
