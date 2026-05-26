@@ -155,13 +155,13 @@ describe('Sidebar', () => {
   })
 
   it('context menu close app calls runtime.Quit', () => {
-    window.runtime.Quit = vi.fn()
+    window.runtime!.Quit = vi.fn()
     render(<Sidebar />)
     const nav = screen.getByText('Home').closest('nav')!
     fireEvent.contextMenu(nav)
     const closeButtons = screen.getAllByText('Close')
     const closeAppBtn = closeButtons.at(-1)!
     fireEvent.click(closeAppBtn)
-    expect(window.runtime.Quit).toHaveBeenCalled()
+    expect(window.runtime!.Quit).toHaveBeenCalled()
   })
 })

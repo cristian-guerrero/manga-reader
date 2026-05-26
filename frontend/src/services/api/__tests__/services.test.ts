@@ -763,9 +763,9 @@ describe('ThumbnailAPI', () => {
 
 describe('ColorizerAPI', () => {
   it('getStatus returns status', async () => {
-    App.ColorizerGetStatus.mockResolvedValue({ step: 'installing', progress: 50 })
+    App.ColorizerGetStatus.mockResolvedValue({ status: 'installing', percent: 50 })
     const result = await ColorizerAPI.getStatus()
-    expect(result?.progress).toBe(50)
+    expect(result?.percent).toBe(50)
   })
 
   it('install calls ColorizerInstall', async () => {

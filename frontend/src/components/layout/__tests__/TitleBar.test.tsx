@@ -74,7 +74,7 @@ describe('TitleBar', () => {
     const user = userEvent.setup()
     render(<TitleBar />)
     await user.click(screen.getByLabelText('Minimize'))
-    expect(window.runtime.WindowMinimise).toHaveBeenCalled()
+    expect(window.runtime!.WindowMinimise).toHaveBeenCalled()
   })
 
   it('calls WindowMaximise on maximize click when not maximized', async () => {
@@ -82,29 +82,29 @@ describe('TitleBar', () => {
     render(<TitleBar />)
     const btn = await screen.findByLabelText('Maximize')
     await user.click(btn)
-    expect(window.runtime.WindowMaximise).toHaveBeenCalled()
+    expect(window.runtime!.WindowMaximise).toHaveBeenCalled()
   })
 
   it('calls WindowUnmaximise on maximize click when maximized', async () => {
-    window.runtime.WindowIsMaximised = vi.fn(() => Promise.resolve(true))
+    window.runtime!.WindowIsMaximised = vi.fn(() => Promise.resolve(true))
     const user = userEvent.setup()
     render(<TitleBar />)
     const btn = await screen.findByLabelText('Restore')
     expect(btn).toBeInTheDocument()
     await user.click(btn)
-    expect(window.runtime.WindowUnmaximise).toHaveBeenCalled()
+    expect(window.runtime!.WindowUnmaximise).toHaveBeenCalled()
   })
 
   it('calls Quit on close click', async () => {
     const user = userEvent.setup()
     render(<TitleBar />)
     await user.click(screen.getByLabelText('Close'))
-    expect(window.runtime.Quit).toHaveBeenCalled()
+    expect(window.runtime!.Quit).toHaveBeenCalled()
   })
 
   it('checks maximized state on mount', () => {
     render(<TitleBar />)
-    expect(window.runtime.WindowIsMaximised).toHaveBeenCalled()
+    expect(window.runtime!.WindowIsMaximised).toHaveBeenCalled()
   })
 
   it('double-clicking spacer calls handleMaximize', async () => {
@@ -114,7 +114,7 @@ describe('TitleBar', () => {
     expect(spacer).not.toBeNull()
     if (spacer) {
       await user.dblClick(spacer)
-      expect(window.runtime.WindowMaximise).toHaveBeenCalled()
+    expect(window.runtime!.WindowMaximise).toHaveBeenCalled()
     }
   })
 })
