@@ -121,6 +121,28 @@ func (s *BoltStore) DeleteByFolder(folderPath string) error {
 	})
 }
 
+// DeleteByFolderWithFilter removes thumbnail cache entries whose keys match the given
+// prefix and for which the filter function returns true. The filter receives the full key.
+func (s *BoltStore) DeleteByFolderWithFilter(prefix string, filter func(key string) bool) error {
+	if !strings.HasSuffix(prefix, string(filepath.Separator)) {
+		prefix += string(filepath.Separator)
+	}
+	prefixBytes := []byte(prefix)
+
+	return s.db.Update(func(tx *bbolt.Tx) error {
+		b := tx.Bucket([]byte(bucketName))
+		c := b.Cursor()
+		for k, _ := c.Seek(prefixBytes); k != nil && bytes.HasPrefix(k, prefixBytes); k, _ = c.Next() {
+			if filter(string(k)) {
+				if err := b.Delete(k); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	})
+}
+
 // Clear removes all thumbnails from the store.
 func (s *BoltStore) Clear() error {
 	return s.db.Update(func(tx *bbolt.Tx) error {

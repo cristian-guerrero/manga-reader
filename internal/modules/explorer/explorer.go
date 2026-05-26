@@ -106,14 +106,40 @@ func (m *Module) watchFileChanges() {
 				if isDir || isParentDir {
 					// Check if this path or its parent is being watched
 					if m.isWatchedPath(event.Name) || m.isWatchedPath(parentDir) {
-						// Clear thumbnails for removed/renamed directories
+						if m.logger != nil {
+							m.logger.Infof("[Explorer] File change: %s (op: %v)", event.Name, event.Op)
+						}
+
+						// Clear thumbnails for removed/renamed paths.
+						// On Remove/Rename, os.Stat fails because the old path no longer exists,
+						// so we use event.Name directly instead of relying on isDir.
 						if event.Op&(fsnotify.Remove|fsnotify.Rename) != 0 {
-							affectedPath := event.Name
-							if !isDir {
-								affectedPath = parentDir
-							}
 							if m.thumbGen != nil {
-								go m.thumbGen.ClearCacheForFolder(affectedPath)
+								if m.logger != nil {
+									m.logger.Infof("[Explorer] Clearing thumbnail cache for %s (op: %v)", event.Name, event.Op)
+								}
+								go m.thumbGen.ClearCacheForFolder(event.Name)
+							}
+						}
+
+						// Fallback: on Create events, clean up stale cache entries in the parent.
+						// Windows fsnotify sometimes misses Remove/Rename when renaming folders
+						// (only the Create for the new name is received). This scans for orphaned
+						// cache entries whose source files no longer exist on disk.
+						if event.Op&fsnotify.Create != 0 {
+							if m.thumbGen != nil {
+								if m.logger != nil {
+									m.logger.Infof("[Explorer] Cleaning stale thumbnails in %s after create of %s", parentDir, event.Name)
+								}
+								go func(dir string) {
+									if err := m.thumbGen.DeleteStaleByFolder(dir); err != nil {
+										if m.logger != nil {
+											m.logger.Errorf("[Explorer] Failed to clean stale thumbnails in %s: %v", dir, err)
+										}
+									} else if m.logger != nil {
+										m.logger.Infof("[Explorer] Stale thumbnail cleanup complete in %s", dir)
+									}
+								}(parentDir)
 							}
 						}
 
@@ -215,6 +241,30 @@ func (m *Module) refreshWatcher() {
 	}
 
 	m.watchedDirs = newWatchedDirs
+}
+
+// WatchDirectory adds a directory to the file watcher. This ensures that
+// rename/remove events inside any navigated directory are detected,
+// so the thumbnail cache can be properly invalidated.
+func (m *Module) WatchDirectory(path string) {
+	if m.watcher == nil {
+		return
+	}
+	m.watchLock.Lock()
+	defer m.watchLock.Unlock()
+	if !m.watchedDirs[path] {
+		err := m.watcher.Add(path)
+		if err != nil {
+			if m.logger != nil {
+				m.logger.Warnf("[Explorer] Warning: Could not watch directory %s: %v", path, err)
+			}
+		} else {
+			m.watchedDirs[path] = true
+			if m.logger != nil {
+				m.logger.Infof("[Explorer] Now watching directory: %s", path)
+			}
+		}
+	}
 }
 
 // AddBaseFolder adds a folder to the explorer roots
@@ -402,6 +452,10 @@ func (m *Module) ListDirectory(path string) ([]ExplorerEntry, error) {
 // sortMode can be "custom", "auto", or empty (default: directories first).
 // sortOrder can be "asc" or "desc" (default "asc"). Only affects custom and auto modes.
 func (m *Module) ListDirectoryWithSort(path string, sortMode string, sortOrder string) ([]ExplorerEntry, error) {
+	// Watch the navigated directory so that rename/remove events inside it
+	// are detected and thumbnail cache is properly invalidated.
+	m.WatchDirectory(path)
+
 	entries, err := os.ReadDir(path)
 	if err != nil {
 		return nil, err

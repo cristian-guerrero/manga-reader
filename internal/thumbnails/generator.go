@@ -372,6 +372,34 @@ func (g *Generator) ClearCacheForFolder(folderPath string) error {
 	return g.boltStore.DeleteByFolder(g.storeKey(folderPath))
 }
 
+// Delete removes a single thumbnail by image path.
+func (g *Generator) Delete(imagePath string) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
+	return g.boltStore.Delete(g.storeKey(imagePath))
+}
+
+// DeleteStaleByFolder removes cached thumbnails under the given folder whose source
+// files no longer exist on disk. This handles edge cases where Windows fsnotify
+// misses Remove/Rename events and only sends Create.
+func (g *Generator) DeleteStaleByFolder(folderPath string) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
+	prefix := g.storeKey(folderPath)
+	return g.boltStore.DeleteByFolderWithFilter(prefix, func(key string) bool {
+		// Key format: "v3|/actual/path/to/file.jpg"
+		pipeIdx := strings.IndexByte(key, '|')
+		if pipeIdx < 0 {
+			return false
+		}
+		imagePath := key[pipeIdx+1:]
+		_, err := os.Stat(imagePath)
+		return os.IsNotExist(err)
+	})
+}
+
 // Close closes the underlying bbolt database.
 // Called during graceful shutdown to release file locks.
 func (g *Generator) Close() error {
