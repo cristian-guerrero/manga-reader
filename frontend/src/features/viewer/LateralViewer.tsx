@@ -19,6 +19,8 @@ interface LateralViewerProps {
     hasChapterButtons?: boolean;
     onRestorationComplete?: () => void;
     tabId?: string;
+    onNextBoundary?: () => void;
+    onPrevBoundary?: () => void;
 }
 
 export function LateralViewer({
@@ -29,14 +31,16 @@ export function LateralViewer({
     hasChapterButtons = false,
     onRestorationComplete,
     tabId,
+    onNextBoundary,
+    onPrevBoundary,
 }: LateralViewerProps) {
     const [loadedImages, setLoadedImages] = useState<Record<number, string>>({});
     const [direction, setDirection] = useState(0); // -1 for prev, 1 for next
     const { lateralMode, readingDirection } = useSettingsStore();
     const { currentIndex, setCurrentIndex } = useViewer(tabId);
 
-    // Enable keyboard navigation
-    useKeyboardNav({ enabled: true, tabId });
+    // Enable keyboard navigation with boundary callbacks
+    useKeyboardNav({ enabled: true, tabId, onNextBoundary, onPrevBoundary });
 
     // Initialize current index
     useEffect(() => {
@@ -89,16 +93,26 @@ export function LateralViewer({
         const newIndex = readingDirection === 'rtl'
             ? Math.min(currentIndex + step, images.length - 1)
             : Math.max(currentIndex - step, 0);
-        goToPage(newIndex);
-    }, [currentIndex, lateralMode, readingDirection, images.length, goToPage]);
+
+        if (newIndex === currentIndex) {
+            onPrevBoundary?.();
+        } else {
+            goToPage(newIndex);
+        }
+    }, [currentIndex, lateralMode, readingDirection, images.length, goToPage, onPrevBoundary]);
 
     const handleNext = useCallback(() => {
         const step = lateralMode === 'double' ? 2 : 1;
         const newIndex = readingDirection === 'rtl'
             ? Math.max(currentIndex - step, 0)
             : Math.min(currentIndex + step, images.length - 1);
-        goToPage(newIndex);
-    }, [currentIndex, lateralMode, readingDirection, images.length, goToPage]);
+
+        if (newIndex === currentIndex) {
+            onNextBoundary?.();
+        } else {
+            goToPage(newIndex);
+        }
+    }, [currentIndex, lateralMode, readingDirection, images.length, goToPage, onNextBoundary]);
 
     // Handle click navigation (left/right side of image)
     const handleClick = useCallback((e: React.MouseEvent) => {

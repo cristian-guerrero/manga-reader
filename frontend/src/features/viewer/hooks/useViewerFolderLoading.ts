@@ -137,6 +137,9 @@ export function useViewerFolderLoading({
                     } else if (explicitStartIndex >= 0 && explicitStartIndex < imgs.length && !isRestored) {
                         targetIndex = explicitStartIndex;
                         console.log(`[useViewerFolderLoading] Starting from EXPLICIT INDEX: ${targetIndex}`);
+                    } else if (tabParams.endOfChapter === 'true' && !isRestored) {
+                        targetIndex = imgs.length - 1;
+                        console.log(`[useViewerFolderLoading] End of chapter: index=${targetIndex}`);
                     } else if (savedViewerState && savedViewerState.currentIndex >= 0 && savedViewerState.currentIndex < imgs.length) {
                         targetIndex = savedViewerState.currentIndex;
                         console.log(`[useViewerFolderLoading] Resuming from BACKEND state: index=${targetIndex}`);

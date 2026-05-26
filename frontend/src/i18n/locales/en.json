@@ -287,7 +287,9 @@
     "pinFolder": "Pin",
     "unpinFolder": "Unpin",
     "pinImage": "Pin Image",
-    "unpinImage": "Unpin Image"
+    "unpinImage": "Unpin Image",
+    "prevFolder": "Previous Folder",
+    "nextFolder": "Next Folder"
   },
   "themes": {
     "dark": "Dark",

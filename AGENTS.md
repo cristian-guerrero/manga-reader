@@ -62,6 +62,12 @@ Wails v2 (Go 1.24 backend, React 18 + TypeScript + Vite frontend). State: Zustan
 - Auto mode: folders promoted to front on click via `PromoteToFront()`, falls back to newest-first date sort.
 - Frontend: `useExplorerDragAndDrop` hook + `SortableEntryTile` + `DirectoryView` components using `@dnd-kit`.
 
+### Folder Navigation Bar (Leaf Image Folders)
+- When inside a folder with only images (no subdirectories), a bottom navigation bar appears showing prev/next sibling folders.
+- Uses `GetFolderNavigationWithSort()` backend method to find siblings respecting current sort preferences.
+- Component: `FolderNavigationBar.tsx` (grid layout `1fr auto 1fr` to keep position indicator centered).
+- Integrated in `ExplorerPage.tsx` via `useEffect` that fetches `FolderNavigation` on path/sort change.
+
 ### Explorer Search (Recursive)
 - **Backend**: `SearchRecursive()` in `internal/modules/explorer/explorer.go` walks the filesystem via `filepath.WalkDir`, filters by name case-insensitively, returns up to 200 results with thumbnails.
 - **Frontend**: `useExplorerSearch` hook calls `ExplorerAPI.searchExplorer()` on query change (debounced via `SearchBar`). Results displayed in a grid with parent path shown; clicking a folder navigates into it, clicking a file opens the viewer.
@@ -89,6 +95,7 @@ Wails v2 (Go 1.24 backend, React 18 + TypeScript + Vite frontend). State: Zustan
 - **Output binary**: `manga-visor2` (not `manga-visor`) — configured in `wails.json`
 - **Frontend style**: Functional React components, TypeScript strict mode
 - **ContextMenu**: Reusable right-click menu at `components/ui/ContextMenu.tsx` using `ContextMenuItem` type from `@types`. Supports nested submenus via `children: ContextMenuItem[]` and visual `separator` items via `type: 'separator'`. Used in Explorer (folder actions), TabList (close tab), Sidebar (open in tab), and Viewer (play/pause, go to start, go back). Theming via CSS variables.
+- **Auto chapter transition**: When in lateral mode, pressing next on last page or prev on first page automatically transitions to the next/previous chapter (series) or folder (explorer). Implemented via `onNextBoundary`/`onPrevBoundary` callbacks in `useKeyboardNav.ts` and `LateralViewer.tsx`, piped from `ViewerPage.tsx` through `ViewerContent.tsx`. Next chapter navigates to page 1 (`startIndex=0`), prev chapter navigates to last page (`endOfChapter=true` param handled by `useViewerFolderLoading.ts`).
 
 ## Updater Module
 - Auto-update via GitHub releases (`cristian-guerrero/manga-reader`). Single channel using build numbers (`bNNNN`).

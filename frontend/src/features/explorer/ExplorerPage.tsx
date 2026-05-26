@@ -42,7 +42,9 @@ import {
 } from "./hooks";
 import { BaseFolder, ExplorerEntry } from "./types";
 import { DirectoryView } from "./components/DirectoryView";
+import { FolderNavigationBar } from "./components/FolderNavigationBar";
 import { GridIcon, ListIcon } from "./components/ExplorerIcons";
+import { ExplorerAPI, FolderNavigation } from "@services/api/explorerAPI";
 
 // Icons
 const TrashIcon = () => (
@@ -315,6 +317,38 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
   );
 
   const isInCustomMode = sorting.sortBy === 'custom' && !search.searchQuery.trim();
+
+  // Folder navigation (sibling prev/next for leaf image folders)
+  const [folderNav, setFolderNav] = useState<FolderNavigation | null>(null);
+  const isLeafImageFolder = explorerStateHook.currentPath
+    && loading.entries.length > 0
+    && loading.entries.every(e => !e.isDirectory);
+
+  useEffect(() => {
+    if (!explorerStateHook.currentPath || !isLeafImageFolder) {
+      setFolderNav(null);
+      return;
+    }
+    let cancelled = false;
+    ExplorerAPI.getFolderNavigationWithSort(
+      explorerStateHook.currentPath,
+      sorting.sortBy,
+      sorting.sortOrder,
+    ).then(nav => {
+      if (!cancelled) setFolderNav(nav);
+    });
+    return () => { cancelled = true; };
+  }, [explorerStateHook.currentPath, isLeafImageFolder, sorting.sortBy, sorting.sortOrder]);
+
+  const handleFolderNavPrev = useCallback(() => {
+    if (!folderNav?.prevFolder) return;
+    loading.loadDirectory(folderNav.prevFolder.path, true, sorting.sortBy, sorting.sortOrder);
+  }, [folderNav, loading.loadDirectory, sorting.sortBy, sorting.sortOrder]);
+
+  const handleFolderNavNext = useCallback(() => {
+    if (!folderNav?.nextFolder) return;
+    loading.loadDirectory(folderNav.nextFolder.path, true, sorting.sortBy, sorting.sortOrder);
+  }, [folderNav, loading.loadDirectory, sorting.sortBy, sorting.sortOrder]);
 
   // Context menu state
   const [contextMenu, setContextMenu] = useState<{
@@ -861,6 +895,19 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
           </div>
         )}
       </div>
+
+      {/* Folder Navigation Bar (leaf image folders only) */}
+      {folderNav && isLeafImageFolder && (folderNav.prevFolder || folderNav.nextFolder) && (
+        <FolderNavigationBar
+          prevFolder={folderNav.prevFolder}
+          nextFolder={folderNav.nextFolder}
+          currentIndex={folderNav.currentIndex}
+          totalFolders={folderNav.totalFolders}
+          onPrevFolder={handleFolderNavPrev}
+          onNextFolder={handleFolderNavNext}
+          t={t}
+        />
+      )}
 
       {/* Context Menu */}
       {contextMenu && (

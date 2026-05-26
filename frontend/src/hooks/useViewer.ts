@@ -65,16 +65,20 @@ export function useViewer(tabId?: string) {
         }
     }, [images.length, updateViewerState]);
 
-    const nextImage = useCallback(() => {
+    const nextImage = useCallback((): boolean => {
         if (currentIndex < images.length - 1) {
             updateViewerState({ currentIndex: currentIndex + 1 });
+            return true;
         }
+        return false;
     }, [currentIndex, images.length, updateViewerState]);
 
-    const prevImage = useCallback(() => {
+    const prevImage = useCallback((): boolean => {
         if (currentIndex > 0) {
             updateViewerState({ currentIndex: currentIndex - 1 });
+            return true;
         }
+        return false;
     }, [currentIndex, updateViewerState]);
 
     const goToImage = useCallback((index: number) => {

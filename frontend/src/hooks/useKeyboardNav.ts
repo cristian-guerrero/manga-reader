@@ -12,10 +12,12 @@ import { useSettingsStore } from '../stores/settingsStore';
 interface UseKeyboardNavOptions {
     enabled?: boolean;
     tabId?: string;
+    onNextBoundary?: () => void;
+    onPrevBoundary?: () => void;
 }
 
 export function useKeyboardNav(options: UseKeyboardNavOptions = {}) {
-    const { enabled = true, tabId } = options;
+    const { enabled = true, tabId, onNextBoundary, onPrevBoundary } = options;
     const {
         nextImage,
         prevImage,
@@ -38,6 +40,8 @@ export function useKeyboardNav(options: UseKeyboardNavOptions = {}) {
         resetZoom,
         goBack,
         toggleSidebar,
+        onNextBoundary,
+        onPrevBoundary,
     });
 
     // Update refs when callbacks change
@@ -51,18 +55,26 @@ export function useKeyboardNav(options: UseKeyboardNavOptions = {}) {
             resetZoom,
             goBack,
             toggleSidebar,
+            onNextBoundary,
+            onPrevBoundary,
         };
-    }, [nextImage, prevImage, goToImage, zoomIn, zoomOut, resetZoom, goBack, toggleSidebar]);
+    }, [nextImage, prevImage, goToImage, zoomIn, zoomOut, resetZoom, goBack, toggleSidebar, onNextBoundary, onPrevBoundary]);
 
     // Create stable callbacks that use refs
     const handleNext = useCallback((e: KeyboardEvent) => {
         e.preventDefault();
-        callbacksRef.current.nextImage();
+        const moved = callbacksRef.current.nextImage();
+        if (!moved) {
+            callbacksRef.current.onNextBoundary?.();
+        }
     }, []);
 
     const handlePrev = useCallback((e: KeyboardEvent) => {
         e.preventDefault();
-        callbacksRef.current.prevImage();
+        const moved = callbacksRef.current.prevImage();
+        if (!moved) {
+            callbacksRef.current.onPrevBoundary?.();
+        }
     }, []);
 
     const handleHome = useCallback((e: KeyboardEvent) => {

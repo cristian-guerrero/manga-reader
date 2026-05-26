@@ -246,6 +246,51 @@ const handleNextFolder = useCallback(async () => {
     }
 }, [folderNav, navigate, saveProgress, fromPage, params.navRoot, sortBy, sortOrder]);
 
+// Boundary handlers for automatic chapter/folder transition
+const handleNextBoundary = useCallback(() => {
+    saveProgress();
+    if (!isExplorerMode && chapterNav?.nextChapter) {
+        navigate('viewer', {
+            folder: chapterNav.nextChapter.path,
+            shallow: 'true',
+            from: fromPage,
+            startIndex: '0'
+        }, 'series');
+    } else if (isExplorerMode && folderNav?.nextFolder) {
+        navigate('viewer', {
+            folder: folderNav.nextFolder.path,
+            shallow: 'true',
+            from: fromPage,
+            navRoot: params.navRoot,
+            sortBy,
+            sortOrder,
+            startIndex: '0'
+        }, 'explorer');
+    }
+}, [chapterNav, folderNav, navigate, saveProgress, fromPage, params.navRoot, sortBy, sortOrder, isExplorerMode]);
+
+const handlePrevBoundary = useCallback(() => {
+    saveProgress();
+    if (!isExplorerMode && chapterNav?.prevChapter) {
+        navigate('viewer', {
+            folder: chapterNav.prevChapter.path,
+            shallow: 'true',
+            from: fromPage,
+            endOfChapter: 'true'
+        }, 'series');
+    } else if (isExplorerMode && folderNav?.prevFolder) {
+        navigate('viewer', {
+            folder: folderNav.prevFolder.path,
+            shallow: 'true',
+            from: fromPage,
+            navRoot: params.navRoot,
+            sortBy,
+            sortOrder,
+            endOfChapter: 'true'
+        }, 'explorer');
+    }
+}, [chapterNav, folderNav, navigate, saveProgress, fromPage, params.navRoot, sortBy, sortOrder, isExplorerMode]);
+
 // Custom back handler - navigates to the last non-viewer entry in history to preserve params
 const handleBack = useCallback(() => {
     // Walk backwards through history (skip current entry) to find the originating page
@@ -338,6 +383,8 @@ const handleBack = useCallback(() => {
                     folderPath={viewerState.currentFolder.path}
                     onPageChange={saveProgress}
                     tabId={tabId}
+                    onNextBoundary={handleNextBoundary}
+                    onPrevBoundary={handlePrevBoundary}
                 />
             </div>
 
