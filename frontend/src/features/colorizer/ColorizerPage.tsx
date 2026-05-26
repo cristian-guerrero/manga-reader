@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { useColorizerServer, useColorizerImages, useColorizerProcessing, useColorizerDownload } from "./hooks";
-import { ServerControls, ImageList, ImagePreview, ProcessingOverlay, ActionBar } from "./components";
+import { ServerControls, ImageList, ImagePreview, ProcessingOverlay, ActionBar, DownloadDialog } from "./components";
 import type { ColorizeSettings } from "./types";
 
 export function ColorizerPage() {
@@ -27,7 +27,8 @@ export function ColorizerPage() {
   } = useColorizerProcessing(isServerRunning, settings, droppedImages, currentImage, setColorizedCache);
 
   const {
-    currentColorizedImage, handleDownload, handleDownloadAll,
+    currentColorizedImage, dialogOpen, downloadState, singleItem, multipleItems,
+    handleDownload, handleDownloadAll, executeDownload, closeDialog,
   } = useColorizerDownload(droppedImages, currentImage, colorizedCache, useDefaultFolder);
 
   const handleSettingsChange = useCallback((key: keyof ColorizeSettings, value: boolean | number) => {
@@ -135,6 +136,15 @@ export function ColorizerPage() {
           />
         </div>
       </div>
+
+      <DownloadDialog
+        isOpen={dialogOpen}
+        onClose={closeDialog}
+        state={downloadState}
+        onStartDownload={executeDownload}
+        singleItem={singleItem}
+        multipleItems={multipleItems}
+      />
     </div>
   );
 }
