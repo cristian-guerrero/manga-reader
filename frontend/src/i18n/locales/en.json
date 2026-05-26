@@ -11,6 +11,8 @@
     "remove": "Remove",
     "edit": "Edit",
     "close": "Close",
+    "closeTab": "Close Tab",
+    "openInTab": "Open in Tab",
     "back": "Back",
     "forward": "Forward",
     "next": "Next",
@@ -82,7 +84,8 @@
     "scrollSpeed": "Scroll Speed",
     "slow": "Slow",
     "medium": "Medium",
-    "fast": "Fast"
+    "fast": "Fast",
+    "goBack": "Go Back"
   },
   "oneShot": {
     "title": "One shot",

@@ -85,7 +85,7 @@ Wails v2 (Go 1.24 backend, React 18 + TypeScript + Vite frontend). State: Zustan
   See [`.pi/skills/git-commit/SKILL.md`](.pi/skills/git-commit/SKILL.md) for the full workflow.
 - **Output binary**: `manga-visor2` (not `manga-visor`) — configured in `wails.json`
 - **Frontend style**: Functional React components, TypeScript strict mode
-- **ContextMenu**: Reusable right-click menu at `components/ui/ContextMenu.tsx` using `ContextMenuItem` type from `@types`. Used in Explorer for folder actions (Open in Colorizer, Open in File Manager). Theming via CSS variables.
+- **ContextMenu**: Reusable right-click menu at `components/ui/ContextMenu.tsx` using `ContextMenuItem` type from `@types`. Supports nested submenus via `children: ContextMenuItem[]` and visual `separator` items via `type: 'separator'`. Used in Explorer (folder actions), TabList (close tab), Sidebar (open in tab), and Viewer (play/pause, go to start, go back). Theming via CSS variables.
 
 ## Updater Module
 - Auto-update via GitHub releases (`cristian-guerrero/manga-reader`). Single channel using build numbers (`bNNNN`).

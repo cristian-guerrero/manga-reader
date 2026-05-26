@@ -4,6 +4,8 @@ import { getThemeById, darkTheme } from "../../themes";
 import { useTranslation } from "react-i18next";
 import { Tooltip } from "../ui/Tooltip";
 import { useRef, useState, useEffect, useCallback, useMemo } from "react";
+import { ContextMenu } from "../ui/ContextMenu";
+import type { ContextMenuItem } from "@types";
 import {
   DndContext,
   closestCenter,
@@ -36,6 +38,7 @@ interface SortableTabProps {
   closeTab: (id: string) => void;
   tabsCount: number;
   isDark: boolean;
+  onContextMenu: (e: React.MouseEvent, tabId: string) => void;
 }
 
 function SortableTab({
@@ -49,6 +52,7 @@ function SortableTab({
   closeTab,
   tabsCount,
   isDark,
+  onContextMenu,
 }: SortableTabProps) {
   const {
     attributes,
@@ -90,7 +94,7 @@ function SortableTab({
         e.stopPropagation();
         if (e.button === 1) e.preventDefault();
       }}
-      onContextMenu={(e) => e.preventDefault()}
+      onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); onContextMenu(e, tab.id); }}
       className={`relative group h-[34px] flex items-center justify-center cursor-default select-none transition-shadow duration-150 mx-[1px] flex-shrink-0 no-drag`}
     >
       {/* Tab Background */}
@@ -167,6 +171,11 @@ export function TabList() {
   const { tabs, activeTabId, setActiveTab, closeTab, addTab, reorderTabs } =
     useTabStore();
   const { theme: themeId } = useSettingsStore();
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    tabId?: string;
+  } | null>(null);
 
   // Determine current theme properties
   const currentTheme = useMemo(
@@ -248,6 +257,33 @@ export function TabList() {
     }
   };
 
+  const handleCloseApp = useCallback(() => {
+    try {
+      (window as any).runtime?.Quit();
+    } catch {
+      console.log('Quit app');
+    }
+  }, []);
+
+  const handleTabContextMenu = useCallback(
+    (e: React.MouseEvent, tabId: string) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setContextMenu({ x: e.clientX, y: e.clientY, tabId });
+    },
+    [],
+  );
+
+  const handleContainerContextMenu = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setContextMenu({ x: e.clientX, y: e.clientY });
+  }, []);
+
+  const handleCloseContextMenu = useCallback(() => {
+    setContextMenu(null);
+  }, []);
+
   const isCompressed = tabWidth < 80;
   const isVeryCompressed = tabWidth < 50;
 
@@ -257,6 +293,7 @@ export function TabList() {
     <div
       ref={containerRef}
       className="flex items-center h-full no-drag flex-1 min-w-0"
+      onContextMenu={handleContainerContextMenu}
     >
       <DndContext
         sensors={sensors}
@@ -282,6 +319,7 @@ export function TabList() {
                 closeTab={closeTab}
                 tabsCount={tabs.length}
                 isDark={isDark}
+                onContextMenu={handleTabContextMenu}
               />
             ))}
           </SortableContext>
@@ -313,6 +351,36 @@ export function TabList() {
 
       {/* Draggable area to fill remaining space */}
       <div className="flex-1 h-full drag min-w-[10px]" />
+
+      {contextMenu && (
+        <ContextMenu
+          position={{ x: contextMenu.x, y: contextMenu.y }}
+          onClose={handleCloseContextMenu}
+          items={buildContextMenuItems(contextMenu.tabId, t, closeTab, handleCloseApp)}
+        />
+      )}
     </div>
   );
+}
+
+function buildContextMenuItems(
+  tabId: string | undefined,
+  t: (key: string) => string,
+  closeTab: (id: string) => void,
+  handleCloseApp: () => void,
+): ContextMenuItem[] {
+  const items: ContextMenuItem[] = [];
+
+  if (tabId) {
+    items.push({
+      id: 'close-tab',
+      label: t('common.closeTab'),
+      onClick: () => closeTab(tabId),
+    });
+    items.push({ id: 'separator', type: 'separator', label: '' });
+  }
+
+  items.push({ id: 'close-app', label: t('common.close'), onClick: handleCloseApp });
+
+  return items;
 }
