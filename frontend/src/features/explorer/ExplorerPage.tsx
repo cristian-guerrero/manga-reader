@@ -254,6 +254,8 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
         console.error('Failed to promote to auto order:', err);
       });
     },
+    sortBy: sorting.sortBy,
+    sortOrder: sorting.sortOrder,
   });
 
   // Handle clicking on a search result
@@ -264,9 +266,9 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
       const parentPath = entry.path.includes('\\')
         ? entry.path.substring(0, entry.path.lastIndexOf('\\'))
         : entry.path.substring(0, entry.path.lastIndexOf('/'));
-      navigate('viewer', { folder: parentPath, targetPath: entry.path }, 'explorer');
+      navigate('viewer', { folder: parentPath, targetPath: entry.path, sortBy: sorting.sortBy, sortOrder: sorting.sortOrder }, 'explorer');
     }
-  }, [loading.loadDirectory, navigate]);
+  }, [loading.loadDirectory, navigate, sorting.sortBy, sorting.sortOrder]);
 
   // Reload directory when sortBy or sortOrder changes in modes requiring backend sort
   const prevSortByRef = useRef(sorting.sortBy);

@@ -7,7 +7,6 @@ import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useTabStore } from '@stores';
 import { AppAPI } from '@services/api/appAPI';
-import { UIPreferencesAPI } from '@services/api/uiPreferencesAPI';
 import { ExplorerEntry, BaseFolder } from '../types';
 import type { PageType } from '@types';
 
@@ -30,6 +29,8 @@ interface UseExplorerNavigationOptions {
     onTitleChange: (title: string) => void;
     onAutoPromote?: (parentPath: string, entryName: string, allDirNames: string[]) => void;
     onSearchClear?: () => void;
+    sortBy?: string;
+    sortOrder?: string;
 }
 
 export function useExplorerNavigation({
@@ -51,6 +52,8 @@ export function useExplorerNavigation({
     onTitleChange,
     onAutoPromote,
     onSearchClear,
+    sortBy: currentSortBy,
+    sortOrder: currentSortOrder,
 }: UseExplorerNavigationOptions) {
     const { t } = useTranslation();
     const addTab = useTabStore((state) => state.addTab);
@@ -247,19 +250,14 @@ export function useExplorerNavigation({
         const hasSubfolders = (entry?.subdirectoryCount ?? 0) > 0;
         const useShallow = isDirectory && hasSubfolders;
 
-        // Fetch current sort preferences from backend (always up-to-date)
-        const pref = await UIPreferencesAPI.getExplorerSortPreference(path);
-        const resolvedSortBy = pref?.sortBy ?? 'name';
-        const resolvedSortOrder = pref?.sortOrder ?? 'asc';
-
         navigate('viewer', {
             folder: path,
             shallow: useShallow ? 'true' : 'false',
-            sortBy: resolvedSortBy,
-            sortOrder: resolvedSortOrder,
+            sortBy: currentSortBy ?? 'name',
+            sortOrder: currentSortOrder ?? 'asc',
             ...(hasSubfolders ? { navRoot: path } : {})
         }, 'explorer' as PageType);
-    }, [currentPath, pathHistory, entries, setExplorerState, navigate]);
+    }, [currentPath, pathHistory, entries, setExplorerState, navigate, currentSortBy, currentSortOrder]);
 
     const handleItemClick = useCallback(async (entry: ExplorerEntry | BaseFolder) => {
         if ('addedAt' in entry) {
@@ -295,24 +293,19 @@ export function useExplorerNavigation({
 
                     const hasSubdirs = entries.some(ent => ent.isDirectory);
 
-                    // Fetch current sort preferences from backend (always up-to-date)
-                    const pref = await UIPreferencesAPI.getExplorerSortPreference(currentPath);
-                    const resolvedSortBy = pref?.sortBy ?? 'name';
-                    const resolvedSortOrder = pref?.sortOrder ?? 'asc';
-
                     navigate('viewer', {
                         folder: currentPath,
                         shallow: hasSubdirs ? 'true' : 'false',
                         startIndex: clickedIndex >= 0 ? String(clickedIndex) : '0',
                         targetPath: e.path,
-                        sortBy: resolvedSortBy,
-                        sortOrder: resolvedSortOrder,
+                        sortBy: currentSortBy ?? 'name',
+                        sortOrder: currentSortOrder ?? 'asc',
                         ...(hasSubdirs ? { navRoot: currentPath } : {})
                     }, 'explorer' as PageType);
                 }
             }
         }
-    }, [currentPath, pathHistory, entries, sortedEntries, setPathHistory, setExplorerState, navigate, onSearchClear]);
+    }, [currentPath, pathHistory, entries, sortedEntries, setPathHistory, setExplorerState, navigate, onSearchClear, currentSortBy, currentSortOrder]);
 
     const handleItemAuxClick = useCallback(async (e: React.MouseEvent, entry: ExplorerEntry | BaseFolder) => {
         if (e.button === 1) { // Middle click
@@ -347,25 +340,20 @@ export function useExplorerNavigation({
                         const clickedIndex = imageEntries.findIndex(img => img.path === ent.path);
                         const hasSubdirs = entries.some(e => e.isDirectory);
 
-                        // Fetch current sort preferences from backend (always up-to-date)
-                        const pref = await UIPreferencesAPI.getExplorerSortPreference(currentPath);
-                        const resolvedSortBy = pref?.sortBy ?? 'name';
-                        const resolvedSortOrder = pref?.sortOrder ?? 'asc';
-
                         addTab('viewer', {
                             folder: currentPath,
                             shallow: hasSubdirs ? 'true' : 'false',
                             startIndex: clickedIndex >= 0 ? String(clickedIndex) : '0',
                             targetPath: ent.path,
-                            sortBy: resolvedSortBy,
-                            sortOrder: resolvedSortOrder,
+                            sortBy: currentSortBy ?? 'name',
+                            sortOrder: currentSortOrder ?? 'asc',
                             ...(hasSubdirs ? { navRoot: currentPath } : {})
                         }, ent.name, {}, false);
                     }
                 }
             }
         }
-    }, [currentPath, pathHistory, entries, sortedEntries, addTab]);
+    }, [currentPath, pathHistory, entries, sortedEntries, addTab, currentSortBy, currentSortOrder]);
 
     return {
         handleBack,
