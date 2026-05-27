@@ -5,6 +5,7 @@ import (
 	"manga-visor/internal/database"
 	"manga-visor/internal/persistence"
 	"manga-visor/internal/services"
+	"manga-visor/internal/utils"
 	"os"
 	"path/filepath"
 	"sort"
@@ -293,9 +294,9 @@ func (m *Module) GetSiblings(chapterPath string) []persistence.ChapterInfo {
 				result := make([]persistence.ChapterInfo, len(entry.Chapters))
 				copy(result, entry.Chapters)
 
-				// Ensure sort order is correct (usually alphabetical by path or name)
+				// Ensure sort order is correct (natural sort by name)
 				sort.Slice(result, func(i, j int) bool {
-					return strings.ToLower(result[i].Name) < strings.ToLower(result[j].Name)
+					return utils.NaturalLess(result[i].Name, result[j].Name)
 				})
 
 				return result

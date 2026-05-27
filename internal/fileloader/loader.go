@@ -6,13 +6,12 @@ import (
 	"crypto/md5"
 	"fmt"
 	"io"
+	"manga-visor/internal/utils"
 	"os"
 	"path/filepath"
 	"sort"
-	"strconv"
 	"strings"
 	"sync"
-	"unicode"
 
 	"github.com/nwaples/rardecode/v2"
 )
@@ -866,62 +865,5 @@ func (fl *FileLoader) GetImageReader(imagePath string) (io.ReadCloser, string, i
 
 // naturalLess compares strings in natural order (1, 2, 10 instead of 1, 10, 2)
 func naturalLess(a, b string) bool {
-	return compareNatural(a, b) < 0
-}
-
-// compareNatural performs natural string comparison
-func compareNatural(a, b string) int {
-	ai, bi := 0, 0
-	for ai < len(a) && bi < len(b) {
-		ca, cb := rune(a[ai]), rune(b[bi])
-
-		// Both are digits - compare numerically
-		if unicode.IsDigit(ca) && unicode.IsDigit(cb) {
-			// Extract numbers
-			numA, endA := extractNumber(a, ai)
-			numB, endB := extractNumber(b, bi)
-
-			if numA != numB {
-				if numA < numB {
-					return -1
-				}
-				return 1
-			}
-
-			ai = endA
-			bi = endB
-			continue
-		}
-
-		// Compare characters (case-insensitive)
-		la, lb := unicode.ToLower(ca), unicode.ToLower(cb)
-		if la != lb {
-			if la < lb {
-				return -1
-			}
-			return 1
-		}
-
-		ai++
-		bi++
-	}
-
-	// If we've exhausted one string, the shorter one comes first
-	if ai < len(a) {
-		return 1
-	}
-	if bi < len(b) {
-		return -1
-	}
-	return 0
-}
-
-// extractNumber extracts a number starting at position i and returns the value and end position
-func extractNumber(s string, i int) (int, int) {
-	j := i
-	for j < len(s) && unicode.IsDigit(rune(s[j])) {
-		j++
-	}
-	num, _ := strconv.Atoi(s[i:j])
-	return num, j
+	return utils.NaturalLess(a, b)
 }

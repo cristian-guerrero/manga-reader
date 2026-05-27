@@ -8,6 +8,7 @@ import (
 	"manga-visor/internal/persistence"
 	"manga-visor/internal/services"
 	"manga-visor/internal/thumbnails"
+	"manga-visor/internal/utils"
 	"os"
 	"path/filepath"
 	"sort"
@@ -765,7 +766,7 @@ func (m *Module) getEnabledSubdirs(dirPath string) []FolderInfo {
 	}
 
 	sort.Slice(folders, func(i, j int) bool {
-		return strings.ToLower(folders[i].Name) < strings.ToLower(folders[j].Name)
+		return utils.NaturalLess(folders[i].Name, folders[j].Name)
 	})
 
 	return folders
@@ -912,9 +913,9 @@ func (m *Module) getEnabledSubdirsWithSort(dirPath string, sortMode string, sort
 			} else {
 				sort.SliceStable(list, func(i, j int) bool {
 					if sortOrder == "desc" {
-						return strings.ToLower(list[i].Name) > strings.ToLower(list[j].Name)
+						return utils.NaturalLess(list[j].Name, list[i].Name)
 					}
-					return strings.ToLower(list[i].Name) < strings.ToLower(list[j].Name)
+					return utils.NaturalLess(list[i].Name, list[j].Name)
 				})
 			}
 		case "date":
@@ -937,9 +938,9 @@ func (m *Module) getEnabledSubdirsWithSort(dirPath string, sortMode string, sort
 		default: // "name"
 			sort.SliceStable(list, func(i, j int) bool {
 				if sortOrder == "desc" {
-					return strings.ToLower(list[i].Name) > strings.ToLower(list[j].Name)
+					return utils.NaturalLess(list[j].Name, list[i].Name)
 				}
-				return strings.ToLower(list[i].Name) < strings.ToLower(list[j].Name)
+				return utils.NaturalLess(list[i].Name, list[j].Name)
 			})
 		}
 	}
