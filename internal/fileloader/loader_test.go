@@ -5,6 +5,7 @@ import (
 	"image"
 	"image/color"
 	"image/png"
+	"manga-visor/internal/utils"
 	"os"
 	"path/filepath"
 	"strings"
@@ -337,7 +338,7 @@ func TestCompareNatural(t *testing.T) {
 		{"10", "1", 1},
 	}
 	for _, tt := range tests {
-		got := compareNatural(tt.a, tt.b)
+		got := utils.CompareNatural(tt.a, tt.b)
 		if (got < 0 && tt.want >= 0) || (got > 0 && tt.want <= 0) || (got == 0 && tt.want != 0) {
 			t.Errorf("compareNatural(%q, %q) = %d, want sign %d", tt.a, tt.b, got, tt.want)
 		}

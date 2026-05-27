@@ -4,6 +4,7 @@ import (
 	"crypto/md5"
 	"fmt"
 	"manga-visor/internal/persistence"
+	"manga-visor/internal/utils"
 	"sort"
 	"sync"
 )
@@ -70,7 +71,7 @@ func (r *SeriesRepository) Add(entry persistence.SeriesEntry) error {
 	}
 
 	sort.Slice(r.entries, func(i, j int) bool {
-		return r.entries[i].Name < r.entries[j].Name
+		return utils.NaturalLess(r.entries[i].Name, r.entries[j].Name)
 	})
 
 	return r.writeAll()
@@ -145,6 +146,12 @@ func (r *SeriesRepository) Load() error {
 	}
 	if err := chapterRows.Err(); err != nil {
 		return err
+	}
+
+	for _, entry := range entriesMap {
+		sort.Slice(entry.Chapters, func(i, j int) bool {
+			return utils.NaturalLess(entry.Chapters[i].Name, entry.Chapters[j].Name)
+		})
 	}
 
 	var entries []persistence.SeriesEntry
