@@ -6,7 +6,9 @@ import (
 	"html"
 	"io"
 	"net/http"
+	"net/url"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -45,6 +47,10 @@ func (d *IMHentaiDownloader) GetSiteID() string {
 }
 
 func (d *IMHentaiDownloader) GetImages(url string) (*SiteInfo, error) {
+	if strings.Contains(url, "/artist/") {
+		return d.getArtistInfo(url)
+	}
+
 	url = d.NormalizeURL(url)
 
 	if !strings.Contains(url, "/gallery/") {
@@ -140,6 +146,161 @@ func (d *IMHentaiDownloader) GetImages(url string) (*SiteInfo, error) {
 		SiteID:     "imhentai.xxx",
 		Type:       "single",
 	}, nil
+}
+
+// Language ID to ISO code mapping from imhentai.xxx data-languages attribute
+var imhentaiLanguageMap = map[string]string{
+	"1": "ja",
+	"2": "zh",
+	"3": "en",
+	"5": "de",
+	"6": "es",
+}
+
+func (d *IMHentaiDownloader) getArtistInfo(rawURL string) (*SiteInfo, error) {
+	parsedURL, err := url.Parse(rawURL)
+	if err != nil {
+		return nil, err
+	}
+
+	langFilter := parsedURL.Query().Get("lang")
+
+	// Build clean artist path
+	artistPath := parsedURL.Path
+	if !strings.HasSuffix(artistPath, "/") {
+		artistPath += "/"
+	}
+	firstPageURL := fmt.Sprintf("https://imhentai.xxx%s", artistPath)
+
+	bodyStr, err := d.fetchPage(firstPageURL)
+	if err != nil {
+		return nil, err
+	}
+
+	// Extract title from <h1>
+	title := "IMHentai Artist"
+	reTitle := regexp.MustCompile(`<h1[^>]*>(.*?)</h1>`)
+	titleMatch := reTitle.FindStringSubmatch(bodyStr)
+	if len(titleMatch) > 1 {
+		title = html.UnescapeString(regexp.MustCompile(`<[^>]*>`).ReplaceAllString(strings.TrimSpace(titleMatch[1]), ""))
+	}
+
+	// Get total pages from pagination
+	totalPages := 1
+	rePage := regexp.MustCompile(`\?page=(\d+)`)
+	for _, m := range rePage.FindAllStringSubmatch(bodyStr, -1) {
+		if n, err := strconv.Atoi(m[1]); err == nil && n > totalPages {
+			totalPages = n
+		}
+	}
+
+	// Limit pages to prevent abuse
+	if totalPages > 50 {
+		totalPages = 50
+	}
+
+	var allChapters []ChapterInfo
+	seen := make(map[string]bool)
+
+	for page := 1; page <= totalPages; page++ {
+		if page > 1 {
+			pageURL := fmt.Sprintf("https://imhentai.xxx%s?page=%d", strings.TrimSuffix(artistPath, "/"), page)
+			bodyStr, err = d.fetchPage(pageURL)
+			if err != nil {
+				break
+			}
+		}
+
+		chapters := d.parseGalleryEntries(bodyStr, langFilter, seen)
+		allChapters = append(allChapters, chapters...)
+	}
+
+	if len(allChapters) == 0 {
+		return nil, fmt.Errorf("could not find any galleries for this artist")
+	}
+
+	return &SiteInfo{
+		SeriesName: title,
+		SiteID:     "imhentai.xxx",
+		Type:       "series",
+		Chapters:   allChapters,
+	}, nil
+}
+
+func (d *IMHentaiDownloader) parseGalleryEntries(bodyStr, langFilter string, seen map[string]bool) []ChapterInfo {
+	reThumb := regexp.MustCompile(`(?s)data-languages="([^"]*)"[^>]*>.*?<h2 class="gallery_title">\s*<a href="(/gallery/(\d+)/)">(.*?)</a>\s*</h2>`)
+	matches := reThumb.FindAllStringSubmatch(bodyStr, -1)
+
+	var chapters []ChapterInfo
+	for _, m := range matches {
+		langIDs := strings.Fields(m[1])
+		galleryURL := "https://imhentai.xxx" + m[2]
+		galleryID := m[3]
+		galleryTitle := html.UnescapeString(strings.TrimSpace(m[4]))
+
+		if seen[galleryURL] {
+			continue
+		}
+		seen[galleryURL] = true
+
+		// Determine language codes for this gallery
+		var langCodes []string
+		for _, lid := range langIDs {
+			if code, ok := imhentaiLanguageMap[lid]; ok {
+				langCodes = append(langCodes, code)
+			}
+		}
+		chapterLang := strings.Join(langCodes, ",")
+
+		// Apply language filter if set
+		if langFilter != "" {
+			matchesFilter := false
+			for _, code := range langCodes {
+				if code == langFilter {
+					matchesFilter = true
+					break
+				}
+			}
+			if !matchesFilter {
+				continue
+			}
+		}
+
+		chapters = append(chapters, ChapterInfo{
+			ID:       galleryID,
+			Name:     galleryTitle,
+			URL:      galleryURL,
+			Language: chapterLang,
+		})
+	}
+
+	return chapters
+}
+
+func (d *IMHentaiDownloader) fetchPage(pageURL string) (string, error) {
+	client := &http.Client{}
+	req, err := http.NewRequest("GET", pageURL, nil)
+	if err != nil {
+		return "", err
+	}
+
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("failed to fetch page: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("failed to fetch page, status code: %d (at %s)", resp.StatusCode, pageURL)
+	}
+
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+	return string(bodyBytes), nil
 }
 
 func (d *IMHentaiDownloader) extractValue(body, id string) string {

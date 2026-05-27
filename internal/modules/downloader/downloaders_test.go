@@ -56,6 +56,8 @@ func TestCanHandle(t *testing.T) {
 			validURLs: []string{
 				"https://imhentai.xxx/gallery/1063156/",
 				"https://imhentai.xxx/view/1063156/1/",
+				"https://imhentai.xxx/artist/iwasaki-yuuki/",
+				"https://imhentai.xxx/artist/iwasaki-yuuki/?lang=en",
 			},
 			invalidURLs: []string{
 				"https://example.com/page",
