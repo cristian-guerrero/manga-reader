@@ -44,7 +44,13 @@ type Module struct {
 	series     *database.SeriesRepository
 	fileLoader services.FileLoaderInterface
 	urlBuilder services.URLBuilderInterface
+	uiPrefs    *database.UIPreferencesRepository
 	logger     services.LoggerInterface
+}
+
+// SetUIPrefs sets the UI preferences repository (optional, for sort-aware navigation)
+func (m *Module) SetUIPrefs(prefs *database.UIPreferencesRepository) {
+	m.uiPrefs = prefs
 }
 
 // NewModule creates a new Series module
@@ -252,35 +258,70 @@ type ChapterNavigation struct {
 }
 
 // GetChapterNavigation returns prev/next chapter for a given chapter path
+// respecting the user's series details sort preference
 func (m *Module) GetChapterNavigation(chapterPath string) *ChapterNavigation {
 	entries := m.series.GetAll()
 
 	for _, entry := range entries {
-		for i, ch := range entry.Chapters {
+		for _, ch := range entry.Chapters {
 			if ch.Path == chapterPath {
-				nav := &ChapterNavigation{
-					SeriesPath:    entry.Path,
-					SeriesName:    entry.Name,
-					ChapterIndex:  i,
-					TotalChapters: len(entry.Chapters),
-				}
+				chapters := m.getSortedChaptersForSeries(entry)
+				for i, ch := range chapters {
+					if ch.Path == chapterPath {
+						nav := &ChapterNavigation{
+							SeriesPath:    entry.Path,
+							SeriesName:    entry.Name,
+							ChapterIndex:  i,
+							TotalChapters: len(chapters),
+						}
 
-				if i > 0 {
-					prev := entry.Chapters[i-1]
-					nav.PrevChapter = &prev
-				}
+						if i > 0 {
+							prev := chapters[i-1]
+							nav.PrevChapter = &prev
+						}
 
-				if i < len(entry.Chapters)-1 {
-					next := entry.Chapters[i+1]
-					nav.NextChapter = &next
-				}
+						if i < len(chapters)-1 {
+							next := chapters[i+1]
+							nav.NextChapter = &next
+						}
 
-				return nav
+						return nav
+					}
+				}
 			}
 		}
 	}
 
 	return nil
+}
+
+func (m *Module) getSortedChaptersForSeries(entry persistence.SeriesEntry) []persistence.ChapterInfo {
+	chapters := make([]persistence.ChapterInfo, len(entry.Chapters))
+	copy(chapters, entry.Chapters)
+
+	sortBy := "name"
+	sortOrder := "asc"
+	if m.uiPrefs != nil {
+		pref := m.uiPrefs.GetSeriesDetailsSortPreference(entry.Path)
+		sortBy = pref.SortBy
+		sortOrder = pref.SortOrder
+	}
+
+	sort.SliceStable(chapters, func(i, j int) bool {
+		var less bool
+		switch sortBy {
+		case "date", "pages":
+			less = chapters[i].ImageCount < chapters[j].ImageCount
+		default: // "name"
+			less = utils.NaturalLess(chapters[i].Name, chapters[j].Name)
+		}
+		if sortOrder == "desc" {
+			return !less
+		}
+		return less
+	})
+
+	return chapters
 }
 
 // GetSiblings returns all chapters in the same series for a given chapter path
@@ -290,16 +331,7 @@ func (m *Module) GetSiblings(chapterPath string) []persistence.ChapterInfo {
 	for _, entry := range entries {
 		for _, ch := range entry.Chapters {
 			if ch.Path == chapterPath {
-				// Return copies to avoid modification
-				result := make([]persistence.ChapterInfo, len(entry.Chapters))
-				copy(result, entry.Chapters)
-
-				// Ensure sort order is correct (natural sort by name)
-				sort.Slice(result, func(i, j int) bool {
-					return utils.NaturalLess(result[i].Name, result[j].Name)
-				})
-
-				return result
+				return m.getSortedChaptersForSeries(entry)
 			}
 		}
 	}
