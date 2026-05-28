@@ -65,6 +65,13 @@ export interface TabStoreState {
             params: Record<string, string>;
             explorerState?: any;
             thumbnailScrollPositions?: Record<string, number>;
+            viewerState?: {
+                currentFolder: any;
+                currentIndex: number;
+                mode: string;
+                verticalWidth?: number;
+                scrollPosition?: number;
+            } | null;
         }>
     };
     restoreTabsFromBackend: (data: {
@@ -77,6 +84,13 @@ export interface TabStoreState {
             params: Record<string, string>;
             explorerState?: any;
             thumbnailScrollPositions?: Record<string, number>;
+            viewerState?: {
+                currentFolder: any;
+                currentIndex: number;
+                mode: string;
+                verticalWidth?: number;
+                scrollPosition?: number;
+            } | null;
         }>
     }) => void;
 }
@@ -259,7 +273,14 @@ export const useTabStore = create<TabStoreState>((set, get) => ({
                 fromPage: tab.fromPage,
                 params: tab.params,
                 explorerState: tab.explorerState,
-                thumbnailScrollPositions: tab.thumbnailScrollPositions
+                thumbnailScrollPositions: tab.thumbnailScrollPositions,
+                viewerState: tab.viewerState ? {
+                    currentFolder: tab.viewerState.currentFolder,
+                    currentIndex: tab.viewerState.currentIndex,
+                    mode: tab.viewerState.mode,
+                    verticalWidth: tab.viewerState.verticalWidth,
+                    scrollPosition: tab.viewerState.scrollPosition,
+                } : null,
             }))
         };
     },
@@ -278,7 +299,16 @@ export const useTabStore = create<TabStoreState>((set, get) => ({
             activeMenuPage: saved.page as PageType || 'home',
             explorerState: saved.explorerState || null,
             thumbnailScrollPositions: saved.thumbnailScrollPositions || {},
-            viewerState: null,
+            viewerState: saved.viewerState ? {
+                currentFolder: saved.viewerState.currentFolder || null,
+                images: [],
+                currentIndex: saved.viewerState.currentIndex || 0,
+                mode: (saved.viewerState.mode as ViewerMode) || 'vertical',
+                isLoading: false,
+                zoomLevel: 1,
+                scrollPosition: saved.viewerState.scrollPosition || 0,
+                verticalWidth: saved.viewerState.verticalWidth,
+            } : null,
             restored: true, // Mark as restored so ViewerPage loads state from backend
         }));
 

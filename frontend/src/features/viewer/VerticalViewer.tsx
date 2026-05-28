@@ -3,7 +3,7 @@
  * Improved version with zero flicker and stable heights
  */
 
-import React, { useEffect, useRef, useCallback, useState, useMemo } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useCallback, useState, useMemo } from 'react';
 
 interface VerticalViewerProps {
     images: Array<{
@@ -14,7 +14,7 @@ interface VerticalViewerProps {
         thumbnailUrl?: string;
     }>;
     initialIndex?: number;
-    initialScrollPosition?: number; // Position in pixels from top of container
+    initialScrollPosition?: number; // 0-1 percentage of max scroll
     showControls?: boolean;
     hasChapterButtons?: boolean;
     isAutoScrolling?: boolean;
@@ -115,6 +115,7 @@ export const VerticalViewer = React.memo(({
     const appliedInitialIndexRef = useRef<number>(-1);
     const appliedInitialScrollRef = useRef<number>(-1);
     const isUserScrollingRef = useRef<boolean>(false); // Track if user is actively scrolling
+    const hasEverCompletedRef = useRef<boolean>(false); // Track if restoration completed once (images were loaded)
     const lastUserScrollTimeRef = useRef<number>(0); // Track when user last scrolled
 
     // LOCAL state for display index
@@ -158,9 +159,12 @@ export const VerticalViewer = React.memo(({
             }
         }, 150);
         
-        // Report scroll position to parent (debounced internally in parent)
+        // Report scroll position as percentage (0-1) so the state system stores it consistently
         if (onScrollPositionChange) {
-            onScrollPositionChange(scrollTop);
+            const { scrollHeight, clientHeight } = container;
+            const maxScroll = scrollHeight - clientHeight;
+            const percentage = maxScroll > 0 ? scrollTop / maxScroll : 0;
+            onScrollPositionChange(percentage);
         }
 
         const containerRect = container.getBoundingClientRect();
@@ -205,122 +209,96 @@ export const VerticalViewer = React.memo(({
         }
     }, [displayIndex, images.length, onIndexChange, onScrollPositionChange]);
 
-    // Reset appliedInitialIndexRef when tab becomes active or folder changes
-    // This ensures we can scroll again when switching tabs
-    useEffect(() => {
-        if (isActive) {
-            // Reset refs when tab becomes active to allow scrolling to the correct position
-            appliedInitialIndexRef.current = -1;
-            appliedInitialScrollRef.current = -1;
-        }
-    }, [isActive, images.length]); // Reset when tab becomes active or images change
-
-    // Handle initial scroll/resume - only when tab is active to prevent unwanted scrolling
-    useEffect(() => {
+    // Handle initial scroll/resume - runs in layout phase (before paint) to prevent flash of first page
+    useLayoutEffect(() => {
         if (!parentRef.current || images.length === 0) return;
-        if (!isActive) {
-            console.log(`[VerticalViewer] Skipping scroll - tab not active (isActive: ${isActive}, initialIndex: ${initialIndex})`);
-            return; // Don't scroll if tab is not active
-        }
+        if (!isActive) return;
+        if (isUserScrollingRef.current) return;
 
-        // Don't restore if user is actively scrolling (prevents interference with manual scrolling)
-        if (isUserScrollingRef.current) {
-            console.log(`[VerticalViewer] Skipping scroll restoration - user is actively scrolling`);
-            return;
-        }
-
-        // Check if we already applied this exact scroll position
+        // Skip if same position already applied (avoids re-scroll on tab switches with unchanged position)
         const scrollKey = `${initialIndex}_${initialScrollPosition ?? 0}`;
         const lastScrollKey = `${appliedInitialIndexRef.current}_${appliedInitialScrollRef.current}`;
-        if (scrollKey === lastScrollKey) {
-            console.log(`[VerticalViewer] Skipping scroll - already at index ${initialIndex}, scrollPos ${initialScrollPosition}`);
+        if (scrollKey === lastScrollKey) return;
+
+        const container = parentRef.current;
+
+        // If restoration already completed once (images were previously loaded),
+        // use direct percentage→pixels positioning — scrollHeight is already accurate
+        if (hasEverCompletedRef.current) {
+            if (initialScrollPosition !== undefined && initialScrollPosition > 0 && initialScrollPosition <= 1) {
+                const { scrollHeight, clientHeight } = container;
+                const maxScroll = scrollHeight - clientHeight;
+                if (maxScroll > 0) {
+                    container.scrollTop = initialScrollPosition * maxScroll;
+                }
+            }
+            appliedInitialIndexRef.current = initialIndex;
+            appliedInitialScrollRef.current = initialScrollPosition ?? 0;
+            onRestorationComplete?.();
             return;
         }
 
-        // Also check if current scroll position is close to what we want to restore
-        // This prevents unnecessary scrolling when user is near the target position
-        const container = parentRef.current;
-        const currentScrollTop = container.scrollTop;
-        if (initialScrollPosition !== undefined && initialScrollPosition >= 0) {
-            let targetScrollTop = initialScrollPosition;
-            if (initialScrollPosition > 0 && initialScrollPosition <= 1) {
-                // It's a percentage, but we need current scrollHeight to compare
-                // We'll check this in the timeout
-            } else {
-                // It's pixels, compare directly
-                const scrollDiff = Math.abs(currentScrollTop - targetScrollTop);
-                if (scrollDiff < 50) { // Within 50px, don't restore
-                    console.log(`[VerticalViewer] Skipping scroll - already near target position (diff: ${scrollDiff}px)`);
-                    appliedInitialIndexRef.current = initialIndex;
-                    appliedInitialScrollRef.current = currentScrollTop;
-                    return;
-                }
+        // First-time setup: images not yet loaded, use scrollIntoView for approximate positioning
+        if (initialIndex >= 0 && initialIndex < images.length) {
+            const target = itemRefs.current[initialIndex];
+            if (target) {
+                target.scrollIntoView({ block: 'start', behavior: 'instant' });
             }
         }
 
-        console.log(`[VerticalViewer] Preparing to restore: index=${initialIndex}, scrollPos=${initialScrollPosition} (isActive: ${isActive})`);
+        appliedInitialIndexRef.current = initialIndex;
+        appliedInitialScrollRef.current = initialScrollPosition ?? 0;
 
-        // Small delay to ensure DOM is ready
-        const timeoutId = setTimeout(() => {
-            if (!parentRef.current) return;
-            
-            // Double-check user isn't scrolling now
-            if (isUserScrollingRef.current) {
-                console.log(`[VerticalViewer] Aborting scroll restoration - user started scrolling during delay`);
-                return;
-            }
+        // Deferred rAF-based correction: waits for scrollHeight to stabilize (images load)
+        // then applies exact percentage position. Only runs on first mount.
+        if (initialScrollPosition !== undefined && initialScrollPosition > 0 && initialScrollPosition <= 1) {
+            let cancelled = false;
+            let stableFrames = 0;
+            let lastScrollHeight = container.scrollHeight;
+            let frameCount = 0;
+            const MAX_FRAMES = 80;
 
-            const container = parentRef.current;
-
-            // If we have an exact scroll position (in pixels), use it directly
-            // If it's a percentage (0-1), convert it to pixels
-            if (initialScrollPosition !== undefined && initialScrollPosition >= 0) {
-                let scrollTopPixels = initialScrollPosition;
-                
-                // If initialScrollPosition is between 0 and 1, it's a percentage - convert to pixels
-                if (initialScrollPosition > 0 && initialScrollPosition <= 1) {
-                    const { scrollHeight, clientHeight } = container;
-                    const maxScroll = scrollHeight - clientHeight;
-                    if (maxScroll > 0) {
-                        scrollTopPixels = initialScrollPosition * maxScroll;
-                        console.log(`[VerticalViewer] Converting scroll percentage ${initialScrollPosition} to ${scrollTopPixels}px (maxScroll: ${maxScroll})`);
-                    } else {
-                        // Can't convert, use scrollIntoView fallback
-                        scrollTopPixels = -1;
-                    }
-                }
-                
-                if (scrollTopPixels >= 0) {
-                    console.log(`[VerticalViewer] Restoring exact scroll position: ${scrollTopPixels}px (from ${initialScrollPosition})`);
-                    container.scrollTop = scrollTopPixels;
-                    appliedInitialIndexRef.current = initialIndex;
-                    appliedInitialScrollRef.current = scrollTopPixels;
+            const applyExactPosition = () => {
+                frameCount++;
+                if (cancelled || !parentRef.current || frameCount > MAX_FRAMES) {
+                    hasEverCompletedRef.current = true;
                     onRestorationComplete?.();
                     return;
                 }
-            }
 
-            // Fallback to scrollIntoView if no exact position is available
-            if (initialIndex >= 0 && initialIndex < images.length) {
-                const target = itemRefs.current[initialIndex];
-                if (target && parentRef.current) {
-                    console.log(`[VerticalViewer] Scrolling to index: ${initialIndex} (isActive: ${isActive}, images.length: ${images.length})`);
-                    target.scrollIntoView({ block: 'start', behavior: 'instant' });
-                    appliedInitialIndexRef.current = initialIndex;
-                    appliedInitialScrollRef.current = container.scrollTop;
+                const c = parentRef.current;
+                const { scrollHeight, clientHeight } = c;
+
+                if (scrollHeight === lastScrollHeight) {
+                    stableFrames++;
+                } else {
+                    stableFrames = 0;
+                    lastScrollHeight = scrollHeight;
+                }
+
+                if (stableFrames >= 3 || (frameCount > 1 && scrollHeight === container.scrollHeight)) {
+                    const maxScroll = scrollHeight - clientHeight;
+                    if (maxScroll > 0) {
+                        const exactPixels = initialScrollPosition * maxScroll;
+                        if (Math.abs(c.scrollTop - exactPixels) > 30) {
+                            c.scrollTop = exactPixels;
+                        }
+                    }
+                    hasEverCompletedRef.current = true;
                     onRestorationComplete?.();
                 } else {
-                    console.warn(`[VerticalViewer] Target for index ${initialIndex} not found in refs (images.length: ${images.length})`);
-                    onRestorationComplete?.();
+                    requestAnimationFrame(applyExactPosition);
                 }
-            } else {
-                console.warn(`[VerticalViewer] Invalid initialIndex: ${initialIndex} (images.length: ${images.length})`);
-                onRestorationComplete?.();
-            }
-        }, 150); // Slightly longer delay for initial load stability
+            };
 
-        return () => clearTimeout(timeoutId);
-    }, [initialIndex, initialScrollPosition, images.length, onRestorationComplete, isActive]);
+            requestAnimationFrame(applyExactPosition);
+
+            return () => { cancelled = true; };
+        } else {
+            hasEverCompletedRef.current = true;
+            onRestorationComplete?.();
+        }
+    }, [initialIndex, initialScrollPosition, images.length, isActive, onRestorationComplete]);
 
     // Auto-scroll pixels per second calculation
     const getPixelsPerSecond = useCallback((speed: number): number => {

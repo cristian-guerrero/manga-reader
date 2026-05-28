@@ -16,6 +16,7 @@ interface UseViewerNavigationSeekOptions {
     currentIndex: number;
     resumeIndex: number;
     setResumeIndex: (index: number) => void;
+    setResumeScrollPos: (pos: number) => void;
     setResetKey: (fn: (prev: number) => number) => void;
     lastProcessedParamsRef: React.MutableRefObject<{ targetPath?: string; startIndex?: string } | null>;
     updateTabState: (updates: any) => void;
@@ -30,6 +31,7 @@ export function useViewerNavigationSeek({
     currentIndex,
     resumeIndex,
     setResumeIndex,
+    setResumeScrollPos,
     setResetKey,
     lastProcessedParamsRef,
     updateTabState,
@@ -81,9 +83,10 @@ export function useViewerNavigationSeek({
             if (shouldApply) {
                 console.log(`[useViewerNavigationSeek] Navigation seek detected: ${targetIndex} (currentIndex: ${currentIndex}, resumeIndex: ${resumeIndex}, diffFromCurrent: ${indexDiffFromCurrent}, isCurrentIndexSet: ${isCurrentIndexSet})`);
                 setResumeIndex(targetIndex);
+                setResumeScrollPos(0);
                 lastProcessedParamsRef.current = { targetPath, startIndex: currentParams?.startIndex };
                 setResetKey((prev) => prev + 1);
-                updateTabState({ currentIndex: targetIndex });
+                updateTabState({ currentIndex: targetIndex, scrollPosition: 0 });
             } else {
                 console.log(`[useViewerNavigationSeek] Navigation seek: Ignoring ${targetIndex} (currentIndex: ${currentIndex}, resumeIndex: ${resumeIndex}, diffFromCurrent: ${indexDiffFromCurrent}, isCurrentIndexSet: ${isCurrentIndexSet}, likely old params)`);
                 lastProcessedParamsRef.current = { targetPath, startIndex: currentParams?.startIndex };

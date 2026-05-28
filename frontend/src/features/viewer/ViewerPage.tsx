@@ -40,7 +40,7 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
     const isExplorerMode = fromPage === 'explorer';
     console.log('[ViewerPage] fromPage:', fromPage, 'isExplorer:', isExplorerMode, 'folderPath:', folderPath);
     console.log('[ViewerPage] fromPage:', fromPage, 'isExplorerMode:', isExplorerMode, 'folderPath:', folderPath, 'navFromPage:', navFromPage, 'params.from:', params.from);
-    const { viewerMode, setViewerMode, scrollSpeed, setScrollSpeed } = useSettingsStore();
+    const { scrollSpeed, setScrollSpeed } = useSettingsStore();
     const { setViewerState: updateTabState } = useViewer(tabId);
     const tabState = useTabStore((state) => state.tabs.find((t) => t.id === tabId)?.viewerState);
 
@@ -167,6 +167,7 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
         currentIndex: viewerState.currentIndex,
         resumeIndex: viewerState.resumeIndex,
         setResumeIndex: viewerState.setResumeIndex,
+        setResumeScrollPos: viewerState.setResumeScrollPos,
         setResetKey: viewerState.setResetKey,
         lastProcessedParamsRef: viewerState.lastProcessedParamsRef,
         updateTabState: viewerState.updateTabState,
@@ -191,13 +192,6 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
         setIsNoHistorySession(noHistory);
     }, [folderPath, params.noHistory]);
 
-    // Sync viewer mode with settings
-    useEffect(() => {
-        if (isActive) {
-            updateTabState({ mode: viewerMode });
-        }
-    }, [viewerMode, isActive, updateTabState]);
-
     // Guardar antes de cerrar/recargar
     useEffect(() => {
         const handleBeforeUnload = () => {
@@ -209,11 +203,10 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
         };
     }, [saveProgress]);
 
-    // Toggle viewer mode
+    // Toggle viewer mode (per-tab only, doesn't affect global default)
     const toggleMode = () => {
         const newMode = viewerState.mode === 'vertical' ? 'lateral' : 'vertical';
         updateTabState({ mode: newMode });
-        setViewerMode(newMode);
     };
 
 // Chapter navigation handlers (series)
@@ -379,8 +372,6 @@ const handleBack = useCallback(() => {
                     verticalWidth={viewerState.currentVerticalWidth}
                     onWidthChange={viewerState.handleWidthChange}
                     isActive={isActive}
-                    resetKey={viewerState.resetKey}
-                    folderPath={viewerState.currentFolder.path}
                     onPageChange={saveProgress}
                     tabId={tabId}
                     onNextBoundary={handleNextBoundary}

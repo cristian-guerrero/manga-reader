@@ -15,6 +15,7 @@ type Tab struct {
 	Params                   map[string]string `json:"params"`
 	ExplorerState            interface{}       `json:"explorerState"`
 	ThumbnailScrollPositions interface{}       `json:"thumbnailScrollPositions"`
+	ViewerState              interface{}       `json:"viewerState"`
 }
 
 // TabsData represents the saved tabs data

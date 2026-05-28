@@ -10,6 +10,12 @@ export interface SavedTab {
     params: Record<string, string>;
     explorerState?: any;
     thumbnailScrollPositions?: Record<string, number>;
+    viewerState?: {
+        currentFolder: any;
+        currentIndex: number;
+        mode: string;
+        verticalWidth?: number;
+    } | null;
 }
 
 export interface SavedTabsData {
@@ -33,6 +39,7 @@ export class TabsAPI extends BaseAPI {
                         params: t.params || {},
                         explorerState: t.explorerState,
                         thumbnailScrollPositions: t.thumbnailScrollPositions,
+                        viewerState: t.viewerState || null,
                     })),
                 };
             },

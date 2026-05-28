@@ -579,6 +579,7 @@ export namespace persistence {
 	    params: Record<string, string>;
 	    explorerState: any;
 	    thumbnailScrollPositions: any;
+	    viewerState: any;
 	
 	    static createFrom(source: any = {}) {
 	        return new Tab(source);
@@ -593,6 +594,7 @@ export namespace persistence {
 	        this.params = source["params"];
 	        this.explorerState = source["explorerState"];
 	        this.thumbnailScrollPositions = source["thumbnailScrollPositions"];
+	        this.viewerState = source["viewerState"];
 	    }
 	}
 	export class TabsData {

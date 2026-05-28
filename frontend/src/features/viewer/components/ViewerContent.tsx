@@ -23,8 +23,6 @@ interface ViewerContentProps {
     verticalWidth: number;
     onWidthChange: (width: number) => void;
     isActive: boolean;
-    resetKey: number;
-    folderPath: string;
     onPageChange: () => void;
     tabId?: string;
     onNextBoundary?: () => void;
@@ -47,8 +45,6 @@ export function ViewerContent({
     verticalWidth,
     onWidthChange,
     isActive,
-    resetKey,
-    folderPath,
     onPageChange,
     tabId,
     onNextBoundary,
@@ -56,12 +52,8 @@ export function ViewerContent({
 }: ViewerContentProps) {
     if (mode === 'vertical') {
         return (
-            <div
-                key={`vertical-${folderPath}-${resetKey}`}
-                className={`h-full w-full transition-opacity duration-300 ${mode === 'vertical' ? 'opacity-100' : 'opacity-0'}`}
-            >
+            <div className="h-full w-full opacity-100">
                 <VerticalViewer
-                    key={`${folderPath}-${resetKey}`}
                     images={images}
                     initialIndex={initialIndex}
                     initialScrollPosition={initialScrollPosition}
@@ -82,12 +74,8 @@ export function ViewerContent({
     }
 
     return (
-        <div
-            key={`lateral-${folderPath}-${resetKey}`}
-            className={`h-full w-full transition-opacity duration-300 ${mode === 'lateral' ? 'opacity-100' : 'opacity-0'}`}
-        >
+        <div className="h-full w-full opacity-100">
             <LateralViewer
-                key={`${folderPath}-${resetKey}`}
                 images={images}
                 onPageChange={onPageChange}
                 initialIndex={initialIndex}

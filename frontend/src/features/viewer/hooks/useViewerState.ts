@@ -16,7 +16,7 @@ interface UseViewerStateOptions {
 }
 
 export function useViewerState({ folderPath, tabId, isActive, params }: UseViewerStateOptions) {
-    const { verticalWidth } = useSettingsStore();
+    const { verticalWidth, viewerMode } = useSettingsStore();
     const { setViewerState: updateTabState } = useViewer(tabId);
     
     // Get current state for this specific tab
@@ -25,7 +25,7 @@ export function useViewerState({ folderPath, tabId, isActive, params }: UseViewe
     const currentFolder = tabState?.currentFolder || null;
     const images = tabState?.images || [];
     const currentIndex = tabState?.currentIndex || 0;
-    const mode = tabState?.mode || 'vertical';
+    const mode = tabState?.mode || viewerMode;
     const isLoading = tabState?.isLoading || false;
     const currentVerticalWidth = (tabState?.verticalWidth || 0) !== 0 
         ? (tabState?.verticalWidth || verticalWidth) 
@@ -48,7 +48,11 @@ export function useViewerState({ folderPath, tabId, isActive, params }: UseViewe
         return 0;
     });
 
-    const [resumeScrollPos, setResumeScrollPos] = useState(0);
+    const [resumeScrollPos, setResumeScrollPos] = useState(() => {
+        const initialTab = useTabStore.getState().tabs.find((t) => t.id === tabId);
+        const scrollPos = initialTab?.viewerState?.scrollPosition;
+        return scrollPos && scrollPos > 0 && scrollPos <= 1 ? scrollPos : 0;
+    });
     const [resetKey, setResetKey] = useState(0);
     const lastSyncedIndexRef = useRef<number>(-1);
     const lastProcessedParamsRef = useRef<{ targetPath?: string; startIndex?: string } | null>(null);
