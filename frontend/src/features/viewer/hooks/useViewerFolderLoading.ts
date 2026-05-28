@@ -55,13 +55,29 @@ export function useViewerFolderLoading({
         if (!isActive) return;
 
         let cancelled = false;
-        setIsLoading(true);
-        updateTabState({ isLoading: true });
 
         const loadData = async () => {
             try {
                 const activeTab = useTabStore.getState().tabs.find((t) => t.id === tabId);
                 const isRestored = activeTab?.restored;
+
+                // Skip backend fetch if tab already has loaded images for this exact folder
+                // (prevents stale data from backend returning different index on tab switch)
+                const tabState = activeTab?.viewerState;
+                if (tabState?.images?.length && tabState?.currentFolder?.path === folderPath && !isRestored) {
+                    const ci = tabState.currentIndex ?? 0;
+                    const sp = tabState.scrollPosition;
+                    console.log(`[useViewerFolderLoading] Skipping fetch, tab already loaded. index=${ci}, scrollPos=${sp}`);
+                    setResumeIndex(ci);
+                    lastSyncedIndexRef.current = ci;
+                    if (sp && sp > 0) {
+                        setResumeScrollPos(sp);
+                    }
+                    return;
+                }
+
+                setIsLoading(true);
+                updateTabState({ isLoading: true });
 
                 if (isRestored) {
                     console.log(`[useViewerFolderLoading] Restored tab detected for ${folderPath}. Forcing refresh.`);

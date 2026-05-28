@@ -214,9 +214,10 @@ export const VerticalViewer = React.memo(({
         if (!isActive) return;
         if (isUserScrollingRef.current) return;
 
-        // Reset applied refs when tab becomes active to allow re-scroll on tab switch
-        appliedInitialIndexRef.current = -1;
-        appliedInitialScrollRef.current = -1;
+        // Skip if same position already applied (avoids re-scroll on tab switches with unchanged position)
+        const scrollKey = `${initialIndex}_${initialScrollPosition ?? 0}`;
+        const lastScrollKey = `${appliedInitialIndexRef.current}_${appliedInitialScrollRef.current}`;
+        if (scrollKey === lastScrollKey) return;
 
         const container = parentRef.current;
 
@@ -231,7 +232,7 @@ export const VerticalViewer = React.memo(({
         }
 
         appliedInitialIndexRef.current = initialIndex;
-        appliedInitialScrollRef.current = container.scrollTop;
+        appliedInitialScrollRef.current = initialScrollPosition ?? 0;
 
         // Phase 2: Deferred exact percentage correction after images have loaded
         // Uses requestAnimationFrame to wait until scrollHeight stabilizes
@@ -268,7 +269,6 @@ export const VerticalViewer = React.memo(({
                         const exactPixels = initialScrollPosition * maxScroll;
                         if (Math.abs(c.scrollTop - exactPixels) > 30) {
                             c.scrollTop = exactPixels;
-                            appliedInitialScrollRef.current = exactPixels;
                         }
                     }
                     onRestorationComplete?.();

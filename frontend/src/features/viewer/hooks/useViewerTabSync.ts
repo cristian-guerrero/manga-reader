@@ -71,12 +71,6 @@ export function useViewerTabSync({
             console.log(`[useViewerTabSync] Tab activated: Already synced (resumeIndex=${resumeIndex}, tabCurrentIndex=${tabCurrentIndex})`);
             lastSyncedIndexRef.current = tabCurrentIndex;
 
-            // Still check for scroll position updates if resumeScrollPos is 0
-            if (tabScrollPosition && tabScrollPosition > 0 && tabScrollPosition <= 1) {
-                console.log(`[useViewerTabSync] Tab activated: Will restore scroll position percentage: ${tabScrollPosition}`);
-                setResumeScrollPos(tabScrollPosition);
-            }
-
             // Mark current params as processed
             const currentParams = tab?.params;
             if (currentParams && (currentParams.targetPath || currentParams.startIndex)) {
