@@ -48,7 +48,11 @@ export function useViewerState({ folderPath, tabId, isActive, params }: UseViewe
         return 0;
     });
 
-    const [resumeScrollPos, setResumeScrollPos] = useState(0);
+    const [resumeScrollPos, setResumeScrollPos] = useState(() => {
+        const initialTab = useTabStore.getState().tabs.find((t) => t.id === tabId);
+        const scrollPos = initialTab?.viewerState?.scrollPosition;
+        return scrollPos && scrollPos > 0 && scrollPos <= 1 ? scrollPos : 0;
+    });
     const [resetKey, setResetKey] = useState(0);
     const lastSyncedIndexRef = useRef<number>(-1);
     const lastProcessedParamsRef = useRef<{ targetPath?: string; startIndex?: string } | null>(null);
