@@ -167,6 +167,7 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
         currentIndex: viewerState.currentIndex,
         resumeIndex: viewerState.resumeIndex,
         setResumeIndex: viewerState.setResumeIndex,
+        setResumeScrollPos: viewerState.setResumeScrollPos,
         setResetKey: viewerState.setResetKey,
         lastProcessedParamsRef: viewerState.lastProcessedParamsRef,
         updateTabState: viewerState.updateTabState,
@@ -371,8 +372,6 @@ const handleBack = useCallback(() => {
                     verticalWidth={viewerState.currentVerticalWidth}
                     onWidthChange={viewerState.handleWidthChange}
                     isActive={isActive}
-                    resetKey={viewerState.resetKey}
-                    folderPath={viewerState.currentFolder.path}
                     onPageChange={saveProgress}
                     tabId={tabId}
                     onNextBoundary={handleNextBoundary}

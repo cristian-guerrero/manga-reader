@@ -208,102 +208,81 @@ export const VerticalViewer = React.memo(({
         }
     }, [displayIndex, images.length, onIndexChange, onScrollPositionChange]);
 
-    // Reset appliedInitialIndexRef when tab becomes active or folder changes
-    // This ensures we can scroll again when switching tabs
-    // Runs in layout phase (before paint) so reset happens before restoration
-    useLayoutEffect(() => {
-        if (isActive) {
-            // Reset refs when tab becomes active to allow scrolling to the correct position
-            appliedInitialIndexRef.current = -1;
-            appliedInitialScrollRef.current = -1;
-        }
-    }, [isActive, images.length]); // Reset when tab becomes active or images change
-
     // Handle initial scroll/resume - runs in layout phase (before paint) to prevent flash of first page
     useLayoutEffect(() => {
         if (!parentRef.current || images.length === 0) return;
         if (!isActive) return;
-
-        // Don't restore if user is actively scrolling
         if (isUserScrollingRef.current) return;
 
-        // Check if we already applied this exact scroll position
-        const scrollKey = `${initialIndex}_${initialScrollPosition ?? 0}`;
-        const lastScrollKey = `${appliedInitialIndexRef.current}_${appliedInitialScrollRef.current}`;
-        if (scrollKey === lastScrollKey) return;
+        // Reset applied refs when tab becomes active to allow re-scroll on tab switch
+        appliedInitialIndexRef.current = -1;
+        appliedInitialScrollRef.current = -1;
 
         const container = parentRef.current;
-        const currentScrollTop = container.scrollTop;
 
-        // If we have a scroll position, apply it immediately (before paint)
-        if (initialScrollPosition !== undefined && initialScrollPosition >= 0) {
-            let scrollTopPixels = initialScrollPosition;
-
-            // If initialScrollPosition is between 0 and 1, it's a percentage - convert to pixels
-            if (initialScrollPosition > 0 && initialScrollPosition <= 1) {
-                const { scrollHeight, clientHeight } = container;
-                const maxScroll = scrollHeight - clientHeight;
-                if (maxScroll > 0) {
-                    scrollTopPixels = initialScrollPosition * maxScroll;
-                } else {
-                    scrollTopPixels = -1;
-                }
-            }
-
-            if (scrollTopPixels >= 0) {
-                // Check proximity to avoid unnecessary scroll
-                const scrollDiff = Math.abs(currentScrollTop - scrollTopPixels);
-                if (scrollDiff < 50) {
-                    appliedInitialIndexRef.current = initialIndex;
-                    appliedInitialScrollRef.current = currentScrollTop;
-                } else {
-                    container.scrollTop = scrollTopPixels;
-                    appliedInitialIndexRef.current = initialIndex;
-                    appliedInitialScrollRef.current = scrollTopPixels;
-                }
-            } else {
-                // Can't convert, scroll to initialIndex
-                const target = itemRefs.current[initialIndex];
-                if (target) {
-                    target.scrollIntoView({ block: 'start', behavior: 'instant' });
-                    appliedInitialIndexRef.current = initialIndex;
-                    appliedInitialScrollRef.current = container.scrollTop;
-                }
-            }
-        } else if (initialIndex >= 0 && initialIndex < images.length) {
-            // Fallback to scrollIntoView
+        // Phase 1: Immediate approximate positioning via scrollIntoView on target index
+        // This works before images load because DOM elements have minHeight,
+        // and positions the viewport at the correct image before the first paint
+        if (initialIndex >= 0 && initialIndex < images.length) {
             const target = itemRefs.current[initialIndex];
             if (target) {
                 target.scrollIntoView({ block: 'start', behavior: 'instant' });
-                appliedInitialIndexRef.current = initialIndex;
-                appliedInitialScrollRef.current = container.scrollTop;
             }
         }
 
-        // Schedule a delayed fine-tuning pass after images have likely loaded
-        // This corrects any offset caused by images loading and changing scrollHeight
-        const timeoutId = setTimeout(() => {
-            if (!parentRef.current) return;
-            if (isUserScrollingRef.current) return;
+        appliedInitialIndexRef.current = initialIndex;
+        appliedInitialScrollRef.current = container.scrollTop;
 
-            const c = parentRef.current;
+        // Phase 2: Deferred exact percentage correction after images have loaded
+        // Uses requestAnimationFrame to wait until scrollHeight stabilizes
+        // (indicating images near the viewport have finished loading)
+        if (initialScrollPosition !== undefined && initialScrollPosition > 0 && initialScrollPosition <= 1) {
+            let cancelled = false;
+            let stableFrames = 0;
+            let lastScrollHeight = container.scrollHeight;
+            let frameCount = 0;
+            const MAX_FRAMES = 80;
 
-            if (initialScrollPosition !== undefined && initialScrollPosition > 0 && initialScrollPosition <= 1) {
-                const { scrollHeight, clientHeight } = c;
-                const maxScroll = scrollHeight - clientHeight;
-                if (maxScroll > 0) {
-                    const exactPixels = initialScrollPosition * maxScroll;
-                    if (Math.abs(c.scrollTop - exactPixels) > 50) {
-                        c.scrollTop = exactPixels;
-                        appliedInitialScrollRef.current = exactPixels;
-                    }
+            const applyExactPosition = () => {
+                frameCount++;
+                if (cancelled || !parentRef.current || frameCount > MAX_FRAMES) {
+                    onRestorationComplete?.();
+                    return;
                 }
-            }
 
+                const c = parentRef.current;
+                const { scrollHeight, clientHeight } = c;
+
+                if (scrollHeight === lastScrollHeight) {
+                    stableFrames++;
+                } else {
+                    stableFrames = 0;
+                    lastScrollHeight = scrollHeight;
+                }
+
+                // Apply when scrollHeight is stable for 3 consecutive frames
+                // or if it hasn't changed at all since mount
+                if (stableFrames >= 3 || (frameCount > 1 && scrollHeight === container.scrollHeight)) {
+                    const maxScroll = scrollHeight - clientHeight;
+                    if (maxScroll > 0) {
+                        const exactPixels = initialScrollPosition * maxScroll;
+                        if (Math.abs(c.scrollTop - exactPixels) > 30) {
+                            c.scrollTop = exactPixels;
+                            appliedInitialScrollRef.current = exactPixels;
+                        }
+                    }
+                    onRestorationComplete?.();
+                } else {
+                    requestAnimationFrame(applyExactPosition);
+                }
+            };
+
+            requestAnimationFrame(applyExactPosition);
+
+            return () => { cancelled = true; };
+        } else {
             onRestorationComplete?.();
-        }, 200);
-
-        return () => clearTimeout(timeoutId);
+        }
     }, [initialIndex, initialScrollPosition, images.length, isActive, onRestorationComplete]);
 
     // Auto-scroll pixels per second calculation
