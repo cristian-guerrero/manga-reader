@@ -121,9 +121,22 @@ export function useViewerFolderLoading({
                     }
 
                     // Prioritization logic for target index
-                    if (isRestored && savedViewerState && savedViewerState.currentIndex >= 0 && savedViewerState.currentIndex < imgs.length) {
-                        targetIndex = savedViewerState.currentIndex;
-                        console.log(`[useViewerFolderLoading] Restoring from BACKEND state (tab restoration): index=${targetIndex}`);
+                    if (isRestored) {
+                        // Use the tab's own restored viewerState (avoids double-overwrite from backend)
+                        const restoredState = activeTab?.viewerState;
+                        if (restoredState?.currentIndex !== undefined && restoredState.currentIndex >= 0 && restoredState.currentIndex < imgs.length) {
+                            targetIndex = restoredState.currentIndex;
+                            console.log(`[useViewerFolderLoading] Using tab's restored state: index=${targetIndex}`);
+                            if (restoredState.scrollPosition && restoredState.scrollPosition > 0 && restoredState.scrollPosition <= 1) {
+                                targetScroll = restoredState.scrollPosition;
+                            }
+                        } else if (savedViewerState && savedViewerState.currentIndex >= 0 && savedViewerState.currentIndex < imgs.length) {
+                            targetIndex = savedViewerState.currentIndex;
+                            console.log(`[useViewerFolderLoading] Fallback to BACKEND state: index=${targetIndex}`);
+                            if (savedViewerState.scrollPosition && savedViewerState.scrollPosition > 0 && savedViewerState.scrollPosition <= 1) {
+                                targetScroll = savedViewerState.scrollPosition;
+                            }
+                        }
                     } else if (targetPath && !isRestored) {
                         const pathIndex = imgs.findIndex((img) => img.path === targetPath);
                         if (pathIndex >= 0) {
@@ -158,11 +171,15 @@ export function useViewerFolderLoading({
                     setResumeScrollPos(targetScroll);
 
                     // Update store with new images and index
+                    // Preserve restored tab's own verticalWidth when available
+                    const restoredVerticalWidth = (isRestored && activeTab?.viewerState?.verticalWidth)
+                        ? activeTab.viewerState.verticalWidth
+                        : (savedViewerState?.verticalWidth || 0);
                     updateTabState({
                         images: imgs,
                         currentIndex: targetIndex,
                         scrollPosition: targetScroll,
-                        verticalWidth: savedViewerState?.verticalWidth || 0,
+                        verticalWidth: restoredVerticalWidth,
                         currentFolder: folderInfo as FolderInfo,
                         isLoading: false
                     });
