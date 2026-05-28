@@ -56,6 +56,8 @@ func TestCanHandle(t *testing.T) {
 			validURLs: []string{
 				"https://imhentai.xxx/gallery/1063156/",
 				"https://imhentai.xxx/view/1063156/1/",
+				"https://imhentai.xxx/artist/iwasaki-yuuki/",
+				"https://imhentai.xxx/artist/iwasaki-yuuki/?lang=en",
 			},
 			invalidURLs: []string{
 				"https://example.com/page",
@@ -230,6 +232,20 @@ func TestCanHandle(t *testing.T) {
 				"https://hentai2read.com/test/",
 			},
 		},
+		{
+			name:       "MairimashitaIrumaDownloader",
+			downloader: &MairimashitaIrumaDownloader{},
+			validURLs: []string{
+				"https://mairimashitairuma-kun.com/manga/mairimashita-iruma-kun-chapter-178/",
+				"https://mairimashitairuma-kun.com/manga/mairimashita-iruma-kun-chapter-443-5/",
+				"https://mairimashitairuma-kun.com/",
+				"https://mairimashitairuma-kun.com/manga/",
+			},
+			invalidURLs: []string{
+				"https://example.com/page",
+				"https://hitomi.la/galleries/123.html",
+			},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -323,6 +339,11 @@ func TestGetSiteID(t *testing.T) {
 			downloader: &IMHentaiToDownloader{},
 			expectedID: "imhentai.to",
 		},
+		{
+			name:       "MairimashitaIrumaDownloader",
+			downloader: &MairimashitaIrumaDownloader{},
+			expectedID: "mairimashitairuma-kun.com",
+		},
 	}
 
 	for _, tc := range testCases {
@@ -388,6 +409,10 @@ func TestModule_AlgorithmSelection(t *testing.T) {
 		{
 			url:        "https://lhentai.com/g/49486",
 			expectedID: "lhentai.com",
+		},
+		{
+			url:        "https://mairimashitairuma-kun.com/manga/mairimashita-iruma-kun-chapter-178/",
+			expectedID: "mairimashitairuma-kun.com",
 		},
 	}
 

@@ -100,6 +100,7 @@ func NewModule(pm *database.DownloaderRepository, sm *database.SettingsRepositor
 			&LectorHentaiDownloader{},
 			&HentaiFoxDownloader{},
 			&NHentaiToDownloader{},
+			&MairimashitaIrumaDownloader{},
 		},
 	}
 }
