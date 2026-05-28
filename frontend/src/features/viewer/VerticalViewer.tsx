@@ -14,7 +14,7 @@ interface VerticalViewerProps {
         thumbnailUrl?: string;
     }>;
     initialIndex?: number;
-    initialScrollPosition?: number; // Position in pixels from top of container
+    initialScrollPosition?: number; // 0-1 percentage of max scroll
     showControls?: boolean;
     hasChapterButtons?: boolean;
     isAutoScrolling?: boolean;
@@ -158,9 +158,12 @@ export const VerticalViewer = React.memo(({
             }
         }, 150);
         
-        // Report scroll position to parent (debounced internally in parent)
+        // Report scroll position as percentage (0-1) so the state system stores it consistently
         if (onScrollPositionChange) {
-            onScrollPositionChange(scrollTop);
+            const { scrollHeight, clientHeight } = container;
+            const maxScroll = scrollHeight - clientHeight;
+            const percentage = maxScroll > 0 ? scrollTop / maxScroll : 0;
+            onScrollPositionChange(percentage);
         }
 
         const containerRect = container.getBoundingClientRect();
