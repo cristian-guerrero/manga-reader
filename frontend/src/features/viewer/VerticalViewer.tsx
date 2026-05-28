@@ -115,6 +115,7 @@ export const VerticalViewer = React.memo(({
     const appliedInitialIndexRef = useRef<number>(-1);
     const appliedInitialScrollRef = useRef<number>(-1);
     const isUserScrollingRef = useRef<boolean>(false); // Track if user is actively scrolling
+    const hasEverCompletedRef = useRef<boolean>(false); // Track if restoration completed once (images were loaded)
     const lastUserScrollTimeRef = useRef<number>(0); // Track when user last scrolled
 
     // LOCAL state for display index
@@ -221,9 +222,23 @@ export const VerticalViewer = React.memo(({
 
         const container = parentRef.current;
 
-        // Phase 1: Immediate approximate positioning via scrollIntoView on target index
-        // This works before images load because DOM elements have minHeight,
-        // and positions the viewport at the correct image before the first paint
+        // If restoration already completed once (images were previously loaded),
+        // use direct percentage→pixels positioning — scrollHeight is already accurate
+        if (hasEverCompletedRef.current) {
+            if (initialScrollPosition !== undefined && initialScrollPosition > 0 && initialScrollPosition <= 1) {
+                const { scrollHeight, clientHeight } = container;
+                const maxScroll = scrollHeight - clientHeight;
+                if (maxScroll > 0) {
+                    container.scrollTop = initialScrollPosition * maxScroll;
+                }
+            }
+            appliedInitialIndexRef.current = initialIndex;
+            appliedInitialScrollRef.current = initialScrollPosition ?? 0;
+            onRestorationComplete?.();
+            return;
+        }
+
+        // First-time setup: images not yet loaded, use scrollIntoView for approximate positioning
         if (initialIndex >= 0 && initialIndex < images.length) {
             const target = itemRefs.current[initialIndex];
             if (target) {
@@ -234,9 +249,8 @@ export const VerticalViewer = React.memo(({
         appliedInitialIndexRef.current = initialIndex;
         appliedInitialScrollRef.current = initialScrollPosition ?? 0;
 
-        // Phase 2: Deferred exact percentage correction after images have loaded
-        // Uses requestAnimationFrame to wait until scrollHeight stabilizes
-        // (indicating images near the viewport have finished loading)
+        // Deferred rAF-based correction: waits for scrollHeight to stabilize (images load)
+        // then applies exact percentage position. Only runs on first mount.
         if (initialScrollPosition !== undefined && initialScrollPosition > 0 && initialScrollPosition <= 1) {
             let cancelled = false;
             let stableFrames = 0;
@@ -247,6 +261,7 @@ export const VerticalViewer = React.memo(({
             const applyExactPosition = () => {
                 frameCount++;
                 if (cancelled || !parentRef.current || frameCount > MAX_FRAMES) {
+                    hasEverCompletedRef.current = true;
                     onRestorationComplete?.();
                     return;
                 }
@@ -261,8 +276,6 @@ export const VerticalViewer = React.memo(({
                     lastScrollHeight = scrollHeight;
                 }
 
-                // Apply when scrollHeight is stable for 3 consecutive frames
-                // or if it hasn't changed at all since mount
                 if (stableFrames >= 3 || (frameCount > 1 && scrollHeight === container.scrollHeight)) {
                     const maxScroll = scrollHeight - clientHeight;
                     if (maxScroll > 0) {
@@ -271,6 +284,7 @@ export const VerticalViewer = React.memo(({
                             c.scrollTop = exactPixels;
                         }
                     }
+                    hasEverCompletedRef.current = true;
                     onRestorationComplete?.();
                 } else {
                     requestAnimationFrame(applyExactPosition);
@@ -281,6 +295,7 @@ export const VerticalViewer = React.memo(({
 
             return () => { cancelled = true; };
         } else {
+            hasEverCompletedRef.current = true;
             onRestorationComplete?.();
         }
     }, [initialIndex, initialScrollPosition, images.length, isActive, onRestorationComplete]);
