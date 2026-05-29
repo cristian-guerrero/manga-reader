@@ -35,7 +35,8 @@ export function LateralViewer({
     onPrevBoundary,
 }: LateralViewerProps) {
     const [loadedImages, setLoadedImages] = useState<Record<number, string>>({});
-    const { lateralMode, readingDirection } = useSettingsStore();
+    const lateralMode = useSettingsStore((s) => s.lateralMode);
+    const readingDirection = useSettingsStore((s) => s.readingDirection);
     const { currentIndex, setCurrentIndex } = useViewer(tabId);
 
     // Enable keyboard navigation with boundary callbacks

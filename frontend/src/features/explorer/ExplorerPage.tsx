@@ -129,15 +129,23 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
   loadDirRef.current = loading.loadDirectory;
 
   const [pinnedFolders, setPinnedFolders] = useState<string[]>([]);
+  const [pinnedImages, setPinnedImages] = useState<string[]>([]);
 
   useEffect(() => {
     if (!explorerStateHook.currentPath) {
       setPinnedFolders([]);
+      setPinnedImages([]);
       return;
     }
-    FolderOrderAPI.getPinnedFolders(explorerStateHook.currentPath, sorting.sortBy)
-      .then(setPinnedFolders)
-      .catch(() => setPinnedFolders([]));
+    const p = explorerStateHook.currentPath;
+    const sort = sorting.sortBy;
+    Promise.all([
+      FolderOrderAPI.getPinnedFolders(p, sort).catch(() => [] as string[]),
+      ImageOrderAPI.getPinnedImages(p, sort).catch(() => [] as string[]),
+    ]).then(([folders, images]) => {
+      setPinnedFolders(folders);
+      setPinnedImages(images);
+    });
   }, [explorerStateHook.currentPath, sorting.sortBy]);
 
   const [justPinned, setJustPinned] = useState<string | null>(null);
@@ -161,18 +169,6 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
   const isPinned = useCallback((entryName: string) => {
     return pinnedFolders.includes(entryName);
   }, [pinnedFolders]);
-
-  const [pinnedImages, setPinnedImages] = useState<string[]>([]);
-
-  useEffect(() => {
-    if (!explorerStateHook.currentPath) {
-      setPinnedImages([]);
-      return;
-    }
-    ImageOrderAPI.getPinnedImages(explorerStateHook.currentPath, sorting.sortBy)
-      .then(setPinnedImages)
-      .catch(() => setPinnedImages([]));
-  }, [explorerStateHook.currentPath, sorting.sortBy]);
 
   const [justPinnedImage, setJustPinnedImage] = useState<string | null>(null);
 

@@ -8,7 +8,8 @@ import { useUpdaterStore } from '@stores/updaterStore';
 
 export function UpdateSection() {
   const { t } = useTranslation();
-  const { autoUpdate, setAutoUpdate } = useSettingsStore();
+  const autoUpdate = useSettingsStore((s) => s.autoUpdate);
+  const setAutoUpdate = useSettingsStore((s) => s.setAutoUpdate);
   const { currentVersion, updateState, isChecking, checkForUpdate, updateInfo, init } = useUpdaterStore();
 
   useEffect(() => { init(); }, [init]);

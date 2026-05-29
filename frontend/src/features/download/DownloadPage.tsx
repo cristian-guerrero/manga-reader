@@ -18,8 +18,9 @@ import type { DownloadJob } from './types';
 export function DownloadPage() {
     const { t } = useTranslation();
     const { showToast } = useToast();
-    const settings = useSettingsStore();
-    const { updateSettings } = settings;
+    const downloadPath = useSettingsStore((s) => s.downloadPath);
+    const autoResumeDownloads = useSettingsStore((s) => s.autoResumeDownloads);
+    const updateSettings = useSettingsStore((s) => s.updateSettings);
     const [isHelpOpen, setIsHelpOpen] = useState(false);
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
@@ -112,7 +113,7 @@ export function DownloadPage() {
                 onStartDownload={handleStartDownload}
                 isLoading={isLoading}
                 onSelectPath={handleSelectPath}
-                downloadPath={settings.downloadPath || t('download.defaultPath')}
+                downloadPath={downloadPath || t('download.defaultPath')}
             />
 
             {/* History Section */}
@@ -137,7 +138,7 @@ export function DownloadPage() {
                     groupedHistory={groupedHistory}
                     expandedSeries={expandedSeries}
                     toggleSeries={toggleSeries}
-                    autoResumeDownloads={settings.autoResumeDownloads || false}
+                    autoResumeDownloads={autoResumeDownloads || false}
                     onRemoveJob={handleRemoveJob}
                     onResumeDownload={handleResumeDownload}
                     onRemoveSeries={handleRemoveSeries}

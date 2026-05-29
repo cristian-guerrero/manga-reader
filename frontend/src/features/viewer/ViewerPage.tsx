@@ -39,7 +39,8 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
     const fromPage = navFromPage || params.from || 'series';
     const isExplorerMode = fromPage === 'explorer';
     console.log('[ViewerPage] fromPage:', fromPage, 'isExplorer:', isExplorerMode, 'folderPath:', folderPath, 'navFromPage:', navFromPage, 'params.from:', params.from);
-    const { scrollSpeed, setScrollSpeed } = useSettingsStore();
+    const scrollSpeed = useSettingsStore((s) => s.scrollSpeed);
+    const setScrollSpeed = useSettingsStore((s) => s.setScrollSpeed);
     const { setViewerState: updateTabState } = useViewer(tabId);
     const tabScrollPosition = useTabStore((state) => {
         const tab = state.tabs.find((t) => t.id === tabId);
@@ -56,22 +57,15 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
     // Use controls hook
     const controls = useViewerControls();
 
-    // Sync initialIndex from the store on tab activation to prevent stale resumeIndex.
-    // useEffect runs too late — by then the first render with stale values has committed.
-    // Reading directly from store during render ensures VerticalViewer gets the correct
-    // scroll position in the FIRST commit, avoiding a two-step visual jump.
-    const prevIsActive = useRef(isActive);
-    const effectiveResumeIndex = !prevIsActive.current && isActive && tabId
+    // Read freshest values directly from store during render to avoid stale useState
+    // cache on tab activation. This ensures VerticalViewer gets the correct scroll
+    // position in the FIRST commit, avoiding a two-step visual jump.
+    const effectiveResumeIndex = isActive && tabId
         ? (useTabStore.getState().tabs.find((t) => t.id === tabId)?.viewerState?.currentIndex ?? viewerState.resumeIndex)
         : viewerState.resumeIndex;
-    const effectiveResumeScrollPos = !prevIsActive.current && isActive && tabId
-        ? (useTabStore.getState().tabs.find((t) => t.id === tabId)?.viewerState?.scrollPosition ?? 0)
+    const effectiveResumeScrollPos = isActive && tabId
+        ? (useTabStore.getState().tabs.find((t) => t.id === tabId)?.viewerState?.scrollPosition ?? viewerState.resumeScrollPos)
         : viewerState.resumeScrollPos;
-    if (!prevIsActive.current && isActive) {
-        prevIsActive.current = true;
-    } else if (!isActive) {
-        prevIsActive.current = false;
-    }
 
     // Session flag state
     const [isNoHistorySession, setIsNoHistorySession] = useState(params.noHistory === 'true');

@@ -284,7 +284,7 @@ export const VerticalViewer = React.memo(({
             let stableFrames = 0;
             let lastScrollHeight = container.scrollHeight;
             let frameCount = 0;
-            const MAX_FRAMES = 30;
+            const MAX_FRAMES = 10;
 
             const applyExactPosition = () => {
                 frameCount++;
@@ -308,7 +308,7 @@ export const VerticalViewer = React.memo(({
                     const maxScroll = scrollHeight - clientHeight;
                     if (maxScroll > 0) {
                         const exactPixels = initialScrollPosition * maxScroll;
-                        if (Math.abs(c.scrollTop - exactPixels) > 30) {
+                        if (Math.abs(c.scrollTop - exactPixels) > 5) {
                             c.scrollTop = exactPixels;
                         }
                     }

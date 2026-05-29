@@ -95,7 +95,7 @@ const fallbackIcon = (
     </svg>
 );
 
-function PinnedSortableTile({
+const PinnedSortableTile = memo(function PinnedSortableTile({
     entry,
     thumbnail,
     onClick,
@@ -155,7 +155,7 @@ function PinnedSortableTile({
             </div>
         </div>
     );
-}
+});
 
 export const DirectoryView = memo(function DirectoryView({
     entries,
@@ -265,7 +265,7 @@ export const DirectoryView = memo(function DirectoryView({
                 </div>
             </GridItem>
         );
-    }, [entries, thumbnails, isCustomMode, pinnedFolders, pinnedImages, justPinned, justPinnedImage, onItemClick, onItemAuxClick, onItemContextMenu, onLoadThumbnail, onOpenViewer, t, gridItemSize]);
+    }, [thumbnails, isCustomMode, pinnedFolders, pinnedImages, justPinned, justPinnedImage, onItemClick, onItemAuxClick, onItemContextMenu, onLoadThumbnail, onOpenViewer, t, gridItemSize]);
 
     const renderListEntry = useCallback((entry: ExplorerEntry) => {
         const thumb = entry.thumbnailUrl || thumbnails[entry.path];
@@ -280,7 +280,7 @@ export const DirectoryView = memo(function DirectoryView({
                 onOpenViewer={onOpenViewer}
             />
         );
-    }, [entries, thumbnails, onItemClick, onItemAuxClick, onItemContextMenu, onOpenViewer]);
+    }, [thumbnails, onItemClick, onItemAuxClick, onItemContextMenu, onOpenViewer]);
 
     if (viewMode === 'list') {
         return (

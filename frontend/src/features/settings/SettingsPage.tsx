@@ -5,6 +5,7 @@
 
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { useShallow } from 'zustand/react/shallow';
 import { useSettingsStore } from '@stores';
 import { useSettingsActions, useSettingsDialogs } from './hooks';
 import { SettingsHeader } from './components/SettingsHeader';
@@ -20,7 +21,39 @@ import { SettingsDialogs } from './components/SettingsDialogs';
 
 export const SettingsPage: React.FC = () => {
   const { t } = useTranslation();
-  const settings = useSettingsStore();
+  const settings = useSettingsStore(useShallow((s) => ({
+    language: s.language,
+    theme: s.theme,
+    viewerMode: s.viewerMode,
+    verticalWidth: s.verticalWidth,
+    lateralMode: s.lateralMode,
+    readingDirection: s.readingDirection,
+    panicKey: s.panicKey,
+    showImageInfo: s.showImageInfo,
+    enableHistory: s.enableHistory,
+    minImageSize: s.minImageSize,
+    processDroppedFolders: s.processDroppedFolders,
+    generateThumbnails: s.generateThumbnails,
+    tabMemorySaving: s.tabMemorySaving,
+    restoreTabs: s.restoreTabs,
+    themeAccents: s.themeAccents,
+    enabledMenuItems: s.enabledMenuItems,
+    setTheme: s.setTheme,
+    setAccentColor: s.setAccentColor,
+    setLanguage: s.setLanguage,
+    toggleMenuItem: s.toggleMenuItem,
+    setViewerMode: s.setViewerMode,
+    setVerticalWidth: s.setVerticalWidth,
+    setLateralMode: s.setLateralMode,
+    setReadingDirection: s.setReadingDirection,
+    setShowImageInfo: s.setShowImageInfo,
+    setEnableHistory: s.setEnableHistory,
+    setMinImageSize: s.setMinImageSize,
+    setProcessDroppedFolders: s.setProcessDroppedFolders,
+    setGenerateThumbnails: s.setGenerateThumbnails,
+    setTabMemorySaving: s.setTabMemorySaving,
+    setRestoreTabs: s.setRestoreTabs,
+  })));
   const { handleLanguageChange, handleResetSettings, handleClearCache } = useSettingsActions();
   const {
     isResetOpen,

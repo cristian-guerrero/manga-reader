@@ -35,6 +35,7 @@ export function useKeyboardNav(options: UseKeyboardNavOptions = {}) {
         nextImage,
         prevImage,
         goToImage,
+        imagesLength: images.length,
         zoomIn,
         zoomOut,
         resetZoom,
@@ -50,6 +51,7 @@ export function useKeyboardNav(options: UseKeyboardNavOptions = {}) {
             nextImage,
             prevImage,
             goToImage,
+            imagesLength: images.length,
             zoomIn,
             zoomOut,
             resetZoom,
@@ -58,7 +60,7 @@ export function useKeyboardNav(options: UseKeyboardNavOptions = {}) {
             onNextBoundary,
             onPrevBoundary,
         };
-    }, [nextImage, prevImage, goToImage, zoomIn, zoomOut, resetZoom, goBack, toggleSidebar, onNextBoundary, onPrevBoundary]);
+    }, [nextImage, prevImage, goToImage, images.length, zoomIn, zoomOut, resetZoom, goBack, toggleSidebar, onNextBoundary, onPrevBoundary]);
 
     // Create stable callbacks that use refs
     const handleNext = useCallback((e: KeyboardEvent) => {
@@ -84,8 +86,8 @@ export function useKeyboardNav(options: UseKeyboardNavOptions = {}) {
 
     const handleEnd = useCallback((e: KeyboardEvent) => {
         e.preventDefault();
-        callbacksRef.current.goToImage(images.length - 1);
-    }, [images.length]);
+        callbacksRef.current.goToImage(callbacksRef.current.imagesLength - 1);
+    }, []);
 
     const handleZoomIn = useCallback((e: KeyboardEvent) => {
         e.preventDefault();

@@ -183,7 +183,7 @@ export function TabList() {
   const closeTab = useTabStore((s) => s.closeTab);
   const addTab = useTabStore((s) => s.addTab);
   const reorderTabs = useTabStore((s) => s.reorderTabs);
-  const { theme: themeId } = useSettingsStore();
+  const themeId = useSettingsStore((s) => s.theme);
   const [contextMenu, setContextMenu] = useState<{
     x: number;
     y: number;

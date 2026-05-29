@@ -105,7 +105,9 @@ const navItems: NavItem[] = [
 
 export function Sidebar() {
     const { t } = useTranslation();
-    const { sidebarCollapsed, toggleSidebar, enabledMenuItems } = useSettingsStore();
+    const sidebarCollapsed = useSettingsStore((s) => s.sidebarCollapsed);
+    const toggleSidebar = useSettingsStore((s) => s.toggleSidebar);
+    const enabledMenuItems = useSettingsStore((s) => s.enabledMenuItems);
     const { activeMenuPage, navigate } = useNavigation();
     const { addTab } = useTabStore();
     const [contextMenu, setContextMenu] = useState<{

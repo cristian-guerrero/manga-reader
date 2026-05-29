@@ -16,8 +16,9 @@ interface DownloadFormProps {
 
 export function DownloadForm({ onStartDownload, isLoading, onSelectPath, downloadPath }: DownloadFormProps) {
     const { t } = useTranslation();
-    const settings = useSettingsStore();
-    const { updateSettings } = settings;
+    const clipboardAutoMonitor = useSettingsStore((s) => s.clipboardAutoMonitor);
+    const autoResumeDownloads = useSettingsStore((s) => s.autoResumeDownloads);
+    const updateSettings = useSettingsStore((s) => s.updateSettings);
     const [url, setUrl] = useState('');
 
     return (
@@ -45,12 +46,12 @@ export function DownloadForm({ onStartDownload, isLoading, onSelectPath, downloa
             <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2">
                     <Toggle
-                        checked={settings.clipboardAutoMonitor}
+                        checked={clipboardAutoMonitor}
                         onChange={(val) => updateSettings({ clipboardAutoMonitor: val })}
                     />
                     <span 
                         className="text-sm cursor-pointer" 
-                        onClick={() => updateSettings({ clipboardAutoMonitor: !settings.clipboardAutoMonitor })} 
+                        onClick={() => updateSettings({ clipboardAutoMonitor: !clipboardAutoMonitor })} 
                         style={{ color: 'var(--color-text-secondary)' }}
                     >
                         {t('download.autoMonitor')}
@@ -61,12 +62,12 @@ export function DownloadForm({ onStartDownload, isLoading, onSelectPath, downloa
 
                 <div className="flex items-center gap-2">
                     <Toggle
-                        checked={settings.autoResumeDownloads || false}
+                        checked={autoResumeDownloads || false}
                         onChange={(val) => updateSettings({ autoResumeDownloads: val })}
                     />
                     <span 
                         className="text-sm cursor-pointer" 
-                        onClick={() => updateSettings({ autoResumeDownloads: !(settings.autoResumeDownloads || false) })} 
+                        onClick={() => updateSettings({ autoResumeDownloads: !(autoResumeDownloads || false) })} 
                         style={{ color: 'var(--color-text-secondary)' }}
                     >
                         {t('download.autoResume') || 'Auto-resume downloads'}
