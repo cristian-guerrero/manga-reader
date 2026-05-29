@@ -291,6 +291,22 @@ export function useExplorerNavigation({
                         forwardHistory,
                     });
 
+                    // Sync viewerState BEFORE navigating so ViewerPage shows the correct
+                    // image on first render (not a stale index from a previous session)
+                    if (clickedIndex >= 0) {
+                        const store = useTabStore.getState();
+                        const existing = store.tabs.find(t => t.id === store.activeTabId)?.viewerState;
+                        if (existing) {
+                            store.updateTab(store.activeTabId, {
+                                viewerState: {
+                                    ...existing,
+                                    currentIndex: clickedIndex,
+                                    scrollPosition: 0
+                                }
+                            });
+                        }
+                    }
+
                     const hasSubdirs = entries.some(ent => ent.isDirectory);
 
                     navigate('viewer', {
@@ -347,8 +363,15 @@ export function useExplorerNavigation({
                             targetPath: ent.path,
                             sortBy: currentSortBy ?? 'name',
                             sortOrder: currentSortOrder ?? 'asc',
+                            from: 'explorer',
                             ...(hasSubdirs ? { navRoot: currentPath } : {})
-                        }, ent.name, {}, false);
+                        }, ent.name, {
+                            explorerState: {
+                                currentPath,
+                                pathHistory,
+                                forwardHistory: []
+                            }
+                        }, false);
                     }
                 }
             }
