@@ -3,7 +3,7 @@
  * Refactored to use custom hooks for better separation of concerns
  */
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useMobileScroll } from "@contexts/MobileScrollContext";
 import {
@@ -389,9 +389,8 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
     setContextMenu(null);
   }, []);
 
-  const contextMenuItems: ContextMenuItem[] = contextMenu
+  const contextMenuItems: ContextMenuItem[] = useMemo(() => contextMenu
     ? [
-        // Pin/Unpin for directories
         ...(contextMenu.entry.isDirectory
           ? [
               isPinned(contextMenu.entry.name)
@@ -407,7 +406,6 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
                   } as ContextMenuItem,
             ]
           : []),
-        // Pin/Unpin for images (files)
         ...(!contextMenu.entry.isDirectory
           ? [
               isImagePinned(contextMenu.entry.name)
@@ -423,7 +421,6 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
                   } as ContextMenuItem,
             ]
           : []),
-        // "Open in One Shot": only for leaf directories with images
         ...(contextMenu.entry.subdirectoryCount === 0 && contextMenu.entry.hasImages
           ? [
               {
@@ -436,7 +433,6 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
               } as ContextMenuItem,
             ]
           : []),
-        // "Open in Series": only for directories with subfolders
         ...(contextMenu.entry.subdirectoryCount > 0
           ? [
               {
@@ -455,7 +451,6 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
               } as ContextMenuItem,
             ]
           : []),
-        // "Open in Colorizer": only for leaf directories with images
         ...(contextMenu.entry.subdirectoryCount === 0 && contextMenu.entry.hasImages
           ? [
               {
@@ -468,7 +463,6 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
               } as ContextMenuItem,
             ]
           : []),
-        // Always show "Open in File Manager"
         {
           id: 'open-in-file-manager',
           label: t('explorer.openInFileManager'),
@@ -476,7 +470,7 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
             AppAPI.openInFileManager(contextMenu.entry.path),
         },
       ]
-    : [];
+    : [], [contextMenu, isPinned, isImagePinned, handleUnpinFolder, handlePinFolder, handleUnpinImage, handlePinImage, t, navigate]);
 
   // Use restoration hook
   useExplorerRestoration({

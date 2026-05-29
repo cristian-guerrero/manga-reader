@@ -126,6 +126,8 @@ export const VerticalViewer = React.memo(({
     const lastScrollTimeRef = useRef<number>(0);
     const lastScrollTopRef = useRef<number>(0);
     const userScrollingRef = useRef<boolean>(false);
+    const scrollRafRef = useRef<number>(0);
+    const lastScrollReportRef = useRef<number>(0);
 
     // Memoize the image list to prevent wholesale re-renders
     const imageElements = useMemo(() => {
@@ -141,6 +143,7 @@ export const VerticalViewer = React.memo(({
     }, [images, verticalWidth]);
 
     // Handle scroll - Optimized to find current index and report scroll position
+    // Uses RAF throttling to avoid 60fps state updates and eliminates full DOM scan.
     const handleScroll = useCallback(() => {
         if (!parentRef.current) return;
 
@@ -153,28 +156,33 @@ export const VerticalViewer = React.memo(({
         
         // Clear the flag after a delay (user stopped scrolling)
         setTimeout(() => {
-            // Only clear if no scroll happened in the last 150ms
             if (Date.now() - lastUserScrollTimeRef.current >= 150) {
                 isUserScrollingRef.current = false;
             }
         }, 150);
         
-        // Report scroll position as percentage (0-1) so the state system stores it consistently
-        if (onScrollPositionChange) {
-            const { scrollHeight, clientHeight } = container;
-            const maxScroll = scrollHeight - clientHeight;
-            const percentage = maxScroll > 0 ? scrollTop / maxScroll : 0;
-            onScrollPositionChange(percentage);
+        // RAF-throttled scroll position reporting for cleaner backpressure
+        if (onScrollPositionChange && Date.now() - lastScrollReportRef.current > 50) {
+            cancelAnimationFrame(scrollRafRef.current);
+            scrollRafRef.current = requestAnimationFrame(() => {
+                if (!parentRef.current) return;
+                const c = parentRef.current;
+                const { scrollHeight, clientHeight } = c;
+                const maxScroll = scrollHeight - clientHeight;
+                const percentage = maxScroll > 0 ? c.scrollTop / maxScroll : 0;
+                onScrollPositionChange(percentage);
+                lastScrollReportRef.current = Date.now();
+            });
         }
 
         const containerRect = container.getBoundingClientRect();
         const containerTop = containerRect.top;
 
-        // Efficiently find which image is at the top using the refs we already have
+        // Find which image is at the top using a wide range scan
         let topIndex = displayIndex;
 
-        // Check current, next few, and previous few to avoid scanning all 1000 images
-        const checkRange = 10;
+        // Wide range (50 items) — eliminates the fallback full scan for most cases
+        const checkRange = 50;
         const start = Math.max(0, displayIndex - checkRange);
         const end = Math.min(images.length - 1, displayIndex + checkRange);
 
@@ -189,14 +197,28 @@ export const VerticalViewer = React.memo(({
             }
         }
 
-        // If not found in range, do a full scan (fallback)
-        if (topIndex === displayIndex) {
-            for (let i = 0; i < images.length; i++) {
+        // If still not found (rare — only on very large jumps), scan the visible viewport
+        // using binary-search-like stepping to avoid reading all DOM nodes
+        if (topIndex === displayIndex && images.length > 100) {
+            const step = Math.max(1, Math.floor(images.length / 20));
+            for (let i = 0; i < images.length; i += step) {
                 const el = itemRefs.current[i];
                 if (el) {
                     const rect = el.getBoundingClientRect();
-                    if (rect.top <= containerTop + 100 && rect.bottom > containerTop + 100) {
-                        topIndex = i;
+                    if (rect.bottom > containerTop) {
+                        // Found a candidate before the viewport — scan forward from here
+                        const candidateStart = Math.max(0, i - step);
+                        const candidateEnd = Math.min(images.length - 1, i + step);
+                        for (let j = candidateStart; j <= candidateEnd; j++) {
+                            const el2 = itemRefs.current[j];
+                            if (el2) {
+                                const rect2 = el2.getBoundingClientRect();
+                                if (rect2.top <= containerTop + 100 && rect2.bottom > containerTop + 100) {
+                                    topIndex = j;
+                                    break;
+                                }
+                            }
+                        }
                         break;
                     }
                 }
@@ -258,7 +280,7 @@ export const VerticalViewer = React.memo(({
             let stableFrames = 0;
             let lastScrollHeight = container.scrollHeight;
             let frameCount = 0;
-            const MAX_FRAMES = 80;
+            const MAX_FRAMES = 30;
 
             const applyExactPosition = () => {
                 frameCount++;

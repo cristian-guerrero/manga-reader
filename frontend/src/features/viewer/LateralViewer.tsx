@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
 import { useTranslation } from 'react-i18next';
 import { useViewer, useKeyboardNav } from '@hooks';
@@ -48,17 +48,28 @@ export function LateralViewer({
         onRestorationComplete?.();
     }, [initialIndex, setCurrentIndex, onRestorationComplete]);
 
-    // Load image
+    // Load image with LRU-like eviction: keep at most 20 entries
+    const loadedRef = useRef<Record<number, string>>({});
+    const MAX_LOADED = 20;
     const loadImage = useCallback(async (index: number, path: string) => {
-        if (loadedImages[index] || index < 0 || index >= images.length) return;
+        if (loadedRef.current[index] || index < 0 || index >= images.length) return;
 
         try {
             const imageUrl = images[index]?.imageUrl || `/images?path=${encodeURIComponent(path)}`;
-            setLoadedImages((prev) => ({ ...prev, [index]: imageUrl }));
+            loadedRef.current[index] = imageUrl;
+            const keys = Object.keys(loadedRef.current);
+            if (keys.length > MAX_LOADED) {
+                const toDelete = keys
+                    .map(Number)
+                    .sort((a, b) => Math.abs(b - index) - Math.abs(a - index))
+                    .slice(0, keys.length - MAX_LOADED);
+                for (const k of toDelete) delete loadedRef.current[k];
+            }
+            setLoadedImages({ ...loadedRef.current });
         } catch (error) {
             console.error(`Failed to load image ${path}:`, error);
         }
-    }, [loadedImages, images.length]);
+    }, [images.length]);
 
     // Preload current, previous, and next images
     useEffect(() => {

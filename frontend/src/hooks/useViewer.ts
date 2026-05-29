@@ -1,9 +1,4 @@
-/**
- * useViewer - Hook for viewer operations
- * Replaces viewerStore proxy, uses tabStore directly
- */
-
-import { useCallback, useMemo } from 'react';
+import { useCallback, useRef } from 'react';
 import { useTabStore } from '../stores/tabStore';
 import { ImageInfo, FolderInfo, ViewerMode, ViewerState } from '../types';
 
@@ -18,36 +13,21 @@ const defaultViewerState: Partial<ViewerState> = {
     verticalWidth: 0,
 };
 
+const EMPTY_IMAGES: ImageInfo[] = [];
+
 /**
  * Hook to access viewer state and operations for a specific tab
+ * Uses stable atomic selectors to prevent unnecessary re-renders.
+ * Operations use getState() at call time instead of reactive subscription.
  */
 export function useViewer(tabId?: string) {
     const activeTabId = useTabStore(state => state.activeTabId);
     const targetTabId = tabId || activeTabId;
-    
-    // Use selector to get viewerState directly, avoiding object reference issues
-    const viewerState = useTabStore(state => {
-        const tab = state.tabs.find(t => t.id === targetTabId);
-        return tab?.viewerState || null;
-    });
 
-    // Get current state values
-    const currentFolder = viewerState?.currentFolder || null;
-    const images = viewerState?.images || [];
-    const currentIndex = viewerState?.currentIndex || 0;
-    const mode = viewerState?.mode || 'vertical';
-    const isLoading = viewerState?.isLoading || false;
-    const zoomLevel = viewerState?.zoomLevel || 1;
-    const scrollPosition = viewerState?.scrollPosition || 0;
-    const verticalWidth = viewerState?.verticalWidth || 0;
-
-    // Helper to update viewer state
-    // Use tabId instead of tab object to avoid dependency issues
-    // Access updateTab directly from store to ensure stability
+    // Stable helper to update viewer state at call-time
     const updateViewerState = useCallback((updates: Partial<ViewerState>) => {
         if (!targetTabId) return;
 
-        // Get current state and updateTab from store at call time
         const store = useTabStore.getState();
         const currentTab = store.tabs.find(t => t.id === targetTabId);
         if (!currentTab) return;
@@ -56,36 +36,87 @@ export function useViewer(tabId?: string) {
         store.updateTab(targetTabId, {
             viewerState: { ...currentState, ...updates } as ViewerState
         });
-    }, [targetTabId]); // Only depend on targetTabId, which is stable
+    }, [targetTabId]);
 
-    // Image navigation
+    // Stable helper to read current viewer state at call-time
+    const readViewerState = useCallback((): Partial<ViewerState> => {
+        const store = useTabStore.getState();
+        const tab = store.tabs.find(t => t.id === targetTabId);
+        return tab?.viewerState || defaultViewerState;
+    }, [targetTabId]);
+
+    // Select specific primitive/stable fields individually
+    // Atomic selectors: .find() creates temp ref but we extract a stable value
+    const currentFolder = useTabStore(state => {
+        const tab = state.tabs.find(t => t.id === targetTabId);
+        return tab?.viewerState?.currentFolder || null;
+    });
+    const images = useTabStore(state => {
+        const tab = state.tabs.find(t => t.id === targetTabId);
+        return tab?.viewerState?.images ?? EMPTY_IMAGES;
+    });
+    const currentIndex = useTabStore(state => {
+        const tab = state.tabs.find(t => t.id === targetTabId);
+        return tab?.viewerState?.currentIndex ?? 0;
+    });
+    const mode = useTabStore(state => {
+        const tab = state.tabs.find(t => t.id === targetTabId);
+        return tab?.viewerState?.mode || 'vertical';
+    });
+    const isLoading = useTabStore(state => {
+        const tab = state.tabs.find(t => t.id === targetTabId);
+        return tab?.viewerState?.isLoading ?? false;
+    });
+    const zoomLevel = useTabStore(state => {
+        const tab = state.tabs.find(t => t.id === targetTabId);
+        return tab?.viewerState?.zoomLevel ?? 1;
+    });
+    const scrollPosition = useTabStore(state => {
+        const tab = state.tabs.find(t => t.id === targetTabId);
+        return tab?.viewerState?.scrollPosition ?? 0;
+    });
+    const verticalWidth = useTabStore(state => {
+        const tab = state.tabs.find(t => t.id === targetTabId);
+        return tab?.viewerState?.verticalWidth ?? 0;
+    });
+
+    // Image navigation - uses readViewerState() at call time + images for bounds check
     const setCurrentIndex = useCallback((index: number) => {
-        if (index >= 0 && index < images.length) {
+        const vs = readViewerState();
+        const imgs = vs.images || EMPTY_IMAGES;
+        if (index >= 0 && index < imgs.length) {
             updateViewerState({ currentIndex: index });
         }
-    }, [images.length, updateViewerState]);
+    }, [readViewerState, updateViewerState]);
 
     const nextImage = useCallback((): boolean => {
-        if (currentIndex < images.length - 1) {
-            updateViewerState({ currentIndex: currentIndex + 1 });
+        const vs = readViewerState();
+        const ci = vs.currentIndex ?? 0;
+        const imgs = vs.images || EMPTY_IMAGES;
+        if (ci < imgs.length - 1) {
+            updateViewerState({ currentIndex: ci + 1 });
             return true;
         }
         return false;
-    }, [currentIndex, images.length, updateViewerState]);
+    }, [readViewerState, updateViewerState]);
 
     const prevImage = useCallback((): boolean => {
-        if (currentIndex > 0) {
-            updateViewerState({ currentIndex: currentIndex - 1 });
+        const vs = readViewerState();
+        const ci = vs.currentIndex ?? 0;
+        if (ci > 0) {
+            updateViewerState({ currentIndex: ci - 1 });
             return true;
         }
         return false;
-    }, [currentIndex, updateViewerState]);
+    }, [readViewerState, updateViewerState]);
 
     const goToImage = useCallback((index: number) => {
-        if (index >= 0 && index < images.length) {
+        const vs = readViewerState();
+        const imgs = vs.images || EMPTY_IMAGES;
+        if (index >= 0 && index < imgs.length) {
             updateViewerState({ currentIndex: index, scrollPosition: 0 });
         }
-    }, [images.length, updateViewerState]);
+    }, [readViewerState, updateViewerState]);
 
     // Folder management
     const setCurrentFolder = useCallback((folder: FolderInfo | null) => {
@@ -117,12 +148,14 @@ export function useViewer(tabId?: string) {
     }, [updateViewerState]);
 
     const zoomIn = useCallback(() => {
-        updateViewerState({ zoomLevel: Math.min(5, zoomLevel + 0.25) });
-    }, [zoomLevel, updateViewerState]);
+        const vs = readViewerState();
+        updateViewerState({ zoomLevel: Math.min(5, (vs.zoomLevel ?? 1) + 0.25) });
+    }, [readViewerState, updateViewerState]);
 
     const zoomOut = useCallback(() => {
-        updateViewerState({ zoomLevel: Math.max(0.1, zoomLevel - 0.25) });
-    }, [zoomLevel, updateViewerState]);
+        const vs = readViewerState();
+        updateViewerState({ zoomLevel: Math.max(0.1, (vs.zoomLevel ?? 1) - 0.25) });
+    }, [readViewerState, updateViewerState]);
 
     const resetZoom = useCallback(() => {
         updateViewerState({ zoomLevel: 1 });
@@ -135,20 +168,25 @@ export function useViewer(tabId?: string) {
 
     // Computed
     const getCurrentImage = useCallback((): ImageInfo | null => {
-        return images[currentIndex] || null;
-    }, [images, currentIndex]);
+        const vs = readViewerState();
+        const imgs = vs.images || EMPTY_IMAGES;
+        const ci = vs.currentIndex ?? 0;
+        return imgs[ci] || null;
+    }, [readViewerState]);
 
     const hasNext = useCallback((): boolean => {
-        return currentIndex < images.length - 1;
-    }, [currentIndex, images.length]);
+        const vs = readViewerState();
+        const ci = vs.currentIndex ?? 0;
+        const imgs = vs.images || EMPTY_IMAGES;
+        return ci < imgs.length - 1;
+    }, [readViewerState]);
 
     const hasPrev = useCallback((): boolean => {
-        return currentIndex > 0;
-    }, [currentIndex]);
+        const vs = readViewerState();
+        return (vs.currentIndex ?? 0) > 0;
+    }, [readViewerState]);
 
-    // Return object - operations are stable (useCallback), state values may change
     return {
-        // State (these change frequently)
         currentFolder,
         images,
         currentIndex,
@@ -157,7 +195,6 @@ export function useViewer(tabId?: string) {
         zoomLevel,
         scrollPosition,
         verticalWidth,
-        // Operations (these are stable due to useCallback)
         setCurrentIndex,
         nextImage,
         prevImage,
@@ -172,8 +209,7 @@ export function useViewer(tabId?: string) {
         zoomOut,
         resetZoom,
         setScrollPosition,
-        setViewerState: updateViewerState, // This is now stable (only depends on targetTabId)
-        // Computed
+        setViewerState: updateViewerState,
         getCurrentImage,
         hasNext,
         hasPrev,

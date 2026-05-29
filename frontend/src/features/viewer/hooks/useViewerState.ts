@@ -1,8 +1,3 @@
-/**
- * useViewerState - Hook to manage viewer state logic
- * Extracted from ViewerPage to improve separation of concerns
- */
-
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useTabStore, useSettingsStore } from '@stores';
 import { useViewer } from '@hooks';
@@ -16,20 +11,37 @@ interface UseViewerStateOptions {
 }
 
 export function useViewerState({ folderPath, tabId, isActive, params }: UseViewerStateOptions) {
-    const { verticalWidth, viewerMode } = useSettingsStore();
+    const verticalWidth = useSettingsStore(state => state.verticalWidth);
+    const viewerMode = useSettingsStore(state => state.viewerMode);
     const { setViewerState: updateTabState } = useViewer(tabId);
-    
-    // Get current state for this specific tab
-    const tabState = useTabStore((state) => state.tabs.find((t) => t.id === tabId)?.viewerState);
-    
-    const currentFolder = tabState?.currentFolder || null;
-    const images = tabState?.images || [];
-    const currentIndex = tabState?.currentIndex || 0;
-    const mode = tabState?.mode || viewerMode;
-    const isLoading = tabState?.isLoading || false;
-    const currentVerticalWidth = (tabState?.verticalWidth || 0) !== 0 
-        ? (tabState?.verticalWidth || verticalWidth) 
-        : verticalWidth;
+
+    // Use stable atomic selectors instead of full viewerState object
+    const currentFolder = useTabStore(state => {
+        const tab = state.tabs.find((t) => t.id === tabId);
+        return tab?.viewerState?.currentFolder || null;
+    });
+    const images = useTabStore(state => {
+        const tab = state.tabs.find((t) => t.id === tabId);
+        return tab?.viewerState?.images || [];
+    });
+    const currentIndex = useTabStore(state => {
+        const tab = state.tabs.find((t) => t.id === tabId);
+        return tab?.viewerState?.currentIndex ?? 0;
+    });
+    const mode = useTabStore(state => {
+        const tab = state.tabs.find((t) => t.id === tabId);
+        return tab?.viewerState?.mode || viewerMode;
+    });
+    const isLoading = useTabStore(state => {
+        const tab = state.tabs.find((t) => t.id === tabId);
+        return tab?.viewerState?.isLoading ?? false;
+    });
+    const tabVerticalWidth = useTabStore(state => {
+        const tab = state.tabs.find((t) => t.id === tabId);
+        const vw = tab?.viewerState?.verticalWidth;
+        return (vw && vw !== 0) ? vw : 0;
+    });
+    const currentVerticalWidth = tabVerticalWidth !== 0 ? tabVerticalWidth : verticalWidth;
 
     // Local state for resume position
     const [resumeIndex, setResumeIndex] = useState(() => {
@@ -58,7 +70,6 @@ export function useViewerState({ folderPath, tabId, isActive, params }: UseViewe
     const lastProcessedParamsRef = useRef<{ targetPath?: string; startIndex?: string } | null>(null);
     const folderPathRef = useRef(folderPath);
 
-    // Actualizar folderPathRef cuando cambia folderPath
     useEffect(() => {
         folderPathRef.current = folderPath;
     }, [folderPath]);
@@ -75,15 +86,16 @@ export function useViewerState({ folderPath, tabId, isActive, params }: UseViewe
         }
 
         try {
-            const tab = useTabStore.getState().tabs.find((t) => t.id === tabId);
+            const store = useTabStore.getState();
+            const tab = store.tabs.find((t) => t.id === tabId);
             const tabViewerState = tab?.viewerState;
-            const targetIndex = updates.index !== undefined 
-                ? updates.index 
+            const targetIndex = updates.index !== undefined
+                ? updates.index
                 : (tabViewerState?.currentIndex ?? 0);
-            const targetWidth = updates.width !== undefined 
-                ? updates.width 
-                : ((tabViewerState?.verticalWidth || 0) !== 0 
-                    ? (tabViewerState?.verticalWidth || verticalWidth) 
+            const targetWidth = updates.width !== undefined
+                ? updates.width
+                : ((tabViewerState?.verticalWidth || 0) !== 0
+                    ? (tabViewerState?.verticalWidth || verticalWidth)
                     : verticalWidth);
             const scrollPosition = tabViewerState?.scrollPosition ?? 0;
 
@@ -102,7 +114,6 @@ export function useViewerState({ folderPath, tabId, isActive, params }: UseViewe
     }, [handleViewerStateChange]);
 
     return {
-        // State
         currentFolder,
         images,
         currentIndex,
@@ -112,10 +123,8 @@ export function useViewerState({ folderPath, tabId, isActive, params }: UseViewe
         resumeIndex,
         resumeScrollPos,
         resetKey,
-        // Refs
         lastSyncedIndexRef,
         lastProcessedParamsRef,
-        // Actions
         setResumeIndex,
         setResumeScrollPos,
         setResetKey,

@@ -42,7 +42,10 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
     console.log('[ViewerPage] fromPage:', fromPage, 'isExplorerMode:', isExplorerMode, 'folderPath:', folderPath, 'navFromPage:', navFromPage, 'params.from:', params.from);
     const { scrollSpeed, setScrollSpeed } = useSettingsStore();
     const { setViewerState: updateTabState } = useViewer(tabId);
-    const tabState = useTabStore((state) => state.tabs.find((t) => t.id === tabId)?.viewerState);
+    const tabScrollPosition = useTabStore((state) => {
+        const tab = state.tabs.find((t) => t.id === tabId);
+        return tab?.viewerState?.scrollPosition ?? 0;
+    });
 
     // Use viewer state hook
     const viewerState = useViewerState({
@@ -86,7 +89,7 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
         currentFolder: viewerState.currentFolder,
         images: viewerState.images,
         currentIndex: viewerState.currentIndex,
-        scrollPosition: tabState?.scrollPosition || 0,
+        scrollPosition: tabScrollPosition,
         isNoHistorySession,
         verticalWidth: viewerState.currentVerticalWidth,
     });
@@ -104,10 +107,10 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
         currentStateRef.current = {
             folderPath: viewerState.currentFolder?.path || '',
             currentIndex: viewerState.currentIndex,
-            scrollPosition: tabState?.scrollPosition || 0,
+            scrollPosition: tabScrollPosition,
             isNoHistorySession
         };
-    }, [viewerState.currentFolder, viewerState.currentIndex, tabState?.scrollPosition, isNoHistorySession]);
+    }, [viewerState.currentFolder, viewerState.currentIndex, tabScrollPosition, isNoHistorySession]);
 
     // Guardar progreso con el estado del ref
     const saveProgress = useCallback(async () => {
