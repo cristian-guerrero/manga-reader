@@ -38,7 +38,7 @@ beforeEach(() => {
     clipboardAutoMonitor: true,
     autoResumeDownloads: false,
     themeAccents: {},
-    tabMemorySaving: true,
+    tabMemorySaving: false,
     restoreTabs: false,
     generateThumbnails: true,
     autoUpdate: true,

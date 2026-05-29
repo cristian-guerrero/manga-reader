@@ -38,7 +38,7 @@ const resetSettings = () => useSettingsStore.setState({
   clipboardAutoMonitor: true,
   autoResumeDownloads: false,
   themeAccents: {},
-  tabMemorySaving: true,
+  tabMemorySaving: false,
   restoreTabs: false,
   generateThumbnails: true,
   localNetworkServer: false,

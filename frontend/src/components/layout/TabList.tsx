@@ -168,8 +168,12 @@ function SortableTab({
  */
 export function TabList() {
   const { t } = useTranslation();
-  const { tabs, activeTabId, setActiveTab, closeTab, addTab, reorderTabs } =
-    useTabStore();
+  const tabs = useTabStore((s) => s.tabs);
+  const activeTabId = useTabStore((s) => s.activeTabId);
+  const setActiveTab = useTabStore((s) => s.setActiveTab);
+  const closeTab = useTabStore((s) => s.closeTab);
+  const addTab = useTabStore((s) => s.addTab);
+  const reorderTabs = useTabStore((s) => s.reorderTabs);
   const { theme: themeId } = useSettingsStore();
   const [contextMenu, setContextMenu] = useState<{
     x: number;
