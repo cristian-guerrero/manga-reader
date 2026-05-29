@@ -153,6 +153,12 @@ export function useViewerFolderLoading({
                                 targetScroll = savedViewerState.scrollPosition;
                             }
                         }
+                    } else if (tabState?.currentIndex !== undefined && tabState.currentIndex >= 0 && tabState.currentIndex < imgs.length) {
+                        targetIndex = tabState.currentIndex;
+                        console.log(`[useViewerFolderLoading] Using tab's currentIndex: ${targetIndex}`);
+                        if (tabState.scrollPosition && tabState.scrollPosition > 0 && tabState.scrollPosition <= 1) {
+                            targetScroll = tabState.scrollPosition;
+                        }
                     } else if (targetPath && !isRestored) {
                         const pathIndex = imgs.findIndex((img) => img.path === targetPath);
                         if (pathIndex >= 0) {
