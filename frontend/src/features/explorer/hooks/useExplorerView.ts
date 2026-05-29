@@ -5,32 +5,51 @@ import { UIPreferencesAPI } from '@services/api/uiPreferencesAPI';
 import type { ViewMode } from '../types';
 
 export function useExplorerView(currentPath: string | null) {
-    const [viewMode, setViewModeInternal] = useState<ViewMode>('grid');
-    const [gridItemSize, setGridItemSizeInternal] = useState<number>(200);
+    // Start with null to prevent flash of wrong default before backend responds
+    const [viewMode, setViewModeInternal] = useState<ViewMode | null>(null);
+    const [gridItemSize, setGridItemSizeInternal] = useState<number | null>(null);
+    const [isLoaded, setIsLoaded] = useState(false);
     const currentPathRef = useRef(currentPath);
     currentPathRef.current = currentPath;
 
     useEffect(() => {
-        if (!currentPath) {
-            UIPreferencesAPI.getExplorerRootViewMode().then((mode) => {
-                const validMode: ViewMode = (mode === 'grid' || mode === 'list') ? mode : 'grid';
-                setViewModeInternal(validMode);
-            }).catch(() => {});
-            return;
-        }
+        setViewModeInternal(null);
+        setGridItemSizeInternal(null);
+        setIsLoaded(false);
 
-        FolderViewModeAPI.getFolderViewMode(currentPath).then((mode) => {
+        const load = async () => {
+            try {
+                if (!currentPath) {
+                    const mode = await UIPreferencesAPI.getExplorerRootViewMode();
+                    if (currentPathRef.current === currentPath) {
+                        const validMode: ViewMode = (mode === 'grid' || mode === 'list') ? mode : 'grid';
+                        setViewModeInternal(validMode);
+                        setGridItemSizeInternal(200);
+                    }
+                } else {
+                    const [mode, size] = await Promise.all([
+                        FolderViewModeAPI.getFolderViewMode(currentPath),
+                        FolderGridSizeAPI.getFolderGridSize(currentPath),
+                    ]);
+                    if (currentPathRef.current === currentPath) {
+                        const validMode: ViewMode = (mode === 'grid' || mode === 'list') ? mode : 'grid';
+                        setViewModeInternal(validMode);
+                        if (size != null && size > 0) {
+                            setGridItemSizeInternal(size);
+                        }
+                    }
+                }
+            } catch {
+                if (currentPathRef.current === currentPath) {
+                    setViewModeInternal('grid');
+                    setGridItemSizeInternal(200);
+                }
+            }
             if (currentPathRef.current === currentPath) {
-                const validMode: ViewMode = (mode === 'grid' || mode === 'list') ? mode : 'grid';
-                setViewModeInternal(validMode);
+                setIsLoaded(true);
             }
-        }).catch(() => {});
-
-        FolderGridSizeAPI.getFolderGridSize(currentPath).then((size) => {
-            if (currentPathRef.current === currentPath && size != null && size > 0) {
-                setGridItemSizeInternal(size);
-            }
-        }).catch(() => {});
+        };
+        load();
     }, [currentPath]);
 
     const setViewMode = useCallback((mode: ViewMode) => {
@@ -51,5 +70,5 @@ export function useExplorerView(currentPath: string | null) {
         }
     }, []);
 
-    return { viewMode, setViewMode, gridItemSize, setGridItemSize };
+    return { viewMode, setViewMode, gridItemSize, setGridItemSize, isLoaded };
 }

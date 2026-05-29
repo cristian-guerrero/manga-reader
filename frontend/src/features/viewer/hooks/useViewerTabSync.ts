@@ -45,7 +45,10 @@ export function useViewerTabSync({
         const tabCurrentIndex = tab?.viewerState?.currentIndex ?? 0;
         const tabScrollPosition = tab?.viewerState?.scrollPosition;
 
-        if (tabCurrentIndex >= 0 && tabCurrentIndex < images.length && tabCurrentIndex !== resumeIndex) {
+        // Use lastSyncedIndexRef for comparison instead of resumeIndex, because
+        // useViewerState may have already synced resumeIndex during render phase.
+        // If lastSyncedIndexRef already matches, we skip to avoid redundant re-renders.
+        if (tabCurrentIndex >= 0 && tabCurrentIndex < images.length && tabCurrentIndex !== lastSyncedIndexRef.current) {
             console.log(`[useViewerTabSync] Tab activated: Syncing resumeIndex from ${resumeIndex} to ${tabCurrentIndex} for tab ${tabId}`);
             setResumeIndex(tabCurrentIndex);
             lastSyncedIndexRef.current = tabCurrentIndex;
@@ -67,8 +70,8 @@ export function useViewerTabSync({
             } else {
                 lastProcessedParamsRef.current = null;
             }
-        } else if (tabCurrentIndex === resumeIndex) {
-            console.log(`[useViewerTabSync] Tab activated: Already synced (resumeIndex=${resumeIndex}, tabCurrentIndex=${tabCurrentIndex})`);
+        } else {
+            console.log(`[useViewerTabSync] Tab activated: Already synced (lastSyncedIndexRef=${lastSyncedIndexRef.current}, tabCurrentIndex=${tabCurrentIndex})`);
             lastSyncedIndexRef.current = tabCurrentIndex;
 
             // Mark current params as processed

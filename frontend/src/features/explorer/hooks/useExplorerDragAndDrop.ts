@@ -33,34 +33,29 @@ export function useExplorerDragAndDrop({
     const [activeId, setActiveId] = useState<string | null>(null);
 
     const parentPathRef = useRef(parentPath);
-    useEffect(() => { parentPathRef.current = parentPath; }, [parentPath]);
-
     const entriesRef = useRef(entries);
-    useEffect(() => { entriesRef.current = entries; }, [entries]);
-
     const onEntriesChangeRef = useRef(onEntriesChange);
-    useEffect(() => { onEntriesChangeRef.current = onEntriesChange; }, [onEntriesChange]);
-
     const onSortModeChangeRef = useRef(onSortModeChange);
-    useEffect(() => { onSortModeChangeRef.current = onSortModeChange; }, [onSortModeChange]);
-
     const sortOrderRef = useRef(sortOrder);
-    useEffect(() => { sortOrderRef.current = sortOrder; }, [sortOrder]);
-
     const pinnedFoldersRef = useRef(pinnedFolders);
-    useEffect(() => { pinnedFoldersRef.current = pinnedFolders; }, [pinnedFolders]);
-
     const pinnedImagesRef = useRef(pinnedImages);
-    useEffect(() => { pinnedImagesRef.current = pinnedImages; }, [pinnedImages]);
-
     const sortModeRef = useRef(sortMode);
-    useEffect(() => { sortModeRef.current = sortMode; }, [sortMode]);
-
     const onPinnedOrderChangeRef = useRef(onPinnedOrderChange);
-    useEffect(() => { onPinnedOrderChangeRef.current = onPinnedOrderChange; }, [onPinnedOrderChange]);
-
     const onPinnedImagesOrderChangeRef = useRef(onPinnedImagesOrderChange);
-    useEffect(() => { onPinnedImagesOrderChangeRef.current = onPinnedImagesOrderChange; }, [onPinnedImagesOrderChange]);
+
+    // Single effect to sync all refs (avoids 10 individual useEffect hooks)
+    useEffect(() => {
+        parentPathRef.current = parentPath;
+        entriesRef.current = entries;
+        onEntriesChangeRef.current = onEntriesChange;
+        onSortModeChangeRef.current = onSortModeChange;
+        sortOrderRef.current = sortOrder;
+        pinnedFoldersRef.current = pinnedFolders;
+        pinnedImagesRef.current = pinnedImages;
+        sortModeRef.current = sortMode;
+        onPinnedOrderChangeRef.current = onPinnedOrderChange;
+        onPinnedImagesOrderChangeRef.current = onPinnedImagesOrderChange;
+    }); // no deps — runs after every render, always in sync
 
     const directoryEntries = useMemo(
         () => entries.filter((e) => e.isDirectory),

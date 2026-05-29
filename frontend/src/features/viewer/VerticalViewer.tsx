@@ -263,10 +263,14 @@ export const VerticalViewer = React.memo(({
         }
 
         // First-time setup: images not yet loaded, use scrollIntoView for approximate positioning
-        if (initialIndex >= 0 && initialIndex < images.length) {
-            const target = itemRefs.current[initialIndex];
-            if (target) {
-                target.scrollIntoView({ block: 'start', behavior: 'instant' });
+        // Skip scrollIntoView if we have an exact scroll percentage — the RAF correction
+        // loop will apply the precise position, avoiding a double visual jump.
+        if (initialScrollPosition === undefined || initialScrollPosition <= 0) {
+            if (initialIndex >= 0 && initialIndex < images.length) {
+                const target = itemRefs.current[initialIndex];
+                if (target) {
+                    target.scrollIntoView({ block: 'start', behavior: 'instant' });
+                }
             }
         }
 

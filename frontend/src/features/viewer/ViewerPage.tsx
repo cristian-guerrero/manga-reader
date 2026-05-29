@@ -3,7 +3,7 @@
  * Refactored to use custom hooks for better separation of concerns
  */
 
-import { useEffect, useCallback, useState, useRef } from 'react';
+import { useEffect, useCallback, useState, useRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ViewerControls } from './ViewerControls';
 import { AutoScrollControls } from './AutoScrollControls';
@@ -38,8 +38,7 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
     const { goBack, navigate, params, fromPage: navFromPage, history } = useNavigation();
     const fromPage = navFromPage || params.from || 'series';
     const isExplorerMode = fromPage === 'explorer';
-    console.log('[ViewerPage] fromPage:', fromPage, 'isExplorer:', isExplorerMode, 'folderPath:', folderPath);
-    console.log('[ViewerPage] fromPage:', fromPage, 'isExplorerMode:', isExplorerMode, 'folderPath:', folderPath, 'navFromPage:', navFromPage, 'params.from:', params.from);
+    console.log('[ViewerPage] fromPage:', fromPage, 'isExplorer:', isExplorerMode, 'folderPath:', folderPath, 'navFromPage:', navFromPage, 'params.from:', params.from);
     const { scrollSpeed, setScrollSpeed } = useSettingsStore();
     const { setViewerState: updateTabState } = useViewer(tabId);
     const tabScrollPosition = useTabStore((state) => {
@@ -51,12 +50,28 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
     const viewerState = useViewerState({
         folderPath,
         tabId,
-        isActive,
         params,
     });
 
     // Use controls hook
     const controls = useViewerControls();
+
+    // Sync initialIndex from the store on tab activation to prevent stale resumeIndex.
+    // useEffect runs too late — by then the first render with stale values has committed.
+    // Reading directly from store during render ensures VerticalViewer gets the correct
+    // scroll position in the FIRST commit, avoiding a two-step visual jump.
+    const prevIsActive = useRef(isActive);
+    const effectiveResumeIndex = !prevIsActive.current && isActive && tabId
+        ? (useTabStore.getState().tabs.find((t) => t.id === tabId)?.viewerState?.currentIndex ?? viewerState.resumeIndex)
+        : viewerState.resumeIndex;
+    const effectiveResumeScrollPos = !prevIsActive.current && isActive && tabId
+        ? (useTabStore.getState().tabs.find((t) => t.id === tabId)?.viewerState?.scrollPosition ?? 0)
+        : viewerState.resumeScrollPos;
+    if (!prevIsActive.current && isActive) {
+        prevIsActive.current = true;
+    } else if (!isActive) {
+        prevIsActive.current = false;
+    }
 
     // Session flag state
     const [isNoHistorySession, setIsNoHistorySession] = useState(params.noHistory === 'true');
@@ -195,22 +210,40 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
         setIsNoHistorySession(noHistory);
     }, [folderPath, params.noHistory]);
 
+    // Ref para evitar que beforeunload re-registre en cada scroll
+    const saveProgressRef = useRef(saveProgress);
+    saveProgressRef.current = saveProgress;
+
     // Guardar antes de cerrar/recargar
     useEffect(() => {
         const handleBeforeUnload = () => {
-            saveProgress();
+            saveProgressRef.current();
         };
         window.addEventListener('beforeunload', handleBeforeUnload);
         return () => {
             window.removeEventListener('beforeunload', handleBeforeUnload);
         };
-    }, [saveProgress]);
+    }, []);
 
     // Toggle viewer mode (per-tab only, doesn't affect global default)
-    const toggleMode = () => {
+    const toggleMode = useCallback(() => {
         const newMode = viewerState.mode === 'vertical' ? 'lateral' : 'vertical';
         updateTabState({ mode: newMode });
-    };
+    }, [viewerState.mode, updateTabState]);
+
+    const handleThumbnails = useCallback(() => {
+        if (viewerState.currentFolder) {
+            navigate('thumbnails', { folder: viewerState.currentFolder.path });
+        }
+    }, [viewerState.currentFolder?.path, navigate]);
+
+    const handleWidthSliderToggle = useCallback(() => {
+        controls.setShowWidthSlider(!controls.showWidthSlider);
+    }, [controls.showWidthSlider, controls.setShowWidthSlider]);
+
+    const handleWidthChange = useCallback((width: number) => {
+        viewerState.handleWidthChange(width);
+    }, [viewerState.handleWidthChange]);
 
 // Chapter navigation handlers (series)
 const handlePrevChapter = useCallback(async () => {
@@ -310,6 +343,10 @@ const handleBack = useCallback(() => {
         setContextMenu(null);
     }, []);
 
+    const handleAutoScrollToggle = useCallback(() => {
+        controls.setIsAutoScrolling(!controls.isAutoScrolling);
+    }, [controls.isAutoScrolling, controls.setIsAutoScrolling]);
+
     const handleGoToStart = useCallback(async () => {
         viewerState.setResumeIndex(0);
         viewerState.lastSyncedIndexRef.current = 0;
@@ -339,11 +376,11 @@ const handleBack = useCallback(() => {
         }
     }, [viewerState, isNoHistorySession, updateTabState]);
 
-    const hasChapterButtons = !!(
+    const hasChapterButtons = useMemo(() => !!(
     isExplorerMode 
         ? (folderNav && (folderNav.prevFolder || folderNav.nextFolder)) 
         : (chapterNav && (chapterNav.prevChapter || chapterNav.nextChapter))
-);
+), [isExplorerMode, folderNav?.prevFolder, folderNav?.nextFolder, chapterNav?.prevChapter, chapterNav?.nextChapter]);
 
     // Loading state - usar folderLoading del hook
     if (folderLoading || viewerState.isLoading || (folderPath && viewerState.images.length === 0)) {
@@ -362,8 +399,8 @@ const handleBack = useCallback(() => {
                 <ViewerContent
                     mode={viewerState.mode}
                     images={viewerState.images}
-                    initialIndex={viewerState.resumeIndex}
-                    initialScrollPosition={viewerState.resumeScrollPos > 0 ? viewerState.resumeScrollPos : undefined}
+                    initialIndex={effectiveResumeIndex}
+                    initialScrollPosition={effectiveResumeScrollPos > 0 ? effectiveResumeScrollPos : undefined}
                     showControls={controls.showControls}
                     hasChapterButtons={hasChapterButtons}
                     isAutoScrolling={controls.isAutoScrolling}
@@ -390,12 +427,12 @@ const handleBack = useCallback(() => {
                 showControls={controls.showControls}
                 onBack={handleBack}
                 onModeToggle={toggleMode}
-                onThumbnails={() => navigate('thumbnails', { folder: viewerState.currentFolder!.path })}
+                onThumbnails={handleThumbnails}
                 onGoToStart={handleGoToStart}
-                onWidthSliderToggle={() => controls.setShowWidthSlider(!controls.showWidthSlider)}
+                onWidthSliderToggle={handleWidthSliderToggle}
                 showWidthSlider={controls.showWidthSlider}
                 verticalWidth={viewerState.currentVerticalWidth}
-                onWidthChange={(width) => viewerState.handleWidthChange(width)}
+                onWidthChange={handleWidthChange}
                 t={t}
             >
                 {/* Auto-scroll controls (vertical mode only) */}
@@ -441,7 +478,7 @@ const handleBack = useCallback(() => {
                         {
                             id: 'play-pause',
                             label: controls.isAutoScrolling ? t('viewer.pause') : t('viewer.play'),
-                            onClick: () => controls.setIsAutoScrolling(!controls.isAutoScrolling),
+                            onClick: handleAutoScrollToggle,
                         },
                         {
                             id: 'go-to-start',

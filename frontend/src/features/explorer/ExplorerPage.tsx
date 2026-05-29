@@ -149,18 +149,14 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
     setPinnedFolders(updated);
     setJustPinned(entryName);
     setTimeout(() => setJustPinned(null), 500);
-    const items = await AppAPI.exploreFolder(explorerStateHook.currentPath, sorting.sortBy, sorting.sortOrder);
-    loading.setEntries(items || []);
-  }, [explorerStateHook.currentPath, sorting.sortBy, sorting.sortOrder, loading.setEntries]);
+  }, [explorerStateHook.currentPath, sorting.sortBy]);
 
   const handleUnpinFolder = useCallback(async (entryName: string) => {
     if (!explorerStateHook.currentPath) return;
     await FolderOrderAPI.unpinFolder(explorerStateHook.currentPath, sorting.sortBy, entryName);
     const updated = await FolderOrderAPI.getPinnedFolders(explorerStateHook.currentPath, sorting.sortBy);
     setPinnedFolders(updated);
-    const items = await AppAPI.exploreFolder(explorerStateHook.currentPath, sorting.sortBy, sorting.sortOrder);
-    loading.setEntries(items || []);
-  }, [explorerStateHook.currentPath, sorting.sortBy, sorting.sortOrder, loading.setEntries]);
+  }, [explorerStateHook.currentPath, sorting.sortBy]);
 
   const isPinned = useCallback((entryName: string) => {
     return pinnedFolders.includes(entryName);
@@ -288,7 +284,9 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
   }, [sorting.sortBy, sorting.sortOrder, explorerStateHook.currentPath, loading.loadDirectory]);
 
   // Use view mode hook (includes grid item size)
-  const { viewMode, setViewMode, gridItemSize, setGridItemSize } = useExplorerView(explorerStateHook.currentPath);
+  const { viewMode, setViewMode, gridItemSize, setGridItemSize, isLoaded: viewStateLoaded } = useExplorerView(explorerStateHook.currentPath);
+  const resolvedViewMode = viewMode ?? 'grid';
+  const resolvedGridItemSize = gridItemSize ?? 200;
 
   // Use drag-and-drop hook (for custom folder ordering and pinned folder reordering)
   const dnd = useExplorerDragAndDrop({
@@ -628,7 +626,7 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
                 <button
                   onClick={() => setViewMode('grid')}
                   className={`p-1.5 rounded transition-colors ${
-                    viewMode === 'grid'
+                    resolvedViewMode === 'grid'
                       ? 'bg-accent text-white'
                       : 'text-text-secondary hover:text-text-primary hover:bg-white/10'
                   }`}
@@ -640,7 +638,7 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
                 <button
                   onClick={() => setViewMode('list')}
                   className={`p-1.5 rounded transition-colors ${
-                    viewMode === 'list'
+                    resolvedViewMode === 'list'
                       ? 'bg-accent text-white'
                       : 'text-text-secondary hover:text-text-primary hover:bg-white/10'
                   }`}
@@ -672,7 +670,7 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
             onSearch={search.setSearchQuery}
             className="flex-1 min-w-0 sm:max-w-md hidden sm:block"
           />
-          {viewMode === 'grid' && explorerStateHook.currentPath && (
+          {resolvedViewMode === 'grid' && explorerStateHook.currentPath && (
             <div className="flex items-center gap-2 ml-auto hidden sm:flex">
               <span className="text-xs text-text-secondary whitespace-nowrap">
                 {t('explorer.gridItemSize')}
@@ -682,13 +680,13 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
                 min={120}
                 max={400}
                 step={10}
-                value={gridItemSize}
+                value={resolvedGridItemSize}
                 onChange={(e) => setGridItemSize(Number(e.target.value))}
                 onDoubleClick={() => setGridItemSize(200)}
                 className="w-24 h-1.5 bg-surface-tertiary rounded-full appearance-none cursor-pointer accent-accent [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-accent [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:cursor-pointer"
               />
               <span className="text-xs text-text-secondary w-8 text-right tabular-nums">
-                {gridItemSize}px
+                {resolvedGridItemSize}px
               </span>
             </div>
           )}
@@ -698,7 +696,6 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
       {/* Content */}
       <div
         className="flex-1 overflow-auto pr-1 sm:pr-2"
-        key={explorerStateHook.currentPath || "root"}
       >
         {/* Base Folders View */}
         {!explorerStateHook.currentPath && (
@@ -766,15 +763,15 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
         )}
 
         {/* Directory View */}
-        {explorerStateHook.currentPath && (
+        {explorerStateHook.currentPath && viewStateLoaded && (
           <DirectoryView
             entries={search.sortedEntries}
             thumbnails={thumbnails}
             isCustomMode={isInCustomMode}
             directoryEntries={dnd.directoryEntries}
             sensors={sensors}
-            viewMode={viewMode}
-            gridItemSize={gridItemSize}
+            viewMode={resolvedViewMode}
+            gridItemSize={resolvedGridItemSize}
             onDragStart={dnd.handleDragStart}
             onDragEnd={dnd.handleDragEnd}
             activeEntry={dnd.activeEntry}

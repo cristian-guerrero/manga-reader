@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
     DndContext,
@@ -157,7 +157,7 @@ function PinnedSortableTile({
     );
 }
 
-export function DirectoryView({
+export const DirectoryView = memo(function DirectoryView({
     entries,
     thumbnails,
     isCustomMode,
@@ -324,4 +324,4 @@ export function DirectoryView({
     }
 
     return <GridContainer itemWidth={gridItemSize} className="pt-4">{renderContent()}</GridContainer>;
-}
+});

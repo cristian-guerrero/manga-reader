@@ -6,11 +6,10 @@ import { AppAPI } from '@services/api';
 interface UseViewerStateOptions {
     folderPath?: string;
     tabId?: string;
-    isActive: boolean;
     params: Record<string, string>;
 }
 
-export function useViewerState({ folderPath, tabId, isActive, params }: UseViewerStateOptions) {
+export function useViewerState({ folderPath, tabId, params }: UseViewerStateOptions) {
     const verticalWidth = useSettingsStore(state => state.verticalWidth);
     const viewerMode = useSettingsStore(state => state.viewerMode);
     const { setViewerState: updateTabState } = useViewer(tabId);
@@ -65,6 +64,7 @@ export function useViewerState({ folderPath, tabId, isActive, params }: UseViewe
         const scrollPos = initialTab?.viewerState?.scrollPosition;
         return scrollPos && scrollPos > 0 && scrollPos <= 1 ? scrollPos : 0;
     });
+
     const [resetKey, setResetKey] = useState(0);
     const lastSyncedIndexRef = useRef<number>(-1);
     const lastProcessedParamsRef = useRef<{ targetPath?: string; startIndex?: string } | null>(null);

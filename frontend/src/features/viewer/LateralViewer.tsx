@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
 import { useTranslation } from 'react-i18next';
 import { useViewer, useKeyboardNav } from '@hooks';
@@ -35,7 +35,6 @@ export function LateralViewer({
     onPrevBoundary,
 }: LateralViewerProps) {
     const [loadedImages, setLoadedImages] = useState<Record<number, string>>({});
-    const [direction, setDirection] = useState(0); // -1 for prev, 1 for next
     const { lateralMode, readingDirection } = useSettingsStore();
     const { currentIndex, setCurrentIndex } = useViewer(tabId);
 
@@ -94,7 +93,6 @@ export function LateralViewer({
     const goToPage = useCallback((newIndex: number) => {
         if (newIndex < 0 || newIndex >= images.length) return;
 
-        setDirection(newIndex > currentIndex ? 1 : -1);
         setCurrentIndex(newIndex);
         onPageChange?.(newIndex);
     }, [currentIndex, images.length, setCurrentIndex, onPageChange]);
@@ -139,9 +137,12 @@ export function LateralViewer({
     }, [handlePrev, handleNext]);
 
     // Get images to display (1 or 2 based on mode)
-    const displayImages = lateralMode === 'double'
-        ? [images[currentIndex], images[currentIndex + 1]].filter(Boolean)
-        : [images[currentIndex]].filter(Boolean);
+    const displayImages = useMemo(() =>
+        lateralMode === 'double'
+            ? [images[currentIndex], images[currentIndex + 1]].filter(Boolean)
+            : [images[currentIndex]].filter(Boolean),
+        [lateralMode, images, currentIndex]
+    );
 
     return (
         <div

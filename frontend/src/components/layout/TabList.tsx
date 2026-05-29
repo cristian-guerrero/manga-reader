@@ -3,7 +3,7 @@ import { useSettingsStore } from "../../stores/settingsStore";
 import { getThemeById, darkTheme } from "../../themes";
 import { useTranslation } from "react-i18next";
 import { Tooltip } from "../ui/Tooltip";
-import { useRef, useState, useEffect, useCallback, useMemo } from "react";
+import { useRef, useState, useEffect, useCallback, useMemo, memo } from "react";
 import { ContextMenu } from "../ui/ContextMenu";
 import type { ContextMenuItem } from "@types";
 import {
@@ -28,7 +28,8 @@ import { CSS } from "@dnd-kit/utilities";
 import { restrictToHorizontalAxis } from "@dnd-kit/modifiers";
 
 interface SortableTabProps {
-  tab: any;
+  tabId: string;
+  tabTitle: string;
   index: number;
   activeTabId: string;
   tabWidth: number;
@@ -41,8 +42,9 @@ interface SortableTabProps {
   onContextMenu: (e: React.MouseEvent, tabId: string) => void;
 }
 
-function SortableTab({
-  tab,
+const SortableTab = memo(function SortableTab({
+  tabId,
+  tabTitle,
   index,
   activeTabId,
   tabWidth,
@@ -61,7 +63,7 @@ function SortableTab({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: tab.id });
+  } = useSortable({ id: tabId });
 
   const style = {
     transform: CSS.Translate.toString(transform),
@@ -69,7 +71,7 @@ function SortableTab({
     width: tabWidth,
     minWidth: tabWidth,
     maxWidth: tabWidth,
-    zIndex: isDragging ? 50 : activeTabId === tab.id ? 20 : 10,
+    zIndex: isDragging ? 50 : activeTabId === tabId ? 20 : 10,
     opacity: isDragging ? 0.6 : 1,
   };
 
@@ -82,8 +84,8 @@ function SortableTab({
       onMouseDown={(e) => {
         // Stop propagation to prevent Wails window drag
         e.stopPropagation();
-        if (e.button === 0) setActiveTab(tab.id);
-        if (e.button === 1) closeTab(tab.id);
+        if (e.button === 0) setActiveTab(tabId);
+        if (e.button === 1) closeTab(tabId);
         listeners?.onMouseDown?.(e);
       }}
       onPointerDown={(e) => {
@@ -94,12 +96,12 @@ function SortableTab({
         e.stopPropagation();
         if (e.button === 1) e.preventDefault();
       }}
-      onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); onContextMenu(e, tab.id); }}
+      onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); onContextMenu(e, tabId); }}
       className={`relative group h-[34px] flex items-center justify-center cursor-default select-none transition-shadow duration-150 mx-[1px] flex-shrink-0 no-drag`}
     >
       {/* Tab Background */}
       <div
-        className={`absolute inset-0 transition-all duration-200 rounded-[6px] ${activeTabId === tab.id
+        className={`absolute inset-0 transition-all duration-200 rounded-[6px] ${activeTabId === tabId
             ? isDark
               ? "bg-white/10 opacity-100 shadow-sm"
               : "bg-black/10 opacity-100 shadow-sm"
@@ -110,17 +112,17 @@ function SortableTab({
       />
 
       {/* Content */}
-      <Tooltip content={tab.title} className="w-full min-w-0 overflow-hidden">
+      <Tooltip content={tabTitle} className="w-full min-w-0 overflow-hidden">
         <div className="relative flex items-center justify-between w-full gap-1 z-10 overflow-hidden px-2">
           {/* Title - hidden when very compressed */}
           {!isVeryCompressed && (
             <span
-              className={`text-[11px] font-medium truncate whitespace-nowrap transition-all flex-1 min-w-0 ${activeTabId === tab.id
+               className={`text-[11px] font-medium truncate whitespace-nowrap transition-all flex-1 min-w-0 ${activeTabId === tabId
                   ? "opacity-100"
                   : "opacity-60 group-hover:opacity-90"
                 } ${isCompressed ? "text-[10px]" : ""}`}
             >
-              {tab.title}
+              {tabTitle}
             </span>
           )}
 
@@ -132,9 +134,9 @@ function SortableTab({
               }}
               onClick={(e) => {
                 e.stopPropagation();
-                closeTab(tab.id);
+                closeTab(tabId);
               }}
-              className={`flex items-center justify-center flex-shrink-0 rounded-md hover:bg-white/20 transition-all ${activeTabId === tab.id
+               className={`flex items-center justify-center flex-shrink-0 rounded-md hover:bg-white/20 transition-all ${activeTabId === tabId
                   ? "opacity-70"
                   : "opacity-30 group-hover:opacity-60"
                 } hover:!opacity-100 ${isVeryCompressed ? "w-6 h-6" : "w-5 h-5"}`}
@@ -156,19 +158,26 @@ function SortableTab({
       </Tooltip>
 
       {/* Separator */}
-      {/* {activeTabId !== tab.id && !isDragging && (
+      {/* {activeTabId !== tabId && !isDragging && (
                 <div className="absolute -right-[1.5px] top-[10px] bottom-[10px] w-[1px] bg-white/10 transition-opacity" />
             )} */}
     </div>
   );
-}
+});
 
 /**
  * TabList - Renders a list of tabs that compress like browser tabs
  */
 export function TabList() {
   const { t } = useTranslation();
-  const tabs = useTabStore((s) => s.tabs);
+  // Use a string key instead of the full tabs array to avoid re-rendering
+  // when only viewerState/scrollPosition changes in a tab.
+  // The string only changes on add/remove/reorder/title changes.
+  const tabInfoString = useTabStore((s) => s.tabs.map(t => `${t.id}:${t.title}`).join('|'));
+  const tabs = useMemo(() => {
+    return useTabStore.getState().tabs.map(t => ({ id: t.id, title: t.title }));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tabInfoString]);
   const activeTabId = useTabStore((s) => s.activeTabId);
   const setActiveTab = useTabStore((s) => s.setActiveTab);
   const closeTab = useTabStore((s) => s.closeTab);
@@ -313,7 +322,8 @@ export function TabList() {
             {tabs.map((tab, index) => (
               <SortableTab
                 key={tab.id}
-                tab={tab}
+                tabId={tab.id}
+                tabTitle={tab.title}
                 index={index}
                 activeTabId={activeTabId}
                 tabWidth={tabWidth}
