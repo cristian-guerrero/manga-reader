@@ -231,6 +231,8 @@ export const VerticalViewer = React.memo(({
                 if (maxScroll > 0) {
                     container.scrollTop = initialScrollPosition * maxScroll;
                 }
+            } else if (initialIndex === 0) {
+                container.scrollTop = 0;
             }
             appliedInitialIndexRef.current = initialIndex;
             appliedInitialScrollRef.current = initialScrollPosition ?? 0;
