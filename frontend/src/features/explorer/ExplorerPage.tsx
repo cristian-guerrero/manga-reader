@@ -326,6 +326,25 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
     && loading.entries.length > 0
     && loading.entries.every(e => !e.isDirectory);
 
+  // Controls show/hide (like viewer)
+  const [showFolderNavControls, setShowFolderNavControls] = useState(true);
+  const folderNavTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleFolderNavMouseMove = useCallback(() => {
+    setShowFolderNavControls(true);
+    if (folderNavTimeoutRef.current) {
+      clearTimeout(folderNavTimeoutRef.current);
+    }
+    folderNavTimeoutRef.current = setTimeout(() => setShowFolderNavControls(false), 3000);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (folderNavTimeoutRef.current) {
+        clearTimeout(folderNavTimeoutRef.current);
+      }
+    };
+  }, []);
+
   useEffect(() => {
     if (!explorerStateHook.currentPath || !isLeafImageFolder) {
       setFolderNav(null);
@@ -476,10 +495,11 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
   });
 
   return (
-    <div
-      className="h-full p-2 sm:p-6 flex flex-col"
-      style={{ backgroundColor: "var(--color-surface-primary)" }}
-    >
+      <div
+        className="h-full p-2 sm:p-6 flex flex-col relative"
+        style={{ backgroundColor: "var(--color-surface-primary)" }}
+        onMouseMove={handleFolderNavMouseMove}
+      >
       {/* Header */}
       <div
         className="flex items-center justify-between mb-2 sm:mb-6 flex-shrink-0 flex-wrap gap-2 transition-all duration-300 sm:opacity-100 sm:translate-y-0"
@@ -903,8 +923,7 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
         <FolderNavigationBar
           prevFolder={folderNav.prevFolder}
           nextFolder={folderNav.nextFolder}
-          currentIndex={folderNav.currentIndex}
-          totalFolders={folderNav.totalFolders}
+          showControls={showFolderNavControls}
           onPrevFolder={handleFolderNavPrev}
           onNextFolder={handleFolderNavNext}
           t={t}
