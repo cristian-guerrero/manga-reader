@@ -153,7 +153,7 @@ export function useViewerFolderLoading({
                                 targetScroll = savedViewerState.scrollPosition;
                             }
                         }
-                    } else if (tabState?.currentIndex !== undefined && tabState.currentIndex >= 0 && tabState.currentIndex < imgs.length) {
+                    } else if (tabState?.currentIndex !== undefined && tabState.currentIndex >= 0 && tabState.currentIndex < imgs.length && tabState.currentFolder?.path === folderPath) {
                         targetIndex = tabState.currentIndex;
                         console.log(`[useViewerFolderLoading] Using tab's currentIndex: ${targetIndex}`);
                         if (tabState.scrollPosition && tabState.scrollPosition > 0 && tabState.scrollPosition <= 1) {
