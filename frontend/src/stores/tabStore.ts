@@ -285,28 +285,36 @@ export const useTabStore = create<TabStoreState>()(
     restoreTabsFromBackend: (data) => {
         if (!data.tabs || data.tabs.length === 0) return;
 
-        const restoredTabs: Tab[] = data.tabs.map((saved) => ({
-            id: saved.id || Math.random().toString(36).substring(2, 9),
-            title: saved.title || 'Home',
-            page: saved.page as PageType || 'home',
-            fromPage: saved.fromPage || null,
-            params: saved.params || {},
-            history: [{ page: saved.page as PageType || 'home', params: saved.params || {} }],
-            activeMenuPage: saved.page as PageType || 'home',
-            explorerState: saved.explorerState || null,
-            thumbnailScrollPositions: saved.thumbnailScrollPositions || {},
-            viewerState: saved.viewerState ? {
-                currentFolder: saved.viewerState.currentFolder || null,
-                images: [],
-                currentIndex: saved.viewerState.currentIndex || 0,
-                mode: (saved.viewerState.mode as ViewerMode) || 'vertical',
-                isLoading: false,
-                zoomLevel: 1,
-                scrollPosition: saved.viewerState.scrollPosition || 0,
-                verticalWidth: saved.viewerState.verticalWidth,
-            } : null,
-            restored: true, // Mark as restored so ViewerPage loads state from backend
-        }));
+        const restoredTabs: Tab[] = data.tabs.map((saved) => {
+            // Strip single-use navigation params that shouldn't survive restarts
+            const cleanParams = { ...(saved.params || {}) };
+            delete cleanParams.startIndex;
+            delete cleanParams.targetPath;
+            delete cleanParams.endOfChapter;
+
+            return {
+                id: saved.id || Math.random().toString(36).substring(2, 9),
+                title: saved.title || 'Home',
+                page: saved.page as PageType || 'home',
+                fromPage: saved.fromPage || null,
+                params: cleanParams,
+                history: [{ page: saved.page as PageType || 'home', params: saved.params || {} }],
+                activeMenuPage: saved.page as PageType || 'home',
+                explorerState: saved.explorerState || null,
+                thumbnailScrollPositions: saved.thumbnailScrollPositions || {},
+                viewerState: saved.viewerState ? {
+                    currentFolder: saved.viewerState.currentFolder || null,
+                    images: [],
+                    currentIndex: saved.viewerState.currentIndex || 0,
+                    mode: (saved.viewerState.mode as ViewerMode) || 'vertical',
+                    isLoading: false,
+                    zoomLevel: 1,
+                    scrollPosition: saved.viewerState.scrollPosition || 0,
+                    verticalWidth: saved.viewerState.verticalWidth,
+                } : null,
+                restored: true, // Mark as restored so ViewerPage loads state from backend
+            };
+        });
 
         set({
             tabs: restoredTabs,

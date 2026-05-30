@@ -238,7 +238,8 @@ export const VerticalViewer = React.memo(({
         if (isUserScrollingRef.current) return;
 
         // Skip if same position already applied (avoids re-scroll on tab switches with unchanged position)
-        const scrollKey = `${initialIndex}_${initialScrollPosition ?? 0}`;
+        // Include images.length so scroll is re-applied when images load after initial empty mount
+        const scrollKey = `${initialIndex}_${initialScrollPosition ?? 0}_${images.length}`;
         const lastScrollKey = `${appliedInitialIndexRef.current}_${appliedInitialScrollRef.current}`;
         if (scrollKey === lastScrollKey) return;
 
@@ -304,7 +305,7 @@ export const VerticalViewer = React.memo(({
                     lastScrollHeight = scrollHeight;
                 }
 
-                if (stableFrames >= 3 || (frameCount > 1 && scrollHeight === container.scrollHeight)) {
+                if (stableFrames >= 3) {
                     const maxScroll = scrollHeight - clientHeight;
                     if (maxScroll > 0) {
                         const exactPixels = initialScrollPosition * maxScroll;
