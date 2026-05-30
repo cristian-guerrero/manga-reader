@@ -53,10 +53,12 @@ export function useScrollAware(
         };
 
         const setup = () => {
+            const newScrollEl = getScrollElement();
+            if (newScrollEl === scrollEl) return; // Skip if scroll element unchanged
             if (scrollEl) {
                 scrollEl.removeEventListener('scroll', handleScroll);
             }
-            scrollEl = getScrollElement();
+            scrollEl = newScrollEl;
             if (scrollEl) {
                 scrollEl.addEventListener('scroll', handleScroll, { passive: true });
             }
@@ -64,14 +66,17 @@ export function useScrollAware(
 
         setup();
 
+        let debounceTimer: ReturnType<typeof setTimeout> | null = null;
         const observer = new MutationObserver(() => {
-            setup();
+            if (debounceTimer) clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(setup, 150);
         });
 
         observer.observe(container, { childList: true, subtree: true });
 
         return () => {
             observer.disconnect();
+            if (debounceTimer) clearTimeout(debounceTimer);
             if (scrollEl) {
                 scrollEl.removeEventListener('scroll', handleScroll);
             }

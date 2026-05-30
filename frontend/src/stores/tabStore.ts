@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { immer } from 'zustand/middleware/immer';
 import { PageType, FolderInfo, ImageInfo, ViewerMode } from '../types';
 
 interface HistoryEntry {
@@ -108,7 +109,8 @@ const createInitialTab = (): Tab => ({
     viewerState: null,
 });
 
-export const useTabStore = create<TabStoreState>((set, get) => ({
+export const useTabStore = create<TabStoreState>()(
+  immer((set, get) => ({
     tabs: [createInitialTab()],
     activeTabId: '',
     isReady: false,
@@ -133,30 +135,29 @@ export const useTabStore = create<TabStoreState>((set, get) => ({
             ...initialState,
         };
 
-        set((state) => ({
-            tabs: [...state.tabs, newTab],
-            activeTabId: makeActive ? newTab.id : state.activeTabId,
-        }));
+        set((state) => {
+            state.tabs.push(newTab);
+            if (makeActive) state.activeTabId = newTab.id;
+        });
 
         return newTab.id;
     },
 
     closeTab: (id) => {
         const { tabs, activeTabId } = get();
-        if (tabs.length <= 1) return; // Don't close the last tab
+        if (tabs.length <= 1) return;
 
         const index = tabs.findIndex(t => t.id === id);
         if (index === -1) return;
 
-        const newTabs = tabs.filter(t => t.id !== id);
-        let newActiveId = activeTabId;
-
-        if (activeTabId === id) {
-            // If we closed the active tab, switch to the next one or the last one
-            newActiveId = newTabs[Math.min(index, newTabs.length - 1)].id;
-        }
-
-        set({ tabs: newTabs, activeTabId: newActiveId });
+        set((state) => {
+            const idx = state.tabs.findIndex(t => t.id === id);
+            if (idx === -1) return;
+            state.tabs.splice(idx, 1);
+            if (state.activeTabId === id) {
+                state.activeTabId = state.tabs[Math.min(idx, state.tabs.length - 1)].id;
+            }
+        });
     },
 
     setActiveTab: (idOrIndex) => {
@@ -173,29 +174,25 @@ export const useTabStore = create<TabStoreState>((set, get) => ({
     },
 
     updateActiveTab: (updates) => {
-        set((state) => ({
-            tabs: state.tabs.map(t =>
-                t.id === state.activeTabId ? { ...t, ...updates } : t
-            )
-        }));
+        set((state) => {
+            const tab = state.tabs.find(t => t.id === state.activeTabId);
+            if (tab) Object.assign(tab, updates);
+        });
     },
 
     updateTab: (id, updates) => {
-        set((state) => ({
-            tabs: state.tabs.map(t =>
-                t.id === id ? { ...t, ...updates } : t
-            )
-        }));
+        set((state) => {
+            const tab = state.tabs.find(t => t.id === id);
+            if (tab) Object.assign(tab, updates);
+        });
     },
 
     setReady: (isReady) => set({ isReady }),
 
     reorderTabs: (oldIndex, newIndex) => {
         set((state) => {
-            const newTabs = [...state.tabs];
-            const [removed] = newTabs.splice(oldIndex, 1);
-            newTabs.splice(newIndex, 0, removed);
-            return { tabs: newTabs };
+            const [removed] = state.tabs.splice(oldIndex, 1);
+            state.tabs.splice(newIndex, 0, removed);
         });
     },
 
@@ -222,11 +219,10 @@ export const useTabStore = create<TabStoreState>((set, get) => ({
     },
 
     completeRestoration: (id) => {
-        set((state) => ({
-            tabs: state.tabs.map(tab =>
-                tab.id === id ? { ...tab, restored: false } : tab
-            )
-        }));
+        set((state) => {
+            const tab = state.tabs.find(t => t.id === id);
+            if (tab) tab.restored = false;
+        });
         console.log(`[TabStore] Restoration completed for tab: ${id}`);
     },
 
@@ -289,28 +285,36 @@ export const useTabStore = create<TabStoreState>((set, get) => ({
     restoreTabsFromBackend: (data) => {
         if (!data.tabs || data.tabs.length === 0) return;
 
-        const restoredTabs: Tab[] = data.tabs.map((saved) => ({
-            id: saved.id || Math.random().toString(36).substring(2, 9),
-            title: saved.title || 'Home',
-            page: saved.page as PageType || 'home',
-            fromPage: saved.fromPage || null,
-            params: saved.params || {},
-            history: [{ page: saved.page as PageType || 'home', params: saved.params || {} }],
-            activeMenuPage: saved.page as PageType || 'home',
-            explorerState: saved.explorerState || null,
-            thumbnailScrollPositions: saved.thumbnailScrollPositions || {},
-            viewerState: saved.viewerState ? {
-                currentFolder: saved.viewerState.currentFolder || null,
-                images: [],
-                currentIndex: saved.viewerState.currentIndex || 0,
-                mode: (saved.viewerState.mode as ViewerMode) || 'vertical',
-                isLoading: false,
-                zoomLevel: 1,
-                scrollPosition: saved.viewerState.scrollPosition || 0,
-                verticalWidth: saved.viewerState.verticalWidth,
-            } : null,
-            restored: true, // Mark as restored so ViewerPage loads state from backend
-        }));
+        const restoredTabs: Tab[] = data.tabs.map((saved) => {
+            // Strip single-use navigation params that shouldn't survive restarts
+            const cleanParams = { ...(saved.params || {}) };
+            delete cleanParams.startIndex;
+            delete cleanParams.targetPath;
+            delete cleanParams.endOfChapter;
+
+            return {
+                id: saved.id || Math.random().toString(36).substring(2, 9),
+                title: saved.title || 'Home',
+                page: saved.page as PageType || 'home',
+                fromPage: saved.fromPage || null,
+                params: cleanParams,
+                history: [{ page: saved.page as PageType || 'home', params: saved.params || {} }],
+                activeMenuPage: saved.page as PageType || 'home',
+                explorerState: saved.explorerState || null,
+                thumbnailScrollPositions: saved.thumbnailScrollPositions || {},
+                viewerState: saved.viewerState ? {
+                    currentFolder: saved.viewerState.currentFolder || null,
+                    images: [],
+                    currentIndex: saved.viewerState.currentIndex || 0,
+                    mode: (saved.viewerState.mode as ViewerMode) || 'vertical',
+                    isLoading: false,
+                    zoomLevel: 1,
+                    scrollPosition: saved.viewerState.scrollPosition || 0,
+                    verticalWidth: saved.viewerState.verticalWidth,
+                } : null,
+                restored: true, // Mark as restored so ViewerPage loads state from backend
+            };
+        });
 
         set({
             tabs: restoredTabs,
@@ -319,7 +323,7 @@ export const useTabStore = create<TabStoreState>((set, get) => ({
         });
         console.log('[TabStore] Restored', restoredTabs.length, 'tabs from backend');
     },
-}));
+})));
 
 // Initialize activeTabId with the first tab's ID
 const firstTab = useTabStore.getState().tabs[0];

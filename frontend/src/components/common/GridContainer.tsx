@@ -13,7 +13,7 @@ export function GridContainer({ children, className = '', gap = 'md', variant = 
 
     return (
         <div
-            className={`grid grid-cols-2 gap-x-5 gap-y-3 animate-fade-in px-2 sm:px-3 sm:grid-cols-[repeat(auto-fill,minmax(var(--grid-item-width),1fr))] ${className}`}
+            className={`grid grid-cols-2 gap-x-5 gap-y-3 px-2 sm:px-3 sm:grid-cols-[repeat(auto-fill,minmax(var(--grid-item-width),1fr))] ${className}`}
             style={{ '--grid-item-width': `${minWidth}px` } as React.CSSProperties}
         >
             {children}

@@ -7,7 +7,6 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Tooltip } from '../ui/Tooltip';
 import { TabList } from './TabList';
-import { useTabStore } from '../../stores/tabStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 
 // Icons
@@ -43,8 +42,7 @@ interface TitleBarProps {
 export function TitleBar({ title }: TitleBarProps) {
     const { t } = useTranslation();
     const [isMaximized, setIsMaximized] = useState(false);
-    const { tabs } = useTabStore();
-    const { sidebarCollapsed } = useSettingsStore();
+    const sidebarCollapsed = useSettingsStore((s) => s.sidebarCollapsed);
 
     // Check maximized state on mount
     useEffect(() => {

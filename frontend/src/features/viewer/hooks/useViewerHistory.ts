@@ -1,8 +1,10 @@
 /**
  * useViewerHistory - Hook for saving reading progress to history
+ * Uses refs for volatile values (scrollPosition, currentIndex) to prevent
+ * cascading useCallback invalidation chain on every scroll.
  */
 
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 import { FolderInfo, ImageInfo } from '@types';
 import { AppAPI } from '@services/api/appAPI';
 
@@ -23,33 +25,41 @@ export function useViewerHistory({
     isNoHistorySession,
     verticalWidth,
 }: UseViewerHistoryOptions) {
+    // Refs for volatile values that change on every scroll/index change.
+    // This prevents saveProgress from getting a new reference on every scroll,
+    // which would cascade into 8+ useCallback invalidations in ViewerPage.
+    const scrollPositionRef = useRef(scrollPosition);
+    scrollPositionRef.current = scrollPosition;
+    const currentIndexRef = useRef(currentIndex);
+    currentIndexRef.current = currentIndex;
+
     const saveProgress = useCallback(async (customScrollPosition?: number) => {
         if (!currentFolder || images.length === 0 || isNoHistorySession) {
             return;
         }
 
-        // Use provided scroll position or fallback to current
-        const historyScrollPos = typeof customScrollPosition === 'number' && customScrollPosition >= 0 && customScrollPosition <= 1
+        const ci = currentIndexRef.current;
+        const sp = typeof customScrollPosition === 'number' && customScrollPosition >= 0 && customScrollPosition <= 1
             ? customScrollPosition
-            : scrollPosition;
+            : scrollPositionRef.current;
 
         try {
             await AppAPI.addHistory({
                 folderPath: currentFolder.path,
                 folderName: currentFolder.name,
-                lastImage: images[currentIndex]?.name || '',
-                lastImageIndex: currentIndex,
-                scrollPosition: historyScrollPos,
+                lastImage: images[ci]?.name || '',
+                lastImageIndex: ci,
+                scrollPosition: sp,
                 totalImages: images.length,
                 lastRead: new Date().toISOString(),
             });
-            // Sync viewer state to backend
-            await AppAPI.saveViewerState(currentFolder.path, currentIndex, verticalWidth, historyScrollPos);
-            console.log(`[useViewerHistory] Saved progress: index=${currentIndex}, scrollPos=${historyScrollPos}`);
+            await AppAPI.saveViewerState(currentFolder.path, ci, verticalWidth, sp);
         } catch (error) {
             console.error('[useViewerHistory] Failed to save progress:', error);
         }
-    }, [currentFolder, images, currentIndex, scrollPosition, isNoHistorySession, verticalWidth]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [currentFolder, images, isNoHistorySession, verticalWidth]);
+    // NOTE: scrollPosition and currentIndex intentionally omitted — read from refs
 
     return { saveProgress };
 }

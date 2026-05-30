@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
     DndContext,
@@ -95,7 +95,7 @@ const fallbackIcon = (
     </svg>
 );
 
-function PinnedSortableTile({
+const PinnedSortableTile = memo(function PinnedSortableTile({
     entry,
     thumbnail,
     onClick,
@@ -155,9 +155,9 @@ function PinnedSortableTile({
             </div>
         </div>
     );
-}
+});
 
-export function DirectoryView({
+export const DirectoryView = memo(function DirectoryView({
     entries,
     thumbnails,
     isCustomMode,
@@ -265,7 +265,7 @@ export function DirectoryView({
                 </div>
             </GridItem>
         );
-    }, [entries, thumbnails, isCustomMode, pinnedFolders, pinnedImages, justPinned, justPinnedImage, onItemClick, onItemAuxClick, onItemContextMenu, onLoadThumbnail, onOpenViewer, t, gridItemSize]);
+    }, [thumbnails, isCustomMode, pinnedFolders, pinnedImages, justPinned, justPinnedImage, onItemClick, onItemAuxClick, onItemContextMenu, onLoadThumbnail, onOpenViewer, t, gridItemSize]);
 
     const renderListEntry = useCallback((entry: ExplorerEntry) => {
         const thumb = entry.thumbnailUrl || thumbnails[entry.path];
@@ -280,7 +280,7 @@ export function DirectoryView({
                 onOpenViewer={onOpenViewer}
             />
         );
-    }, [entries, thumbnails, onItemClick, onItemAuxClick, onItemContextMenu, onOpenViewer]);
+    }, [thumbnails, onItemClick, onItemAuxClick, onItemContextMenu, onOpenViewer]);
 
     if (viewMode === 'list') {
         return (
@@ -324,4 +324,4 @@ export function DirectoryView({
     }
 
     return <GridContainer itemWidth={gridItemSize} className="pt-4">{renderContent()}</GridContainer>;
-}
+});

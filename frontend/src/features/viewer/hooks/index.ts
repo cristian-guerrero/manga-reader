@@ -13,6 +13,3 @@ export { useViewerControls } from './useViewerControls';
 export { useChapterNavigation } from './useChapterNavigation';
 export { useFolderNavigation } from './useFolderNavigation';
 export { useViewerHistory } from './useViewerHistory';
-export { useViewerData } from './useViewerData';
-export { useViewerDataLoading } from './useViewerDataLoading';
-export { useViewerRestoration } from './useViewerRestoration';

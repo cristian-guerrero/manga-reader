@@ -4,6 +4,7 @@
  */
 
 import { Suspense, useMemo, memo } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { MainLayout } from '@components/layout/MainLayout';
 import { useTabStore, useSettingsStore } from '@stores';
 import { usePanicMode, useAppInitialization, useTabPersistence, useWindowManagement } from '@hooks';
@@ -17,32 +18,34 @@ import './i18n';
 // No need to declare them here
 
 // Page router component with optimized rendering
+// Uses per-tab primitive selectors so updating unrelated tab fields (e.g., viewerState)
+// does NOT cause unnecessary re-renders of this PageRouter instance.
 const PageRouter = memo(function PageRouter({ tabId, isActive = true }: { tabId?: string; isActive?: boolean }) {
-    const activeTabIdFromStore = useTabStore((state: any) => state.activeTabId);
-    const id = tabId || activeTabIdFromStore;
+    const id = tabId || useTabStore((state: any) => state.activeTabId);
 
-    // Read page and params from the specific tab, NOT the global navigation store
-    // This ensures each tab maintains its own state independently
-    const tab = useTabStore((state: any) => state.tabs.find((t: any) => t.id === id));
-    const currentPage = tab?.page || 'home';
-    const params = tab?.params || {};
+    // Select ONLY page (string primitive) — won't re-render when other tab fields change
+    const currentPage = useTabStore((s: any) => {
+        const tab = s.tabs.find((t: any) => t.id === id);
+        return tab?.page ?? 'home';
+    });
 
-    // Create a stable key from params for comparison
-    const paramsKey = useMemo(() => {
-        return Object.keys(params).sort().map(k => `${k}:${params[k]}`).join('|');
-    }, [params]);
+    // Select params with shallow compare — stable reference when params object hasn't changed
+    const params = useTabStore(useShallow((s: any) => {
+        const tab = s.tabs.find((t: any) => t.id === id);
+        return tab?.params ?? {};
+    }));
 
     // Memoize page content to prevent unnecessary re-renders
     const pageContent = useMemo(() => {
         return renderPage(currentPage, params, isActive, id);
-    }, [currentPage, paramsKey, isActive, id]);
+    }, [currentPage, params, isActive, id]);
 
     return (
         <div
             className="h-full w-full"
             style={{
                 display: isActive ? 'block' : 'none',
-                visibility: isActive ? 'visible' : 'hidden' // Double layer for security against layout shifts
+                visibility: isActive ? 'visible' : 'hidden'
             }}
         >
             {pageContent}
@@ -51,7 +54,9 @@ const PageRouter = memo(function PageRouter({ tabId, isActive = true }: { tabId?
 });
 
 function PageContainer() {
-    const tabs = useTabStore((state: any) => state.tabs);
+    // Subscribe to stable tab IDs only (not full tab objects) to prevent
+    // cascading re-renders when any tab's internal state changes.
+    const tabIds = useTabStore(useShallow((state: any) => state.tabs.map((t: any) => t.id)));
     const activeTabId = useTabStore((state: any) => state.activeTabId);
     const tabMemorySaving = useSettingsStore((state: any) => state.tabMemorySaving);
 
@@ -61,11 +66,11 @@ function PageContainer() {
 
     return (
         <div className="h-full w-full relative">
-            {tabs.map((tab: any) => (
+            {tabIds.map((id: string) => (
                 <PageRouter
-                    key={tab.id}
-                    tabId={tab.id}
-                    isActive={tab.id === activeTabId}
+                    key={id}
+                    tabId={id}
+                    isActive={id === activeTabId}
                 />
             ))}
         </div>

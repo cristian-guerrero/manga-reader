@@ -265,7 +265,6 @@ export function useExplorerNavigation({
             setPathHistory([]);
             setForwardHistory([]);
             setCurrentPath(entry.path);
-            setEntries([]);
         } else {
             const e = entry as ExplorerEntry;
             if (e.isDirectory) {
@@ -279,7 +278,6 @@ export function useExplorerNavigation({
                     }
                 }
                 setCurrentPath(e.path);
-                setEntries([]);
             } else {
                 if (currentPath) {
                     const imageEntries = sortedEntries.filter(ent => !ent.isDirectory);

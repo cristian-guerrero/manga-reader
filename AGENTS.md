@@ -15,6 +15,13 @@ Wails v2 (Go 1.24 backend, React 18 + TypeScript + Vite frontend). State: Zustan
 - **Frontend tests (watch)**: `cd frontend && npm run test:watch`
 - **Frontend coverage**: `cd frontend && npm run test:coverage`
 
+## Optimization Patterns
+- **Granular Zustand selectors**: Always use `useStore((s) => s.specificField)` instead of `useStore()` to prevent cascading re-renders. For object values, use `useShallow` from `zustand/react/shallow`.
+- **Immer middleware**: `tabStore` uses `zustand/middleware/immer` for mutation-friendly updates that avoid full array `.map()` on every tab update. When adding immer to a store, use `create<T>()(immer((set, get) => ({ ... })))`.
+- **Ref-stable callbacks**: Keyboard nav and scroll handlers use `useRef` + `useCallback(() => ..., [])` pattern to keep hotkey registrations stable regardless of changing dependencies like `images.length`.
+- **Debounced DOM mutation watchers**: `MutationObserver` callbacks are debounced (150ms) to avoid re-attaching scroll listeners on every image load.
+- **React.memo on sortable items**: Sortable grid items (`SortableEntryTile`, `PinnedSortableTile`) are wrapped in `React.memo` to prevent unnecessary re-renders from `@dnd-kit` parent re-evaluations.
+
 ## Architecture
 - **Entrypoints**: `main.go` → `app.go` (Wails app struct with bound methods)
 - **Go backend**: `internal/` with `services/` (DI container), `database/` (SQLite repositories), `persistence/` (shared model types only), `utils/` (shared utility functions, e.g. natural sort), `modules/` (colorizer, downloader, explorer, library, series, history), `fileloader/` (image server, network server, asset extraction, API bridge), `thumbnails/`, `archiver/`, `updater/` (auto-update via GitHub releases), `version/` (build-time version injection via ldflags)

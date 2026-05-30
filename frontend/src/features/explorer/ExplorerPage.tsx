@@ -3,7 +3,7 @@
  * Refactored to use custom hooks for better separation of concerns
  */
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useMobileScroll } from "@contexts/MobileScrollContext";
 import {
@@ -129,15 +129,23 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
   loadDirRef.current = loading.loadDirectory;
 
   const [pinnedFolders, setPinnedFolders] = useState<string[]>([]);
+  const [pinnedImages, setPinnedImages] = useState<string[]>([]);
 
   useEffect(() => {
     if (!explorerStateHook.currentPath) {
       setPinnedFolders([]);
+      setPinnedImages([]);
       return;
     }
-    FolderOrderAPI.getPinnedFolders(explorerStateHook.currentPath, sorting.sortBy)
-      .then(setPinnedFolders)
-      .catch(() => setPinnedFolders([]));
+    const p = explorerStateHook.currentPath;
+    const sort = sorting.sortBy;
+    Promise.all([
+      FolderOrderAPI.getPinnedFolders(p, sort).catch(() => [] as string[]),
+      ImageOrderAPI.getPinnedImages(p, sort).catch(() => [] as string[]),
+    ]).then(([folders, images]) => {
+      setPinnedFolders(folders);
+      setPinnedImages(images);
+    });
   }, [explorerStateHook.currentPath, sorting.sortBy]);
 
   const [justPinned, setJustPinned] = useState<string | null>(null);
@@ -149,34 +157,18 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
     setPinnedFolders(updated);
     setJustPinned(entryName);
     setTimeout(() => setJustPinned(null), 500);
-    const items = await AppAPI.exploreFolder(explorerStateHook.currentPath, sorting.sortBy, sorting.sortOrder);
-    loading.setEntries(items || []);
-  }, [explorerStateHook.currentPath, sorting.sortBy, sorting.sortOrder, loading.setEntries]);
+  }, [explorerStateHook.currentPath, sorting.sortBy]);
 
   const handleUnpinFolder = useCallback(async (entryName: string) => {
     if (!explorerStateHook.currentPath) return;
     await FolderOrderAPI.unpinFolder(explorerStateHook.currentPath, sorting.sortBy, entryName);
     const updated = await FolderOrderAPI.getPinnedFolders(explorerStateHook.currentPath, sorting.sortBy);
     setPinnedFolders(updated);
-    const items = await AppAPI.exploreFolder(explorerStateHook.currentPath, sorting.sortBy, sorting.sortOrder);
-    loading.setEntries(items || []);
-  }, [explorerStateHook.currentPath, sorting.sortBy, sorting.sortOrder, loading.setEntries]);
+  }, [explorerStateHook.currentPath, sorting.sortBy]);
 
   const isPinned = useCallback((entryName: string) => {
     return pinnedFolders.includes(entryName);
   }, [pinnedFolders]);
-
-  const [pinnedImages, setPinnedImages] = useState<string[]>([]);
-
-  useEffect(() => {
-    if (!explorerStateHook.currentPath) {
-      setPinnedImages([]);
-      return;
-    }
-    ImageOrderAPI.getPinnedImages(explorerStateHook.currentPath, sorting.sortBy)
-      .then(setPinnedImages)
-      .catch(() => setPinnedImages([]));
-  }, [explorerStateHook.currentPath, sorting.sortBy]);
 
   const [justPinnedImage, setJustPinnedImage] = useState<string | null>(null);
 
@@ -288,7 +280,9 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
   }, [sorting.sortBy, sorting.sortOrder, explorerStateHook.currentPath, loading.loadDirectory]);
 
   // Use view mode hook (includes grid item size)
-  const { viewMode, setViewMode, gridItemSize, setGridItemSize } = useExplorerView(explorerStateHook.currentPath);
+  const { viewMode, setViewMode, gridItemSize, setGridItemSize, isLoaded: viewStateLoaded } = useExplorerView(explorerStateHook.currentPath);
+  const resolvedViewMode = viewMode ?? 'grid';
+  const resolvedGridItemSize = gridItemSize ?? 200;
 
   // Use drag-and-drop hook (for custom folder ordering and pinned folder reordering)
   const dnd = useExplorerDragAndDrop({
@@ -325,6 +319,25 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
   const isLeafImageFolder = explorerStateHook.currentPath
     && loading.entries.length > 0
     && loading.entries.every(e => !e.isDirectory);
+
+  // Controls show/hide (like viewer)
+  const [showFolderNavControls, setShowFolderNavControls] = useState(true);
+  const folderNavTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleFolderNavMouseMove = useCallback(() => {
+    setShowFolderNavControls(true);
+    if (folderNavTimeoutRef.current) {
+      clearTimeout(folderNavTimeoutRef.current);
+    }
+    folderNavTimeoutRef.current = setTimeout(() => setShowFolderNavControls(false), 3000);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (folderNavTimeoutRef.current) {
+        clearTimeout(folderNavTimeoutRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!explorerStateHook.currentPath || !isLeafImageFolder) {
@@ -370,9 +383,8 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
     setContextMenu(null);
   }, []);
 
-  const contextMenuItems: ContextMenuItem[] = contextMenu
+  const contextMenuItems: ContextMenuItem[] = useMemo(() => contextMenu
     ? [
-        // Pin/Unpin for directories
         ...(contextMenu.entry.isDirectory
           ? [
               isPinned(contextMenu.entry.name)
@@ -388,7 +400,6 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
                   } as ContextMenuItem,
             ]
           : []),
-        // Pin/Unpin for images (files)
         ...(!contextMenu.entry.isDirectory
           ? [
               isImagePinned(contextMenu.entry.name)
@@ -404,7 +415,6 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
                   } as ContextMenuItem,
             ]
           : []),
-        // "Open in One Shot": only for leaf directories with images
         ...(contextMenu.entry.subdirectoryCount === 0 && contextMenu.entry.hasImages
           ? [
               {
@@ -417,7 +427,6 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
               } as ContextMenuItem,
             ]
           : []),
-        // "Open in Series": only for directories with subfolders
         ...(contextMenu.entry.subdirectoryCount > 0
           ? [
               {
@@ -436,7 +445,6 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
               } as ContextMenuItem,
             ]
           : []),
-        // "Open in Colorizer": only for leaf directories with images
         ...(contextMenu.entry.subdirectoryCount === 0 && contextMenu.entry.hasImages
           ? [
               {
@@ -449,7 +457,6 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
               } as ContextMenuItem,
             ]
           : []),
-        // Always show "Open in File Manager"
         {
           id: 'open-in-file-manager',
           label: t('explorer.openInFileManager'),
@@ -457,7 +464,7 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
             AppAPI.openInFileManager(contextMenu.entry.path),
         },
       ]
-    : [];
+    : [], [contextMenu, isPinned, isImagePinned, handleUnpinFolder, handlePinFolder, handleUnpinImage, handlePinImage, t, navigate]);
 
   // Use restoration hook
   useExplorerRestoration({
@@ -476,10 +483,11 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
   });
 
   return (
-    <div
-      className="h-full p-2 sm:p-6 flex flex-col"
-      style={{ backgroundColor: "var(--color-surface-primary)" }}
-    >
+      <div
+        className="h-full p-2 sm:p-6 flex flex-col relative"
+        style={{ backgroundColor: "var(--color-surface-primary)" }}
+        onMouseMove={handleFolderNavMouseMove}
+      >
       {/* Header */}
       <div
         className="flex items-center justify-between mb-2 sm:mb-6 flex-shrink-0 flex-wrap gap-2 transition-all duration-300 sm:opacity-100 sm:translate-y-0"
@@ -614,7 +622,7 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
                 <button
                   onClick={() => setViewMode('grid')}
                   className={`p-1.5 rounded transition-colors ${
-                    viewMode === 'grid'
+                    resolvedViewMode === 'grid'
                       ? 'bg-accent text-white'
                       : 'text-text-secondary hover:text-text-primary hover:bg-white/10'
                   }`}
@@ -626,7 +634,7 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
                 <button
                   onClick={() => setViewMode('list')}
                   className={`p-1.5 rounded transition-colors ${
-                    viewMode === 'list'
+                    resolvedViewMode === 'list'
                       ? 'bg-accent text-white'
                       : 'text-text-secondary hover:text-text-primary hover:bg-white/10'
                   }`}
@@ -658,7 +666,7 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
             onSearch={search.setSearchQuery}
             className="flex-1 min-w-0 sm:max-w-md hidden sm:block"
           />
-          {viewMode === 'grid' && explorerStateHook.currentPath && (
+          {resolvedViewMode === 'grid' && explorerStateHook.currentPath && (
             <div className="flex items-center gap-2 ml-auto hidden sm:flex">
               <span className="text-xs text-text-secondary whitespace-nowrap">
                 {t('explorer.gridItemSize')}
@@ -668,13 +676,13 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
                 min={120}
                 max={400}
                 step={10}
-                value={gridItemSize}
+                value={resolvedGridItemSize}
                 onChange={(e) => setGridItemSize(Number(e.target.value))}
                 onDoubleClick={() => setGridItemSize(200)}
                 className="w-24 h-1.5 bg-surface-tertiary rounded-full appearance-none cursor-pointer accent-accent [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-accent [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:cursor-pointer"
               />
               <span className="text-xs text-text-secondary w-8 text-right tabular-nums">
-                {gridItemSize}px
+                {resolvedGridItemSize}px
               </span>
             </div>
           )}
@@ -684,7 +692,6 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
       {/* Content */}
       <div
         className="flex-1 overflow-auto pr-1 sm:pr-2"
-        key={explorerStateHook.currentPath || "root"}
       >
         {/* Base Folders View */}
         {!explorerStateHook.currentPath && (
@@ -752,15 +759,15 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
         )}
 
         {/* Directory View */}
-        {explorerStateHook.currentPath && (
+        {explorerStateHook.currentPath && viewStateLoaded && (
           <DirectoryView
             entries={search.sortedEntries}
             thumbnails={thumbnails}
             isCustomMode={isInCustomMode}
             directoryEntries={dnd.directoryEntries}
             sensors={sensors}
-            viewMode={viewMode}
-            gridItemSize={gridItemSize}
+            viewMode={resolvedViewMode}
+            gridItemSize={resolvedGridItemSize}
             onDragStart={dnd.handleDragStart}
             onDragEnd={dnd.handleDragEnd}
             activeEntry={dnd.activeEntry}
@@ -903,8 +910,7 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
         <FolderNavigationBar
           prevFolder={folderNav.prevFolder}
           nextFolder={folderNav.nextFolder}
-          currentIndex={folderNav.currentIndex}
-          totalFolders={folderNav.totalFolders}
+          showControls={showFolderNavControls}
           onPrevFolder={handleFolderNavPrev}
           onNextFolder={handleFolderNavNext}
           t={t}

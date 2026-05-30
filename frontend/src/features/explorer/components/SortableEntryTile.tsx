@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { MediaTile } from '@shared/components';
@@ -17,7 +18,7 @@ interface SortableEntryTileProps {
     isPinned?: boolean;
 }
 
-export function SortableEntryTile({
+export const SortableEntryTile = memo(function SortableEntryTile({
     entry,
     thumbnail,
     onClick,
@@ -63,4 +64,4 @@ export function SortableEntryTile({
             </div>
         </div>
     );
-}
+});
