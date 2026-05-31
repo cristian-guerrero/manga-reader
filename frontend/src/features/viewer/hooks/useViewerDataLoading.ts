@@ -96,8 +96,8 @@ export function useViewerDataLoading({
 
                 // Get scroll position from current tab state if available
                 const currentTabScroll = activeTab?.viewerState?.scrollPosition;
-                if (currentTabScroll && currentTabScroll > 0 && currentTabScroll <= 1) {
-                    targetScroll = currentTabScroll; // Percentage
+                if (currentTabScroll && currentTabScroll > 0) {
+                    targetScroll = currentTabScroll;
                 }
 
                 // Prioritization logic for target index

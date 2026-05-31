@@ -129,10 +129,10 @@ export function useViewerRestoration({
                 // Get scroll position from tab state or history
                 let scrollPos = 0;
                 const tabScrollPosition = tab?.viewerState?.scrollPosition;
-                if (tabScrollPosition && tabScrollPosition > 0 && tabScrollPosition <= 1) {
-                    scrollPos = tabScrollPosition; // Percentage
+                if (tabScrollPosition && tabScrollPosition > 0) {
+                    scrollPos = tabScrollPosition;
                 } else if (historyEntry && historyEntry.scrollPosition > 0) {
-                    scrollPos = historyEntry.scrollPosition; // Percentage
+                    scrollPos = historyEntry.scrollPosition;
                 }
 
                 setRestoreIndex(calculatedIndex);
@@ -169,7 +169,7 @@ export function useViewerRestoration({
 
             // Restore scroll position from tab state
             const tabScrollPosition = tab?.viewerState?.scrollPosition;
-            if (tabScrollPosition && tabScrollPosition > 0 && tabScrollPosition <= 1) {
+            if (tabScrollPosition && tabScrollPosition > 0) {
                 setRestoreScrollPosition(tabScrollPosition);
             }
         }

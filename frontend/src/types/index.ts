@@ -19,6 +19,10 @@ export interface ImageInfo {
   extension: string;
   /** File size in bytes */
   size: number;
+  /** Image width in pixels (natural dimensions, 0 if unknown) */
+  width: number;
+  /** Image height in pixels (natural dimensions, 0 if unknown) */
+  height: number;
   /** Index in the current folder */
   index: number;
   /** Modification time (timestamp) */
@@ -57,7 +61,7 @@ export interface HistoryEntry {
   lastImage: string;
   /** Last viewed image index */
   lastImageIndex: number;
-  /** Scroll position (0-1 for percentage) */
+  /** Scroll position (absolute pixels) */
   scrollPosition: number;
   /** Total number of images in folder */
   totalImages: number;

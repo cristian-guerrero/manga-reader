@@ -12,7 +12,7 @@ interface UseViewerHistoryOptions {
     currentFolder: FolderInfo | null;
     images: ImageInfo[];
     currentIndex: number;
-    scrollPosition: number; // 0-1 percentage
+    scrollPosition: number; // absolute pixels
     isNoHistorySession: boolean;
     verticalWidth: number;
 }
@@ -39,7 +39,7 @@ export function useViewerHistory({
         }
 
         const ci = currentIndexRef.current;
-        const sp = typeof customScrollPosition === 'number' && customScrollPosition >= 0 && customScrollPosition <= 1
+        const sp = typeof customScrollPosition === 'number' && customScrollPosition >= 0
             ? customScrollPosition
             : scrollPositionRef.current;
 

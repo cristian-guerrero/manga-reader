@@ -12,9 +12,11 @@ interface VerticalViewerProps {
         index: number;
         imageUrl?: string;
         thumbnailUrl?: string;
+        width?: number;
+        height?: number;
     }>;
     initialIndex?: number;
-    initialScrollPosition?: number; // 0-1 percentage of max scroll
+    initialScrollPosition?: number; // absolute pixels from top
     showControls?: boolean;
     hasChapterButtons?: boolean;
     isAutoScrolling?: boolean;
@@ -22,7 +24,7 @@ interface VerticalViewerProps {
     onAutoScrollStateChange?: (isScrolling: boolean) => void;
     onRestorationComplete?: () => void;
     onIndexChange?: (index: number) => void;
-    onScrollPositionChange?: (scrollTop: number) => void; // Callback to report scroll position
+    onScrollPositionChange?: (scrollTop: number) => void; // Callback to report scroll position (pixels)
     verticalWidth: number;
     onWidthChange?: (width: number) => void;
     isActive?: boolean;
@@ -110,13 +112,8 @@ export const VerticalViewer = React.memo(({
 }: VerticalViewerProps) => {
     const parentRef = useRef<HTMLDivElement>(null);
     const itemRefs = useRef<Record<number, HTMLDivElement | null>>({});
-
-    // Track which initialIndex was applied
-    const appliedInitialIndexRef = useRef<number>(-1);
-    const appliedInitialScrollRef = useRef<number>(-1);
-    const isUserScrollingRef = useRef<boolean>(false); // Track if user is actively scrolling
-    const hasEverCompletedRef = useRef<boolean>(false); // Track if restoration completed once (images were loaded)
-    const lastUserScrollTimeRef = useRef<number>(0); // Track when user last scrolled
+    const isUserScrollingRef = useRef<boolean>(false);
+    const lastUserScrollTimeRef = useRef<number>(0);
 
     // LOCAL state for display index
     const [displayIndex, setDisplayIndex] = useState(initialIndex);
@@ -142,35 +139,47 @@ export const VerticalViewer = React.memo(({
         ));
     }, [images, verticalWidth]);
 
+    // Helper: builds cumulative pixel offset map from image dimensions + container width.
+    const getHeightMap = useCallback((containerEl: HTMLElement): number[] => {
+        const containerWidth = containerEl.clientWidth;
+        const imgDisplayWidth = containerWidth * (verticalWidth / 100);
+        const gapPx = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16; // 1rem
+        const cumulative: number[] = [0];
+        for (let i = 0; i < images.length; i++) {
+            const img = images[i];
+            let h: number;
+            if (img.width && img.height) {
+                h = imgDisplayWidth * (img.height / img.width);
+            } else {
+                h = 800;
+            }
+            cumulative.push(cumulative[i] + h + gapPx);
+        }
+        return cumulative;
+    }, [images, verticalWidth]);
+
     // Handle scroll - Optimized to find current index and report scroll position
-    // Uses RAF throttling to avoid 60fps state updates and eliminates full DOM scan.
     const handleScroll = useCallback(() => {
         if (!parentRef.current) return;
 
         const container = parentRef.current;
         const scrollTop = container.scrollTop;
-        
-        // Mark that user is actively scrolling to prevent restoration interference
+
+        // Mark that user is actively scrolling
         isUserScrollingRef.current = true;
         lastUserScrollTimeRef.current = Date.now();
-        
-        // Clear the flag after a delay (user stopped scrolling)
         setTimeout(() => {
             if (Date.now() - lastUserScrollTimeRef.current >= 150) {
                 isUserScrollingRef.current = false;
             }
         }, 150);
-        
-        // RAF-throttled scroll position reporting for cleaner backpressure
+
+        // RAF-throttled scroll position reporting — report pixels directly
         if (onScrollPositionChange && Date.now() - lastScrollReportRef.current > 50) {
             cancelAnimationFrame(scrollRafRef.current);
             scrollRafRef.current = requestAnimationFrame(() => {
                 if (!parentRef.current) return;
-                const c = parentRef.current;
-                const { scrollHeight, clientHeight } = c;
-                const maxScroll = scrollHeight - clientHeight;
-                const percentage = maxScroll > 0 ? c.scrollTop / maxScroll : 0;
-                onScrollPositionChange(percentage);
+                onScrollPositionChange(parentRef.current.scrollTop);
                 lastScrollReportRef.current = Date.now();
             });
         }
@@ -180,8 +189,6 @@ export const VerticalViewer = React.memo(({
 
         // Find which image is at the top using a wide range scan
         let topIndex = displayIndex;
-
-        // Wide range (50 items) — eliminates the fallback full scan for most cases
         const checkRange = 50;
         const start = Math.max(0, displayIndex - checkRange);
         const end = Math.min(images.length - 1, displayIndex + checkRange);
@@ -197,8 +204,7 @@ export const VerticalViewer = React.memo(({
             }
         }
 
-        // If still not found (rare — only on very large jumps), scan the visible viewport
-        // using binary-search-like stepping to avoid reading all DOM nodes
+        // Fallback scan for large jumps
         if (topIndex === displayIndex && images.length > 100) {
             const step = Math.max(1, Math.floor(images.length / 20));
             for (let i = 0; i < images.length; i += step) {
@@ -206,7 +212,6 @@ export const VerticalViewer = React.memo(({
                 if (el) {
                     const rect = el.getBoundingClientRect();
                     if (rect.bottom > containerTop) {
-                        // Found a candidate before the viewport — scan forward from here
                         const candidateStart = Math.max(0, i - step);
                         const candidateEnd = Math.min(images.length - 1, i + step);
                         for (let j = candidateStart; j <= candidateEnd; j++) {
@@ -231,103 +236,29 @@ export const VerticalViewer = React.memo(({
         }
     }, [displayIndex, images.length, onIndexChange, onScrollPositionChange]);
 
-    // Handle initial scroll/resume - runs in layout phase (before paint) to prevent flash of first page
+    // Restore scroll position using pixel-based positioning, no RAF loop needed.
     useLayoutEffect(() => {
         if (!parentRef.current || images.length === 0) return;
         if (!isActive) return;
         if (isUserScrollingRef.current) return;
 
-        // Skip if same position already applied (avoids re-scroll on tab switches with unchanged position)
-        // Include images.length so scroll is re-applied when images load after initial empty mount
-        const scrollKey = `${initialIndex}_${initialScrollPosition ?? 0}_${images.length}`;
-        const lastScrollKey = `${appliedInitialIndexRef.current}_${appliedInitialScrollRef.current}`;
-        if (scrollKey === lastScrollKey) return;
-
         const container = parentRef.current;
+        const hm = getHeightMap(container);
 
-        // If restoration already completed once (images were previously loaded),
-        // use direct percentage→pixels positioning — scrollHeight is already accurate
-        if (hasEverCompletedRef.current) {
-            if (initialScrollPosition !== undefined && initialScrollPosition > 0 && initialScrollPosition <= 1) {
-                const { scrollHeight, clientHeight } = container;
-                const maxScroll = scrollHeight - clientHeight;
-                if (maxScroll > 0) {
-                    container.scrollTop = initialScrollPosition * maxScroll;
-                }
-            } else if (initialIndex === 0) {
-                container.scrollTop = 0;
-            }
-            appliedInitialIndexRef.current = initialIndex;
-            appliedInitialScrollRef.current = initialScrollPosition ?? 0;
-            onRestorationComplete?.();
-            return;
-        }
-
-        // First-time setup: images not yet loaded, use scrollIntoView for approximate positioning
-        // Skip scrollIntoView if we have an exact scroll percentage — the RAF correction
-        // loop will apply the precise position, avoiding a double visual jump.
-        if (initialScrollPosition === undefined || initialScrollPosition <= 0) {
-            if (initialIndex >= 0 && initialIndex < images.length) {
-                const target = itemRefs.current[initialIndex];
-                if (target) {
-                    target.scrollIntoView({ block: 'start', behavior: 'instant' });
-                }
-            }
-        }
-
-        appliedInitialIndexRef.current = initialIndex;
-        appliedInitialScrollRef.current = initialScrollPosition ?? 0;
-
-        // Deferred rAF-based correction: waits for scrollHeight to stabilize (images load)
-        // then applies exact percentage position. Only runs on first mount.
-        if (initialScrollPosition !== undefined && initialScrollPosition > 0 && initialScrollPosition <= 1) {
-            let cancelled = false;
-            let stableFrames = 0;
-            let lastScrollHeight = container.scrollHeight;
-            let frameCount = 0;
-            const MAX_FRAMES = 10;
-
-            const applyExactPosition = () => {
-                frameCount++;
-                if (cancelled || !parentRef.current || frameCount > MAX_FRAMES) {
-                    hasEverCompletedRef.current = true;
-                    onRestorationComplete?.();
-                    return;
-                }
-
-                const c = parentRef.current;
-                const { scrollHeight, clientHeight } = c;
-
-                if (scrollHeight === lastScrollHeight) {
-                    stableFrames++;
-                } else {
-                    stableFrames = 0;
-                    lastScrollHeight = scrollHeight;
-                }
-
-                if (stableFrames >= 3) {
-                    const maxScroll = scrollHeight - clientHeight;
-                    if (maxScroll > 0) {
-                        const exactPixels = initialScrollPosition * maxScroll;
-                        if (Math.abs(c.scrollTop - exactPixels) > 5) {
-                            c.scrollTop = exactPixels;
-                        }
-                    }
-                    hasEverCompletedRef.current = true;
-                    onRestorationComplete?.();
-                } else {
-                    requestAnimationFrame(applyExactPosition);
-                }
-            };
-
-            requestAnimationFrame(applyExactPosition);
-
-            return () => { cancelled = true; };
+        // Use direct pixel scroll restoration when we have saved pixels.
+        if (initialScrollPosition !== undefined && initialScrollPosition > 0 &&
+            hm.length > 0 && hm[hm.length - 1] > initialScrollPosition) {
+            container.scrollTop = initialScrollPosition;
+        } else if (initialIndex > 0 && initialIndex < hm.length) {
+            // Fallback: use height map to position at the target page
+            container.scrollTop = hm[initialIndex];
         } else {
-            hasEverCompletedRef.current = true;
-            onRestorationComplete?.();
+            container.scrollTop = 0;
         }
-    }, [initialIndex, initialScrollPosition, images.length, isActive, onRestorationComplete]);
+
+        setDisplayIndex(initialIndex);
+        onRestorationComplete?.();
+    }, [initialIndex, initialScrollPosition, images.length, getHeightMap, isActive, onRestorationComplete]);
 
     // Auto-scroll pixels per second calculation
     const getPixelsPerSecond = useCallback((speed: number): number => {
