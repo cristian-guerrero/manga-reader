@@ -62,7 +62,7 @@ export function useViewerState({ folderPath, tabId, params }: UseViewerStateOpti
     const [resumeScrollPos, setResumeScrollPos] = useState(() => {
         const initialTab = useTabStore.getState().tabs.find((t) => t.id === tabId);
         const scrollPos = initialTab?.viewerState?.scrollPosition;
-        return scrollPos && scrollPos > 0 && scrollPos <= 1 ? scrollPos : 0;
+        return scrollPos && scrollPos > 0 ? scrollPos : 0;
     });
 
     const [resetKey, setResetKey] = useState(0);

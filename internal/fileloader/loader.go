@@ -5,6 +5,7 @@ import (
 	"archive/zip"
 	"crypto/md5"
 	"fmt"
+	"image"
 	"io"
 	"manga-visor/internal/utils"
 	"os"
@@ -13,7 +14,13 @@ import (
 	"strings"
 	"sync"
 
+	_ "image/gif"
+	_ "image/jpeg"
+	_ "image/png"
+
 	"github.com/nwaples/rardecode/v2"
+
+	_ "golang.org/x/image/webp"
 )
 
 const archivePrefix = "archive:"
@@ -287,6 +294,8 @@ type ImageInfo struct {
 	Name      string `json:"name"`
 	Extension string `json:"extension"`
 	Size      int64  `json:"size"`
+	Width     int    `json:"width"`
+	Height    int    `json:"height"`
 	Index     int    `json:"index"`
 	ModTime   int64  `json:"modTime"`
 }
@@ -452,6 +461,23 @@ func (fl *FileLoader) GetMimeType(filename string) string {
 	return "application/octet-stream"
 }
 
+// getImageDimensions reads the dimensions of an image file using DecodeConfig.
+// Only reads file headers, not the full image data. Returns 0,0 on failure.
+func getImageDimensions(imagePath string) (width, height int) {
+	f, err := os.Open(imagePath)
+	if err != nil {
+		return 0, 0
+	}
+	defer f.Close()
+
+	cfg, _, err := image.DecodeConfig(f)
+	if err != nil {
+		return 0, 0
+	}
+
+	return cfg.Width, cfg.Height
+}
+
 // GetImages returns a list of images in the specified folder (recursive)
 // If folderPath is an archive, returns images from the archive
 func (fl *FileLoader) GetImages(folderPath string) ([]ImageInfo, error) {
@@ -512,14 +538,17 @@ func (fl *FileLoader) GetImages(folderPath string) ([]ImageInfo, error) {
 		return naturalLess(imageFiles[i].path, imageFiles[j].path)
 	})
 
-	// Build result
+	// Build result — extract dimensions alongside basic info
 	for i, file := range imageFiles {
 		ext := strings.ToLower(filepath.Ext(file.name))
+		w, h := getImageDimensions(file.path)
 		images = append(images, ImageInfo{
 			Path:      file.path,
 			Name:      file.name,
 			Extension: strings.TrimPrefix(ext, "."),
 			Size:      file.info.Size(),
+			Width:     w,
+			Height:    h,
 			Index:     i,
 			ModTime:   file.info.ModTime().UnixMilli(),
 		})
@@ -723,14 +752,17 @@ func (fl *FileLoader) GetImagesShallow(folderPath string) ([]ImageInfo, error) {
 		return naturalLess(imageFiles[i].name, imageFiles[j].name)
 	})
 
-	// Build result
+	// Build result — extract dimensions alongside basic info
 	for i, file := range imageFiles {
 		ext := strings.ToLower(filepath.Ext(file.name))
+		w, h := getImageDimensions(file.path)
 		images = append(images, ImageInfo{
 			Path:      file.path,
 			Name:      file.name,
 			Extension: strings.TrimPrefix(ext, "."),
 			Size:      file.info.Size(),
+			Width:     w,
+			Height:    h,
 			Index:     i,
 			ModTime:   file.info.ModTime().UnixMilli(),
 		})

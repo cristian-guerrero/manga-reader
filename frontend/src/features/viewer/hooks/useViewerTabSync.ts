@@ -53,10 +53,10 @@ export function useViewerTabSync({
             setResumeIndex(tabCurrentIndex);
             lastSyncedIndexRef.current = tabCurrentIndex;
 
-            // Restore scroll position: use resumeScrollPos if available (exact pixels), otherwise convert percentage
-            if (tabScrollPosition && tabScrollPosition > 0 && tabScrollPosition <= 1) {
-                console.log(`[useViewerTabSync] Tab activated: Will restore scroll position percentage: ${tabScrollPosition}`);
-                setResumeScrollPos(tabScrollPosition); // Set percentage, VerticalViewer will convert
+            // Restore scroll position: use pixel value from tab state
+            if (tabScrollPosition && tabScrollPosition > 0) {
+                console.log(`[useViewerTabSync] Tab activated: Will restore scroll position pixels: ${tabScrollPosition}`);
+                setResumeScrollPos(tabScrollPosition);
             }
 
             // Mark current params as processed to prevent navigation seek from applying old params

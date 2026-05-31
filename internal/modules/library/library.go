@@ -381,6 +381,8 @@ func (m *Module) GetImages(path string, settings *persistence.Settings, orders *
 			Name:         img.Name,
 			Extension:    img.Extension,
 			Size:         img.Size,
+			Width:        img.Width,
+			Height:       img.Height,
 			Index:        img.Index,
 			ModTime:      img.ModTime,
 		}
@@ -460,6 +462,8 @@ func (m *Module) GetImagesShallow(path string, settings *persistence.Settings, o
 			Name:         img.Name,
 			Extension:    img.Extension,
 			Size:         img.Size,
+			Width:        img.Width,
+			Height:       img.Height,
 			Index:        img.Index,
 			ModTime:      img.ModTime,
 		}

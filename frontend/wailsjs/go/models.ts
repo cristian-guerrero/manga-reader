@@ -434,6 +434,8 @@ export namespace persistence {
 	    name: string;
 	    extension: string;
 	    size: number;
+	    width: number;
+	    height: number;
 	    index: number;
 	    modTime: number;
 	
@@ -449,6 +451,8 @@ export namespace persistence {
 	        this.name = source["name"];
 	        this.extension = source["extension"];
 	        this.size = source["size"];
+	        this.width = source["width"];
+	        this.height = source["height"];
 	        this.index = source["index"];
 	        this.modTime = source["modTime"];
 	    }

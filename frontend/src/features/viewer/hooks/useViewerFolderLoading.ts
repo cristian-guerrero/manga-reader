@@ -132,7 +132,7 @@ export function useViewerFolderLoading({
 
                     // Get scroll position from current viewer state if available
                     const currentTabScroll = activeTab?.viewerState?.scrollPosition;
-                    if (currentTabScroll && currentTabScroll > 0 && currentTabScroll <= 1) {
+                    if (currentTabScroll && currentTabScroll > 0) {
                         targetScroll = currentTabScroll;
                     }
 
@@ -143,20 +143,20 @@ export function useViewerFolderLoading({
                         if (restoredState?.currentIndex !== undefined && restoredState.currentIndex >= 0 && restoredState.currentIndex < imgs.length) {
                             targetIndex = restoredState.currentIndex;
                             console.log(`[useViewerFolderLoading] Using tab's restored state: index=${targetIndex}`);
-                            if (restoredState.scrollPosition && restoredState.scrollPosition > 0 && restoredState.scrollPosition <= 1) {
+                            if (restoredState.scrollPosition && restoredState.scrollPosition > 0) {
                                 targetScroll = restoredState.scrollPosition;
                             }
                         } else if (savedViewerState && savedViewerState.currentIndex >= 0 && savedViewerState.currentIndex < imgs.length) {
                             targetIndex = savedViewerState.currentIndex;
                             console.log(`[useViewerFolderLoading] Fallback to BACKEND state: index=${targetIndex}`);
-                            if (savedViewerState.scrollPosition && savedViewerState.scrollPosition > 0 && savedViewerState.scrollPosition <= 1) {
+                            if (savedViewerState.scrollPosition && savedViewerState.scrollPosition > 0) {
                                 targetScroll = savedViewerState.scrollPosition;
                             }
                         }
                     } else if (tabState?.currentIndex !== undefined && tabState.currentIndex >= 0 && tabState.currentIndex < imgs.length && tabState.currentFolder?.path === folderPath) {
                         targetIndex = tabState.currentIndex;
                         console.log(`[useViewerFolderLoading] Using tab's currentIndex: ${targetIndex}`);
-                        if (tabState.scrollPosition && tabState.scrollPosition > 0 && tabState.scrollPosition <= 1) {
+                        if (tabState.scrollPosition && tabState.scrollPosition > 0) {
                             targetScroll = tabState.scrollPosition;
                         }
                     } else if (targetPath && !isRestored) {
@@ -187,7 +187,7 @@ export function useViewerFolderLoading({
                     }
 
                     // Set local state FIRST before store update
-                    console.log(`[useViewerFolderLoading] Setting resumeIndex=${targetIndex}, resumeScrollPos=${targetScroll} (percentage)`);
+                    console.log(`[useViewerFolderLoading] Setting resumeIndex=${targetIndex}, resumeScrollPos=${targetScroll} (pixels)`);
                     setResumeIndex(targetIndex);
                     lastSyncedIndexRef.current = targetIndex;
                     setResumeScrollPos(targetScroll);

@@ -23,7 +23,7 @@ type HistoryEntry struct {
 	LastImage string `json:"lastImage"`
 	// Last viewed image index
 	LastImageIndex int `json:"lastImageIndex"`
-	// Scroll position (0-1 for percentage)
+	// Scroll position (absolute pixels)
 	ScrollPosition float64 `json:"scrollPosition"`
 	// Total number of images in folder
 	TotalImages int `json:"totalImages"`

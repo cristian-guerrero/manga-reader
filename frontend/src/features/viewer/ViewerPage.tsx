@@ -126,7 +126,7 @@ export function ViewerPage({ folderPath, isActive = true, tabId }: ViewerPagePro
         const state = currentStateRef.current;
         if (!state.folderPath || state.isNoHistorySession) return;
 
-        const historyScrollPos = state.scrollPosition >= 0 && state.scrollPosition <= 1 ? state.scrollPosition : 0;
+        const historyScrollPos = state.scrollPosition >= 0 ? state.scrollPosition : 0;
 
         try {
             await saveProgressHook(historyScrollPos);

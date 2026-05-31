@@ -24,6 +24,8 @@ type ImageInfo struct {
 	Name         string `json:"name"`
 	Extension    string `json:"extension"`
 	Size         int64  `json:"size"`
+	Width        int    `json:"width"`
+	Height       int    `json:"height"`
 	Index        int    `json:"index"`
 	ModTime      int64  `json:"modTime"`
 }
