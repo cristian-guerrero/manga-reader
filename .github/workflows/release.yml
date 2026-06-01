@@ -41,6 +41,10 @@ jobs:
         working-directory: ./frontend
         run: npm install
 
+      - name: Compilar Frontend (para embed)
+        working-directory: ./frontend
+        run: npm run build
+
       - name: Tests del Backend (Go)
         run: go test ./...
 
