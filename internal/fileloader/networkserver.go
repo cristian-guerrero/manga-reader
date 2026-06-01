@@ -132,6 +132,7 @@ func (ns *NetworkServer) IsRunning() bool {
 }
 
 // Address returns the server's address (e.g., "http://192.168.1.100:8080").
+// Skips loopback and link-local (169.254.x.x) addresses, preferring routable LAN IPs.
 func (ns *NetworkServer) Address() (string, error) {
 	ns.mu.Lock()
 	defer ns.mu.Unlock()
@@ -140,18 +141,36 @@ func (ns *NetworkServer) Address() (string, error) {
 		return "", fmt.Errorf("server not running")
 	}
 
-	// Get local IP
 	addrs, err := net.InterfaceAddrs()
 	if err != nil {
 		return "", err
 	}
 
+	var firstGlobal net.IP
 	for _, addr := range addrs {
-		if ipnet, ok := addr.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
-			if ipnet.IP.To4() != nil {
-				return fmt.Sprintf("http://%s:%d", ipnet.IP.String(), NetworkServerPort), nil
-			}
+		ipnet, ok := addr.(*net.IPNet)
+		if !ok {
+			continue
 		}
+		ip := ipnet.IP
+		if ip.IsLoopback() || ip.IsLinkLocalUnicast() {
+			continue
+		}
+		if ip.To4() == nil {
+			continue
+		}
+		// Prefer a private (routable) IP; keep first non-link-local as fallback
+		if ip.IsPrivate() {
+			return fmt.Sprintf("http://%s:%d", ip.String(), NetworkServerPort), nil
+		}
+		if firstGlobal == nil {
+			v := make(net.IP, len(ip))
+			copy(v, ip)
+			firstGlobal = v
+		}
+	}
+	if firstGlobal != nil {
+		return fmt.Sprintf("http://%s:%d", firstGlobal.String(), NetworkServerPort), nil
 	}
 
 	return fmt.Sprintf("http://localhost:%d", NetworkServerPort), nil
