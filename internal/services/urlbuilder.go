@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 	"path/filepath"
+	"strings"
 )
 
 // URLBuilder handles construction of image and thumbnail URLs
@@ -44,6 +45,7 @@ func (ub *URLBuilder) BuildThumbnailURL(dirHash, filename string) string {
 // BuildThumbnailURLFromPath constructs a thumbnail URL from a full path
 // It extracts the filename from the path
 func (ub *URLBuilder) BuildThumbnailURLFromPath(dirHash, fullPath string) string {
+	fullPath = strings.ReplaceAll(fullPath, "\\", "/")
 	filename := filepath.Base(fullPath)
 	return ub.BuildThumbnailURL(dirHash, filename)
 }

@@ -94,11 +94,12 @@ Wails v2 (Go 1.24 backend, React 18 + TypeScript + Vite frontend). State: Zustan
 
 ## Conventions
 - **Commits**: English only, conventional format (`type: description`), no Spanish characters (see `.cursorrules`)
+- **Pre-commit tests**: Always run both backend and frontend tests before committing (`go test ./...` + `cd frontend && npm run test`). If tests fail, fix before committing.
 - **Auto-update on commit**: When generating commit messages or making commits, the agent MUST:
-  1. Review and update `README.md` if the changes affect features, supported sites, version, shortcuts, dependencies, data storage, build process, or prerequisites.
-  2. Review and update `AGENTS.md` if the changes affect architecture, modules, commands, data storage, conventions, downloader sites, or build notes.
-  3. Present the proposed commit and ask for confirmation before executing.
-  See [`.pi/skills/git-commit/SKILL.md`](.pi/skills/git-commit/SKILL.md) for the full workflow.
+  1. Run tests (`go test ./...` + `cd frontend && npm run test`) and confirm they pass.
+  2. Review and update `README.md` if the changes affect features, supported sites, version, shortcuts, dependencies, data storage, build process, or prerequisites.
+  3. Review and update `AGENTS.md` if the changes affect architecture, modules, commands, data storage, conventions, downloader sites, or build notes.
+  4. Present the proposed commit and ask for confirmation before executing.
 - **Output binary**: `manga-visor2` (not `manga-visor`) — configured in `wails.json`
 - **Frontend style**: Functional React components, TypeScript strict mode
 - **ContextMenu**: Reusable right-click menu at `components/ui/ContextMenu.tsx` using `ContextMenuItem` type from `@types`. Supports nested submenus via `children: ContextMenuItem[]` and visual `separator` items via `type: 'separator'`. Used in Explorer (folder actions), TabList (close tab), Sidebar (open in tab), and Viewer (play/pause, go to start, go back). Theming via CSS variables.
