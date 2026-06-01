@@ -6,9 +6,51 @@ on:
       - main
     tags:
       - 'v*'
+  pull_request:
+    branches:
+      - main
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout del código
+        uses: actions/checkout@v4
+
+      - name: Instalar Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          check-latest: true
+
+      - name: Instalar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Instalar dependencias de Linux
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev
+
+      - name: Instalar dependencias del Frontend
+        working-directory: ./frontend
+        run: npm install
+
+      - name: Tests del Backend (Go)
+        run: go test ./...
+
+      - name: Tests del Frontend (Vitest)
+        working-directory: ./frontend
+        run: npm run test
+
   build:
+    needs: test
+    if: github.event_name != 'pull_request'
     strategy:
       matrix:
         include:
