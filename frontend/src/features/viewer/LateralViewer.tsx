@@ -167,7 +167,7 @@ export function LateralViewer({
             >
                 <div
                     key={currentIndex}
-                    className={`h-full flex items-center justify-center gap-2 animate-fade-in ${lateralMode === 'double' ? 'flex-row' : ''
+                    className={`h-full w-full flex items-center justify-center gap-2 animate-fade-in ${lateralMode === 'double' ? 'flex-row' : ''
                         }`}
                 >
                     {displayImages.map((image, idx) => {
@@ -200,7 +200,7 @@ export function LateralViewer({
                                         <img
                                             src={loadedSrc}
                                             alt={image.name}
-                                            className="max-h-full max-w-full object-contain"
+                                            className="w-full h-full object-contain"
                                             draggable={false}
                                             onError={(e) => {
                                                 // Fallback if imageUrl fails
