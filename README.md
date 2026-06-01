@@ -2,7 +2,7 @@
 
 A premium desktop manga viewer and downloader. Beautiful, fast, and built for an uninterrupted reading experience.
 
-![Manga Visor](https://img.shields.io/badge/version-1.0.5-blue.svg)
+![Manga Visor](https://img.shields.io/badge/version-1.0.7-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 
@@ -16,7 +16,7 @@ Manga Visor is a desktop app that lets you browse, read, and download manga from
 
 ### Key Features
 
-- **📥 Downloader** — Paste a URL and download automatically. Supports 23 sites (see list below).
+- **📥 Downloader** — Paste a URL and download automatically. Supports 28 sites (see list below).
 - **🖼️ Viewer** — Vertical scroll or lateral pages, auto-scroll, zoom & pan, thumbnails view, right-click context menu with Play/Pause, Go to Start, and Go Back.
 - **📂 Explorer** — Browse folders recursively, search recursively by name, sort by name/date, drag & drop to reorder, right-click context menu with pin/unpin and open actions. Folder navigation bar in image-only folders to browse between sibling folders without entering the viewer.
 - **🏛️ Library** — Organize one-shots and series with automatic chapter detection.
@@ -39,9 +39,10 @@ Manga Visor is a desktop app that lets you browse, read, and download manga from
 
 - Hitomi.la
 - MangaDex.org
-- nHentai.net · nHentai.xxx · nHentai.com · nHentai.website
+- nHentai.net · nHentai.xxx · nHentai.com · nHentai.website · nHentai.to
 - ManhwaWeb.com
 - ZonaTMO.com
+- MangaToon.mobi
 - Hentaiera.com
 - HentaiRead.io
 - Hentai2Read.com
@@ -56,6 +57,9 @@ Manga Visor is a desktop app that lets you browse, read, and download manga from
 - Hentaiforce.net
 - lhentai.com
 - Hentaifox.com
+- 3Hentai.net
+- LectorHentai
+- MairimashitaIruma
 
 </details>
 
@@ -64,7 +68,7 @@ Manga Visor is a desktop app that lets you browse, read, and download manga from
 ## 🛠️ Tech Stack
 
 - **Framework**: [Wails v2](https://wails.io/) (Go + Webview)
-- **Backend**: Go 1.24 — SQLite via modernc.org/sqlite (pure Go, no CGo)
+- **Backend**: Go 1.25 — SQLite via modernc.org/sqlite (pure Go, no CGo)
 - **Frontend**: React 18 + TypeScript + Vite
 - **Styling**: Tailwind CSS
 - **State Management**: Zustand
@@ -119,7 +123,7 @@ Native libraries are built via CI workflows ([`build-avif-binaries.yml`](.github
 ## 🚀 Getting Started
 
 ### Prerequisites
-- [Go 1.24.0](https://golang.org/dl/)
+- [Go 1.25.0](https://golang.org/dl/)
 - [Node.js 20+](https://nodejs.org/)
 - [Wails CLI](https://wails.io/docs/gettingstarted/installation)
 
@@ -141,7 +145,7 @@ wails dev
 ```
 
 ### 📦 Building & Releases
-The project uses GitHub Actions for **multiplatform builds**. When a new tag (e.g., `v1.0.5`) is pushed, builds are automatically generated for:
+The project uses GitHub Actions for **multiplatform builds**. When a new tag (e.g., `v1.0.7`) is pushed, builds are automatically generated for:
 - **Windows** (AMD64)
 - **Linux** (AMD64 - requires `libgtk-3-dev` and `libwebkit2gtk-4.1-dev`)
 - **macOS** (Universal/Silicon support)

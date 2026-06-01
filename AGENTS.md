@@ -1,7 +1,7 @@
 # Manga Visor Agent Guide
 
 ## Stack
-Wails v2 (Go 1.24 backend, React 18 + TypeScript + Vite frontend). State: Zustand. Styling: Tailwind CSS. i18n: react-i18next (EN/ES).
+Wails v2 (Go 1.25 backend, React 18 + TypeScript + Vite frontend). State: Zustand. Styling: Tailwind CSS. i18n: react-i18next (EN/ES).
 
 ## Developer Commands
 - **Setup**: `cd frontend && npm install`
@@ -24,8 +24,8 @@ Wails v2 (Go 1.24 backend, React 18 + TypeScript + Vite frontend). State: Zustan
 
 ## Architecture
 - **Entrypoints**: `main.go` → `app.go` (Wails app struct with bound methods)
-- **Go backend**: `internal/` with `services/` (DI container), `database/` (SQLite repositories), `persistence/` (shared model types only), `utils/` (shared utility functions, e.g. natural sort), `modules/` (colorizer, downloader, explorer, library, series, history), `fileloader/` (image server, network server, asset extraction, API bridge), `thumbnails/`, `archiver/`, `updater/` (auto-update via GitHub releases), `version/` (build-time version injection via ldflags)
-- **Frontend**: Vite config at `frontend/vite.config.ts` with path aliases (`@app`, `@features`, `@shared`, `@services`, `@stores`, `@hooks`, `@components`, `@types`, `@utils`, `@constants`, `@themes`, `@i18n`)
+- **Go backend**: `internal/` with `services/` (DI container), `database/` (SQLite repositories), `persistence/` (shared model types only), `utils/` (shared utility functions, e.g. natural sort), `modules/` (colorizer, downloader, explorer, library, librarymanager, series, history), `fileloader/` (image server, network server, asset extraction, API bridge), `thumbnails/`, `archiver/`, `avifbin/` (native AVIF DLL management), `webpbin/` (native WebP DLL management), `updater/` (auto-update via GitHub releases), `version/` (build-time version injection via ldflags)
+- **Frontend**: Vite config at `frontend/vite.config.ts` with path aliases (`@app`, `@features`, `@shared`, `@services`, `@stores`, `@hooks`, `@components`, `@types`, `@utils`, `@constants`, `@themes`, `@i18n`, `@contexts`)
 - **API bridge**: Go methods in `app.go` exposed to frontend via Wails binding; frontend calls via `services/api/*`
 - **Colorizer**: Python/Flask server for image processing; managed by `internal/modules/colorizer/`
 - **Go is single source of truth**: No localStorage, no IndexedDB, no frontend defaults. All state lives in Go SQLite, exposed through Wails-bound methods. Frontend calls backend for **every** preference (sort, view mode, tabs, viewer state). Backend always returns defaults when nothing saved. Frontend Zustand stores are ephemeral UI state only — never pre-seed defaults, never persist to IndexedDB/localStorage. If a value needs to survive restart, add a backend repository method.
@@ -106,6 +106,12 @@ Wails v2 (Go 1.24 backend, React 18 + TypeScript + Vite frontend). State: Zustan
 - **Auto chapter transition**: When in lateral mode, pressing next on last page or prev on first page automatically transitions to the next/previous chapter (series) or folder (explorer). Implemented via `onNextBoundary`/`onPrevBoundary` callbacks in `useKeyboardNav.ts` and `LateralViewer.tsx`, piped from `ViewerPage.tsx` through `ViewerContent.tsx`. Next chapter navigates to page 1 (`startIndex=0`), prev chapter navigates to last page (`endOfChapter=true` param handled by `useViewerFolderLoading.ts`).
 - **Per-tab viewer mode**: Viewer mode (vertical/lateral) is per-tab. Toggling mode in one tab does not affect other tabs. The global default in Settings applies only to new tabs (first load). Implemented via per-tab `viewerState.mode` in `tabStore`, with `useViewerState` falling back to global `viewerMode` only when the tab has no mode set.
 
+## Native Image Decoding (AVIF & WebP)
+- Uses **forked versions** of `gen2brain/avif` and `gen2brain/webp` to accelerate AVIF/WebP decoding via native FFI (not WASM)
+- Managed by `internal/avifbin/` and `internal/webpbin/` — pre-load native DLLs from `~/.manga-visor/avif-bin/` and `~/.manga-visor/webp-bin/` via `LoadLibraryExW` (Windows) / `LD_LIBRARY_PATH` (Linux)
+- Native binaries built via CI workflows (`build-avif-binaries.yml`, `build-webp-binaries.yml`), auto-downloaded on first run
+- WASM fallback when native library is not available
+
 ## Updater Module
 - Auto-update via GitHub releases (`cristian-guerrero/manga-reader`). Single channel using build numbers (`bNNNN`).
 - Each push to `main` creates a new release with tag `bNNNN` where NNNN is the commit count (like llama.cpp).
@@ -117,9 +123,15 @@ Wails v2 (Go 1.24 backend, React 18 + TypeScript + Vite frontend). State: Zustan
 - UI: When `autoUpdate=true` (default), banner is silent during download and pending-apply phases — only "App updated successfully" shows after restart. When `autoUpdate=false`, banner shows download button + "ready to install" message. Settings section has auto-update toggle + status.
 
 ## Downloader Module
-- 23 supported sites with per-algorithm concurrency config (parallel chapters + parallel images per chapter) stored in SQLite settings and editable via settings dialog in download page (gear icon)
+- 28 supported sites with per-algorithm concurrency config (parallel chapters + parallel images per chapter) stored in SQLite settings and editable via settings dialog in download page (gear icon)
 - Clipboard monitoring triggers auto-detection (`internal/modules/downloader/clipboard.go`)
-- Sites detected by URL patterns, each with dedicated `internal/modules/downloader/*.go` file
+- Sites detected by URL patterns, each with dedicated `internal/modules/downloader/*.go` file:
+  - Hitomi.la · MangaDex.org · ManhwaWeb.com · ZonaTMO.com · MangaToon.mobi
+  - nHentai.net · nHentai.xxx · nHentai.com · nHentai.website · nHentai.to
+  - Hentaiera.com · HentaiRead.io · Hentai2Read.com · Hentaivox.com · Hentaifox.com
+  - IMHentai.xxx · IMHentai.to · Manga18.club · Comics18.org · Hentaifc.com
+  - ComicPorn.xxx · E-Hentai.org · Submanhwa.com · Hentaiforce.net · lHentai.com
+  - 3Hentai.net · LectorHentai · MairimashitaIruma
 
 ## Network Server Module
 - Serves the complete React app on the local network at `0.0.0.0:8080` so other LAN devices can access it via browser
@@ -135,3 +147,7 @@ Wails v2 (Go 1.24 backend, React 18 + TypeScript + Vite frontend). State: Zustan
 - **Windows**: Standard `wails build -platform windows/amd64`
 - **macOS**: `wails build -platform darwin/universal` (CI builds universal binary)
 - **CI**: GitHub Actions on push to `main` or version tags; Linux requires `libgtk-3-dev libwebkit2gtk-4.1-dev libfuse2 libappstream-glib-dev`, uses Node.js 20 and Go 1.24
+- **Additional workflows** (manual trigger via `workflow_dispatch`):
+  - `build-avif-binaries.yml` — builds native AVIF libraries (`libavif.dll`/`libavif.so`)
+  - `build-webp-binaries.yml` — builds native WebP libraries (`libwebp.dll`/`libwebp.so`)
+  - `build-onnx-runner.yml` — builds ONNX Runtime inference CLI for manga-translator
