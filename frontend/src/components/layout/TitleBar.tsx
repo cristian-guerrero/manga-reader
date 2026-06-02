@@ -102,7 +102,6 @@ export function TitleBar({ title }: TitleBarProps) {
             style={{
                 height: 'var(--titlebar-height)',
                 color: 'var(--color-titlebar-text)',
-                borderBottom: '1px solid var(--color-border)',
                 '--wails-draggable': 'drag'
             } as any}
         >
