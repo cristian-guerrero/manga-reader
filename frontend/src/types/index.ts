@@ -124,6 +124,8 @@ export interface Settings {
   autoResumeDownloads?: boolean;
   /** Per-theme accent colors { themeId: color } */
   themeAccents: Record<string, string>;
+  /** Per-theme gradient origin { themeId: { x, y } } */
+  gradientOrigins?: Record<string, { x: number; y: number }>;
   /** Memory saving mode for tabs (unmount inactive tabs) */
   tabMemorySaving: boolean;
   /** Restore tabs on startup */

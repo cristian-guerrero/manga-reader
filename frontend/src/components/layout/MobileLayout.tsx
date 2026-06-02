@@ -18,13 +18,13 @@ function MobileLayoutContent({ children }: MobileLayoutProps) {
         <MobileScrollProvider value={{ headerVisible }}>
             <div
                 className="flex flex-col h-screen w-screen overflow-hidden theme-transition"
-                style={{ backgroundColor: 'var(--color-surface-primary)' }}
+                style={{ background: 'var(--gradient-surface-primary)' }}
             >
                 <div
                     ref={contentRef}
                     className="flex-1 overflow-auto relative"
                     style={{
-                        backgroundColor: 'var(--color-surface-primary)',
+                        background: 'var(--gradient-surface-primary)',
                         paddingBottom: '56px',
                     }}
                 >

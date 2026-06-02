@@ -41,7 +41,7 @@ export function ColorizerPage() {
   return (
     <div
       className="flex flex-col h-full"
-      style={{ backgroundColor: "var(--color-surface-primary)" }}
+      style={{ background: "var(--gradient-surface-primary)" }}
     >
       <div
         className="flex items-center justify-between px-6 py-4 border-b"

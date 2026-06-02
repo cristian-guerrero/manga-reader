@@ -59,6 +59,11 @@
   --gradient-accent: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-hover) 100%);
   --gradient-surface: linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, transparent 100%);
   --gradient-glow: radial-gradient(ellipse at center, var(--color-accent-glow) 0%, transparent 70%);
+  --gradient-surface-primary: #0a0a0f;
+  --gradient-surface-secondary: #12121a;
+  --gradient-surface-elevated: #222233;
+  --gradient-titlebar-bg: #12121a;
+  --gradient-sidebar-bg: #12121a;
 
   /* Shadows */
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
@@ -151,7 +156,7 @@ html {
 
 body {
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  background-color: var(--color-surface-primary);
+  background: var(--gradient-surface-primary) fixed;
   color: var(--color-text-primary);
   overflow: hidden;
   min-height: 100vh;
@@ -373,14 +378,14 @@ body.window-rounded #root {
   /* Card */
   .card {
     @apply rounded-xl;
-    background: var(--color-surface-secondary);
+    background: var(--gradient-surface-secondary);
     border: 1px solid var(--color-border);
     box-shadow: var(--shadow-md);
   }
 
   .card-elevated {
     @apply card;
-    background: var(--color-surface-elevated);
+    background: var(--gradient-surface-elevated);
     box-shadow: var(--shadow-lg);
   }
 

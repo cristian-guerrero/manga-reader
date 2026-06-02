@@ -195,7 +195,7 @@ export function Sidebar() {
             </nav>
 
             {/* Collapse Toggle */}
-            <div className="p-3 border-t" style={{ borderColor: 'var(--color-border)' }}>
+            <div className="p-3" style={{ borderColor: 'var(--color-border)' }}>
                 <button
                     onClick={toggleSidebar}
                     className="flex items-center justify-center w-full h-10 rounded-lg transition-all hover:scale-[1.02] active:scale-[0.98]"

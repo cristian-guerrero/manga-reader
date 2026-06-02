@@ -146,8 +146,8 @@ describe('parseCustomTheme', () => {
 })
 
 describe('builtInThemes', () => {
-  it('has 11 themes', () => {
-    expect(builtInThemes).toHaveLength(11)
+  it('has 13 themes', () => {
+    expect(builtInThemes).toHaveLength(13)
   })
 
   it('each theme has required fields', () => {

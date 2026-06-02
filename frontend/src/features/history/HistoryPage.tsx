@@ -70,7 +70,7 @@ export function HistoryPage() {
     return (
         <div
             className="h-full overflow-hidden p-6 flex flex-col"
-            style={{ backgroundColor: 'var(--color-surface-primary)' }}
+            style={{ background: 'var(--gradient-surface-primary)' }}
         >
             {/* Header */}
             <HistoryHeader

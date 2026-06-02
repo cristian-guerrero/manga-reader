@@ -37,9 +37,11 @@ export const SettingsPage: React.FC = () => {
     tabMemorySaving: s.tabMemorySaving,
     restoreTabs: s.restoreTabs,
     themeAccents: s.themeAccents,
+    gradientOrigins: s.gradientOrigins,
     enabledMenuItems: s.enabledMenuItems,
     setTheme: s.setTheme,
     setAccentColor: s.setAccentColor,
+    setGradientOrigin: s.setGradientOrigin,
     setLanguage: s.setLanguage,
     toggleMenuItem: s.toggleMenuItem,
     setViewerMode: s.setViewerMode,
@@ -75,7 +77,7 @@ export const SettingsPage: React.FC = () => {
   };
 
   return (
-    <div className="h-full overflow-auto p-6" style={{ backgroundColor: 'var(--color-surface-primary)' }}>
+    <div className="h-full overflow-auto p-6" style={{ background: 'var(--gradient-surface-primary)' }}>
       <div className="max-w-6xl mx-auto pb-24 animate-fade-in space-y-8">
         {/* Header */}
         <SettingsHeader onHelpClick={() => setIsHelpOpen(true)} />
@@ -87,6 +89,8 @@ export const SettingsPage: React.FC = () => {
             setTheme: settings.setTheme,
             themeAccents: settings.themeAccents,
             setAccentColor: settings.setAccentColor,
+            gradientOrigins: settings.gradientOrigins,
+            setGradientOrigin: settings.setGradientOrigin,
             language: settings.language,
             setLanguage: settings.setLanguage,
             toggleMenuItem: settings.toggleMenuItem,

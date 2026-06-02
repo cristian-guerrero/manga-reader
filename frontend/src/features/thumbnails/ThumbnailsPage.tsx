@@ -150,7 +150,7 @@ export function ThumbnailsPage({ folderPath, isActive = true, tabId }: Thumbnail
     return (
         <div
             className="h-full flex flex-col"
-            style={{ backgroundColor: 'var(--color-surface-primary)' }}
+            style={{ background: 'var(--gradient-surface-primary)' }}
         >
             {/* Header */}
             <ThumbnailsHeader

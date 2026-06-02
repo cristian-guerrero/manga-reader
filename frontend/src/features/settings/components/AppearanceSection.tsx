@@ -8,15 +8,17 @@ import { Toggle } from '@shared/components';
 import { SettingRow } from './SettingRow';
 import { ThemeSelector } from './ThemeSelector';
 import { AccentColorSelector } from './AccentColorSelector';
+import { GradientOriginSelector } from './GradientOriginSelector';
 import { LanguageSelector } from './LanguageSelector';
 import { MenuItemsSelector } from './MenuItemsSelector';
-import { builtInThemes } from '@themes';
+import { builtInThemes, getThemeById } from '@themes';
 import type { SettingsState } from '@stores/settingsStore';
 
 interface AppearanceSectionProps {
     settings: Pick<SettingsState, 
         'theme' | 'setTheme' | 
         'themeAccents' | 'setAccentColor' |
+        'gradientOrigins' | 'setGradientOrigin' |
         'language' | 'setLanguage' |
         'toggleMenuItem' | 'enabledMenuItems'
     >;
@@ -26,6 +28,9 @@ interface AppearanceSectionProps {
 export function AppearanceSection({ settings, onLanguageChange }: AppearanceSectionProps) {
     const { t } = useTranslation();
     const currentAccentColor = settings.themeAccents?.[settings.theme];
+    const currentTheme = getThemeById(settings.theme);
+    const isGradientTheme = currentTheme?.category === 'gradient';
+    const currentOrigin = settings.gradientOrigins?.[settings.theme] ?? { x: 0, y: 0 };
 
     return (
         <section className="animate-slide-up" style={{ animationDelay: '0.1s' }}>
@@ -62,6 +67,17 @@ export function AppearanceSection({ settings, onLanguageChange }: AppearanceSect
                         {t('settings.accentHint', 'Select a preset or use the picker for a custom color. The "Default" option uses the base theme\'s defined accent.')}
                     </p>
                 </div>
+
+                {/* Gradient Origin (only for gradient themes) */}
+                {isGradientTheme && (
+                    <div>
+                        <GradientOriginSelector
+                            currentThemeId={settings.theme}
+                            origin={currentOrigin}
+                            onChange={settings.setGradientOrigin}
+                        />
+                    </div>
+                )}
 
                 {/* Language */}
                 <SettingRow label={t('settings.language')}>
