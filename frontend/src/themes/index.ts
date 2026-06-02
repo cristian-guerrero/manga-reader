@@ -449,10 +449,10 @@ export const deepPurpleTheme: Theme = {
     isDark: true,
     category: 'gradient',
     gradients: {
-        surfacePrimary: 'linear-gradient(180deg, #1A324A 0%, #2A2A5A 50%, #4A3B75 100%)',
-        surfaceSecondary: 'linear-gradient(180deg, #1F3E4B 0%, #3A2E5B 100%)',
-        surfaceElevated: 'linear-gradient(180deg, #253E55 0%, #403B70 100%)',
-        titlebarBg: 'linear-gradient(90deg, #1A324A 0%, #2A2A5A 100%)',
+        surfacePrimary: 'radial-gradient(circle at 0% 0%, #1A324A 0%, #2A2A5A 50%, #4A3B75 100%)',
+        surfaceSecondary: 'radial-gradient(circle at 0% 0%, #1F3E4B 0%, #3A2E5B 100%)',
+        surfaceElevated: 'radial-gradient(circle at 0% 0%, #253E55 0%, #403B70 100%)',
+        titlebarBg: 'radial-gradient(circle at 0% 0%, #1A324A 0%, #2A2A5A 100%)',
     },
     colors: {
         accent: '#C24FE6',
@@ -485,10 +485,10 @@ export const darkGradientTheme: Theme = {
     isDark: true,
     category: 'gradient',
     gradients: {
-        surfacePrimary: 'linear-gradient(180deg, #040307 0%, #211B2C 100%)',
-        surfaceSecondary: 'linear-gradient(180deg, #07060B 0%, #1A1624 100%)',
-        surfaceElevated: 'linear-gradient(180deg, #0D0B14 0%, #1E1928 100%)',
-        titlebarBg: 'linear-gradient(180deg, #040307 0%, #0A080F 100%)',
+        surfacePrimary: 'radial-gradient(circle at 0% 0%, #040307 0%, #211B2C 100%)',
+        surfaceSecondary: 'radial-gradient(circle at 0% 0%, #07060B 0%, #1A1624 100%)',
+        surfaceElevated: 'radial-gradient(circle at 0% 0%, #0D0B14 0%, #1E1928 100%)',
+        titlebarBg: 'radial-gradient(circle at 0% 0%, #040307 0%, #0A080F 100%)',
     },
     colors: {
         accent: '#7C5CBF',
