@@ -66,7 +66,7 @@ export function SeriesDetailsPage({ seriesPath, tabId }: SeriesDetailsPageProps)
     }
 
     return (
-        <div className="h-full overflow-auto p-2 sm:p-6" style={{ backgroundColor: 'var(--color-surface-primary)' }}>
+        <div className="h-full overflow-auto p-2 sm:p-6" style={{ background: 'var(--gradient-surface-primary)' }}>
             {/* Header */}
             <SeriesDetailsHeader
                 series={series}

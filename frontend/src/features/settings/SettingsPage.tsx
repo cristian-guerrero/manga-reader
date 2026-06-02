@@ -75,7 +75,7 @@ export const SettingsPage: React.FC = () => {
   };
 
   return (
-    <div className="h-full overflow-auto p-6" style={{ backgroundColor: 'var(--color-surface-primary)' }}>
+    <div className="h-full overflow-auto p-6" style={{ background: 'var(--gradient-surface-primary)' }}>
       <div className="max-w-6xl mx-auto pb-24 animate-fade-in space-y-8">
         {/* Header */}
         <SettingsHeader onHelpClick={() => setIsHelpOpen(true)} />

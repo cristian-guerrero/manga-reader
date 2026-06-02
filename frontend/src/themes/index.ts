@@ -36,11 +36,20 @@ export interface ThemeColors {
     borderFocus: string;
 }
 
+export interface ThemeGradients {
+    surfacePrimary?: string;
+    surfaceSecondary?: string;
+    surfaceElevated?: string;
+    titlebarBg?: string;
+}
+
 export interface Theme {
     id: string;
     name: string;
     isDark: boolean;
     colors: ThemeColors;
+    gradients?: ThemeGradients;
+    category?: 'solid' | 'gradient';
 }
 
 // ============================================================================
@@ -434,6 +443,78 @@ export const pixelTheme: Theme = {
     },
 };
 
+export const deepPurpleTheme: Theme = {
+    id: 'deep-purple',
+    name: 'Deep Purple',
+    isDark: true,
+    category: 'gradient',
+    gradients: {
+        surfacePrimary: 'linear-gradient(180deg, #1A324A 0%, #2A2A5A 50%, #4A3B75 100%)',
+        surfaceSecondary: 'linear-gradient(180deg, #1F3E4B 0%, #3A2E5B 100%)',
+        surfaceElevated: 'linear-gradient(180deg, #253E55 0%, #403B70 100%)',
+        titlebarBg: 'linear-gradient(90deg, #1A324A 0%, #2A2A5A 100%)',
+    },
+    colors: {
+        accent: '#C24FE6',
+        accentHover: '#D970F5',
+        accentGlow: 'rgba(194, 79, 230, 0.5)',
+
+        surfacePrimary: '#1A324A',
+        surfaceSecondary: '#1F3E4B',
+        surfaceTertiary: '#253E55',
+        surfaceElevated: '#2A2A5A',
+        surfaceOverlay: 'rgba(26, 50, 74, 0.95)',
+
+        titlebarBg: '#1A324A',
+        titlebarText: '#e5e7eb',
+
+        textPrimary: '#f9fafb',
+        textSecondary: '#d1d5db',
+        textMuted: '#9ca3af',
+        textDisabled: '#6b7280',
+
+        border: 'rgba(255, 255, 255, 0.08)',
+        borderHover: 'rgba(255, 255, 255, 0.15)',
+        borderFocus: 'rgba(194, 79, 230, 0.5)',
+    },
+};
+
+export const darkGradientTheme: Theme = {
+    id: 'dark-gradient',
+    name: 'Dark Gradient',
+    isDark: true,
+    category: 'gradient',
+    gradients: {
+        surfacePrimary: 'linear-gradient(180deg, #040307 0%, #211B2C 100%)',
+        surfaceSecondary: 'linear-gradient(180deg, #07060B 0%, #1A1624 100%)',
+        surfaceElevated: 'linear-gradient(180deg, #0D0B14 0%, #1E1928 100%)',
+        titlebarBg: 'linear-gradient(180deg, #040307 0%, #0A080F 100%)',
+    },
+    colors: {
+        accent: '#7C5CBF',
+        accentHover: '#9370DB',
+        accentGlow: 'rgba(124, 92, 191, 0.4)',
+
+        surfacePrimary: '#040307',
+        surfaceSecondary: '#0A080F',
+        surfaceTertiary: '#13101C',
+        surfaceElevated: '#1A1624',
+        surfaceOverlay: 'rgba(4, 3, 7, 0.95)',
+
+        titlebarBg: '#07060B',
+        titlebarText: '#e5e7eb',
+
+        textPrimary: '#f9fafb',
+        textSecondary: '#d1d5db',
+        textMuted: '#9ca3af',
+        textDisabled: '#6b7280',
+
+        border: 'rgba(255, 255, 255, 0.06)',
+        borderHover: 'rgba(255, 255, 255, 0.12)',
+        borderFocus: 'rgba(124, 92, 191, 0.5)',
+    },
+};
+
 // All built-in themes
 export const builtInThemes: Theme[] = [
     darkTheme,
@@ -443,6 +524,8 @@ export const builtInThemes: Theme[] = [
     ichigoTheme,
     cyberpunkTheme,
     pixelTheme,
+    deepPurpleTheme,
+    darkGradientTheme,
     amoledTheme,
     lavenderTheme,
     mintTheme,
@@ -505,6 +588,12 @@ export async function applyTheme(theme: Theme, customAccentColor?: string): Prom
     // Apply composite variables that rely on theme colors
     root.style.setProperty('--gradient-accent', `linear-gradient(135deg, ${accent} 0%, ${accentHover} 100%)`);
     root.style.setProperty('--gradient-glow', `radial-gradient(ellipse at center, ${accentGlow} 0%, transparent 70%)`);
+
+    // Apply surface gradients (theme-defined or fall back to solid color)
+    root.style.setProperty('--gradient-surface-primary', theme.gradients?.surfacePrimary ?? colors.surfacePrimary);
+    root.style.setProperty('--gradient-surface-secondary', theme.gradients?.surfaceSecondary ?? colors.surfaceSecondary);
+    root.style.setProperty('--gradient-surface-elevated', theme.gradients?.surfaceElevated ?? colors.surfaceElevated);
+    root.style.setProperty('--gradient-titlebar-bg', theme.gradients?.titlebarBg ?? colors.titlebarBg);
 
     // Dynamic Taskbar Icon (Windows)
     try {

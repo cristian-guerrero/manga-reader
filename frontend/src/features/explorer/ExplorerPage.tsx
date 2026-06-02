@@ -485,7 +485,7 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
   return (
       <div
         className="h-full p-2 sm:p-6 flex flex-col relative"
-        style={{ backgroundColor: "var(--color-surface-primary)" }}
+        style={{ background: "var(--gradient-surface-primary)" }}
         onMouseMove={handleFolderNavMouseMove}
       >
       {/* Header */}

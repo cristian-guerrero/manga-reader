@@ -55,7 +55,7 @@ export function SeriesPage() {
     return (
         <div
             className="h-full overflow-auto p-2 sm:p-6"
-            style={{ backgroundColor: 'var(--color-surface-primary)' }}
+            style={{ background: 'var(--gradient-surface-primary)' }}
         >
             {/* Header */}
             <SeriesHeader

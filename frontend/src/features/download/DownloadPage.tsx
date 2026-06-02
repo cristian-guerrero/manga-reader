@@ -66,7 +66,7 @@ export function DownloadPage() {
     return (
         <div
             className="h-full overflow-auto p-6 animate-fade-in"
-            style={{ backgroundColor: 'var(--color-surface-primary)' }}
+            style={{ background: 'var(--gradient-surface-primary)' }}
         >
             <header className="mb-8 flex justify-between items-start">
                 <div>

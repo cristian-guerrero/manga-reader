@@ -28,7 +28,7 @@ export function MainLayout({ children }: MainLayoutProps) {
     return (
         <div
             className="flex flex-col h-screen w-screen overflow-hidden theme-transition"
-            style={{ backgroundColor: 'var(--color-surface-secondary)' }}
+            style={{ background: 'var(--gradient-titlebar-bg)' }}
         >
             {/* Title Bar */}
             <TitleBar />
@@ -56,7 +56,7 @@ export function MainLayout({ children }: MainLayoutProps) {
                 <main
                     className="flex-1 overflow-hidden relative theme-transition mr-3 mb-3 shadow-lg border"
                     style={{
-                        backgroundColor: 'var(--color-surface-primary)',
+                        background: 'var(--gradient-surface-primary)',
                         borderColor: 'var(--color-border)',
                         borderTopLeftRadius: '40px',
                     }}
