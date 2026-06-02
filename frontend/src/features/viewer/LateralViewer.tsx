@@ -42,11 +42,17 @@ export function LateralViewer({
     // Enable keyboard navigation with boundary callbacks
     useKeyboardNav({ enabled: true, tabId, onNextBoundary, onPrevBoundary });
 
-    // Initialize current index
+    // Apply initialIndex only on first mount. The tab store reactively drives currentIndex afterwards
+    // via useViewer(tabId) — we must NOT re-apply initialIndex on tab deactivation/reactivation,
+    // where effectiveResumeIndex reads a stale resumeIndex that would overwrite the store.
+    const hasRestoredRef = useRef(false);
     useEffect(() => {
-        setCurrentIndex(initialIndex);
-        onRestorationComplete?.();
-    }, [initialIndex, setCurrentIndex, onRestorationComplete]);
+        if (!hasRestoredRef.current) {
+            hasRestoredRef.current = true;
+            setCurrentIndex(initialIndex);
+            onRestorationComplete?.();
+        }
+    }, [setCurrentIndex, onRestorationComplete]);
 
     // Load image with LRU-like eviction: keep at most 20 entries
     const loadedRef = useRef<Record<number, string>>({});
