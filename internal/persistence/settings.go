@@ -16,6 +16,12 @@ type AlgorithmDownloadConfig struct {
 	MaxParallelImages   int `json:"maxParallelImages"`
 }
 
+// GradientOrigin represents the origin point for radial gradient themes
+type GradientOrigin struct {
+	X int `json:"x"`
+	Y int `json:"y"`
+}
+
 // Settings represents the application settings
 type Settings struct {
 	// Language code (en, es, etc.)
@@ -76,6 +82,8 @@ type Settings struct {
 	GenerateThumbnails bool `json:"generateThumbnails"`
 	// Per-theme accent colors { themeId: color }
 	ThemeAccents map[string]string `json:"themeAccents"`
+	// Per-theme gradient origin { themeId: {x, y} }
+	GradientOrigins map[string]GradientOrigin `json:"gradientOrigins"`
 	// Per-algorithm download concurrency config
 	DownloadAlgorithmConfig map[string]AlgorithmDownloadConfig `json:"downloadAlgorithmConfig"`
 
@@ -135,6 +143,7 @@ func DefaultSettings() *Settings {
 		SavedTabs:            "",
 		GenerateThumbnails:   true,
 		ThemeAccents:         map[string]string{},
+		GradientOrigins:      map[string]GradientOrigin{},
 		DownloadAlgorithmConfig: map[string]AlgorithmDownloadConfig{
 			"hitomi.la":        {MaxParallelChapters: 2, MaxParallelImages: 1},
 			"zonatmo":          {MaxParallelChapters: 3, MaxParallelImages: 1},
@@ -434,6 +443,23 @@ func (sm *SettingsManager) Update(updates map[string]interface{}) error {
 					}
 				}
 				sm.settings.ThemeAccents = newMap
+			}
+		case "gradientOrigins":
+			if v, ok := value.(map[string]interface{}); ok {
+				newMap := make(map[string]GradientOrigin)
+				for k, val := range v {
+					if originMap, ok := val.(map[string]interface{}); ok {
+						origin := GradientOrigin{}
+						if x, ok := originMap["x"].(float64); ok {
+							origin.X = int(x)
+						}
+						if y, ok := originMap["y"].(float64); ok {
+							origin.Y = int(y)
+						}
+						newMap[k] = origin
+					}
+				}
+				sm.settings.GradientOrigins = newMap
 			}
 		}
 

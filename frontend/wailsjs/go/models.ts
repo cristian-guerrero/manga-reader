@@ -401,6 +401,20 @@ export namespace persistence {
 	        this.lastModified = source["lastModified"];
 	    }
 	}
+	export class GradientOrigin {
+	    x: number;
+	    y: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new GradientOrigin(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.x = source["x"];
+	        this.y = source["y"];
+	    }
+	}
 	export class HistoryEntry {
 	    id: string;
 	    folderPath: string;
@@ -507,6 +521,7 @@ export namespace persistence {
 	    savedTabs: string;
 	    generateThumbnails: boolean;
 	    themeAccents: Record<string, string>;
+	    gradientOrigins: Record<string, GradientOrigin>;
 	    downloadAlgorithmConfig: Record<string, AlgorithmDownloadConfig>;
 	    autoUpdate: boolean;
 	    updateChannel: string;
@@ -550,6 +565,7 @@ export namespace persistence {
 	        this.savedTabs = source["savedTabs"];
 	        this.generateThumbnails = source["generateThumbnails"];
 	        this.themeAccents = source["themeAccents"];
+	        this.gradientOrigins = this.convertValues(source["gradientOrigins"], GradientOrigin, true);
 	        this.downloadAlgorithmConfig = this.convertValues(source["downloadAlgorithmConfig"], AlgorithmDownloadConfig, true);
 	        this.autoUpdate = source["autoUpdate"];
 	        this.updateChannel = source["updateChannel"];

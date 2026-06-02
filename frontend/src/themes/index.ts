@@ -539,9 +539,16 @@ export const builtInThemes: Theme[] = [
 import { generateThemedIcon } from '../utils/iconGenerator';
 
 /**
+ * Replace gradient origin position in a radial gradient string
+ */
+function applyGradientOrigin(grad: string, x: number, y: number): string {
+    return grad.replace(/at\s+\d+%\s+\d+%/g, `at ${x}% ${y}%`);
+}
+
+/**
  * Apply a theme to the document by setting CSS variables
  */
-export async function applyTheme(theme: Theme, customAccentColor?: string): Promise<void> {
+export async function applyTheme(theme: Theme, customAccentColor?: string, gradientOrigin?: { x: number; y: number }): Promise<void> {
     const root = document.documentElement;
     const { colors } = theme;
 
@@ -589,11 +596,31 @@ export async function applyTheme(theme: Theme, customAccentColor?: string): Prom
     root.style.setProperty('--gradient-accent', `linear-gradient(135deg, ${accent} 0%, ${accentHover} 100%)`);
     root.style.setProperty('--gradient-glow', `radial-gradient(ellipse at center, ${accentGlow} 0%, transparent 70%)`);
 
+    const ox = gradientOrigin?.x ?? 0;
+    const oy = gradientOrigin?.y ?? 0;
+
     // Apply surface gradients (theme-defined or fall back to solid color)
-    root.style.setProperty('--gradient-surface-primary', theme.gradients?.surfacePrimary ?? colors.surfacePrimary);
-    root.style.setProperty('--gradient-surface-secondary', theme.gradients?.surfaceSecondary ?? colors.surfaceSecondary);
-    root.style.setProperty('--gradient-surface-elevated', theme.gradients?.surfaceElevated ?? colors.surfaceElevated);
-    root.style.setProperty('--gradient-titlebar-bg', theme.gradients?.titlebarBg ?? colors.titlebarBg);
+    const rawPrimary = theme.gradients?.surfacePrimary ?? colors.surfacePrimary;
+    const rawSecondary = theme.gradients?.surfaceSecondary ?? colors.surfaceSecondary;
+    const rawElevated = theme.gradients?.surfaceElevated ?? colors.surfaceElevated;
+    const rawTitlebar = theme.gradients?.titlebarBg ?? colors.titlebarBg;
+
+    root.style.setProperty('--gradient-surface-primary',
+        (ox !== 0 || oy !== 0) && rawPrimary.includes('radial-gradient')
+            ? applyGradientOrigin(rawPrimary, ox, oy)
+            : rawPrimary);
+    root.style.setProperty('--gradient-surface-secondary',
+        (ox !== 0 || oy !== 0) && rawSecondary.includes('radial-gradient')
+            ? applyGradientOrigin(rawSecondary, ox, oy)
+            : rawSecondary);
+    root.style.setProperty('--gradient-surface-elevated',
+        (ox !== 0 || oy !== 0) && rawElevated.includes('radial-gradient')
+            ? applyGradientOrigin(rawElevated, ox, oy)
+            : rawElevated);
+    root.style.setProperty('--gradient-titlebar-bg',
+        (ox !== 0 || oy !== 0) && rawTitlebar.includes('radial-gradient')
+            ? applyGradientOrigin(rawTitlebar, ox, oy)
+            : rawTitlebar);
 
     // Dynamic Taskbar Icon (Windows)
     try {

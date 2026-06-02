@@ -120,6 +120,22 @@ func (r *SettingsRepository) Update(updates map[string]interface{}) error {
 				}
 				r.settings.ThemeAccents = accentsMap
 			}
+			if key == "gradientOrigins" {
+				originsMap := make(map[string]persistence.GradientOrigin)
+				for k, mv := range v {
+					if originMap, ok := mv.(map[string]interface{}); ok {
+						origin := persistence.GradientOrigin{}
+						if x, ok := originMap["x"].(float64); ok {
+							origin.X = int(x)
+						}
+						if y, ok := originMap["y"].(float64); ok {
+							origin.Y = int(y)
+						}
+						originsMap[k] = origin
+					}
+				}
+				r.settings.GradientOrigins = originsMap
+			}
 			if key == "downloadAlgorithmConfig" {
 				cfg := make(map[string]persistence.AlgorithmDownloadConfig)
 				for siteID, cv := range v {
@@ -193,6 +209,11 @@ func (r *SettingsRepository) saveNow() error {
 	if len(r.settings.DownloadAlgorithmConfig) > 0 {
 		b, _ := json.Marshal(r.settings.DownloadAlgorithmConfig)
 		data["downloadAlgorithmConfig"] = string(b)
+	}
+
+	if len(r.settings.GradientOrigins) > 0 {
+		b, _ := json.Marshal(r.settings.GradientOrigins)
+		data["gradientOrigins"] = string(b)
 	}
 
 	tx, err := r.db.db.Begin()
@@ -304,6 +325,8 @@ func setField(s *persistence.Settings, key, value string) {
 		json.Unmarshal([]byte(value), &s.ThemeAccents)
 	case "downloadAlgorithmConfig":
 		json.Unmarshal([]byte(value), &s.DownloadAlgorithmConfig)
+	case "gradientOrigins":
+		json.Unmarshal([]byte(value), &s.GradientOrigins)
 	}
 }
 

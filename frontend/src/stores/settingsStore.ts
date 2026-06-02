@@ -46,6 +46,7 @@ const INITIAL_STATE: Settings = {
   clipboardAutoMonitor: true,
   autoResumeDownloads: false,
   themeAccents: {},
+  gradientOrigins: {},
   tabMemorySaving: false,
   restoreTabs: false,
   generateThumbnails: true,
@@ -58,6 +59,7 @@ export interface SettingsState extends Settings {
   setLanguage: (language: string) => void;
   setTheme: (themeId: string) => void;
   setAccentColor: (color: string) => void;
+  setGradientOrigin: (origin: { x: number; y: number }) => void;
   setViewerMode: (mode: Settings['viewerMode']) => void;
   setVerticalWidth: (width: number) => void;
   setScrollSpeed: (speed: number) => void;
@@ -107,8 +109,9 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
 
     // Get accent for this specific theme
     const themeAccent = state.themeAccents?.[themeId];
+    const themeOrigin = state.gradientOrigins?.[themeId];
 
-    applyTheme(theme, themeAccent);
+    applyTheme(theme, themeAccent, themeOrigin);
     set({ theme: themeId });
     get().updateBackend('theme', themeId);
   },
@@ -143,6 +146,21 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       get().updateBackend('themeAccents', newAccents);
       accentColorDebounceTimer = null;
     }, DEBOUNCE_DELAYS.SETTINGS_UPDATE);
+  },
+
+  setGradientOrigin: (origin) => {
+    const state = get();
+    const currentThemeId = state.theme;
+    const theme = getThemeById(currentThemeId) || darkTheme;
+
+    const newOrigins = { ...(state.gradientOrigins || {}) };
+    newOrigins[currentThemeId] = origin;
+
+    // Apply theme immediately with new origin
+    const themeAccent = state.themeAccents?.[currentThemeId];
+    applyTheme(theme, themeAccent, origin);
+    set({ gradientOrigins: newOrigins });
+    get().updateBackend('gradientOrigins', newOrigins);
   },
 
   setViewerMode: (viewerMode) => {
@@ -304,7 +322,8 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         // Apply theme
         const theme = getThemeById(settings.theme) || darkTheme;
         const accent = settings.themeAccents?.[settings.theme];
-        applyTheme(theme, accent);
+        const origin = settings.gradientOrigins?.[settings.theme];
+        applyTheme(theme, accent, origin);
       } else {
         applyTheme(darkTheme);
       }
@@ -327,7 +346,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         'sidebarCollapsed', 'showImageInfo', 'preloadImages', 'preloadCount',
         'enableHistory', 'minImageSize', 'processDroppedFolders', 'lastPage',
         'enabledMenuItems', 'downloadPath', 'clipboardAutoMonitor',
-        'autoResumeDownloads', 'themeAccents', 'tabMemorySaving', 'restoreTabs',
+        'autoResumeDownloads', 'themeAccents', 'gradientOrigins', 'tabMemorySaving', 'restoreTabs',
         'generateThumbnails', 'autoUpdate',
       ];
 
