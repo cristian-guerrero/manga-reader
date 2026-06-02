@@ -101,9 +101,8 @@ export function TitleBar({ title }: TitleBarProps) {
             className="flex items-center justify-between select-none theme-transition"
             style={{
                 height: 'var(--titlebar-height)',
-                background: 'var(--gradient-titlebar-bg)',
                 color: 'var(--color-titlebar-text)',
-                borderBottom: '1px solid var(--color-border-primary)',
+                borderBottom: '1px solid var(--color-border)',
                 '--wails-draggable': 'drag'
             } as any}
         >
