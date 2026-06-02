@@ -28,7 +28,7 @@ export function MainLayout({ children }: MainLayoutProps) {
     return (
         <div
             className="flex flex-col h-screen w-screen overflow-hidden theme-transition"
-            style={{ background: 'var(--gradient-titlebar-bg)' }}
+            style={{ background: 'var(--gradient-surface-primary)' }}
         >
             {/* Title Bar */}
             <TitleBar />
