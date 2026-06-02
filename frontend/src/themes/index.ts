@@ -622,6 +622,12 @@ export async function applyTheme(theme: Theme, customAccentColor?: string, gradi
             ? applyGradientOrigin(rawTitlebar, ox, oy)
             : rawTitlebar);
 
+    // Sidebar background: for gradient themes use the surface gradient,
+    // for solid themes use the titlebar color (it's usually lighter than surface)
+    const gradientPrimary = root.style.getPropertyValue('--gradient-surface-primary');
+    root.style.setProperty('--gradient-sidebar-bg',
+        theme.gradients ? gradientPrimary : colors.titlebarBg);
+
     // Dynamic Taskbar Icon (Windows)
     try {
         // If we have a custom accent, we might want to regenerate the icon with that accent

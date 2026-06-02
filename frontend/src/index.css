@@ -63,6 +63,7 @@
   --gradient-surface-secondary: #12121a;
   --gradient-surface-elevated: #222233;
   --gradient-titlebar-bg: #12121a;
+  --gradient-sidebar-bg: #12121a;
 
   /* Shadows */
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
