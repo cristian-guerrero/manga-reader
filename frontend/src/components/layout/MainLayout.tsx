@@ -54,7 +54,7 @@ export function MainLayout({ children }: MainLayoutProps) {
 
                 {/* Content Area - no rounded corner since sidebar overlays it */}
                 <main
-                    className="flex-1 overflow-hidden relative theme-transition mr-3 mb-3 shadow-lg border-0 border-l border-r border-b"
+                    className="flex-1 overflow-hidden relative theme-transition mr-3 mb-3 shadow-lg border"
                     style={{
                         background: 'var(--gradient-surface-primary)',
                         borderColor: 'var(--color-border)',
