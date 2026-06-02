@@ -164,6 +164,7 @@ export function LateralViewer({
                     ? currentIndex >= images.length - 1
                     : currentIndex <= 0
                 }
+                showControls={showControls}
             />
 
             {/* Image display area */}
@@ -249,6 +250,7 @@ export function LateralViewer({
                     ? currentIndex <= 0
                     : currentIndex >= images.length - 1
                 }
+                showControls={showControls}
             />
 
             {/* Page indicator */}
@@ -256,11 +258,12 @@ export function LateralViewer({
                 className="absolute left-1/2 -translate-x-1/2 px-4 py-2 rounded-full text-sm font-medium shadow-lg z-[60] animate-slide-up"
                 style={{
                     bottom: (showControls && hasChapterButtons) ? '6.5rem' : '2rem',
-                    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                    backgroundColor: 'var(--color-surface-overlay)',
                     backdropFilter: 'blur(12px)',
-                    color: 'white',
-                    border: '1px solid rgba(255, 255, 255, 0.2)',
-                    transition: 'bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+                    color: 'var(--color-text-primary)',
+                    border: '1px solid var(--color-border)',
+                    opacity: showControls ? 1 : 0.4,
+                    transition: 'bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
                 }}
             >
                 {lateralMode === 'double' && currentIndex + 1 < images.length
@@ -277,15 +280,23 @@ interface NavigationButtonProps {
     direction: 'prev' | 'next';
     onClick: () => void;
     disabled: boolean;
+    showControls?: boolean;
 }
 
-function NavigationButton({ direction, onClick, disabled }: NavigationButtonProps) {
+function NavigationButton({ direction, onClick, disabled, showControls = false }: NavigationButtonProps) {
     const { t } = useTranslation();
     const isPrev = direction === 'prev';
     const tooltipContent = isPrev ? (t('shortcuts.prevPage') || 'Previous Page') : (t('shortcuts.nextPage') || 'Next Page');
 
+    const translateX = !showControls
+        ? (isPrev ? '-translate-x-full' : 'translate-x-full')
+        : 'translate-x-0';
+
     return (
-        <div className="absolute z-20" style={{ [isPrev ? 'left' : 'right']: '1rem' }}>
+        <div
+            className={`absolute z-20 transition-all duration-300 ${translateX} ${!showControls ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
+            style={{ [isPrev ? 'left' : 'right']: '1rem' }}
+        >
             <Tooltip content={tooltipContent} placement={isPrev ? 'right' : 'left'}>
                 <button
                     onClick={onClick}
