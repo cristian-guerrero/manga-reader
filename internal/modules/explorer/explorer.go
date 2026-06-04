@@ -553,7 +553,7 @@ func (m *Module) ListDirectoryWithSort(path string, sortMode string, sortOrder s
 		if result[i].IsDirectory != result[j].IsDirectory {
 			return result[i].IsDirectory && !result[j].IsDirectory
 		}
-		// If both are directories, check for order based on mode
+		// Pinned folder ordering (directories only)
 		if result[i].IsDirectory && m.folderOrders != nil {
 			iPinned := pinnedSet[result[i].Name]
 			jPinned := pinnedSet[result[j].Name]
@@ -564,7 +564,6 @@ func (m *Module) ListDirectoryWithSort(path string, sortMode string, sortOrder s
 				if !iPinned && jPinned {
 					return false
 				}
-				// Both pinned: maintain pinned order
 				for _, name := range pinned {
 					if name == result[i].Name {
 						return true
@@ -574,6 +573,30 @@ func (m *Module) ListDirectoryWithSort(path string, sortMode string, sortOrder s
 					}
 				}
 			}
+		}
+		// Pinned image ordering (files only)
+		if !result[i].IsDirectory && !result[j].IsDirectory && len(pinnedImgs) > 0 {
+			iPinned := pinnedImageSet[result[i].Name]
+			jPinned := pinnedImageSet[result[j].Name]
+			if iPinned || jPinned {
+				if iPinned && !jPinned {
+					return true
+				}
+				if !iPinned && jPinned {
+					return false
+				}
+				for _, name := range pinnedImgs {
+					if name == result[i].Name {
+						return true
+					}
+					if name == result[j].Name {
+						return false
+					}
+				}
+			}
+		}
+		// Custom/auto/date/name sorting for both directories and files
+		if m.folderOrders != nil {
 			if sortMode == "custom" {
 				customOrder := m.folderOrders.GetOrder(path)
 				if len(customOrder) > 0 {
@@ -600,35 +623,21 @@ func (m *Module) ListDirectoryWithSort(path string, sortMode string, sortOrder s
 					}
 					return applyNamedOrder(order, result[i].Name, result[j].Name)
 				}
-				// Fallback: newest first by lastModified
 				if sortOrder == "desc" {
 					return result[i].LastModified < result[j].LastModified
 				}
 				return result[i].LastModified > result[j].LastModified
+			} else if sortMode == "date" {
+				if sortOrder == "desc" {
+					return result[i].LastModified > result[j].LastModified
+				}
+				return result[i].LastModified < result[j].LastModified
 			}
 		}
-		// If both are files, check for pinned image order
-		if !result[i].IsDirectory && !result[j].IsDirectory && len(pinnedImgs) > 0 {
-			iPinned := pinnedImageSet[result[i].Name]
-			jPinned := pinnedImageSet[result[j].Name]
-			if iPinned || jPinned {
-				if iPinned && !jPinned {
-					return true
-				}
-				if !iPinned && jPinned {
-					return false
-				}
-				for _, name := range pinnedImgs {
-					if name == result[i].Name {
-						return true
-					}
-					if name == result[j].Name {
-						return false
-					}
-				}
-			}
+		if sortOrder == "desc" {
+			return utils.NaturalLess(result[j].Name, result[i].Name)
 		}
-		return false
+		return utils.NaturalLess(result[i].Name, result[j].Name)
 	})
 
 	return result, nil
