@@ -3,7 +3,7 @@
  * Extracted from ViewerPage to improve separation of concerns
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useTabStore } from '@stores';
 import { AppAPI } from '@services/api/appAPI';
 import { FolderAPI } from '@services/api/folderAPI';
@@ -49,6 +49,7 @@ export function useViewerFolderLoading({
     sortOrder,
 }: UseViewerFolderLoadingOptions) {
     const [isLoading, setIsLoading] = useState(false);
+    const lastLoadedSortKeyRef = useRef<string>('');
 
     useEffect(() => {
         if (!folderPath) return;
@@ -64,10 +65,12 @@ export function useViewerFolderLoading({
                 // Skip backend fetch if tab already has loaded images for this exact folder
                 // (prevents stale data from backend returning different index on tab switch)
                 const tabState = activeTab?.viewerState;
-                if (tabState?.images?.length && tabState?.currentFolder?.path === folderPath && !isRestored) {
+                const currentSortKey = `${sortBy || 'name'}|${sortOrder || 'asc'}`;
+                const isDynamicSort = sortBy === 'custom' || sortBy === 'auto';
+                if (tabState?.images?.length && tabState?.currentFolder?.path === folderPath && !isRestored && !isDynamicSort && currentSortKey === lastLoadedSortKeyRef.current) {
                     const ci = tabState.currentIndex ?? 0;
                     const sp = tabState.scrollPosition;
-                    console.log(`[useViewerFolderLoading] Skipping fetch, tab already loaded. index=${ci}, scrollPos=${sp}`);
+                    console.log(`[useViewerFolderLoading] Cache hit, sort unchanged (${currentSortKey}). index=${ci}, scrollPos=${sp}`);
                     setResumeIndex(ci);
                     lastSyncedIndexRef.current = ci;
                     if (sp && sp > 0) {
@@ -153,12 +156,6 @@ export function useViewerFolderLoading({
                                 targetScroll = savedViewerState.scrollPosition;
                             }
                         }
-                    } else if (tabState?.currentIndex !== undefined && tabState.currentIndex >= 0 && tabState.currentIndex < imgs.length && tabState.currentFolder?.path === folderPath) {
-                        targetIndex = tabState.currentIndex;
-                        console.log(`[useViewerFolderLoading] Using tab's currentIndex: ${targetIndex}`);
-                        if (tabState.scrollPosition && tabState.scrollPosition > 0) {
-                            targetScroll = tabState.scrollPosition;
-                        }
                     } else if (targetPath && !isRestored) {
                         const pathIndex = imgs.findIndex((img) => img.path === targetPath);
                         if (pathIndex >= 0) {
@@ -175,6 +172,12 @@ export function useViewerFolderLoading({
                     } else if (tabParams.endOfChapter === 'true' && !isRestored) {
                         targetIndex = imgs.length - 1;
                         console.log(`[useViewerFolderLoading] End of chapter: index=${targetIndex}`);
+                    } else if (tabState?.currentIndex !== undefined && tabState.currentIndex >= 0 && tabState.currentIndex < imgs.length && tabState.currentFolder?.path === folderPath) {
+                        targetIndex = tabState.currentIndex;
+                        console.log(`[useViewerFolderLoading] Using tab's currentIndex: ${targetIndex}`);
+                        if (tabState.scrollPosition && tabState.scrollPosition > 0) {
+                            targetScroll = tabState.scrollPosition;
+                        }
                     } else if (savedViewerState && savedViewerState.currentIndex >= 0 && savedViewerState.currentIndex < imgs.length) {
                         targetIndex = savedViewerState.currentIndex;
                         console.log(`[useViewerFolderLoading] Resuming from BACKEND state: index=${targetIndex}`);
@@ -205,6 +208,7 @@ export function useViewerFolderLoading({
                         currentFolder: folderInfo as FolderInfo,
                         isLoading: false
                     });
+                    lastLoadedSortKeyRef.current = currentSortKey;
                     setIsLoading(false);
                 } else {
                     updateTabState({ isLoading: false });
@@ -222,8 +226,7 @@ export function useViewerFolderLoading({
         return () => {
             cancelled = true;
         };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [folderPath, isActive, tabId]);
+    }, [folderPath, isActive, tabId, sortBy, sortOrder]);
 
     return { isLoading };
 }
