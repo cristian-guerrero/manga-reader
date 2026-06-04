@@ -61,10 +61,11 @@ export function useViewerFolderLoading({
                 const activeTab = useTabStore.getState().tabs.find((t) => t.id === tabId);
                 const isRestored = activeTab?.restored;
 
-                // Skip backend fetch if tab already has loaded images for this exact folder
+                // Skip backend fetch if tab already has loaded images for this exact folder AND sort params match
                 // (prevents stale data from backend returning different index on tab switch)
                 const tabState = activeTab?.viewerState;
-                if (tabState?.images?.length && tabState?.currentFolder?.path === folderPath && !isRestored) {
+                if (tabState?.images?.length && tabState?.currentFolder?.path === folderPath && !isRestored
+                    && tabState.sortBy === sortBy && tabState.sortOrder === sortOrder) {
                     const ci = tabState.currentIndex ?? 0;
                     const sp = tabState.scrollPosition;
                     console.log(`[useViewerFolderLoading] Skipping fetch, tab already loaded. index=${ci}, scrollPos=${sp}`);
@@ -101,14 +102,9 @@ export function useViewerFolderLoading({
 
                 if (cancelled) return;
 
-                const hasSortPrefs = sortBy !== undefined && (sortBy !== 'name' || sortOrder === 'desc');
                 const imageList = useShallow
-                    ? (hasSortPrefs
-                        ? await FolderAPI.getImagesShallowWithSort(folderPath, sortBy, sortOrder || 'asc')
-                        : await AppAPI.getImagesShallow(folderPath))
-                    : (hasSortPrefs
-                        ? await FolderAPI.getImagesWithSort(folderPath, sortBy, sortOrder || 'asc')
-                        : await AppAPI.getImages(folderPath));
+                    ? await FolderAPI.getImagesShallowWithSort(folderPath, sortBy || 'name', sortOrder || 'asc')
+                    : await FolderAPI.getImagesWithSort(folderPath, sortBy || 'name', sortOrder || 'asc');
 
                 if (cancelled) return;
 
@@ -203,7 +199,9 @@ export function useViewerFolderLoading({
                         scrollPosition: targetScroll,
                         verticalWidth: restoredVerticalWidth,
                         currentFolder: folderInfo as FolderInfo,
-                        isLoading: false
+                        isLoading: false,
+                        sortBy,
+                        sortOrder,
                     });
                     setIsLoading(false);
                 } else {
