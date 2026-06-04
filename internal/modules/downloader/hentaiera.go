@@ -6,7 +6,9 @@ import (
 	"html"
 	"io"
 	"net/http"
+	"net/url"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -103,8 +105,33 @@ func (d *HentaieraDownloader) GetImages(url string) (*SiteInfo, error) {
 	}, nil
 }
 
-func (d *HentaieraDownloader) getSeriesInfo(url string) (*SiteInfo, error) {
-	bodyStr, err := d.fetchPage(url)
+// Language ID to ISO code mapping from hentaiera.com data-languages attribute
+var hentaieraLanguageMap = map[string]string{
+	"1":  "ja",
+	"2":  "en",
+	"3":  "es",
+	"6":  "es",
+	"8":  "fr",
+	"10": "ru",
+}
+
+func (d *HentaieraDownloader) getSeriesInfo(rawURL string) (*SiteInfo, error) {
+	// Parse URL to preserve query params (e.g. ?page=2)
+	parsedURL, err := url.Parse(rawURL)
+	if err != nil {
+		return nil, err
+	}
+
+	langFilter := parsedURL.Query().Get("lang")
+
+	// Build clean base path (strip query params for pagination)
+	basePath := parsedURL.Path
+	if !strings.HasSuffix(basePath, "/") {
+		basePath += "/"
+	}
+	firstPageURL := fmt.Sprintf("https://hentaiera.com%s", basePath)
+
+	bodyStr, err := d.fetchPage(firstPageURL)
 	if err != nil {
 		return nil, err
 	}
@@ -118,36 +145,37 @@ func (d *HentaieraDownloader) getSeriesInfo(url string) (*SiteInfo, error) {
 		title = strings.TrimSpace(title)
 	}
 
-	// Extract galleries
-	// Matches both <h2 class="gallery_title"> and <div class="gallery_title"> for robustness
-	reGallery := regexp.MustCompile(`(?s)<(?:h\d|div)\s+class="gallery_title">\s*<a\s+href="([^"]+)">\s*(.*?)\s*</a>\s*</(?:h\d|div)>`)
-	matches := reGallery.FindAllStringSubmatch(bodyStr, -1)
-
-	var chapters []ChapterInfo
-	for _, m := range matches {
-		galleryURL := m[1]
-		galleryTitle := strings.TrimSpace(m[2])
-
-		if !strings.HasPrefix(galleryURL, "http") {
-			galleryURL = "https://hentaiera.com" + galleryURL
+	// Get total pages from pagination
+	totalPages := 1
+	rePage := regexp.MustCompile(`\?page=(\d+)`)
+	for _, m := range rePage.FindAllStringSubmatch(bodyStr, -1) {
+		if n, err := strconv.Atoi(m[1]); err == nil && n > totalPages {
+			totalPages = n
 		}
-
-		// Extract ID from /gallery/12345/
-		reID := regexp.MustCompile(`/gallery/(\d+)/`)
-		idMatch := reID.FindStringSubmatch(galleryURL)
-		id := ""
-		if len(idMatch) > 1 {
-			id = idMatch[1]
-		}
-
-		chapters = append(chapters, ChapterInfo{
-			ID:   id,
-			Name: galleryTitle,
-			URL:  galleryURL,
-		})
 	}
 
-	if len(chapters) == 0 {
+	// Limit pages to prevent abuse
+	if totalPages > 50 {
+		totalPages = 50
+	}
+
+	var allChapters []ChapterInfo
+	seen := make(map[string]bool)
+
+	for page := 1; page <= totalPages; page++ {
+		if page > 1 {
+			pageURL := fmt.Sprintf("https://hentaiera.com%s?page=%d", basePath, page)
+			bodyStr, err = d.fetchPage(pageURL)
+			if err != nil {
+				break
+			}
+		}
+
+		chapters := d.parseGalleryEntries(bodyStr, langFilter, seen)
+		allChapters = append(allChapters, chapters...)
+	}
+
+	if len(allChapters) == 0 {
 		return nil, fmt.Errorf("could not find any galleries in this list")
 	}
 
@@ -155,8 +183,59 @@ func (d *HentaieraDownloader) getSeriesInfo(url string) (*SiteInfo, error) {
 		SeriesName: title,
 		SiteID:     "hentaiera.com",
 		Type:       "series",
-		Chapters:   chapters,
+		Chapters:   allChapters,
 	}, nil
+}
+
+func (d *HentaieraDownloader) parseGalleryEntries(bodyStr, langFilter string, seen map[string]bool) []ChapterInfo {
+	// Match thumb divs with data-languages and gallery_title inside
+	reThumb := regexp.MustCompile(`(?s)data-languages="([^"]*)"[^>]*>.*?<h2 class="gallery_title">\s*<a href="(/gallery/(\d+)/)">(.*?)</a>\s*</h2>`)
+	matches := reThumb.FindAllStringSubmatch(bodyStr, -1)
+
+	var chapters []ChapterInfo
+	for _, m := range matches {
+		langIDs := strings.Fields(m[1])
+		galleryURL := "https://hentaiera.com" + m[2]
+		galleryID := m[3]
+		galleryTitle := html.UnescapeString(strings.TrimSpace(m[4]))
+
+		if seen[galleryURL] {
+			continue
+		}
+		seen[galleryURL] = true
+
+		// Determine language codes for this gallery
+		var langCodes []string
+		for _, lid := range langIDs {
+			if code, ok := hentaieraLanguageMap[lid]; ok {
+				langCodes = append(langCodes, code)
+			}
+		}
+		chapterLang := strings.Join(langCodes, ",")
+
+		// Apply language filter if set
+		if langFilter != "" {
+			matchesFilter := false
+			for _, code := range langCodes {
+				if code == langFilter {
+					matchesFilter = true
+					break
+				}
+			}
+			if !matchesFilter {
+				continue
+			}
+		}
+
+		chapters = append(chapters, ChapterInfo{
+			ID:       galleryID,
+			Name:     galleryTitle,
+			URL:      galleryURL,
+			Language: chapterLang,
+		})
+	}
+
+	return chapters
 }
 
 func (d *HentaieraDownloader) fetchPage(url string) (string, error) {
