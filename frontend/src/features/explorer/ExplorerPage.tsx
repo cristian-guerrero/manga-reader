@@ -263,6 +263,8 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
   }, [loading.loadDirectory, navigate, sorting.sortBy, sorting.sortOrder]);
 
   // Reload directory when sortBy or sortOrder changes in modes requiring backend sort
+  // Uses currentPathRef instead of currentPath to avoid firing on path changes
+  // (onSortReady already handles loading when the path changes).
   const prevSortByRef = useRef(sorting.sortBy);
   const prevSortOrderRef = useRef(sorting.sortOrder);
   useEffect(() => {
@@ -273,11 +275,11 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
     prevSortByRef.current = sorting.sortBy;
     prevSortOrderRef.current = sorting.sortOrder;
     if (!byChanged && !orderChanged) return;
-    const path = explorerStateHook.currentPath;
+    const path = explorerStateHook.currentPathRef.current;
     if (path && (sorting.sortBy === 'auto' || sorting.sortBy === 'custom')) {
       loading.loadDirectory(path, false);
     }
-  }, [sorting.sortBy, sorting.sortOrder, explorerStateHook.currentPath, loading.loadDirectory]);
+  }, [sorting.sortBy, sorting.sortOrder, loading.loadDirectory]);
 
   // Use view mode hook (includes grid item size)
   const { viewMode, setViewMode, gridItemSize, setGridItemSize, isLoaded: viewStateLoaded } = useExplorerView(explorerStateHook.currentPath);

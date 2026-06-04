@@ -277,6 +277,7 @@ export function useExplorerNavigation({
                         onAutoPromote(currentPath, e.name, allDirNames);
                     }
                 }
+                setEntries([]);
                 setCurrentPath(e.path);
             } else {
                 if (currentPath) {
@@ -319,7 +320,7 @@ export function useExplorerNavigation({
                 }
             }
         }
-    }, [currentPath, pathHistory, entries, sortedEntries, setPathHistory, setExplorerState, navigate, onSearchClear, currentSortBy, currentSortOrder]);
+    }, [currentPath, pathHistory, entries, sortedEntries, setPathHistory, setForwardHistory, setEntries, setExplorerState, navigate, onSearchClear, currentSortBy, currentSortOrder]);
 
     const handleItemAuxClick = useCallback(async (e: React.MouseEvent, entry: ExplorerEntry | BaseFolder) => {
         if (e.button === 1) { // Middle click
