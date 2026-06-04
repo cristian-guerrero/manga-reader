@@ -16,11 +16,13 @@ interface UseExplorerRestorationOptions {
     fromPage: string | null;
     params: Record<string, string>;
     setParams: (params: Record<string, string>) => void;
-    loadDirectory: (path: string, pushHistory?: boolean) => Promise<void>;
+    loadDirectory: (path: string, pushHistory?: boolean, sortModeOverride?: string, sortOrderOverride?: string) => Promise<void>;
     setCurrentPath: (path: string | null) => void;
     setPathHistory: React.Dispatch<React.SetStateAction<string[]>>;
     setEntries: React.Dispatch<React.SetStateAction<any[]>>;
     loadBaseFolders: () => Promise<void>;
+    sortBy?: string;
+    sortOrder?: string;
 }
 
 export function useExplorerRestoration({
@@ -36,6 +38,8 @@ export function useExplorerRestoration({
     setPathHistory,
     setEntries,
     loadBaseFolders,
+    sortBy = 'name',
+    sortOrder = 'asc',
 }: UseExplorerRestorationOptions) {
     const isMountedRef = useRef(true);
     const isInitializingRef = useRef(true);
@@ -68,7 +72,7 @@ export function useExplorerRestoration({
             isInitializingRef.current = true;
             setTimeout(() => {
                 if (isMountedRef.current && tabInitialState.currentPath) {
-                    loadDirectory(tabInitialState.currentPath, false).finally(() => {
+                    loadDirectory(tabInitialState.currentPath, false, sortBy, sortOrder).finally(() => {
                         setTimeout(() => {
                             isInitializingRef.current = false;
                         }, 50);
@@ -84,7 +88,7 @@ export function useExplorerRestoration({
                 setPathHistory(explorerState.pathHistory || []);
                 setTimeout(() => {
                     if (isMountedRef.current && savedPath) {
-                        loadDirectory(savedPath, false).finally(() => {
+                        loadDirectory(savedPath, false, sortBy, sortOrder).finally(() => {
                             setTimeout(() => {
                                 isInitializingRef.current = false;
                             }, 50);

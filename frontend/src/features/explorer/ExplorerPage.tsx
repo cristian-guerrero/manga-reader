@@ -480,6 +480,8 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
     setPathHistory: explorerStateHook.setPathHistory,
     setEntries: loading.setEntries,
     loadBaseFolders: loading.loadBaseFolders,
+    sortBy: sorting.sortBy,
+    sortOrder: sorting.sortOrder,
   });
 
   return (
