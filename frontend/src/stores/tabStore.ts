@@ -30,6 +30,8 @@ export interface Tab {
         zoomLevel: number;
         scrollPosition: number;
         verticalWidth?: number;
+        sortBy?: string;
+        sortOrder?: string;
     } | null;
     restored?: boolean;
 }

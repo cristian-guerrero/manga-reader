@@ -253,6 +253,10 @@ export interface ViewerState {
   verticalWidth?: number;
   /** Is currently restoring state (prevents premature saving) */
   isRestoring?: boolean;
+  /** Sort mode used to load images (for skip-cache comparison) */
+  sortBy?: string;
+  /** Sort order used to load images (for skip-cache comparison) */
+  sortOrder?: string;
 }
 
 // ============================================================================
