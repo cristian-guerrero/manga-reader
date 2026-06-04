@@ -222,10 +222,6 @@ export function GetImagesShallowWithSort(arg1, arg2, arg3) {
   return window['go']['main']['App']['GetImagesShallowWithSort'](arg1, arg2, arg3);
 }
 
-export function GetImagesSorted(arg1, arg2, arg3, arg4) {
-  return window['go']['main']['App']['GetImagesSorted'](arg1, arg2, arg3, arg4);
-}
-
 export function GetImagesWithSort(arg1, arg2, arg3) {
   return window['go']['main']['App']['GetImagesWithSort'](arg1, arg2, arg3);
 }

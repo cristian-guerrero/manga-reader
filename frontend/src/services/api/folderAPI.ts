@@ -43,20 +43,35 @@ export class FolderAPI extends BaseAPI {
     }
 
     /**
-     * Get images from a folder, sorted by Explorer sort preference.
-     * shallow=true for non-recursive scan (immediate directory only).
-     * Backend is the single source of truth for all sorting.
+     * Get images from a folder, sorted by Explorer sort preference
      */
-    static async getImagesSorted(path: string, sortMode: string, sortOrder: string, shallow: boolean): Promise<ImageInfo[]> {
+    static async getImagesWithSort(path: string, sortMode: string, sortOrder: string): Promise<ImageInfo[]> {
         return this.callOrEmpty(
             async () => {
-                const result = await AppBackend.GetImagesSorted(path, sortMode, sortOrder, shallow);
+                const result = await AppBackend.GetImagesWithSort(path, sortMode, sortOrder);
                 return (result as ImageInfo[]) || [];
             },
             {
                 component: 'FolderAPI',
-                action: 'getImagesSorted',
-                details: { path, sortMode, sortOrder, shallow }
+                action: 'getImagesWithSort',
+                details: { path, sortMode, sortOrder }
+            }
+        );
+    }
+
+    /**
+     * Get images shallow from a folder, sorted by Explorer sort preference
+     */
+    static async getImagesShallowWithSort(path: string, sortMode: string, sortOrder: string): Promise<ImageInfo[]> {
+        return this.callOrEmpty(
+            async () => {
+                const result = await AppBackend.GetImagesShallowWithSort(path, sortMode, sortOrder);
+                return (result as ImageInfo[]) || [];
+            },
+            {
+                component: 'FolderAPI',
+                action: 'getImagesShallowWithSort',
+                details: { path, sortMode, sortOrder }
             }
         );
     }

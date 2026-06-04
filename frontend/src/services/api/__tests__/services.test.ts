@@ -37,7 +37,6 @@ vi.mock('../../../../wailsjs/go/main/App', () => {
     GetFolderInfoShallow: mock(),
     GetImagesWithSort: mock([]),
     GetImagesShallowWithSort: mock([]),
-    GetImagesSorted: mock([]),
     ExploreFolder: mock([]),
     ResolveFolder: mock(''),
     AddFolder: mock(),
@@ -241,15 +240,15 @@ describe('FolderAPI', () => {
     expect(result?.name).toBe('Shallow')
   })
 
-  it('getImagesSorted returns sorted images (shallow=false)', async () => {
-    App.GetImagesSorted.mockResolvedValue([])
-    const result = await FolderAPI.getImagesSorted('/path', 'name', 'asc', false)
+  it('getImagesWithSort returns sorted images', async () => {
+    App.GetImagesWithSort.mockResolvedValue([])
+    const result = await FolderAPI.getImagesWithSort('/path', 'name', 'asc')
     expect(result).toEqual([])
   })
 
-  it('getImagesSorted returns sorted images (shallow=true)', async () => {
-    App.GetImagesSorted.mockResolvedValue([])
-    const result = await FolderAPI.getImagesSorted('/path', 'name', 'asc', true)
+  it('getImagesShallowWithSort returns sorted images shallow', async () => {
+    App.GetImagesShallowWithSort.mockResolvedValue([])
+    const result = await FolderAPI.getImagesShallowWithSort('/path', 'name', 'asc')
     expect(result).toEqual([])
   })
 

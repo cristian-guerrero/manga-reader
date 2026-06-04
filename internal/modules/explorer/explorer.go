@@ -628,17 +628,7 @@ func (m *Module) ListDirectoryWithSort(path string, sortMode string, sortOrder s
 				}
 			}
 		}
-		// Fallback: name/date sort when no custom/auto mode matched
-		if sortMode == "date" {
-			if sortOrder == "desc" {
-				return result[i].LastModified > result[j].LastModified
-			}
-			return result[i].LastModified < result[j].LastModified
-		}
-		if sortOrder == "desc" {
-			return utils.NaturalLess(result[j].Name, result[i].Name)
-		}
-		return utils.NaturalLess(result[i].Name, result[j].Name)
+		return false
 	})
 
 	return result, nil
@@ -783,9 +773,77 @@ func (m *Module) getEnabledSubdirs(dirPath string) []FolderInfo {
 }
 
 // GetFolderNavigation returns prev/next folder for a given folder path.
-// Delegates to GetFolderNavigationWithSort with default name/asc sort.
+// When the folder has children (subdirs with images), navigation walks root → children (flat, include root).
+// When the folder has no children, falls back to sibling folders in the parent directory.
 func (m *Module) GetFolderNavigation(folderPath string) *FolderNavigation {
-	return m.GetFolderNavigationWithSort(folderPath, "name", "asc")
+	// Strategy 1: folder has children → flat children nav (include self as first item)
+	children := m.getEnabledSubdirs(folderPath)
+	if len(children) > 0 {
+		folderName := filepath.Base(folderPath)
+		all := make([]FolderInfo, 0, len(children)+1)
+		all = append(all, FolderInfo{Path: folderPath, Name: folderName})
+		all = append(all, children...)
+
+		if len(all) <= 1 {
+			return nil
+		}
+
+		allCopy := make([]FolderInfo, len(all))
+		copy(allCopy, all)
+
+		nav := &FolderNavigation{
+			ParentPath:   folderPath,
+			CurrentIndex: 0,
+			TotalFolders: len(all),
+			AllFolders:   allCopy,
+		}
+
+		if len(all) > 1 {
+			next := all[1]
+			nav.NextFolder = &next
+		}
+
+		return nav
+	}
+
+	// Strategy 2: no children → navigate through siblings in parent directory
+	parentPath := filepath.Dir(folderPath)
+	siblingFolders := m.getEnabledSubdirs(parentPath)
+
+	if len(siblingFolders) == 0 {
+		return nil
+	}
+
+	// Find current folder among siblings
+	currentIndex := -1
+	for i, f := range siblingFolders {
+		if f.Path == folderPath {
+			currentIndex = i
+			break
+		}
+	}
+
+	if currentIndex == -1 || len(siblingFolders) <= 1 {
+		return nil
+	}
+
+	nav := &FolderNavigation{
+		ParentPath:   parentPath,
+		CurrentIndex: currentIndex,
+		TotalFolders: len(siblingFolders),
+	}
+
+	if currentIndex > 0 {
+		prev := siblingFolders[currentIndex-1]
+		nav.PrevFolder = &prev
+	}
+
+	if currentIndex < len(siblingFolders)-1 {
+		next := siblingFolders[currentIndex+1]
+		nav.NextFolder = &next
+	}
+
+	return nav
 }
 
 // getEnabledSubdirsWithSort is like getEnabledSubdirs but applies Explorer sort preferences.
@@ -844,15 +902,7 @@ func (m *Module) getEnabledSubdirsWithSort(dirPath string, sortMode string, sort
 			order := m.folderOrders.GetOrder(dirPath)
 			if len(order) > 0 {
 				applyOrderToFolderInfos(list, order, sortOrder)
-				break
 			}
-			// No custom order → fall through to name sort
-			sort.SliceStable(list, func(i, j int) bool {
-				if sortOrder == "desc" {
-					return utils.NaturalLess(list[j].Name, list[i].Name)
-				}
-				return utils.NaturalLess(list[i].Name, list[j].Name)
-			})
 		case "auto":
 			if m.folderOrders == nil {
 				break
@@ -860,25 +910,14 @@ func (m *Module) getEnabledSubdirsWithSort(dirPath string, sortMode string, sort
 			order := m.folderOrders.GetAutoOrder(dirPath)
 			if len(order) > 0 {
 				applyOrderToFolderInfos(list, order, sortOrder)
-				break
+			} else {
+				sort.SliceStable(list, func(i, j int) bool {
+					if sortOrder == "desc" {
+						return utils.NaturalLess(list[j].Name, list[i].Name)
+					}
+					return utils.NaturalLess(list[i].Name, list[j].Name)
+				})
 			}
-			// No auto order → fall through to date sort (matching ListDirectoryWithSort)
-			sort.SliceStable(list, func(i, j int) bool {
-				infoI, errI := os.Stat(filepath.Join(dirPath, list[i].Name))
-				infoJ, errJ := os.Stat(filepath.Join(dirPath, list[j].Name))
-				modI := int64(0)
-				modJ := int64(0)
-				if errI == nil {
-					modI = infoI.ModTime().Unix()
-				}
-				if errJ == nil {
-					modJ = infoJ.ModTime().Unix()
-				}
-				if sortOrder == "desc" {
-					return modI > modJ
-				}
-				return modI < modJ
-			})
 		case "date":
 			sort.SliceStable(list, func(i, j int) bool {
 				infoI, errI := os.Stat(filepath.Join(dirPath, list[i].Name))
@@ -1270,14 +1309,6 @@ func SortImagesByExplorerPreference(images []persistence.ImageInfo, parentPath s
 		order := folderOrders.GetOrder(parentPath)
 		if len(order) > 0 {
 			applyOrderToImages(images, order, sortOrder)
-		} else {
-			// No custom order → fall through to name sort
-			sort.SliceStable(images, func(i, j int) bool {
-				if sortOrder == "desc" {
-					return strings.ToLower(images[i].Name) > strings.ToLower(images[j].Name)
-				}
-				return strings.ToLower(images[i].Name) < strings.ToLower(images[j].Name)
-			})
 		}
 	case "auto":
 		order := folderOrders.GetAutoOrder(parentPath)
@@ -1288,7 +1319,7 @@ func SortImagesByExplorerPreference(images []persistence.ImageInfo, parentPath s
 				if sortOrder == "desc" {
 					return images[i].ModTime > images[j].ModTime
 				}
-				return images[i].ModTime < images[j].ModTime
+				return images[i].ModTime > images[j].ModTime
 			})
 		}
 	case "date":

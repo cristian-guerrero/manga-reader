@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { FolderOrderAPI } from '@services/api/folderOrderAPI';
 import { UIPreferencesAPI } from '@services/api/uiPreferencesAPI';
 
 type SortBy = 'name' | 'date' | 'custom' | 'auto';
@@ -25,6 +26,14 @@ export function useExplorerSorting({ currentPath, onCustomOrderDetected, onSortR
 
             let resolvedSortBy = pref.sortBy as SortBy;
             let resolvedSortOrder = pref.sortOrder as 'asc' | 'desc';
+
+            if (resolvedSortBy === 'custom' && targetPath) {
+                const hasCustom = await FolderOrderAPI.hasFolderCustomOrder(targetPath);
+                if (cancelled) return;
+                if (!hasCustom) {
+                    resolvedSortBy = 'name';
+                }
+            }
 
             if (cancelled) return;
 

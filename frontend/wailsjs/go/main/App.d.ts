@@ -119,8 +119,6 @@ export function GetImagesShallow(arg1:string):Promise<Array<persistence.ImageInf
 
 export function GetImagesShallowWithSort(arg1:string,arg2:string,arg3:string):Promise<Array<persistence.ImageInfo>>;
 
-export function GetImagesSorted(arg1:string,arg2:string,arg3:string,arg4:boolean):Promise<Array<persistence.ImageInfo>>;
-
 export function GetImagesWithSort(arg1:string,arg2:string,arg3:string):Promise<Array<persistence.ImageInfo>>;
 
 export function GetLibraries():Promise<Array<persistence.LibraryInfo>>;
