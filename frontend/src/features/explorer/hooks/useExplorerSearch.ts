@@ -122,33 +122,8 @@ export function useExplorerSearch({
       return idxA - idxB;
     });
 
-    if (sortBy !== 'custom' && sortBy !== 'auto') {
-      unpinnedDirs.sort((a, b) => {
-        let res = 0;
-        if (sortBy === 'name') {
-          res = a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
-        } else {
-          const dateA = a.lastModified || 0;
-          const dateB = b.lastModified || 0;
-          res = dateA - dateB;
-        }
-        return sortOrder === 'asc' ? res : -res;
-      });
-    }
-
-    if (sortBy !== 'custom' && sortBy !== 'auto') {
-      unpinnedImgs.sort((a, b) => {
-        let res = 0;
-        if (sortBy === 'name') {
-          res = a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
-        } else {
-          const dateA = a.lastModified || 0;
-          const dateB = b.lastModified || 0;
-          res = dateA - dateB;
-        }
-        return sortOrder === 'asc' ? res : -res;
-      });
-    }
+    // Backend is the single source of truth for all sorting (name, date, custom, auto).
+    // No client-side re-sorting needed — entries already arrive sorted from ListDirectoryWithSort.
 
     return [...pinnedDirs, ...unpinnedDirs, ...pinnedImgs, ...unpinnedImgs];
   }, [entries, searchQuery, sortBy, sortOrder, pinnedFolders, pinnedImages]);

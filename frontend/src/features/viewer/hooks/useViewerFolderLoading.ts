@@ -101,14 +101,7 @@ export function useViewerFolderLoading({
 
                 if (cancelled) return;
 
-                const hasSortPrefs = sortBy !== undefined && (sortBy !== 'name' || sortOrder === 'desc');
-                const imageList = useShallow
-                    ? (hasSortPrefs
-                        ? await FolderAPI.getImagesShallowWithSort(folderPath, sortBy, sortOrder || 'asc')
-                        : await AppAPI.getImagesShallow(folderPath))
-                    : (hasSortPrefs
-                        ? await FolderAPI.getImagesWithSort(folderPath, sortBy, sortOrder || 'asc')
-                        : await AppAPI.getImages(folderPath));
+                const imageList = await FolderAPI.getImagesSorted(folderPath, sortBy || 'name', sortOrder || 'asc', useShallow);
 
                 if (cancelled) return;
 

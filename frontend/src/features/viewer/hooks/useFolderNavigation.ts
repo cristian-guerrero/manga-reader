@@ -15,10 +15,7 @@ export function useFolderNavigation(folderPath: string | undefined, isActive: bo
         const loadFolderNav = async () => {
             try {
                 const effectiveRoot = navRoot || folderPath;
-                const hasSortPrefs = sortBy !== undefined && (sortBy !== 'name' || sortOrder === 'desc');
-                const navInfo = hasSortPrefs
-                    ? await ExplorerAPI.getFolderNavigationWithSort(effectiveRoot, sortBy ?? 'name', sortOrder ?? 'asc')
-                    : await ExplorerAPI.getFolderNavigation(effectiveRoot);
+                const navInfo = await ExplorerAPI.getFolderNavigationWithSort(effectiveRoot, sortBy ?? 'name', sortOrder ?? 'asc');
                 if (cancelled) return;
 
                 if (!navInfo) {

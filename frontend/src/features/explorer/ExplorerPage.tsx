@@ -262,7 +262,7 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
     }
   }, [loading.loadDirectory, navigate, sorting.sortBy, sorting.sortOrder]);
 
-  // Reload directory when sortBy or sortOrder changes in modes requiring backend sort
+  // Reload directory when sortBy or sortOrder changes — backend is the single source of truth for all modes
   const prevSortByRef = useRef(sorting.sortBy);
   const prevSortOrderRef = useRef(sorting.sortOrder);
   useEffect(() => {
@@ -274,7 +274,7 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
     prevSortOrderRef.current = sorting.sortOrder;
     if (!byChanged && !orderChanged) return;
     const path = explorerStateHook.currentPath;
-    if (path && (sorting.sortBy === 'auto' || sorting.sortBy === 'custom')) {
+    if (path) {
       loading.loadDirectory(path, false);
     }
   }, [sorting.sortBy, sorting.sortOrder, explorerStateHook.currentPath, loading.loadDirectory]);

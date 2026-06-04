@@ -673,6 +673,29 @@ func (a *App) GetImagesShallowWithSort(path string, sortMode string, sortOrder s
 	return images, nil
 }
 
+// GetImagesSorted returns sorted images. shallow=true → non-recursive (only immediate directory).
+func (a *App) GetImagesSorted(path string, sortMode string, sortOrder string, shallow bool) ([]persistence.ImageInfo, error) {
+	var images []persistence.ImageInfo
+	var err error
+	if shallow {
+		images, err = a.libraryMod.GetImagesShallow(path, a.settings().Get(), a.orders())
+	} else {
+		images, err = a.libraryMod.GetImages(path, a.settings().Get(), a.orders())
+	}
+	if err != nil {
+		return nil, err
+	}
+	explorer.SortImagesByExplorerPreference(images, path, sortMode, sortOrder, a.explorerMod.GetFolderOrdersRepo(), a.orders())
+	if len(images) > 0 && stdruntime.GOOS == "linux" {
+		var paths []string
+		for _, img := range images {
+			paths = append(paths, img.Path)
+		}
+		a.imgServer().PreloadConverted(paths)
+	}
+	return images, nil
+}
+
 // GetFolderInfo delegates to Library module
 func (a *App) GetFolderInfo(folderPath string) (*persistence.FolderInfo, error) {
 	return a.libraryMod.GetFolderInfo(folderPath)
