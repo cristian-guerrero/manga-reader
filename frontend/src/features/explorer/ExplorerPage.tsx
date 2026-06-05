@@ -316,6 +316,19 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
 
   const isInCustomMode = sorting.sortBy === 'custom' && !search.searchQuery.trim();
 
+  const dirStats = useMemo(() => {
+    if (explorerStateHook.currentPath) {
+      const folders = search.sortedEntries.filter(e => e.isDirectory).length;
+      const images = search.sortedEntries.length - folders;
+      return { folders, images };
+    }
+    if (loading.baseFolders.length > 0) {
+      const folders = search.sortedBaseFolders.length;
+      return { folders, images: 0 };
+    }
+    return null;
+  }, [search.sortedEntries, search.sortedBaseFolders, loading.baseFolders.length, explorerStateHook.currentPath]);
+
   // Folder navigation (sibling prev/next for leaf image folders)
   const [folderNav, setFolderNav] = useState<FolderNavigation | null>(null);
   const isLeafImageFolder = explorerStateHook.currentPath
@@ -668,6 +681,11 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
             onSearch={search.setSearchQuery}
             className="flex-1 min-w-0 sm:max-w-md hidden sm:block"
           />
+          {dirStats && (
+            <span className="text-xs text-text-secondary whitespace-nowrap hidden sm:block ml-3">
+              {dirStats.folders} {t('explorer.subfolders')}{dirStats.images > 0 ? ` · ${dirStats.images} ${t('explorer.images')}` : ''}
+            </span>
+          )}
           {resolvedViewMode === 'grid' && explorerStateHook.currentPath && (
             <div className="flex items-center gap-2 ml-auto hidden sm:flex">
               <span className="text-xs text-text-secondary whitespace-nowrap">
