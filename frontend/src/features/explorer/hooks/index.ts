@@ -10,3 +10,4 @@ export { useExplorerNavigation } from './useExplorerNavigation';
 export { useExplorerRestoration } from './useExplorerRestoration';
 export { useExplorerDragAndDrop } from './useExplorerDragAndDrop';
 export { useExplorerView } from './useExplorerView';
+export { useRecentlyViewed } from './useRecentlyViewed';

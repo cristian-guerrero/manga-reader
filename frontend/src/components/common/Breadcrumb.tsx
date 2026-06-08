@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { Tooltip } from "../ui/Tooltip";
+import { RECENTLY_VIEWED_SENTINEL } from "../../features/explorer/types";
 
 interface BaseFolder {
   path: string;
@@ -138,7 +139,7 @@ export function Breadcrumb({
                   <path d="M9 18l6-6-6-6" />
                 </svg>
               )}
-              {isClickable ? (
+                  {isClickable ? (
                 <Tooltip content={segment.path || segment.name}>
                   <button
                     onClick={() => onNavigate(segment.path)}
@@ -147,7 +148,7 @@ export function Breadcrumb({
                     }
                     className="text-text-primary hover:text-accent transition-colors truncate max-w-[200px] px-2 py-1 rounded hover:bg-white/5 text-sm"
                   >
-                    {segment.name}
+                    {segment.path === RECENTLY_VIEWED_SENTINEL ? t("explorer.recentlyViewed") : segment.name}
                   </button>
                 </Tooltip>
               ) : (
@@ -155,7 +156,7 @@ export function Breadcrumb({
                   <span
                     className={`${isLast ? "text-text-primary font-semibold text-base" : "text-text-secondary text-sm"} truncate max-w-[200px]`}
                   >
-                    {segment.name}
+                    {segment.path === RECENTLY_VIEWED_SENTINEL ? t("explorer.recentlyViewed") : segment.name}
                   </span>
                 </Tooltip>
               )}

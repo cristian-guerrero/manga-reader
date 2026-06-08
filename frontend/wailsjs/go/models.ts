@@ -275,6 +275,26 @@ export namespace explorer {
 		    return a;
 		}
 	}
+	export class RecentFolderEntry {
+	    folderPath: string;
+	    folderName: string;
+	    visitedAt: string;
+	    hasImages: boolean;
+	    thumbnailUrl?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new RecentFolderEntry(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.folderPath = source["folderPath"];
+	        this.folderName = source["folderName"];
+	        this.visitedAt = source["visitedAt"];
+	        this.hasImages = source["hasImages"];
+	        this.thumbnailUrl = source["thumbnailUrl"];
+	    }
+	}
 
 }
 

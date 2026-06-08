@@ -46,6 +46,10 @@ export function ClearLibrary() {
   return window['go']['main']['App']['ClearLibrary']();
 }
 
+export function ClearRecentFolders() {
+  return window['go']['main']['App']['ClearRecentFolders']();
+}
+
 export function ClearSeries() {
   return window['go']['main']['App']['ClearSeries']();
 }
@@ -266,6 +270,10 @@ export function GetPinnedImages(arg1, arg2) {
   return window['go']['main']['App']['GetPinnedImages'](arg1, arg2);
 }
 
+export function GetRecentFolders() {
+  return window['go']['main']['App']['GetRecentFolders']();
+}
+
 export function GetSeries() {
   return window['go']['main']['App']['GetSeries']();
 }
@@ -376,6 +384,10 @@ export function RemoveHistory(arg1) {
 
 export function RemoveLibraryEntry(arg1) {
   return window['go']['main']['App']['RemoveLibraryEntry'](arg1);
+}
+
+export function RemoveRecentFolder(arg1) {
+  return window['go']['main']['App']['RemoveRecentFolder'](arg1);
 }
 
 export function RemoveSeries(arg1) {

@@ -28,6 +28,7 @@ type Module struct {
 	imageOrders     *database.ImageOrdersRepository
 	folderViewModes *database.FolderViewModeRepository
 	folderGridSizes *database.FolderGridSizeRepository
+	recentFolders   *database.RecentlyVisitedRepository
 	fileLoader      services.FileLoaderInterface
 	urlBuilder      services.URLBuilderInterface
 	logger          services.LoggerInterface
@@ -38,6 +39,10 @@ type Module struct {
 	watchLock   sync.Mutex
 	watchedDirs map[string]bool // Track which directories are being watched
 }
+
+// RecentFoldersVirtualPath is the sentinel path used for the virtual "Recently Viewed" folder.
+// It does not correspond to a real filesystem directory.
+const RecentFoldersVirtualPath = "__recently_viewed__"
 
 // NewModule creates a new Explorer module
 func NewModule(fileLoader services.FileLoaderInterface, urlBuilder services.URLBuilderInterface, logger services.LoggerInterface, explorer *database.ExplorerRepository, folderOrders *database.FolderOrdersRepository, folderViewModes *database.FolderViewModeRepository, folderGridSizes *database.FolderGridSizeRepository, thumbGen *thumbnails.Generator) *Module {
@@ -248,7 +253,7 @@ func (m *Module) refreshWatcher() {
 // rename/remove events inside any navigated directory are detected,
 // so the thumbnail cache can be properly invalidated.
 func (m *Module) WatchDirectory(path string) {
-	if m.watcher == nil {
+	if m.watcher == nil || path == RecentFoldersVirtualPath {
 		return
 	}
 	m.watchLock.Lock()
@@ -378,7 +383,7 @@ type BaseFolderEntry struct {
 // Optimized to use shallow search to avoid blocking the UI
 func (m *Module) GetBaseFolders() []BaseFolderEntry {
 	folders := m.explorerManager.GetAll()
-	result := make([]BaseFolderEntry, 0, len(folders))
+	result := make([]BaseFolderEntry, 0, len(folders)+1)
 
 	for _, f := range folders {
 		entry := BaseFolderEntry{
@@ -409,6 +414,29 @@ func (m *Module) GetBaseFolders() []BaseFolderEntry {
 		}
 
 		result = append(result, entry)
+	}
+
+	// Append virtual "Recently Viewed" folder
+	recentEntries := m.recentFolders.GetAll()
+	if len(recentEntries) > 0 {
+		recentBase := BaseFolderEntry{
+			Path:      RecentFoldersVirtualPath,
+			Name:      "Recently Viewed",
+			AddedAt:   recentEntries[0].VisitedAt,
+			IsVisible: true,
+			HasImages: true,
+		}
+		// Use first recent folder's thumbnail as cover for the virtual folder
+		for _, re := range recentEntries {
+			imgPath, hasImg := m.fileLoader.FindFirstImage(re.FolderPath)
+			if hasImg {
+				dirHash := m.fileLoader.RegisterDirectory(re.FolderPath)
+				thumbnailURL := m.urlBuilder.BuildImageURLFromPath(dirHash, re.FolderPath, imgPath)
+				recentBase.ThumbnailURL = strings.Replace(thumbnailURL, "/images?", "/thumbnails?", 1)
+				break
+			}
+		}
+		result = append(result, recentBase)
 	}
 
 	return result
@@ -453,6 +481,11 @@ func (m *Module) ListDirectory(path string) ([]ExplorerEntry, error) {
 // sortMode can be "custom", "auto", or empty (default: directories first).
 // sortOrder can be "asc" or "desc" (default "asc"). Only affects custom and auto modes.
 func (m *Module) ListDirectoryWithSort(path string, sortMode string, sortOrder string) ([]ExplorerEntry, error) {
+	// Handle virtual "Recently Viewed" folder
+	if path == RecentFoldersVirtualPath {
+		return m.listRecentFoldersAsEntries(sortMode, sortOrder), nil
+	}
+
 	// Watch the navigated directory so that rename/remove events inside it
 	// are detected and thumbnail cache is properly invalidated.
 	m.WatchDirectory(path)
@@ -646,7 +679,7 @@ func (m *Module) ListDirectoryWithSort(path string, sortMode string, sortOrder s
 // SearchRecursive searches recursively through rootPath for entries matching query (case-insensitive).
 // Returns up to maxResults entries (default 200), sorted by path to group results by parent directory.
 func (m *Module) SearchRecursive(rootPath string, query string) ([]ExplorerEntry, error) {
-	if query == "" {
+	if query == "" || rootPath == RecentFoldersVirtualPath {
 		return []ExplorerEntry{}, nil
 	}
 
@@ -785,6 +818,9 @@ func (m *Module) getEnabledSubdirs(dirPath string) []FolderInfo {
 // When the folder has children (subdirs with images), navigation walks root → children (flat, include root).
 // When the folder has no children, falls back to sibling folders in the parent directory.
 func (m *Module) GetFolderNavigation(folderPath string) *FolderNavigation {
+	if folderPath == RecentFoldersVirtualPath {
+		return nil
+	}
 	// Strategy 1: folder has children → flat children nav (include self as first item)
 	children := m.getEnabledSubdirs(folderPath)
 	if len(children) > 0 {
@@ -990,6 +1026,9 @@ func applyOrderToFolderInfos(folders []FolderInfo, order []string, sortOrder str
 
 // GetFolderNavigationWithSort returns prev/next folder navigation respecting Explorer sort preferences.
 func (m *Module) GetFolderNavigationWithSort(folderPath string, sortMode string, sortOrder string) *FolderNavigation {
+	if folderPath == RecentFoldersVirtualPath {
+		return nil
+	}
 	children := m.getEnabledSubdirsWithSort(folderPath, sortMode, sortOrder)
 	if len(children) > 0 {
 		folderName := filepath.Base(folderPath)
@@ -1220,6 +1259,11 @@ func (m *Module) SetImageOrdersRepo(repo *database.ImageOrdersRepository) {
 	m.imageOrders = repo
 }
 
+// SetRecentFoldersRepo sets the recently visited folders repository
+func (m *Module) SetRecentFoldersRepo(repo *database.RecentlyVisitedRepository) {
+	m.recentFolders = repo
+}
+
 // PinFolder pins a folder for the given sort mode
 func (m *Module) PinFolder(parentPath, sortMode, entryName string) error {
 	if m.folderOrders == nil {
@@ -1385,4 +1429,137 @@ func fileExists(path string) bool {
 		return false
 	}
 	return !info.IsDir()
+}
+
+// RecentFolderEntry represents a recently visited folder for the frontend
+type RecentFolderEntry struct {
+	FolderPath   string `json:"folderPath"`
+	FolderName   string `json:"folderName"`
+	VisitedAt    string `json:"visitedAt"`
+	HasImages    bool   `json:"hasImages"`
+	ThumbnailURL string `json:"thumbnailUrl,omitempty"`
+}
+
+// listRecentFoldersAsEntries returns recently visited folders as ExplorerEntry items
+// for display inside the virtual "Recently Viewed" folder.
+func (m *Module) listRecentFoldersAsEntries(sortMode string, sortOrder string) []ExplorerEntry {
+	entries := m.recentFolders.GetAll()
+	result := make([]ExplorerEntry, 0, len(entries))
+
+	for _, e := range entries {
+		info, err := os.Stat(e.FolderPath)
+		if err != nil || !info.IsDir() {
+			continue
+		}
+
+		entry := ExplorerEntry{
+			Path:              e.FolderPath,
+			Name:              e.FolderName,
+			IsDirectory:       true,
+			Size:              info.Size(),
+			LastModified:      info.ModTime().Unix(),
+			ImageCount:        m.fileLoader.GetShallowImageCount(e.FolderPath),
+			SubdirectoryCount: m.fileLoader.GetSubdirectoryCount(e.FolderPath),
+		}
+
+		imagePath, hasImages := m.fileLoader.FindFirstImage(e.FolderPath)
+		if hasImages {
+			entry.HasImages = true
+			entry.CoverImage = imagePath
+			dirHash := m.fileLoader.RegisterDirectory(e.FolderPath)
+			thumbnailURL := m.urlBuilder.BuildImageURLFromPath(dirHash, e.FolderPath, imagePath)
+			entry.ThumbnailURL = strings.Replace(thumbnailURL, "/images?", "/thumbnails?", 1)
+		}
+
+		result = append(result, entry)
+	}
+
+	// Sort: respect name/date sort; visited_at is always the default (auto-like)
+	// Entries are already in visited_at DESC order from the repo.
+	if sortMode == "name" {
+		sort.SliceStable(result, func(i, j int) bool {
+			cmp := utils.CompareNatural(result[i].Name, result[j].Name)
+			if sortOrder == "desc" {
+				return cmp > 0
+			}
+			return cmp < 0
+		})
+	} else if sortMode == "date" {
+		sort.SliceStable(result, func(i, j int) bool {
+			if sortOrder == "desc" {
+				return result[i].LastModified > result[j].LastModified
+			}
+			return result[i].LastModified < result[j].LastModified
+		})
+	}
+	// For "auto", "custom", or default: keep visited_at order (most recent first = default)
+
+	return result
+}
+
+// RecordFolderVisit records a folder as recently visited, but only if it contains
+// images directly (leaf image folders). Parent/container folders are skipped to avoid duplicates.
+func (m *Module) RecordFolderVisit(path string) {
+	if m.recentFolders == nil || path == "" || path == RecentFoldersVirtualPath {
+		return
+	}
+	name := filepath.Base(path)
+	if name == "" || name == "." || name == string(filepath.Separator) {
+		return
+	}
+	// Only record leaf image folders (folders that contain images directly, no subdirectories)
+	if m.fileLoader.GetShallowImageCount(path) == 0 || m.fileLoader.HasSubdirectories(path) {
+		return
+	}
+	if err := m.recentFolders.Add(path, name); err != nil {
+		if m.logger != nil {
+			m.logger.Warnf("[Explorer] Failed to record recent visit for %s: %v", path, err)
+		}
+	}
+}
+
+// GetRecentFolders returns the list of recently visited folders with thumbnails
+func (m *Module) GetRecentFolders() []RecentFolderEntry {
+	if m.recentFolders == nil {
+		return nil
+	}
+	entries := m.recentFolders.GetAll()
+	result := make([]RecentFolderEntry, 0, len(entries))
+	for _, e := range entries {
+		// Skip non-existent folders
+		info, err := os.Stat(e.FolderPath)
+		if err != nil || !info.IsDir() {
+			continue
+		}
+		entry := RecentFolderEntry{
+			FolderPath: e.FolderPath,
+			FolderName: e.FolderName,
+			VisitedAt:  e.VisitedAt,
+		}
+		imagePath, hasImages := m.fileLoader.FindFirstImage(e.FolderPath)
+		if hasImages {
+			entry.HasImages = true
+			dirHash := m.fileLoader.RegisterDirectory(e.FolderPath)
+			thumbnailURL := m.urlBuilder.BuildImageURLFromPath(dirHash, e.FolderPath, imagePath)
+			entry.ThumbnailURL = strings.Replace(thumbnailURL, "/images?", "/thumbnails?", 1)
+		}
+		result = append(result, entry)
+	}
+	return result
+}
+
+// RemoveRecentFolder removes a folder from recently visited
+func (m *Module) RemoveRecentFolder(path string) error {
+	if m.recentFolders == nil {
+		return nil
+	}
+	return m.recentFolders.Remove(path)
+}
+
+// ClearRecentFolders clears all recently visited folders
+func (m *Module) ClearRecentFolders() error {
+	if m.recentFolders == nil {
+		return nil
+	}
+	return m.recentFolders.Clear()
 }

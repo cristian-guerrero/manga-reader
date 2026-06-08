@@ -25,3 +25,13 @@ export interface ExplorerEntry {
     size: number;
     lastModified: number;
 }
+
+export interface RecentFolderEntry {
+    folderPath: string;
+    folderName: string;
+    visitedAt: string;
+    hasImages: boolean;
+    thumbnailUrl?: string;
+}
+
+export const RECENTLY_VIEWED_SENTINEL = '__recently_viewed__';

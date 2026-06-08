@@ -98,6 +98,7 @@ func NewApp() *App {
 	hMod := history.NewModule(container.History, container.Settings)
 	eMod := explorer.NewModule(container.FileLoader, container.URLBuilder, container.Logger, container.Explorer, container.FolderOrders, container.FolderViewModes, container.FolderGridSizes, container.ThumbGen)
 	eMod.SetImageOrdersRepo(container.Orders)
+	eMod.SetRecentFoldersRepo(container.RecentFolders)
 	dMod := downloader.NewModule(container.Downloader, container.Settings, container.Logger)
 
 	// Dependency injection (Circular dependency resolution)
@@ -797,7 +798,11 @@ func (a *App) RemoveBaseFolder(path string) error {
 }
 
 func (a *App) ExploreFolder(path string, sortMode string, sortOrder string) ([]explorer.ExplorerEntry, error) {
-	return a.explorerMod.ListDirectoryWithSort(path, sortMode, sortOrder)
+	entries, err := a.explorerMod.ListDirectoryWithSort(path, sortMode, sortOrder)
+	if err == nil && a.settings().Get().EnableHistory {
+		a.explorerMod.RecordFolderVisit(path)
+	}
+	return entries, err
 }
 
 func (a *App) SearchExplorer(rootPath string, query string) ([]explorer.ExplorerEntry, error) {
@@ -812,6 +817,24 @@ func (a *App) GetFolderNavigation(folderPath string) *explorer.FolderNavigation 
 // GetFolderNavigationWithSort returns prev/next folder navigation respecting Explorer sort preferences.
 func (a *App) GetFolderNavigationWithSort(folderPath string, sortMode string, sortOrder string) *explorer.FolderNavigation {
 	return a.explorerMod.GetFolderNavigationWithSort(folderPath, sortMode, sortOrder)
+}
+
+// GetRecentFolders returns the list of recently visited folders
+func (a *App) GetRecentFolders() []explorer.RecentFolderEntry {
+	if !a.settings().Get().EnableHistory {
+		return nil
+	}
+	return a.explorerMod.GetRecentFolders()
+}
+
+// RemoveRecentFolder removes a folder from recently visited
+func (a *App) RemoveRecentFolder(folderPath string) error {
+	return a.explorerMod.RemoveRecentFolder(folderPath)
+}
+
+// ClearRecentFolders clears all recently visited folders
+func (a *App) ClearRecentFolders() error {
+	return a.explorerMod.ClearRecentFolders()
 }
 
 // =============================================================================
@@ -1019,6 +1042,9 @@ func (a *App) GetExplorerSortPreferences() map[string]database.ExplorerSortPref 
 }
 
 func (a *App) GetExplorerSortPreference(path string) database.ExplorerSortPref {
+	if path == explorer.RecentFoldersVirtualPath {
+		return database.ExplorerSortPref{SortBy: "auto", SortOrder: "desc"}
+	}
 	return a.uiPrefs().GetExplorerSortPreference(path)
 }
 

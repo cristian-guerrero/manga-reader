@@ -40,7 +40,7 @@ import {
   useExplorerDragAndDrop,
   useExplorerView,
 } from "./hooks";
-import { BaseFolder, ExplorerEntry } from "./types";
+import { BaseFolder, ExplorerEntry, RECENTLY_VIEWED_SENTINEL } from "./types";
 import { DirectoryView } from "./components/DirectoryView";
 import { FolderNavigationBar } from "./components/FolderNavigationBar";
 import { GridIcon, ListIcon } from "./components/ExplorerIcons";
@@ -104,8 +104,12 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
     t("explorer.title") || "Explorer",
   );
   const handleTitleChange = useCallback((title: string) => {
-    setCurrentTitle(title);
-  }, []);
+    if (title === RECENTLY_VIEWED_SENTINEL) {
+      setCurrentTitle(t("explorer.recentlyViewed"));
+    } else {
+      setCurrentTitle(title);
+    }
+  }, [t]);
 
   // Path change handler
   const handlePathChange = useCallback(
@@ -242,6 +246,7 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
     onTitleChange: handleTitleChange,
     onSearchClear: () => search.setSearchQuery(''),
     onAutoPromote: (parentPath, entryName, allDirNames) => {
+      if (parentPath === RECENTLY_VIEWED_SENTINEL) return;
       FolderOrderAPI.promoteToAutoOrder(parentPath, entryName, allDirNames).catch(err => {
         console.error('Failed to promote to auto order:', err);
       });
@@ -385,9 +390,11 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
     setContextMenu(null);
   }, []);
 
-  const contextMenuItems: ContextMenuItem[] = useMemo(() => contextMenu
+  const contextMenuItems: ContextMenuItem[] = useMemo(() => {
+    const isInVirtual = explorerStateHook.currentPath === RECENTLY_VIEWED_SENTINEL;
+    return contextMenu
     ? [
-        ...(contextMenu.entry.isDirectory
+        ...(contextMenu.entry.isDirectory && !isInVirtual
           ? [
               isPinned(contextMenu.entry.name)
                 ? {
@@ -400,6 +407,20 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
                     label: t('explorer.pinFolder'),
                     onClick: () => handlePinFolder(contextMenu.entry.name),
                   } as ContextMenuItem,
+            ]
+          : []),
+        ...(isInVirtual && contextMenu.entry.isDirectory
+          ? [
+              {
+                id: 'remove-from-recent',
+                label: t('explorer.removeFromRecent'),
+                onClick: async () => {
+                  await ExplorerAPI.removeRecentFolder(contextMenu.entry.path);
+                  if (explorerStateHook.currentPath) {
+                    loading.loadDirectory(explorerStateHook.currentPath, false, sorting.sortBy, sorting.sortOrder);
+                  }
+                },
+              } as ContextMenuItem,
             ]
           : []),
         ...(!contextMenu.entry.isDirectory
@@ -466,7 +487,8 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
             AppAPI.openInFileManager(contextMenu.entry.path),
         },
       ]
-    : [], [contextMenu, isPinned, isImagePinned, handleUnpinFolder, handlePinFolder, handleUnpinImage, handlePinImage, t, navigate]);
+    : [];
+  }, [contextMenu, isPinned, isImagePinned, handleUnpinFolder, handlePinFolder, handleUnpinImage, handlePinImage, t, navigate, explorerStateHook.currentPath, loading.loadDirectory, sorting.sortBy, sorting.sortOrder]);
 
   // Use restoration hook
   useExplorerRestoration({
@@ -668,6 +690,21 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
             onSearch={search.setSearchQuery}
             className="flex-1 min-w-0 sm:max-w-md hidden sm:block"
           />
+          {explorerStateHook.currentPath === RECENTLY_VIEWED_SENTINEL && (
+            <button
+              onClick={async () => {
+                await ExplorerAPI.clearRecentFolders();
+                explorerStateHook.setCurrentPath(null);
+              }}
+              className="text-sm px-3 py-1.5 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors flex-shrink-0 hidden sm:inline-flex items-center gap-1"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polyline points="3 6 5 6 21 6" />
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+              </svg>
+              {t("explorer.clearRecent")}
+            </button>
+          )}
           {resolvedViewMode === 'grid' && explorerStateHook.currentPath && (
             <div className="flex items-center gap-2 ml-auto hidden sm:flex">
               <span className="text-xs text-text-secondary whitespace-nowrap">
@@ -698,54 +735,67 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
         {/* Base Folders View */}
         {!explorerStateHook.currentPath && (
           <GridContainer>
-            {search.sortedBaseFolders.map((folder) => (
+            {search.sortedBaseFolders.map((folder) => {
+              const isVirtual = folder.path === RECENTLY_VIEWED_SENTINEL;
+              const displayName = isVirtual ? t("explorer.recentlyViewed") : folder.name;
+              return (
               <GridItem key={folder.path}>
                 <MediaTile
                   id={folder.path}
-                  name={folder.name}
+                  name={displayName}
                   thumbnail={folder.thumbnailUrl || thumbnails[folder.path]}
                   onClick={() => navigation.handleItemClick(folder)}
                   onAuxClick={(e) => navigation.handleItemAuxClick(e, folder)}
-                  onVisible={async () => {
-                    if (
-                      !folder.hasImages ||
-                      folder.thumbnailUrl ||
-                      thumbnails[folder.path]
-                    )
-                      return;
-                    try {
-                      const folderInfo = await AppAPI.getFolderInfoShallow(
-                        folder.path,
-                      );
-                      if (folderInfo && folderInfo.coverImage) {
-                        await loadThumbnail(folder.path, folderInfo.coverImage);
+                  {...(isVirtual ? {} : {
+                    onVisible: async () => {
+                      if (
+                        !folder.hasImages ||
+                        folder.thumbnailUrl ||
+                        thumbnails[folder.path]
+                      )
+                        return;
+                      try {
+                        const folderInfo = await AppAPI.getFolderInfoShallow(
+                          folder.path,
+                        );
+                        if (folderInfo && folderInfo.coverImage) {
+                          await loadThumbnail(folder.path, folderInfo.coverImage);
+                        }
+                      } catch (error) {
+                        console.error(
+                          "Failed to load thumbnail for folder:",
+                          folder.path,
+                          error,
+                        );
                       }
-                    } catch (error) {
-                      console.error(
-                        "Failed to load thumbnail for folder:",
-                        folder.path,
-                        error,
-                      );
-                    }
-                  }}
-                  onSecondaryAction={(e) =>
-                    navigation.handleRemoveBaseFolder(folder.path, e)
-                  }
-                  secondaryActionIcon={<TrashIcon />}
-                  secondaryActionLabel={t("common.remove")}
+                    },
+                    onSecondaryAction: (e: React.MouseEvent) =>
+                      navigation.handleRemoveBaseFolder(folder.path, e),
+                    secondaryActionIcon: <TrashIcon />,
+                    secondaryActionLabel: t("common.remove"),
+                  })}
                   fallbackIcon={
-                    <div className="p-4 rounded-xl bg-accent/10 text-accent">
-                      <svg
-                        width="32"
-                        height="32"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1.5"
-                      >
-                        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
-                      </svg>
-                    </div>
+                    isVirtual ? (
+                      <div className="p-4 rounded-xl bg-amber/10 text-amber">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                          <circle cx="12" cy="12" r="10" />
+                          <polyline points="12 6 12 12 16 14" />
+                        </svg>
+                      </div>
+                    ) : (
+                      <div className="p-4 rounded-xl bg-accent/10 text-accent">
+                        <svg
+                          width="32"
+                          height="32"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="1.5"
+                        >
+                          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+                        </svg>
+                      </div>
+                    )
                   }
                   footerLeft={
                     <Tooltip content={folder.path}>
@@ -756,7 +806,8 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
                   }
                 />
               </GridItem>
-            ))}
+              );
+            })}
           </GridContainer>
         )}
 
@@ -903,9 +954,9 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
               {t("explorer.tryDifferentSearch") ||
                 `Try a different search term`}
             </p>
-          </div>
-        )}
-      </div>
+            </div>
+          )}
+        </div>
 
       {/* Folder Navigation Bar (leaf image folders only) */}
       {folderNav && isLeafImageFolder && (folderNav.prevFolder || folderNav.nextFolder) && (

@@ -285,7 +285,10 @@
     "pinImage": "Fijar Imagen",
     "unpinImage": "Desfijar Imagen",
     "prevFolder": "Carpeta Anterior",
-    "nextFolder": "Carpeta Siguiente"
+    "nextFolder": "Carpeta Siguiente",
+    "recentlyViewed": "Recién Vistos",
+    "clearRecent": "Limpiar todo",
+    "removeFromRecent": "Quitar de recientes"
   },
   "themes": {
     "dark": "Oscuro",

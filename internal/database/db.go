@@ -607,6 +607,12 @@ CREATE TABLE IF NOT EXISTS folder_grid_sizes (
     grid_size INTEGER NOT NULL DEFAULT 200,
     modified_at TEXT NOT NULL DEFAULT ''
 );
+
+CREATE TABLE IF NOT EXISTS recently_visited (
+    folder_path TEXT PRIMARY KEY,
+    folder_name TEXT NOT NULL,
+    visited_at TEXT NOT NULL
+);
 `
 
 // NewLibraryDB creates or opens a library-specific database with ALL tables
