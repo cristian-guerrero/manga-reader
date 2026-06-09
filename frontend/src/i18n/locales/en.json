@@ -289,7 +289,10 @@
     "pinImage": "Pin Image",
     "unpinImage": "Unpin Image",
     "prevFolder": "Previous Folder",
-    "nextFolder": "Next Folder"
+    "nextFolder": "Next Folder",
+    "recentlyViewed": "Recently Viewed",
+    "clearRecent": "Clear all",
+    "removeFromRecent": "Remove from recent"
   },
   "themes": {
     "dark": "Dark",

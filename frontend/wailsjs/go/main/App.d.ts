@@ -31,6 +31,8 @@ export function ClearHistory():Promise<void>;
 
 export function ClearLibrary():Promise<void>;
 
+export function ClearRecentFolders():Promise<void>;
+
 export function ClearSeries():Promise<void>;
 
 export function ClearThumbnailCache():Promise<void>;
@@ -141,6 +143,8 @@ export function GetPinnedFolders(arg1:string,arg2:string):Promise<Array<string>>
 
 export function GetPinnedImages(arg1:string,arg2:string):Promise<Array<string>>;
 
+export function GetRecentFolders():Promise<Array<explorer.RecentFolderEntry>>;
+
 export function GetSeries():Promise<Array<series.SeriesEntryWithURLs>>;
 
 export function GetSeriesDetailsSortPreference(arg1:string):Promise<database.SeriesDetailsSortPref>;
@@ -196,6 +200,8 @@ export function RemoveDownloadJob(arg1:string):Promise<void>;
 export function RemoveHistory(arg1:string):Promise<void>;
 
 export function RemoveLibraryEntry(arg1:string):Promise<void>;
+
+export function RemoveRecentFolder(arg1:string):Promise<void>;
 
 export function RemoveSeries(arg1:string):Promise<void>;
 

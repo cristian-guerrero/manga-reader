@@ -1,6 +1,6 @@
 /**
  * ExplorerPage - File and folder explorer
- * Refactored to use custom hooks for better separation of concerns
+ * Refactored to use custom hooks and extracted components for better separation of concerns
  */
 
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
@@ -16,20 +16,12 @@ import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { useNavigation } from "@hooks";
 import { useThumbnails } from "@hooks/useThumbnails";
 import {
-  Tooltip,
-  SortControls,
-  GridItem,
-  GridContainer,
-  SearchBar,
-  Breadcrumb,
-  MediaTile,
   ContextMenu,
   useToast,
 } from "@shared/components";
-import type { ContextMenuItem } from "@types";
-import { AppAPI } from "@services/api/appAPI";
 import { FolderOrderAPI } from "@services/api/folderOrderAPI";
 import { ImageOrderAPI } from "@services/api/imageOrderAPI";
+import { ExplorerAPI, type FolderNavigation } from "@services/api/explorerAPI";
 import {
   useExplorerState,
   useExplorerSorting,
@@ -39,27 +31,16 @@ import {
   useExplorerRestoration,
   useExplorerDragAndDrop,
   useExplorerView,
+  useExplorerContextMenu,
 } from "./hooks";
-import { BaseFolder, ExplorerEntry } from "./types";
+import { type ExplorerEntry, RECENTLY_VIEWED_SENTINEL } from "./types";
 import { DirectoryView } from "./components/DirectoryView";
 import { FolderNavigationBar } from "./components/FolderNavigationBar";
-import { GridIcon, ListIcon } from "./components/ExplorerIcons";
-import { ExplorerAPI, FolderNavigation } from "@services/api/explorerAPI";
-
-// Icons
-const TrashIcon = () => (
-  <svg
-    width="18"
-    height="18"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-  >
-    <polyline points="3 6 5 6 21 6" />
-    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-  </svg>
-);
+import { ExplorerHeader } from "./components/ExplorerHeader";
+import { ExplorerToolbar } from "./components/ExplorerToolbar";
+import { BaseFoldersGrid } from "./components/BaseFoldersGrid";
+import { SearchResultsSection } from "./components/SearchResultsSection";
+import { ExplorerEmptyState } from "./components/ExplorerEmptyState";
 
 interface ExplorerPageProps {
   isActive?: boolean;
@@ -81,7 +62,6 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
   const { showToast } = useToast();
   const { thumbnails, loadThumbnail, initializeThumbnails } = useThumbnails(10);
 
-  // Use explorer state hook
   const explorerStateHook = useExplorerState({ tabId, isActive });
 
   // Ref to break circular dep between sorting (needs loadDirectory) and loading (needs sortBy)
@@ -89,7 +69,7 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
     () => Promise.resolve()
   );
 
-  // Use sorting hook
+  // Sorting hook
   const sorting = useExplorerSorting({
     currentPath: explorerStateHook.currentPath,
     onSortReady: useCallback((path: string | null, sortBy: string, sortOrder: string) => {
@@ -104,8 +84,12 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
     t("explorer.title") || "Explorer",
   );
   const handleTitleChange = useCallback((title: string) => {
-    setCurrentTitle(title);
-  }, []);
+    if (title === RECENTLY_VIEWED_SENTINEL) {
+      setCurrentTitle(t("explorer.recentlyViewed"));
+    } else {
+      setCurrentTitle(title);
+    }
+  }, [t]);
 
   // Path change handler
   const handlePathChange = useCallback(
@@ -115,7 +99,7 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
     [explorerStateHook],
   );
 
-  // Use loading hook
+  // Loading hook
   const loading = useExplorerLoading({
     tabId,
     currentPath: explorerStateHook.currentPath,
@@ -128,6 +112,7 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
   });
   loadDirRef.current = loading.loadDirectory;
 
+  // Pinned folders + images state
   const [pinnedFolders, setPinnedFolders] = useState<string[]>([]);
   const [pinnedImages, setPinnedImages] = useState<string[]>([]);
 
@@ -211,7 +196,7 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
     return pinnedImages.includes(imageName);
   }, [pinnedImages]);
 
-  // Use search hook
+  // Search hook
   const search = useExplorerSearch({
     baseFolders: loading.baseFolders,
     entries: loading.entries,
@@ -222,7 +207,7 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
     currentPath: explorerStateHook.currentPath,
   });
 
-  // Use navigation hook
+  // Navigation hook
   const navigation = useExplorerNavigation({
     tabId,
     currentPath: explorerStateHook.currentPath,
@@ -242,6 +227,7 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
     onTitleChange: handleTitleChange,
     onSearchClear: () => search.setSearchQuery(''),
     onAutoPromote: (parentPath, entryName, allDirNames) => {
+      if (parentPath === RECENTLY_VIEWED_SENTINEL) return;
       FolderOrderAPI.promoteToAutoOrder(parentPath, entryName, allDirNames).catch(err => {
         console.error('Failed to promote to auto order:', err);
       });
@@ -253,18 +239,30 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
   // Handle clicking on a search result
   const handleSearchResultClick = useCallback((entry: ExplorerEntry) => {
     if (entry.isDirectory) {
-      loading.loadDirectory(entry.path, true);
+      // Promote to auto order so the folder appears first when revisiting the parent
+      if (explorerStateHook.currentPath && sorting.sortBy === 'auto') {
+        const parentPath = entry.path.includes('\\')
+          ? entry.path.substring(0, entry.path.lastIndexOf('\\'))
+          : entry.path.substring(0, entry.path.lastIndexOf('/'));
+        FolderOrderAPI.promoteToAutoOrder(parentPath, entry.name, [entry.name])
+          .catch(err => console.error('Failed to promote to auto order:', err));
+      }
+      // Update path history so Back navigates to the parent
+      if (explorerStateHook.currentPath) {
+        explorerStateHook.setPathHistory(prev => [...prev, explorerStateHook.currentPath!]);
+        explorerStateHook.setForwardHistory([]);
+      }
+      search.setSearchQuery('');
+      loading.loadDirectory(entry.path, false);
     } else {
       const parentPath = entry.path.includes('\\')
         ? entry.path.substring(0, entry.path.lastIndexOf('\\'))
         : entry.path.substring(0, entry.path.lastIndexOf('/'));
       navigate('viewer', { folder: parentPath, targetPath: entry.path, sortBy: sorting.sortBy, sortOrder: sorting.sortOrder }, 'explorer');
     }
-  }, [loading.loadDirectory, navigate, sorting.sortBy, sorting.sortOrder]);
+  }, [loading.loadDirectory, navigate, sorting.sortBy, sorting.sortOrder, explorerStateHook.currentPath, explorerStateHook.setPathHistory, explorerStateHook.setForwardHistory, search.setSearchQuery]);
 
   // Reload directory when sortBy or sortOrder changes in modes requiring backend sort
-  // Uses currentPathRef instead of currentPath to avoid firing on path changes
-  // (onSortReady already handles loading when the path changes).
   const prevSortByRef = useRef(sorting.sortBy);
   const prevSortOrderRef = useRef(sorting.sortOrder);
   useEffect(() => {
@@ -281,12 +279,12 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
     }
   }, [sorting.sortBy, sorting.sortOrder, loading.loadDirectory]);
 
-  // Use view mode hook (includes grid item size)
+  // View mode hook (includes grid item size)
   const { viewMode, setViewMode, gridItemSize, setGridItemSize, isLoaded: viewStateLoaded } = useExplorerView(explorerStateHook.currentPath);
   const resolvedViewMode = viewMode ?? 'grid';
   const resolvedGridItemSize = gridItemSize ?? 200;
 
-  // Use drag-and-drop hook (for custom folder ordering and pinned folder reordering)
+  // Drag-and-drop hook
   const dnd = useExplorerDragAndDrop({
     parentPath: explorerStateHook.currentPath,
     entries: loading.entries,
@@ -316,18 +314,25 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
 
   const isInCustomMode = sorting.sortBy === 'custom' && !search.searchQuery.trim();
 
-  const dirStats = useMemo(() => {
-    if (explorerStateHook.currentPath) {
-      const folders = search.sortedEntries.filter(e => e.isDirectory).length;
-      const images = search.sortedEntries.length - folders;
-      return { folders, images };
-    }
-    if (loading.baseFolders.length > 0) {
-      const folders = search.sortedBaseFolders.length;
-      return { folders, images: 0 };
-    }
-    return null;
-  }, [search.sortedEntries, search.sortedBaseFolders, loading.baseFolders.length, explorerStateHook.currentPath]);
+  // Context menu hook
+  const {
+    contextMenu,
+    handleContextMenu,
+    handleCloseContextMenu,
+    contextMenuItems,
+  } = useExplorerContextMenu({
+    currentPath: explorerStateHook.currentPath,
+    isPinned,
+    isImagePinned,
+    handlePinFolder,
+    handleUnpinFolder,
+    handlePinImage,
+    handleUnpinImage,
+    loadDirectory: loading.loadDirectory,
+    sortBy: sorting.sortBy,
+    sortOrder: sorting.sortOrder,
+    navigate,
+  });
 
   // Folder navigation (sibling prev/next for leaf image folders)
   const [folderNav, setFolderNav] = useState<FolderNavigation | null>(null);
@@ -335,7 +340,6 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
     && loading.entries.length > 0
     && loading.entries.every(e => !e.isDirectory);
 
-  // Controls show/hide (like viewer)
   const [showFolderNavControls, setShowFolderNavControls] = useState(true);
   const folderNavTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const handleFolderNavMouseMove = useCallback(() => {
@@ -380,108 +384,7 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
     loading.loadDirectory(folderNav.nextFolder.path, true, sorting.sortBy, sorting.sortOrder);
   }, [folderNav, loading.loadDirectory, sorting.sortBy, sorting.sortOrder]);
 
-  // Context menu state
-  const [contextMenu, setContextMenu] = useState<{
-    x: number;
-    y: number;
-    entry: ExplorerEntry;
-  } | null>(null);
-
-  const handleContextMenu = useCallback(
-    (e: React.MouseEvent, entry: ExplorerEntry) => {
-      setContextMenu({ x: e.clientX, y: e.clientY, entry });
-    },
-    [],
-  );
-
-  const handleCloseContextMenu = useCallback(() => {
-    setContextMenu(null);
-  }, []);
-
-  const contextMenuItems: ContextMenuItem[] = useMemo(() => contextMenu
-    ? [
-        ...(contextMenu.entry.isDirectory
-          ? [
-              isPinned(contextMenu.entry.name)
-                ? {
-                    id: 'unpin-folder',
-                    label: t('explorer.unpinFolder'),
-                    onClick: () => handleUnpinFolder(contextMenu.entry.name),
-                  } as ContextMenuItem
-                : {
-                    id: 'pin-folder',
-                    label: t('explorer.pinFolder'),
-                    onClick: () => handlePinFolder(contextMenu.entry.name),
-                  } as ContextMenuItem,
-            ]
-          : []),
-        ...(!contextMenu.entry.isDirectory
-          ? [
-              isImagePinned(contextMenu.entry.name)
-                ? {
-                    id: 'unpin-image',
-                    label: t('explorer.unpinImage'),
-                    onClick: () => handleUnpinImage(contextMenu.entry.name),
-                  } as ContextMenuItem
-                : {
-                    id: 'pin-image',
-                    label: t('explorer.pinImage'),
-                    onClick: () => handlePinImage(contextMenu.entry.name),
-                  } as ContextMenuItem,
-            ]
-          : []),
-        ...(contextMenu.entry.subdirectoryCount === 0 && contextMenu.entry.hasImages
-          ? [
-              {
-                id: 'send-to-one-shot',
-                label: t('explorer.sendToOneShot'),
-                onClick: () =>
-                  AppAPI.addFolder(contextMenu.entry.path).then(result => {
-                    if (result) navigate('viewer', { folder: result.path }, 'oneShot');
-                  }),
-              } as ContextMenuItem,
-            ]
-          : []),
-        ...(contextMenu.entry.subdirectoryCount > 0
-          ? [
-              {
-                id: 'send-to-series',
-                label: t('explorer.sendToSeries'),
-                onClick: () =>
-                  AppAPI.addFolder(contextMenu.entry.path).then(result => {
-                    if (result) {
-                      if (result.isSeries) {
-                        navigate('series-details', { series: result.path }, 'series');
-                      } else {
-                        navigate('viewer', { folder: result.path }, 'oneShot');
-                      }
-                    }
-                  }),
-              } as ContextMenuItem,
-            ]
-          : []),
-        ...(contextMenu.entry.subdirectoryCount === 0 && contextMenu.entry.hasImages
-          ? [
-              {
-                id: 'open-in-colorizer',
-                label: t('explorer.openInColorizer'),
-                onClick: () =>
-                  navigate('colorizer', {
-                    folderPath: contextMenu.entry.path,
-                  }),
-              } as ContextMenuItem,
-            ]
-          : []),
-        {
-          id: 'open-in-file-manager',
-          label: t('explorer.openInFileManager'),
-          onClick: () =>
-            AppAPI.openInFileManager(contextMenu.entry.path),
-        },
-      ]
-    : [], [contextMenu, isPinned, isImagePinned, handleUnpinFolder, handlePinFolder, handleUnpinImage, handlePinImage, t, navigate]);
-
-  // Use restoration hook
+  // Restoration hook
   useExplorerRestoration({
     tabId,
     isActive,
@@ -497,285 +400,96 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
     loadBaseFolders: loading.loadBaseFolders,
   });
 
+  // Derived booleans for conditional rendering
+  const hasContent = Boolean(
+    (!explorerStateHook.currentPath && loading.baseFolders.length > 0) ||
+    (explorerStateHook.currentPath && loading.entries.length > 0)
+  );
+  const isRecentView = explorerStateHook.currentPath === RECENTLY_VIEWED_SENTINEL;
+  const isGridView = resolvedViewMode === 'grid';
+  const showSortControls = hasContent;
+
+  // Handle sort by change (with the prevSortByRef update for the effect above)
+  const handleSortByChange = useCallback((value: string) => {
+    const newMode = value as "name" | "date" | "custom" | "auto";
+    prevSortByRef.current = newMode;
+    sorting.setSortBy(newMode);
+    if (explorerStateHook.currentPath && (newMode === 'auto' || newMode === 'custom')) {
+      loading.loadDirectory(explorerStateHook.currentPath, false, newMode);
+    }
+  }, [sorting, explorerStateHook.currentPath, loading.loadDirectory]);
+
+  // Legacy no-results check (frontend-only filtered search at root or inside directory)
+  const showLegacyNoResults = search.searchResults.length === 0 && (
+    (!explorerStateHook.currentPath &&
+      search.sortedBaseFolders.length === 0 &&
+      loading.baseFolders.length > 0 &&
+      search.searchQuery.trim()) ||
+    (explorerStateHook.currentPath &&
+      search.sortedEntries.length === 0 &&
+      loading.entries.length > 0 &&
+      search.searchQuery.trim())
+  );
+
   return (
-      <div
-        className="h-full p-2 sm:p-6 flex flex-col relative"
-        style={{ background: "var(--gradient-surface-primary)" }}
-        onMouseMove={handleFolderNavMouseMove}
-      >
+    <div
+      className="h-full p-2 sm:p-6 flex flex-col relative"
+      style={{ background: "var(--gradient-surface-primary)" }}
+      onMouseMove={handleFolderNavMouseMove}
+    >
       {/* Header */}
-      <div
-        className="flex items-center justify-between mb-2 sm:mb-6 flex-shrink-0 flex-wrap gap-2 transition-all duration-300 sm:opacity-100 sm:translate-y-0"
-        style={{
-          opacity: headerVisible ? 1 : 0,
-          transform: headerVisible ? 'translateY(0)' : 'translateY(-100%)',
-          pointerEvents: headerVisible ? 'auto' : 'none',
+      <ExplorerHeader
+        headerVisible={headerVisible}
+        currentPath={explorerStateHook.currentPath}
+        baseFolders={loading.baseFolders}
+        forwardHistoryLength={explorerStateHook.forwardHistory.length}
+        sortBy={sorting.sortBy}
+        sortOrder={sorting.sortOrder}
+        showSortControls={showSortControls}
+        showViewToggle={Boolean(explorerStateHook.currentPath && loading.entries.length > 0)}
+        showAddFolder={!explorerStateHook.currentPath}
+        resolvedViewMode={resolvedViewMode}
+        onBack={navigation.handleBack}
+        onForward={navigation.handleForward}
+        onBreadcrumbClick={navigation.handleBreadcrumbClick}
+        onBreadcrumbAuxClick={navigation.handleBreadcrumbAuxClick}
+        onSortByChange={handleSortByChange}
+        onSortOrderChange={() => {
+          sorting.setSortOrder((prev) =>
+            prev === "asc" ? "desc" : "asc",
+          );
         }}
-      >
-        <div className="flex items-center gap-2 flex-1 min-w-0">
-          {explorerStateHook.currentPath && (
-            <>
-              <Tooltip content={t("common.back")} placement="right">
-                <button
-                  onClick={navigation.handleBack}
-                  className="p-1.5 sm:p-2 rounded-full hover:bg-white/10 transition-all opacity-100 translate-x-0 flex-shrink-0"
-                  aria-label={t("common.back")}
-                >
-                  <svg
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  >
-                    <path d="M19 12H5M12 19l-7-7 7-7" />
-                  </svg>
-                </button>
-              </Tooltip>
-              <Tooltip content={t("common.forward")} placement="right">
-                <button
-                  onClick={navigation.handleForward}
-                  disabled={explorerStateHook.forwardHistory.length === 0}
-                  className={`p-1.5 sm:p-2 rounded-full transition-all flex-shrink-0 ${
-                    explorerStateHook.forwardHistory.length === 0
-                      ? 'opacity-30 cursor-not-allowed'
-                      : 'hover:bg-white/10'
-                  }`}
-                  aria-label={t("common.forward")}
-                >
-                  <svg
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  >
-                    <path d="M5 12h14M12 5l7 7-7 7" />
-                  </svg>
-                </button>
-              </Tooltip>
-            </>
-          )}
+        onAddBaseFolder={navigation.handleAddBaseFolder}
+        onViewModeChange={setViewMode}
+      />
 
-          {/* Breadcrumb */}
-          <div className={`min-w-0 ${explorerStateHook.currentPath ? 'flex-1' : ''}`}>
-            <Breadcrumb
-              currentPath={explorerStateHook.currentPath}
-              baseFolders={loading.baseFolders}
-              onNavigate={navigation.handleBreadcrumbClick}
-              onAuxClick={navigation.handleBreadcrumbAuxClick}
-            />
-          </div>
-
-          {!explorerStateHook.currentPath && (
-            <>
-              <Tooltip content={t("common.forward")} placement="right">
-                <button
-                  onClick={navigation.handleForward}
-                  disabled={explorerStateHook.forwardHistory.length === 0}
-                  className={`p-1.5 sm:p-2 rounded-full transition-all flex-shrink-0 ${
-                    explorerStateHook.forwardHistory.length === 0
-                      ? 'opacity-30 cursor-not-allowed'
-                      : 'hover:bg-white/10'
-                  }`}
-                  aria-label={t("common.forward")}
-                >
-                  <svg
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  >
-                    <path d="M5 12h14M12 5l7 7-7 7" />
-                  </svg>
-                </button>
-              </Tooltip>
-              <div className="flex-1" />
-            </>
-          )}
-
-          {/* Sort Controls */}
-          <div className="flex-shrink-0 ml-4 sm:ml-8 hidden sm:block">
-            <SortControls
-              sortBy={sorting.sortBy}
-              sortOrder={sorting.sortOrder}
-              onSortByChange={(value) => {
-                const newMode = value as "name" | "date" | "custom" | "auto";
-                prevSortByRef.current = newMode;
-                sorting.setSortBy(newMode);
-                if (explorerStateHook.currentPath && (newMode === 'auto' || newMode === 'custom')) {
-                  loading.loadDirectory(explorerStateHook.currentPath, false, newMode);
-                }
-              }}
-              onSortOrderChange={() => {
-                sorting.setSortOrder((prev) =>
-                  prev === "asc" ? "desc" : "asc",
-                );
-              }}
-              options={[
-                { value: "name", label: t("common.name") },
-                { value: "date", label: t("common.date") },
-                { value: "auto", label: t("explorer.automaticOrder") },
-                { value: "custom", label: t("explorer.customOrder") },
-              ]}
-              show={Boolean(
-                (!explorerStateHook.currentPath &&
-                  loading.baseFolders.length > 0) ||
-                (explorerStateHook.currentPath && loading.entries.length > 0),
-              )}
-            />
-          </div>
-
-          {/* View Mode Toggle */}
-          {explorerStateHook.currentPath && loading.entries.length > 0 && (
-            <div className="flex items-center bg-surface-tertiary rounded-lg p-1 border border-white/5 ml-2 sm:ml-4 flex-shrink-0 hidden sm:flex">
-              <Tooltip content={t('explorer.gridView') || 'Grid View'} placement="bottom">
-                <button
-                  onClick={() => setViewMode('grid')}
-                  className={`p-1.5 rounded transition-colors ${
-                    resolvedViewMode === 'grid'
-                      ? 'bg-accent text-white'
-                      : 'text-text-secondary hover:text-text-primary hover:bg-white/10'
-                  }`}
-                >
-                  <GridIcon />
-                </button>
-              </Tooltip>
-              <Tooltip content={t('explorer.listView') || 'List View'} placement="bottom">
-                <button
-                  onClick={() => setViewMode('list')}
-                  className={`p-1.5 rounded transition-colors ${
-                    resolvedViewMode === 'list'
-                      ? 'bg-accent text-white'
-                      : 'text-text-secondary hover:text-text-primary hover:bg-white/10'
-                  }`}
-                >
-                  <ListIcon />
-                </button>
-              </Tooltip>
-            </div>
-          )}
-        </div>
-
-        {!explorerStateHook.currentPath && (
-          <button
-            onClick={navigation.handleAddBaseFolder}
-            className="btn-primary transition-transform hover:scale-105 active:scale-95 ml-2 sm:ml-6 text-sm px-3 py-1.5 hidden sm:inline-flex"
-          >
-            <span className="mr-2">+</span>
-            {t("explorer.addBaseFolder")}
-          </button>
-        )}
-      </div>
-
-      {/* Search Bar & Grid Size Slider */}
-      {((!explorerStateHook.currentPath && loading.baseFolders.length > 0) ||
-        (explorerStateHook.currentPath && loading.entries.length > 0)) && (
-        <div className="mb-2 sm:mb-4 flex items-center gap-2 flex-wrap">
-          <SearchBar
-            placeholder={t("explorer.searchPlaceholder") || "Search by name..."}
-            onSearch={search.setSearchQuery}
-            className="flex-1 min-w-0 sm:max-w-md hidden sm:block"
-          />
-          {dirStats && (
-            <span className="text-xs text-text-secondary whitespace-nowrap hidden sm:block ml-3">
-              {dirStats.folders} {t('explorer.subfolders')}{dirStats.images > 0 ? ` · ${dirStats.images} ${t('explorer.images')}` : ''}
-            </span>
-          )}
-          {resolvedViewMode === 'grid' && explorerStateHook.currentPath && (
-            <div className="flex items-center gap-2 ml-auto hidden sm:flex">
-              <span className="text-xs text-text-secondary whitespace-nowrap">
-                {t('explorer.gridItemSize')}
-              </span>
-              <input
-                type="range"
-                min={120}
-                max={400}
-                step={10}
-                value={resolvedGridItemSize}
-                onChange={(e) => setGridItemSize(Number(e.target.value))}
-                onDoubleClick={() => setGridItemSize(200)}
-                className="w-24 h-1.5 bg-surface-tertiary rounded-full appearance-none cursor-pointer accent-accent [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-accent [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:cursor-pointer"
-              />
-              <span className="text-xs text-text-secondary w-8 text-right tabular-nums">
-                {resolvedGridItemSize}px
-              </span>
-            </div>
-          )}
-        </div>
-      )}
+      {/* Search Bar & Toolbar */}
+      <ExplorerToolbar
+        currentPath={explorerStateHook.currentPath}
+        hasContent={hasContent}
+        isRecentView={isRecentView}
+        isGridView={isGridView}
+        gridItemSize={resolvedGridItemSize}
+        onSearch={search.setSearchQuery}
+        onClearRecent={async () => {
+          await ExplorerAPI.clearRecentFolders();
+          explorerStateHook.setCurrentPath(null);
+        }}
+        onGridSizeChange={setGridItemSize}
+      />
 
       {/* Content */}
-      <div
-        className="flex-1 overflow-auto pr-1 sm:pr-2"
-      >
+      <div className="flex-1 overflow-auto pr-1 sm:pr-2">
         {/* Base Folders View */}
         {!explorerStateHook.currentPath && (
-          <GridContainer>
-            {search.sortedBaseFolders.map((folder) => (
-              <GridItem key={folder.path}>
-                <MediaTile
-                  id={folder.path}
-                  name={folder.name}
-                  thumbnail={folder.thumbnailUrl || thumbnails[folder.path]}
-                  onClick={() => navigation.handleItemClick(folder)}
-                  onAuxClick={(e) => navigation.handleItemAuxClick(e, folder)}
-                  onVisible={async () => {
-                    if (
-                      !folder.hasImages ||
-                      folder.thumbnailUrl ||
-                      thumbnails[folder.path]
-                    )
-                      return;
-                    try {
-                      const folderInfo = await AppAPI.getFolderInfoShallow(
-                        folder.path,
-                      );
-                      if (folderInfo && folderInfo.coverImage) {
-                        await loadThumbnail(folder.path, folderInfo.coverImage);
-                      }
-                    } catch (error) {
-                      console.error(
-                        "Failed to load thumbnail for folder:",
-                        folder.path,
-                        error,
-                      );
-                    }
-                  }}
-                  onSecondaryAction={(e) =>
-                    navigation.handleRemoveBaseFolder(folder.path, e)
-                  }
-                  secondaryActionIcon={<TrashIcon />}
-                  secondaryActionLabel={t("common.remove")}
-                  fallbackIcon={
-                    <div className="p-4 rounded-xl bg-accent/10 text-accent">
-                      <svg
-                        width="32"
-                        height="32"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1.5"
-                      >
-                        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
-                      </svg>
-                    </div>
-                  }
-                  footerLeft={
-                    <Tooltip content={folder.path}>
-                      <p className="text-xs text-white/50 truncate mt-1 font-mono">
-                        {folder.path}
-                      </p>
-                    </Tooltip>
-                  }
-                />
-              </GridItem>
-            ))}
-          </GridContainer>
+          <BaseFoldersGrid
+            sortedBaseFolders={search.sortedBaseFolders}
+            thumbnails={thumbnails}
+            onItemClick={navigation.handleItemClick}
+            onItemAuxClick={navigation.handleItemAuxClick}
+            onRemoveFolder={navigation.handleRemoveBaseFolder}
+            onLoadThumbnail={loadThumbnail}
+          />
         )}
 
         {/* Directory View */}
@@ -806,122 +520,24 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
         )}
 
         {/* Search Results */}
-        {search.searchResults.length > 0 && !search.isSearching && (
-          <div className="flex flex-col gap-2">
-            <p className="text-sm text-text-secondary mb-1">
-              {search.searchResults.length >= 200
-                ? `Showing top 200 results for "${search.searchQuery}"`
-                : `Found ${search.searchResults.length} results for "${search.searchQuery}"`
-              }
-            </p>
-            <GridContainer>
-              {search.searchResults.map((entry) => {
-                const sepIdx = Math.max(entry.path.lastIndexOf('\\'), entry.path.lastIndexOf('/'));
-                const parentPath = sepIdx >= 0 ? entry.path.substring(0, sepIdx) : '';
-                return (
-                  <GridItem key={entry.path}>
-                    <MediaTile
-                      id={entry.path}
-                      name={entry.name}
-                      thumbnail={entry.thumbnailUrl}
-                      onClick={() => handleSearchResultClick(entry)}
-                      fallbackIcon={
-                        <div className={`p-4 rounded-xl ${entry.isDirectory ? 'bg-amber/10 text-amber' : 'bg-accent/10 text-accent'}`}>
-                          {entry.isDirectory ? (
-                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
-                            </svg>
-                          ) : (
-                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                              <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                              <circle cx="8.5" cy="8.5" r="1.5" />
-                              <polyline points="21 15 16 10 5 21" />
-                            </svg>
-                          )}
-                        </div>
-                      }
-                      footerLeft={
-                        <Tooltip content={parentPath}>
-                          <p className="text-xs text-white/50 truncate mt-1 font-mono">
-                            {parentPath}
-                          </p>
-                        </Tooltip>
-                      }
-                    />
-                  </GridItem>
-                );
-              })}
-            </GridContainer>
-          </div>
-        )}
+        <SearchResultsSection
+          searchResults={search.searchResults}
+          searchQuery={search.searchQuery}
+          isSearching={search.isSearching}
+          onResultClick={handleSearchResultClick}
+        />
 
-        {/* No search results */}
-        {search.searchQuery.trim() && !search.isSearching && search.searchResults.length === 0 && (
-          <div className="h-full flex flex-col items-center justify-center text-text-secondary opacity-60">
-            <svg className="w-16 h-16 mb-4 text-surface-tertiary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
-              <circle cx="11" cy="11" r="8" />
-              <path d="m21 21-4.35-4.35" />
-            </svg>
-            <p className="text-lg">{t("explorer.noResultsFound")}</p>
-            <p className="text-sm mt-1">{t("explorer.tryDifferentSearch")}</p>
-          </div>
-        )}
+        {/* No search results (searching handled inside SearchResultsSection) */}
+        {/* search results empty state also handled inside SearchResultsSection */}
 
-        {/* Searching indicator */}
-        {search.searchQuery.trim() && search.isSearching && (
-          <div className="h-full flex flex-col items-center justify-center text-text-secondary opacity-60">
-            <svg className="animate-spin w-8 h-8 mb-2" viewBox="0 0 24 24" fill="none">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-            </svg>
-            <p className="text-sm">{t('common.searching') || 'Searching...'}</p>
-          </div>
-        )}
-
+        {/* No base folders */}
         {!explorerStateHook.currentPath && loading.baseFolders.length === 0 && (
-          <div className="h-full flex flex-col items-center justify-center text-text-secondary opacity-60">
-            <svg
-              className="w-24 h-24 mb-4 text-surface-tertiary"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1"
-            >
-              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
-            </svg>
-            <p className="text-lg">{t("explorer.noFoldersAdded")}</p>
-            <p className="text-sm mt-1">{t("explorer.addFolderToStart")}</p>
-          </div>
+          <ExplorerEmptyState variant="no-folders" />
         )}
 
-        {/* No results message (legacy frontend-only search) */}
-        {search.searchResults.length === 0 && ((!explorerStateHook.currentPath &&
-          search.sortedBaseFolders.length === 0 &&
-          loading.baseFolders.length > 0 &&
-          search.searchQuery.trim()) ||
-          (explorerStateHook.currentPath &&
-            search.sortedEntries.length === 0 &&
-            loading.entries.length > 0 &&
-            search.searchQuery.trim())) && (
-          <div className="h-full flex flex-col items-center justify-center text-text-secondary opacity-60">
-            <svg
-              className="w-16 h-16 mb-4 text-surface-tertiary"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1"
-            >
-              <circle cx="11" cy="11" r="8" />
-              <path d="m21 21-4.35-4.35" />
-            </svg>
-            <p className="text-lg">
-              {t("explorer.noResultsFound") || "No results found"}
-            </p>
-            <p className="text-sm mt-1">
-              {t("explorer.tryDifferentSearch") ||
-                `Try a different search term`}
-            </p>
-          </div>
+        {/* Legacy no-results (frontend-only filtered search) */}
+        {showLegacyNoResults && (
+          <ExplorerEmptyState variant="no-results" />
         )}
       </div>
 

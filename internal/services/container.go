@@ -37,6 +37,7 @@ type Container struct {
 	Downloader      *database.DownloaderRepository
 	Tabs            *database.TabsRepository
 	ViewerStates    *database.ViewerStatesRepository
+	RecentFolders   *database.RecentlyVisitedRepository
 
 	ctx context.Context
 }
@@ -83,6 +84,7 @@ func NewContainer() *Container {
 	downloader := database.NewDownloaderRepository(db)
 	tabs := database.NewTabsRepository(db)
 	viewerStates := database.NewViewerStatesRepository(db)
+	recentFolders := database.NewRecentlyVisitedRepository(db)
 
 	imageServer := fileloader.NewImageServer(fileLoader, thumbGen, loggerAdapter, func() bool {
 		return settings.Get().GenerateThumbnails
@@ -109,6 +111,7 @@ func NewContainer() *Container {
 		Downloader:      downloader,
 		Tabs:            tabs,
 		ViewerStates:    viewerStates,
+		RecentFolders:   recentFolders,
 	}
 }
 
@@ -167,6 +170,7 @@ func (c *Container) SwitchLibrary(libID string) error {
 	c.Downloader.SetDB(newDB)
 	c.Tabs.SetDB(newDB)
 	c.ViewerStates.SetDB(newDB)
+	c.RecentFolders.SetDB(newDB)
 
 	// Reload all repos from new DB
 	repos := []struct {
@@ -185,6 +189,7 @@ func (c *Container) SwitchLibrary(libID string) error {
 		{"downloader", c.Downloader.Load},
 		{"tabs", c.Tabs.Load},
 		{"viewer_states", c.ViewerStates.Load},
+		{"recently_visited", c.RecentFolders.Load},
 	}
 	for _, r := range repos {
 		if err := r.load(); err != nil {

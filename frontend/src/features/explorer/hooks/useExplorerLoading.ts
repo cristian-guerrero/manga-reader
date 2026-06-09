@@ -8,7 +8,7 @@ import { useTabStore } from '@stores';
 import { AppAPI } from '@services/api/appAPI';
 import { useToast } from '@shared/components';
 import { useTranslation } from 'react-i18next';
-import { BaseFolder, ExplorerEntry } from '../types';
+import { BaseFolder, ExplorerEntry, RECENTLY_VIEWED_SENTINEL } from '../types';
 
 
 interface UseExplorerLoadingOptions {
@@ -91,7 +91,9 @@ export function useExplorerLoading({
             }
 
             // Update tab title with current folder name
-            const folderName = path.split(/[\\/]/).filter(Boolean).pop() || path;
+            const folderName = path === RECENTLY_VIEWED_SENTINEL
+                ? 'Recently Viewed'
+                : path.split(/[\\/]/).filter(Boolean).pop() || path;
             if (tabId) {
                 useTabStore.getState().updateTab(tabId, { title: folderName });
             } else {

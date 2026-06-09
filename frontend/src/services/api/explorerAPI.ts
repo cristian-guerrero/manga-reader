@@ -4,7 +4,7 @@
 
 import * as AppBackend from '../../../wailsjs/go/main/App';
 import { BaseAPI } from './baseAPI';
-import { ExplorerEntry } from '../../features/explorer/types';
+import { ExplorerEntry, RecentFolderEntry } from '../../features/explorer/types';
 
 // Temporary cast to fix type error until Wails regenerates bindings
 const AppBackendAny = AppBackend as any;
@@ -62,6 +62,32 @@ export class ExplorerAPI extends BaseAPI {
         } catch (error) {
             console.error('[ExplorerAPI] searchExplorer failed:', error);
             return [];
+        }
+    }
+
+    static async getRecentFolders(): Promise<RecentFolderEntry[]> {
+        try {
+            const result = await AppBackendAny.GetRecentFolders();
+            return Array.isArray(result) ? result : [];
+        } catch (error) {
+            console.error('[ExplorerAPI] getRecentFolders failed:', error);
+            return [];
+        }
+    }
+
+    static async removeRecentFolder(folderPath: string): Promise<void> {
+        try {
+            await AppBackendAny.RemoveRecentFolder(folderPath);
+        } catch (error) {
+            console.error('[ExplorerAPI] removeRecentFolder failed:', error);
+        }
+    }
+
+    static async clearRecentFolders(): Promise<void> {
+        try {
+            await AppBackendAny.ClearRecentFolders();
+        } catch (error) {
+            console.error('[ExplorerAPI] clearRecentFolders failed:', error);
         }
     }
 }

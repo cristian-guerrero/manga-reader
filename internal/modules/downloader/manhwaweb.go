@@ -5,16 +5,37 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 )
+
+type FlexFloat64 float64
+
+func (f *FlexFloat64) UnmarshalJSON(data []byte) error {
+	var v float64
+	if err := json.Unmarshal(data, &v); err == nil {
+		*f = FlexFloat64(v)
+		return nil
+	}
+	var s string
+	if err := json.Unmarshal(data, &s); err == nil {
+		parsed, err := strconv.ParseFloat(s, 64)
+		if err != nil {
+			return err
+		}
+		*f = FlexFloat64(parsed)
+		return nil
+	}
+	return fmt.Errorf("cannot unmarshal %s into float64", string(data))
+}
 
 type ManhwaWebDownloader struct{}
 
 type ManhwaChapter struct {
 	Name    string `json:"name"`
 	Chapter struct {
-		Img     []string `json:"img"`
-		Chapter float64  `json:"chapter"`
+		Img     []string   `json:"img"`
+		Chapter FlexFloat64 `json:"chapter"`
 	} `json:"chapter"`
 }
 
@@ -23,8 +44,8 @@ type ManhwaSeriesResponse struct {
 	NameEsp     string `json:"name_esp"`
 	TheRealName string `json:"the_real_name"`
 	Chapters    []struct {
-		Chapter float64 `json:"chapter"`
-		Link    string  `json:"link"`
+		Chapter FlexFloat64 `json:"chapter"`
+		Link    string      `json:"link"`
 	} `json:"chapters"`
 }
 
@@ -158,6 +179,9 @@ func (d *ManhwaWebDownloader) getChapter(url string) (*SiteInfo, error) {
 			URL:      imgURL,
 			Filename: fmt.Sprintf("%03d.%s", len(images)+1, ext),
 			Index:    i,
+			Headers: map[string]string{
+				"Referer": "https://manhwaweb.com/",
+			},
 		})
 	}
 
