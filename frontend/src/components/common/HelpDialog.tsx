@@ -16,7 +16,7 @@ export const HelpDialog: React.FC<HelpDialogProps> = ({ isOpen, onClose, title, 
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in" onClick={onClose}>
-            <div className="card w-full max-w-lg p-6 shadow-2xl animate-scale-in" onClick={(e) => e.stopPropagation()} style={{ backgroundColor: 'var(--color-surface-elevated)' }}>
+            <div className="card w-full max-w-2xl p-6 shadow-2xl animate-scale-in" onClick={(e) => e.stopPropagation()} style={{ backgroundColor: 'var(--color-surface-elevated)' }}>
                 <div className="flex justify-between items-center mb-6">
                     <h3 className="text-xl font-bold" style={{ color: 'var(--color-text-primary)' }}>
                         {title}
