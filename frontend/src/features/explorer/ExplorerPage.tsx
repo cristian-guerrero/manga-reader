@@ -239,14 +239,28 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
   // Handle clicking on a search result
   const handleSearchResultClick = useCallback((entry: ExplorerEntry) => {
     if (entry.isDirectory) {
-      loading.loadDirectory(entry.path, true);
+      // Promote to auto order so the folder appears first when revisiting the parent
+      if (explorerStateHook.currentPath && sorting.sortBy === 'auto') {
+        const parentPath = entry.path.includes('\\')
+          ? entry.path.substring(0, entry.path.lastIndexOf('\\'))
+          : entry.path.substring(0, entry.path.lastIndexOf('/'));
+        FolderOrderAPI.promoteToAutoOrder(parentPath, entry.name, [entry.name])
+          .catch(err => console.error('Failed to promote to auto order:', err));
+      }
+      // Update path history so Back navigates to the parent
+      if (explorerStateHook.currentPath) {
+        explorerStateHook.setPathHistory(prev => [...prev, explorerStateHook.currentPath!]);
+        explorerStateHook.setForwardHistory([]);
+      }
+      search.setSearchQuery('');
+      loading.loadDirectory(entry.path, false);
     } else {
       const parentPath = entry.path.includes('\\')
         ? entry.path.substring(0, entry.path.lastIndexOf('\\'))
         : entry.path.substring(0, entry.path.lastIndexOf('/'));
       navigate('viewer', { folder: parentPath, targetPath: entry.path, sortBy: sorting.sortBy, sortOrder: sorting.sortOrder }, 'explorer');
     }
-  }, [loading.loadDirectory, navigate, sorting.sortBy, sorting.sortOrder]);
+  }, [loading.loadDirectory, navigate, sorting.sortBy, sorting.sortOrder, explorerStateHook.currentPath, explorerStateHook.setPathHistory, explorerStateHook.setForwardHistory, search.setSearchQuery]);
 
   // Reload directory when sortBy or sortOrder changes in modes requiring backend sort
   const prevSortByRef = useRef(sorting.sortBy);
