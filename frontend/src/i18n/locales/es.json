@@ -430,6 +430,28 @@
       "installingDeps": "Instalando dependencias...",
       "complete": "¡Instalación completa!",
       "error": "Instalación fallida"
+    },
+    "help": {
+      "title": "Cómo usar",
+      "overview": "Descripción General",
+      "overviewDesc": "La colorización con IA convierte páginas de manga en blanco y negro a imágenes a todo color. El colorizador se ejecuta localmente en tu máquina usando modelos de aprendizaje profundo.",
+      "gettingStarted": "Primeros Pasos",
+      "step1": "Haz clic en 'Iniciar Servidor' para inicializar el backend del colorizador. La primera configuración descarga Python y las dependencias automáticamente.",
+      "step2": "Arrastra y suelta imágenes o carpetas de manga en el panel izquierdo, o haz clic en 'Seleccionar Carpeta' para navegar.",
+      "step3": "Selecciona una imagen y haz clic en 'Colorizar' para procesarla, o usa 'Colorizar Todo' para procesamiento por lotes.",
+      "settings": "Opciones de Procesamiento",
+      "settingsDesc": "Ajusta la salida de la colorización con estas opciones:",
+      "colorize": "Colorizar — aplica colorización con IA para convertir escala de grises a color.",
+      "upscale": "Escalar — aumenta la resolución usando superresolución con IA para detalles más nítidos.",
+      "denoise": "Reducir Ruido — reduce el ruido y artefactos de imágenes escaneadas para resultados más limpios.",
+      "download": "Guardar Resultados",
+      "downloadDesc": "Después de la colorización, descarga imágenes individuales o todas las procesadas a la vez.",
+      "autoFolder": "El modo automático guarda en una carpeta '_colorized' junto a los originales.",
+      "manualFolder": "El modo manual te pregunta dónde guardar cada vez.",
+      "tips": "Consejos",
+      "tipServer": "Mantén el servidor ejecutándose mientras procesas. Detenerlo interrumpirá la colorización en curso.",
+      "tipUpscale": "Activa el escalado para manga de baja resolución para mejorar la claridad de los detalles.",
+      "tipBatch": "Usa 'Colorizar Todo' para lotes grandes — el progreso se muestra en tiempo real."
     }
   },
   "libraryManager": {
@@ -445,6 +467,24 @@
       "nameLabel": "Nombre de la Biblioteca",
       "displayNameLabel": "Nombre a mostrar (opcional)",
       "displayNamePlaceholder": "Mis Cómics"
+    },
+    "help": {
+      "title": "Cómo usar",
+      "overview": "Descripción General",
+      "overviewDesc": "Las bibliotecas te permiten organizar tu colección de manga en bases de datos separadas e independientes. Cada biblioteca tiene su propia configuración, historial y entradas.",
+      "create": "Crear Biblioteca",
+      "createDesc": "Haz clic en 'Nueva Biblioteca' para crear una biblioteca fresca con un nombre único. Comienza vacía — agrega carpetas desde el Explorador para poblarla.",
+      "open": "Abrir Biblioteca",
+      "openDesc": "Haz clic en 'Abrir Biblioteca' para importar un archivo .db existente desde otra ubicación. Esto copia la base de datos a tu directorio de datos y la registra.",
+      "activate": "Cambiar Biblioteca",
+      "activateDesc": "Haz clic en 'Activar' en cualquier biblioteca para cambiar a ella. La biblioteca activa determina qué datos (historial, configuración, entradas) se cargan actualmente.",
+      "delete": "Eliminar Biblioteca",
+      "deleteDesc": "Eliminar una biblioteca solo la borra del registro — el archivo .db se conserva en disco. Puedes reimportarla después con 'Abrir Biblioteca'.",
+      "perLibrary": "Cada biblioteca es independiente: configuración, temas, historial y carpetas del explorador son todos por biblioteca.",
+      "tips": "Consejos",
+      "tipDefault": "La biblioteca por defecto no se puede eliminar pero puede renombrarse o tener sus datos borrados.",
+      "tipBackup": "Copia de seguridad de tu colección copiando archivos .db desde ~/.manga-visor/ a otra ubicación.",
+      "tipImport": "Comparte bibliotecas entre dispositivos copiando el archivo .db y usando 'Abrir Biblioteca' en la otra máquina."
     }
   },
   "networkServer": {

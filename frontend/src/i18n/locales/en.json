@@ -434,6 +434,28 @@
       "installingDeps": "Installing Python dependencies...",
       "complete": "Installation complete!",
       "error": "Installation failed"
+    },
+    "help": {
+      "title": "How to use",
+      "overview": "Overview",
+      "overviewDesc": "AI-powered colorization converts black and white manga pages into full color images. The colorizer runs locally on your machine using deep learning models.",
+      "gettingStarted": "Getting Started",
+      "step1": "Click 'Start Server' to initialize the colorizer backend. First-time setup downloads Python and dependencies automatically.",
+      "step2": "Drag and drop manga images or folders onto the left panel, or click 'Select Folder' to browse.",
+      "step3": "Select an image and click 'Colorize' to process it, or use 'Colorize All' for batch processing.",
+      "settings": "Processing Options",
+      "settingsDesc": "Fine-tune the colorization output with these processing options:",
+      "colorize": "Colorize — applies AI colorization to convert grayscale to color.",
+      "upscale": "Upscale — increases resolution using AI super-resolution for sharper details.",
+      "denoise": "Denoise — reduces noise and artifacts from scanned images for cleaner results.",
+      "download": "Saving Results",
+      "downloadDesc": "After colorization, download individual images or all processed images at once.",
+      "autoFolder": "Auto mode saves to a '_colorized' folder next to the originals.",
+      "manualFolder": "Manual mode prompts you to choose a save location each time.",
+      "tips": "Tips",
+      "tipServer": "Keep the server running while processing. Stopping it will interrupt ongoing colorization.",
+      "tipUpscale": "Enable upscaling for low-resolution manga to improve detail clarity.",
+      "tipBatch": "Use 'Colorize All' for large batches — progress is shown in real-time."
     }
   },
   "libraryManager": {
@@ -449,6 +471,24 @@
       "nameLabel": "Library Name",
       "displayNameLabel": "Display Name (optional)",
       "displayNamePlaceholder": "My Comics"
+    },
+    "help": {
+      "title": "How to use",
+      "overview": "Overview",
+      "overviewDesc": "Libraries let you organize your manga collection into separate, independent databases. Each library has its own settings, history, and entries.",
+      "create": "Create Library",
+      "createDesc": "Click 'New Library' to create a fresh library with a unique name. It starts empty — add folders from the Explorer to populate it.",
+      "open": "Open Library",
+      "openDesc": "Click 'Open Library' to import an existing .db file from another location. This copies the database into your data directory and registers it.",
+      "activate": "Switch Library",
+      "activateDesc": "Click 'Activate' on any library to switch to it. The active library determines which data (history, settings, entries) is currently loaded.",
+      "delete": "Delete Library",
+      "deleteDesc": "Removing a library only deletes it from the registry — the .db file is preserved on disk. You can re-import it later with 'Open Library'.",
+      "perLibrary": "Each library is independent: settings, themes, history, and explorer folders are all per-library.",
+      "tips": "Tips",
+      "tipDefault": "The default library cannot be deleted but can be renamed or have its data cleared.",
+      "tipBackup": "Back up your collection by copying .db files from ~/.manga-visor/ to another location.",
+      "tipImport": "Share libraries between devices by copying the .db file and using 'Open Library' on the other machine."
     }
   },
   "networkServer": {
