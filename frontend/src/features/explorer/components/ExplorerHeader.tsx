@@ -106,15 +106,21 @@ export function ExplorerHeader({
           </>
         )}
 
-        {/* Breadcrumb */}
-        <div className={`min-w-0 ${currentPath ? 'flex-1' : ''}`}>
-          <Breadcrumb
-            currentPath={currentPath}
-            baseFolders={baseFolders}
-            onNavigate={onBreadcrumbClick}
-            onAuxClick={onBreadcrumbAuxClick}
-          />
-        </div>
+        {/* Title (root) or Breadcrumb (inside directory) */}
+        {currentPath ? (
+          <div className="min-w-0 flex-1">
+            <Breadcrumb
+              currentPath={currentPath}
+              baseFolders={baseFolders}
+              onNavigate={onBreadcrumbClick}
+              onAuxClick={onBreadcrumbAuxClick}
+            />
+          </div>
+        ) : (
+          <h1 className="text-2xl font-bold text-gradient">
+            {t("explorer.title")}
+          </h1>
+        )}
 
         {!currentPath && (
           <>

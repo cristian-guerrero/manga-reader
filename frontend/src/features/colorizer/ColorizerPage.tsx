@@ -50,7 +50,7 @@ export function ColorizerPage() {
         style={{ borderColor: "var(--color-border)" }}
       >
         <div>
-          <h1 className="text-xl font-semibold" style={{ color: "var(--color-text-primary)" }}>
+          <h1 className="text-2xl font-bold text-gradient">
             {t("colorizer.title")}
           </h1>
           <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>

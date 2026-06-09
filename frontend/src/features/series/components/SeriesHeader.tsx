@@ -35,10 +35,7 @@ export function SeriesHeader({
         <div className="mb-6">
             <div className="flex items-center justify-between mb-3 sm:mb-4">
                 <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0">
-                    <h1
-                        className="text-lg sm:text-2xl font-bold truncate"
-                        style={{ color: 'var(--color-text-primary)' }}
-                    >
+                    <h1 className="text-2xl font-bold truncate text-gradient">
                         {t('series.title')}
                     </h1>
 

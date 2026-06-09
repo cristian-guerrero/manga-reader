@@ -79,7 +79,7 @@ export function LibraryManagerPage() {
     return (
         <div className="p-6 h-full overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
-                <h1 className="text-xl font-semibold" style={{ color: 'var(--color-text-primary)' }}>
+                <h1 className="text-2xl font-bold text-gradient">
                     {t('libraryManager.title')}
                 </h1>
                 <div className="flex gap-2">

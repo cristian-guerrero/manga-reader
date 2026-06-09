@@ -70,7 +70,7 @@ export function DownloadPage() {
         >
             <header className="mb-8 flex justify-between items-start">
                 <div>
-                    <h1 className="text-3xl font-bold mb-2" style={{ color: 'var(--color-text-primary)' }}>
+                    <h1 className="text-2xl font-bold mb-2 text-gradient">
                         {t('download.title')}
                     </h1>
                     <p style={{ color: 'var(--color-text-secondary)' }}>

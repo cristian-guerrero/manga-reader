@@ -14,7 +14,7 @@ export function SettingsHeader({ onHelpClick }: SettingsHeaderProps) {
 
   return (
     <div className="flex justify-between items-center mb-8">
-      <h1 className="text-3xl font-bold text-gradient">
+      <h1 className="text-2xl font-bold text-gradient">
         {t("settings.title", "Settings")}
       </h1>
       <Tooltip content={t("settings.help.title")} placement="bottom">
