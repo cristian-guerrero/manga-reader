@@ -7,6 +7,7 @@ interface ExplorerToolbarProps {
   isRecentView: boolean;
   isGridView: boolean;
   gridItemSize: number;
+  dirStats: { folders: number; images: number } | null;
   onSearch: (query: string) => void;
   onClearRecent: () => void;
   onGridSizeChange: (size: number) => void;
@@ -25,6 +26,7 @@ export function ExplorerToolbar({
   isRecentView,
   isGridView,
   gridItemSize,
+  dirStats,
   onSearch,
   onClearRecent,
   onGridSizeChange,
@@ -42,6 +44,11 @@ export function ExplorerToolbar({
         onSearch={onSearch}
         className="flex-1 min-w-0 sm:max-w-md hidden sm:block"
       />
+      {dirStats && (
+        <span className="text-xs text-text-secondary whitespace-nowrap hidden sm:block ml-3">
+          {dirStats.folders} {t('explorer.subfolders')}{dirStats.images > 0 ? ` · ${dirStats.images} ${t('explorer.images')}` : ''}
+        </span>
+      )}
       {isRecentView && (
         <button
           onClick={onClearRecent}

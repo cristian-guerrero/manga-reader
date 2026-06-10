@@ -37,10 +37,7 @@ export function ThumbnailsHeader({
                     <BackIcon />
                 </button>
                 <div>
-                    <h1
-                        className="text-xl font-bold"
-                        style={{ color: 'var(--color-text-primary)' }}
-                    >
+                    <h1 className="text-2xl font-bold text-gradient">
                         {t('thumbnails.title')}
                     </h1>
                     <p

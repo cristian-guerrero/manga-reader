@@ -42,7 +42,7 @@ export function SeriesDetailsHeader({
                         <ChevronLeftIcon />
                     </button>
                     <div>
-                        <h1 className="text-2xl font-bold" style={{ color: 'var(--color-text-primary)' }}>
+                        <h1 className="text-2xl font-bold text-gradient">
                             {series.name}
                         </h1>
                         <p className="text-sm opacity-60" style={{ color: 'var(--color-text-muted)' }}>

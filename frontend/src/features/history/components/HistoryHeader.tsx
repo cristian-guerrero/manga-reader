@@ -26,10 +26,7 @@ export function HistoryHeader({
 
     return (
         <div className="flex items-center justify-between mb-6 flex-shrink-0">
-            <h1
-                className="text-2xl font-bold"
-                style={{ color: 'var(--color-text-primary)' }}
-            >
+            <h1 className="text-2xl font-bold text-gradient">
                 {t('history.title')}
             </h1>
             <div className="flex items-center gap-2">

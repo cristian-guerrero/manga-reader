@@ -70,7 +70,7 @@ export function DownloadPage() {
         >
             <header className="mb-8 flex justify-between items-start">
                 <div>
-                    <h1 className="text-3xl font-bold mb-2" style={{ color: 'var(--color-text-primary)' }}>
+                    <h1 className="text-2xl font-bold mb-2 text-gradient">
                         {t('download.title')}
                     </h1>
                     <p style={{ color: 'var(--color-text-secondary)' }}>
@@ -159,32 +159,145 @@ export function DownloadPage() {
                 onClose={() => setIsHelpOpen(false)}
                 title={t('download.help.title')}
             >
-                <div>
-                    <h4 className="font-semibold text-sm uppercase tracking-wider mb-2" style={{ color: 'var(--color-text-secondary)' }}>
-                        {t('download.help.supportedSites')}
-                    </h4>
-                    <div className="p-3 rounded bg-white/5 border border-white/10 text-sm" style={{ color: 'var(--color-text-primary)' }}>
-                        {t('download.help.supportedList')}
+                <div className="space-y-4">
+                    {/* Getting Started */}
+                    <div className="p-4 rounded-lg" style={{ backgroundColor: 'var(--color-surface-secondary)' }}>
+                        <h4 className="font-semibold text-sm mb-2 flex items-center gap-2" style={{ color: 'var(--color-accent)' }}>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="12" y1="16" x2="12" y2="12"></line>
+                                <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                            </svg>
+                            {t('download.help.gettingStarted')}
+                        </h4>
+                        <p className="text-sm mb-2" style={{ color: 'var(--color-text-primary)' }}>
+                            {t('download.help.gettingStartedDesc')}
+                        </p>
+                        <ol className="list-decimal pl-5 space-y-1 text-sm" style={{ color: 'var(--color-text-primary)' }}>
+                            <li>{t('download.help.step1')}</li>
+                            <li>{t('download.help.step2')}</li>
+                            <li>{t('download.help.step3')}</li>
+                        </ol>
                     </div>
-                </div>
 
-                <div>
-                    <h4 className="font-semibold text-sm uppercase tracking-wider mb-2" style={{ color: 'var(--color-text-secondary)' }}>
-                        {t('download.help.instructions')}
-                    </h4>
-                    <ul className="list-disc pl-5 space-y-2 text-sm" style={{ color: 'var(--color-text-primary)' }}>
-                        <li>{t('download.help.step1')}</li>
-                        <li>{t('download.help.step2')}</li>
-                    </ul>
-                </div>
+                    {/* Clipboard Monitor */}
+                    <div className="p-4 rounded-lg" style={{ backgroundColor: 'var(--color-surface-secondary)' }}>
+                        <h4 className="font-semibold text-sm mb-2 flex items-center gap-2" style={{ color: 'var(--color-accent)' }}>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+                                <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+                            </svg>
+                            {t('download.help.clipboard')}
+                        </h4>
+                        <p className="text-sm mb-2" style={{ color: 'var(--color-text-primary)' }}>
+                            {t('download.help.clipboardDesc')}
+                        </p>
+                        <div className="space-y-1 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+                            <p className="flex items-start gap-2">
+                                <span className="mt-1">•</span>
+                                {t('download.help.clipboardSingle')}
+                            </p>
+                            <p className="flex items-start gap-2">
+                                <span className="mt-1">•</span>
+                                {t('download.help.clipboardSeries')}
+                            </p>
+                        </div>
+                    </div>
 
-                <div>
-                    <h4 className="font-semibold text-sm uppercase tracking-wider mb-2" style={{ color: 'var(--color-text-secondary)' }}>
-                        {t('download.help.clipboard')}
-                    </h4>
-                    <p className="text-sm" style={{ color: 'var(--color-text-primary)' }}>
-                        {t('download.help.clipboardDesc')}
-                    </p>
+                    {/* Supported Sites */}
+                    <div className="p-4 rounded-lg" style={{ backgroundColor: 'var(--color-surface-secondary)' }}>
+                        <h4 className="font-semibold text-sm mb-2 flex items-center gap-2" style={{ color: 'var(--color-accent)' }}>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="2" y1="12" x2="22" y2="12"></line>
+                                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                            </svg>
+                            {t('download.help.supportedSites')}
+                        </h4>
+                        <p className="text-sm mb-3" style={{ color: 'var(--color-text-primary)' }}>
+                            {t('download.help.supportedSitesDesc')}
+                        </p>
+                        <div className="space-y-2">
+                            <div>
+                                <p className="text-xs font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>
+                                    {t('download.help.sites Hentai')}
+                                </p>
+                                <p className="text-xs p-2 rounded" style={{ backgroundColor: 'var(--color-surface-primary)', color: 'var(--color-text-primary)' }}>
+                                    nHentai.net · nHentai.xxx · nHentai.com · nHentai.website · nHentai.to · Hentaiera.com · HentaiRead.io · Hentai2Read.com · Hentaivox.com · Hentaifox.com · IMHentai.xxx · IMHentai.to · Hentaifc.com · ComicPorn.xxx · E-Hentai.org · Hentaiforce.net · lHentai.com · 3Hentai.net
+                                </p>
+                            </div>
+                            <div>
+                                <p className="text-xs font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>
+                                    {t('download.help.sitesGeneral')}
+                                </p>
+                                <p className="text-xs p-2 rounded" style={{ backgroundColor: 'var(--color-surface-primary)', color: 'var(--color-text-primary)' }}>
+                                    Hitomi.la · MangaDex.org · MangaToon.mobi · Manga18.club · Comics18.org · LectorHentai · MairimashitaIruma
+                                </p>
+                            </div>
+                            <div>
+                                <p className="text-xs font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>
+                                    {t('download.help.sitesKorean')}
+                                </p>
+                                <p className="text-xs p-2 rounded" style={{ backgroundColor: 'var(--color-surface-primary)', color: 'var(--color-text-primary)' }}>
+                                    ManhwaWeb.com · ZonaTMO.com · Submanhwa.com
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Settings Info */}
+                    <div className="p-4 rounded-lg" style={{ backgroundColor: 'var(--color-surface-secondary)' }}>
+                        <h4 className="font-semibold text-sm mb-2 flex items-center gap-2" style={{ color: 'var(--color-accent)' }}>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <circle cx="12" cy="12" r="3"></circle>
+                                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                            </svg>
+                            {t('download.help.settings')}
+                        </h4>
+                        <p className="text-sm mb-2" style={{ color: 'var(--color-text-primary)' }}>
+                            {t('download.help.settingsDesc')}
+                        </p>
+                        <div className="space-y-1 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+                            <p className="flex items-start gap-2">
+                                <span className="mt-1">•</span>
+                                {t('download.help.parallelChapters')}
+                            </p>
+                            <p className="flex items-start gap-2">
+                                <span className="mt-1">•</span>
+                                {t('download.help.parallelImages')}
+                            </p>
+                            <p className="flex items-start gap-2">
+                                <span className="mt-1">•</span>
+                                {t('download.help.autoResume')}
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Tips */}
+                    <div className="p-4 rounded-lg" style={{ backgroundColor: 'var(--color-surface-secondary)' }}>
+                        <h4 className="font-semibold text-sm mb-2 flex items-center gap-2" style={{ color: 'var(--color-accent)' }}>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+                                <path d="M2 17l10 5 10-5"></path>
+                                <path d="M2 12l10 5 10-5"></path>
+                            </svg>
+                            {t('download.help.tips')}
+                        </h4>
+                        <div className="space-y-1 text-sm" style={{ color: 'var(--color-text-primary)' }}>
+                            <p className="flex items-start gap-2">
+                                <span className="mt-1">•</span>
+                                {t('download.help.tipSeries')}
+                            </p>
+                            <p className="flex items-start gap-2">
+                                <span className="mt-1">•</span>
+                                {t('download.help.tipHistory')}
+                            </p>
+                            <p className="flex items-start gap-2">
+                                <span className="mt-1">•</span>
+                                {t('download.help.tipFolder')}
+                            </p>
+                        </div>
+                    </div>
                 </div>
             </HelpDialog>
 
