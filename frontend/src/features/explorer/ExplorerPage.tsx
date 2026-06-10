@@ -314,6 +314,19 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
 
   const isInCustomMode = sorting.sortBy === 'custom' && !search.searchQuery.trim();
 
+  const dirStats = useMemo(() => {
+    if (explorerStateHook.currentPath) {
+      const folders = search.sortedEntries.filter(e => e.isDirectory).length;
+      const images = search.sortedEntries.length - folders;
+      return { folders, images };
+    }
+    if (loading.baseFolders.length > 0) {
+      const folders = search.sortedBaseFolders.length;
+      return { folders, images: 0 };
+    }
+    return null;
+  }, [search.sortedEntries, search.sortedBaseFolders, loading.baseFolders.length, explorerStateHook.currentPath]);
+
   // Context menu hook
   const {
     contextMenu,
@@ -470,6 +483,7 @@ export function ExplorerPage({ isActive = true, tabId }: ExplorerPageProps) {
         isRecentView={isRecentView}
         isGridView={isGridView}
         gridItemSize={resolvedGridItemSize}
+        dirStats={dirStats}
         onSearch={search.setSearchQuery}
         onClearRecent={async () => {
           await ExplorerAPI.clearRecentFolders();
