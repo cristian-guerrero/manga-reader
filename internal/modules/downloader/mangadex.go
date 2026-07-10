@@ -194,8 +194,6 @@ func (d *MangaDexDownloader) GetImages(url string) (*SiteInfo, error) {
 func (d *MangaDexDownloader) getChapterInfo(client *http.Client, chapterID string) (*mangaDexChapterResponse, error) {
 	url := fmt.Sprintf("https://api.mangadex.org/chapter/%s", chapterID)
 	req, _ := http.NewRequest("GET", url, nil)
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0")
-
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
@@ -203,6 +201,14 @@ func (d *MangaDexDownloader) getChapterInfo(client *http.Client, chapterID strin
 	defer resp.Body.Close()
 
 	body, _ := io.ReadAll(resp.Body)
+
+	if resp.StatusCode != http.StatusOK {
+		snippet := string(body)
+		if len(snippet) > 200 {
+			snippet = snippet[:200]
+		}
+		return nil, fmt.Errorf("API returned HTTP %d: %s", resp.StatusCode, snippet)
+	}
 
 	var result mangaDexChapterResponse
 	if err := json.Unmarshal(body, &result); err != nil {
@@ -215,7 +221,6 @@ func (d *MangaDexDownloader) getChapterInfo(client *http.Client, chapterID strin
 func (d *MangaDexDownloader) getMangaInfo(client *http.Client, mangaID string) (*mangaDexMangaResponse, error) {
 	url := fmt.Sprintf("https://api.mangadex.org/manga/%s", mangaID)
 	req, _ := http.NewRequest("GET", url, nil)
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0")
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -224,6 +229,14 @@ func (d *MangaDexDownloader) getMangaInfo(client *http.Client, mangaID string) (
 	defer resp.Body.Close()
 
 	body, _ := io.ReadAll(resp.Body)
+
+	if resp.StatusCode != http.StatusOK {
+		snippet := string(body)
+		if len(snippet) > 200 {
+			snippet = snippet[:200]
+		}
+		return nil, fmt.Errorf("API returned HTTP %d: %s", resp.StatusCode, snippet)
+	}
 
 	var result mangaDexMangaResponse
 	if err := json.Unmarshal(body, &result); err != nil {
@@ -236,7 +249,6 @@ func (d *MangaDexDownloader) getMangaInfo(client *http.Client, mangaID string) (
 func (d *MangaDexDownloader) GetAtHomeServer(client *http.Client, chapterID string) (*mangaDexAtHomeResponse, error) {
 	url := fmt.Sprintf("https://api.mangadex.org/at-home/server/%s", chapterID)
 	req, _ := http.NewRequest("GET", url, nil)
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0")
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -245,6 +257,14 @@ func (d *MangaDexDownloader) GetAtHomeServer(client *http.Client, chapterID stri
 	defer resp.Body.Close()
 
 	body, _ := io.ReadAll(resp.Body)
+
+	if resp.StatusCode != http.StatusOK {
+		snippet := string(body)
+		if len(snippet) > 200 {
+			snippet = snippet[:200]
+		}
+		return nil, fmt.Errorf("API returned HTTP %d: %s", resp.StatusCode, snippet)
+	}
 
 	var result mangaDexAtHomeResponse
 	if err := json.Unmarshal(body, &result); err != nil {
