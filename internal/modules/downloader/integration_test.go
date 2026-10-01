@@ -7,7 +7,8 @@
 package downloader
 
 import (
-	"manga-visor/internal/persistence"
+	"net/http"
+	"strings"
 	"testing"
 	"time"
 )
@@ -22,11 +23,7 @@ func TestIntegration_FetchMangaInfo_Hitomi(t *testing.T) {
 		t.Skip("Skipping integration test in short mode")
 	}
 
-	pm := persistence.NewDownloaderManager()
-	sm := persistence.NewSettingsManager()
-	logger := &mockLogger{}
-
-	module := NewModule(pm, sm, logger)
+	module := newTestModuleDownloader(t)
 
 	// URLs de ejemplo de los comentarios
 	testURLs := []string{
@@ -72,11 +69,7 @@ func TestIntegration_FetchMangaInfo_MangaDex(t *testing.T) {
 		t.Skip("Skipping integration test in short mode")
 	}
 
-	pm := persistence.NewDownloaderManager()
-	sm := persistence.NewSettingsManager()
-	logger := &mockLogger{}
-
-	module := NewModule(pm, sm, logger)
+	module := newTestModuleDownloader(t)
 
 	// URL de ejemplo del código: https://mangadex.org/chapter/d8176d81-0f14-4d5a-9d0b-fc56b3933cce
 	// Nota: Esta URL puede no existir, así que el test puede fallar
@@ -116,11 +109,7 @@ func TestIntegration_FetchMangaInfo_NHentai(t *testing.T) {
 		t.Skip("Skipping integration test in short mode")
 	}
 
-	pm := persistence.NewDownloaderManager()
-	sm := persistence.NewSettingsManager()
-	logger := &mockLogger{}
-
-	module := NewModule(pm, sm, logger)
+	module := newTestModuleDownloader(t)
 
 	// URL de ejemplo del código: https://nhentai.net/g/12345/
 	// Nota: Esta URL puede no existir, así que el test puede fallar
@@ -162,11 +151,7 @@ func TestIntegration_FetchMangaInfo_ManhwaWeb(t *testing.T) {
 		t.Skip("Skipping integration test in short mode")
 	}
 
-	pm := persistence.NewDownloaderManager()
-	sm := persistence.NewSettingsManager()
-	logger := &mockLogger{}
-
-	module := NewModule(pm, sm, logger)
+	module := newTestModuleDownloader(t)
 
 	// URLs de ejemplo del código
 	testURLs := []string{
@@ -201,11 +186,7 @@ func TestIntegration_FetchMangaInfo_ZonaTMO(t *testing.T) {
 		t.Skip("Skipping integration test in short mode")
 	}
 
-	pm := persistence.NewDownloaderManager()
-	sm := persistence.NewSettingsManager()
-	logger := &mockLogger{}
-
-	module := NewModule(pm, sm, logger)
+	module := newTestModuleDownloader(t)
 
 	// URL de ejemplo del código
 	testURLs := []string{
@@ -242,11 +223,7 @@ func TestIntegration_FetchMangaInfo_Manga18(t *testing.T) {
 		t.Skip("Skipping integration test in short mode")
 	}
 
-	pm := persistence.NewDownloaderManager()
-	sm := persistence.NewSettingsManager()
-	logger := &mockLogger{}
-
-	module := NewModule(pm, sm, logger)
+	module := newTestModuleDownloader(t)
 
 	// URLs de ejemplo del código
 	testURLs := []string{
@@ -282,11 +259,7 @@ func TestIntegration_FetchMangaInfo_Comics18(t *testing.T) {
 		t.Skip("Skipping integration test in short mode")
 	}
 
-	pm := persistence.NewDownloaderManager()
-	sm := persistence.NewSettingsManager()
-	logger := &mockLogger{}
-
-	module := NewModule(pm, sm, logger)
+	module := newTestModuleDownloader(t)
 
 	// URL de ejemplo del código: https://comics18.org/the-breakfast/
 	testURLs := []string{
@@ -323,11 +296,7 @@ func TestIntegration_FetchMangaInfo_LHentai(t *testing.T) {
 		t.Skip("Skipping integration test in short mode")
 	}
 
-	pm := persistence.NewDownloaderManager()
-	sm := persistence.NewSettingsManager()
-	logger := &mockLogger{}
-
-	module := NewModule(pm, sm, logger)
+	module := newTestModuleDownloader(t)
 
 	// URL de ejemplo proporcionada por el usuario: https://lhentai.com/g/49486
 	testURLs := []string{
@@ -360,17 +329,71 @@ func TestIntegration_FetchMangaInfo_LHentai(t *testing.T) {
 	}
 }
 
+// TestIntegration_FetchMangaInfo_IMHentaiTo verifica que FetchMangaInfo funcione con URLs reales de imhentai.to
+func TestIntegration_FetchMangaInfo_IMHentaiTo(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+
+	module := newTestModuleDownloader(t)
+
+	testURLs := []string{
+		"https://imhentai.to/g/684023/", // webp gallery
+		"https://imhentai.to/g/100000/", // jpg gallery
+	}
+
+	for _, url := range testURLs {
+		t.Run(url, func(t *testing.T) {
+			info, err := module.FetchMangaInfo(url)
+			if err != nil {
+				t.Errorf("Error fetching %s: %v", url, err)
+				return
+			}
+
+			if info == nil {
+				t.Error("Got nil SiteInfo")
+				return
+			}
+
+			if info.SiteID != "imhentai.to" {
+				t.Errorf("Expected SiteID 'imhentai.to', got %q", info.SiteID)
+			}
+
+			if info.SeriesName == "" {
+				t.Error("Expected SeriesName to be set")
+			}
+
+			if len(info.Images) == 0 {
+				t.Fatal("Expected at least one image")
+			}
+
+			first := info.Images[0]
+			if !strings.HasPrefix(first.URL, "https://") || !strings.Contains(first.URL, "/galleries/") {
+				t.Errorf("Unexpected image URL %q", first.URL)
+			}
+
+			// Verify the first image is really downloadable.
+			resp, err := http.Head(first.URL)
+			if err != nil {
+				t.Fatalf("HEAD %s failed: %v", first.URL, err)
+			}
+			resp.Body.Close()
+			if resp.StatusCode != http.StatusOK {
+				t.Errorf("Image URL returned status %d", resp.StatusCode)
+			}
+
+			t.Logf("Successfully fetched gallery: %s with %d images (%s)", info.SeriesName, len(info.Images), first.URL)
+		})
+	}
+}
+
 // TestIntegration_Timeout verifica que los timeouts funcionen correctamente
 func TestIntegration_Timeout(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping integration test in short mode")
 	}
 
-	pm := persistence.NewDownloaderManager()
-	sm := persistence.NewSettingsManager()
-	logger := &mockLogger{}
-
-	module := NewModule(pm, sm, logger)
+	module := newTestModuleDownloader(t)
 
 	// URL que debería causar timeout (usando un dominio que no responde)
 	// Nota: Este test puede ser flaky dependiendo de la configuración de red
