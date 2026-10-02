@@ -1351,45 +1351,48 @@ func SortImagesByExplorerPreference(images []persistence.ImageInfo, parentPath s
 		return
 	}
 
-	applyPinnedImagesToSlice(images, parentPath, sortMode, imageOrders)
-
-	if folderOrders == nil {
-		return
-	}
-
-	switch sortMode {
-	case "custom":
-		order := folderOrders.GetOrder(parentPath)
-		if len(order) > 0 {
+	sorted := false
+	if sortMode == "custom" && folderOrders != nil {
+		if order := folderOrders.GetOrder(parentPath); len(order) > 0 {
 			applyOrderToImages(images, order, sortOrder)
+			sorted = true
 		}
-	case "auto":
-		order := folderOrders.GetAutoOrder(parentPath)
-		if len(order) > 0 {
+	} else if sortMode == "auto" && folderOrders != nil {
+		if order := folderOrders.GetAutoOrder(parentPath); len(order) > 0 {
 			applyOrderToImages(images, order, sortOrder)
 		} else {
 			sort.SliceStable(images, func(i, j int) bool {
 				if sortOrder == "desc" {
-					return images[i].ModTime > images[j].ModTime
+					return images[i].ModTime < images[j].ModTime
 				}
 				return images[i].ModTime > images[j].ModTime
 			})
 		}
-	case "date":
+		sorted = true
+	} else if sortMode == "date" {
 		sort.SliceStable(images, func(i, j int) bool {
 			if sortOrder == "desc" {
 				return images[i].ModTime > images[j].ModTime
 			}
 			return images[i].ModTime < images[j].ModTime
 		})
-	default: // "name"
+		sorted = true
+	}
+
+	if !sorted {
+		// Natural order — mirrors the fallback in ListDirectoryWithSort so the
+		// viewer shows the exact same sequence as the Explorer thumbnails.
 		sort.SliceStable(images, func(i, j int) bool {
 			if sortOrder == "desc" {
-				return strings.ToLower(images[i].Name) > strings.ToLower(images[j].Name)
+				return utils.NaturalLess(images[j].Name, images[i].Name)
 			}
-			return strings.ToLower(images[i].Name) < strings.ToLower(images[j].Name)
+			return utils.NaturalLess(images[i].Name, images[j].Name)
 		})
 	}
+
+	// Applied after the sort so pinned images stay in front, matching the
+	// single-comparator behavior of ListDirectoryWithSort.
+	applyPinnedImagesToSlice(images, parentPath, sortMode, imageOrders)
 }
 
 // applyOrderToImages re-sorts the image slice to follow the given name order.
