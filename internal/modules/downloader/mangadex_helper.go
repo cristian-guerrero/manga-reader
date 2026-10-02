@@ -15,7 +15,6 @@ func (d *MangaDexDownloader) getMangaChapters(client *http.Client, mangaID strin
 	for {
 		url := fmt.Sprintf("https://api.mangadex.org/manga/%s/feed?limit=%d&offset=%d&order[chapter]=asc", mangaID, limit, offset)
 		req, _ := http.NewRequest("GET", url, nil)
-		req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0")
 
 		resp, err := client.Do(req)
 		if err != nil {
@@ -24,6 +23,14 @@ func (d *MangaDexDownloader) getMangaChapters(client *http.Client, mangaID strin
 		defer resp.Body.Close()
 
 		body, _ := io.ReadAll(resp.Body)
+
+		if resp.StatusCode != http.StatusOK {
+			snippet := string(body)
+			if len(snippet) > 200 {
+				snippet = snippet[:200]
+			}
+			return nil, fmt.Errorf("API returned HTTP %d: %s", resp.StatusCode, snippet)
+		}
 
 		var result mangaDexFeedResponse
 		if err := json.Unmarshal(body, &result); err != nil {

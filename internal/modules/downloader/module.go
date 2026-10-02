@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log"
 	"manga-visor/internal/archiver"
 	"manga-visor/internal/database"
 	"manga-visor/internal/persistence"
@@ -101,6 +102,7 @@ func NewModule(pm *database.DownloaderRepository, sm *database.SettingsRepositor
 			&HentaiFoxDownloader{},
 			&NHentaiToDownloader{},
 			&MairimashitaIrumaDownloader{},
+			&FalcoScanDownloader{},
 		},
 	}
 }
@@ -467,6 +469,14 @@ func (m *Module) runDownload(job persistence.DownloadJob, info *SiteInfo) {
 				}
 			}
 
+			// Verify file was actually written with content
+			if fInfo, statErr := os.Stat(destPath); statErr != nil || fInfo.Size() == 0 {
+				hasFailed.Store(true)
+				cancel()
+				m.failJob(job.ID, fmt.Sprintf("Downloaded page %d is empty or missing (size: %d)", idx+1, fInfo.Size()))
+				return
+			}
+
 			atomic.AddInt32(&completedPages, 1)
 			newProgress := int(atomic.LoadInt32(&completedPages))
 			m.pm.UpdateJob(job.ID, map[string]interface{}{"progress": newProgress})
@@ -772,6 +782,7 @@ func downloadFileWithContext(ctx context.Context, url string, path string, heade
 				return err
 			}
 			lastErr = err
+			log.Printf("[Downloader] Attempt %d failed for %s: %v", attempt+1, url, err)
 			continue // Network error, retry
 		}
 		defer resp.Body.Close()
@@ -803,6 +814,7 @@ func downloadFileWithContext(ctx context.Context, url string, path string, heade
 
 		// Handle non-200 status codes
 		lastErr = fmt.Errorf("bad status: %s", resp.Status)
+		log.Printf("[Downloader] Attempt %d got status %d for %s", attempt+1, resp.StatusCode, url)
 
 		// If it's a 503 or 429, we definitely want to retry.
 		// For others (like 404), maybe not, but simple retry mechanism for now covers transient issues.

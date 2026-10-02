@@ -123,15 +123,15 @@ Wails v2 (Go 1.25 backend, React 18 + TypeScript + Vite frontend). State: Zustan
 - UI: When `autoUpdate=true` (default), banner is silent during download and pending-apply phases — only "App updated successfully" shows after restart. When `autoUpdate=false`, banner shows download button + "ready to install" message. Settings section has auto-update toggle + status.
 
 ## Downloader Module
-- 28 supported sites with per-algorithm concurrency config (parallel chapters + parallel images per chapter) stored in SQLite settings and editable via settings dialog in download page (gear icon)
+- 29 supported sites with per-algorithm concurrency config (parallel chapters + parallel images per chapter) stored in SQLite settings and editable via settings dialog in download page (gear icon)
 - Clipboard monitoring triggers auto-detection (`internal/modules/downloader/clipboard.go`)
 - Sites detected by URL patterns, each with dedicated `internal/modules/downloader/*.go` file:
   - Hitomi.la · MangaDex.org · ManhwaWeb.com · ZonaTMO.com · MangaToon.mobi
   - nHentai.net · nHentai.xxx · nHentai.com · nHentai.website · nHentai.to
   - Hentaiera.com · HentaiRead.io · Hentai2Read.com · Hentaivox.com · Hentaifox.com
   - IMHentai.xxx · IMHentai.to · Manga18.club · Comics18.org · Hentaifc.com
-  - ComicPorn.xxx · E-Hentai.org · Submanhwa.com · Hentaiforce.net · lHentai.com
-  - 3Hentai.net · LectorHentai · MairimashitaIruma
+  - ComicPorn.xxx · E-Hentai.org · SubManhwa.com · Hentaiforce.net · lHentai.com
+  - 3Hentai.net · LectorHentai · MairimashitaIruma · FalcoScan.net
 
 ## Network Server Module
 - Serves the complete React app on the local network at `0.0.0.0:8080` so other LAN devices can access it via browser
