@@ -153,18 +153,33 @@ func TestIntegration_FetchMangaInfo_ManhwaWeb(t *testing.T) {
 
 	module := newTestModuleDownloader(t)
 
-	// URLs de ejemplo del código
-	testURLs := []string{
-		"https://manhwaweb.com/manhwa/slug",       // Serie
-		"https://manhwaweb.com/leer/slug",         // Capítulo
-		"https://manhwaweb.com/chapters/see/slug", // Capítulo alternativo
+	// URLs de ejemplo del código (tolerantes) + URLs reales estrictas que cubren
+	// el capítulo con versión especial ("46_01") que antes devolvía 404
+	testCases := []struct {
+		url    string
+		strict bool
+	}{
+		{url: "https://manhwaweb.com/manhwa/slug"},       // Serie
+		{url: "https://manhwaweb.com/leer/slug"},         // Capítulo
+		{url: "https://manhwaweb.com/chapters/see/slug"}, // Capítulo alternativo
+		{
+			url:    "https://www.manhwaweb.com/leer/My_girlfriend_has_already_done_teaching_1768215801769-46_01",
+			strict: true,
+		},
+		{
+			url:    "https://www.manhwaweb.com/manhwa/My_girlfriend_has_already_done_teaching_1768215801769",
+			strict: true,
+		},
 	}
 
-	for _, url := range testURLs {
-		t.Run(url, func(t *testing.T) {
-			info, err := module.FetchMangaInfo(url)
+	for _, tc := range testCases {
+		t.Run(tc.url, func(t *testing.T) {
+			info, err := module.FetchMangaInfo(tc.url)
 			if err != nil {
-				t.Logf("Error fetching %s (may be expected if URL doesn't exist): %v", url, err)
+				if tc.strict {
+					t.Fatalf("Error fetching %s: %v", tc.url, err)
+				}
+				t.Logf("Error fetching %s (may be expected if URL doesn't exist): %v", tc.url, err)
 				return
 			}
 
@@ -175,6 +190,16 @@ func TestIntegration_FetchMangaInfo_ManhwaWeb(t *testing.T) {
 
 			if info.SiteID != "manhwaweb" {
 				t.Errorf("Expected SiteID 'manhwaweb', got %q", info.SiteID)
+			}
+
+			if tc.strict {
+				if info.Type == "series" {
+					if len(info.Chapters) == 0 {
+						t.Error("Expected at least one chapter")
+					}
+				} else if len(info.Images) == 0 {
+					t.Error("Expected at least one image")
+				}
 			}
 		})
 	}

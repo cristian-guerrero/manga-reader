@@ -124,6 +124,7 @@ Wails v2 (Go 1.25 backend, React 18 + TypeScript + Vite frontend). State: Zustan
 
 ## Downloader Module
 - 29 supported sites with per-algorithm concurrency config (parallel chapters + parallel images per chapter) stored in SQLite settings and editable via settings dialog in download page (gear icon)
+- ManhwaWeb API base is `https://api.manhwaweb.com` (moved from the old Railway host, which now returns 404 "Application not found"). Endpoints: `/manhwa/see/<slug>` (series) and `/chapters/see/<slug>` (chapter). Chapter numbers may come as strings with versions (e.g. `46_01`) and series chapters may leave `link` empty, using `versions[].link` instead.
 - Clipboard monitoring triggers auto-detection (`internal/modules/downloader/clipboard.go`)
 - Sites detected by URL patterns, each with dedicated `internal/modules/downloader/*.go` file:
   - Hitomi.la · MangaDex.org · ManhwaWeb.com · ZonaTMO.com · MangaToon.mobi
